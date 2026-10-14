@@ -83,6 +83,12 @@ setting's JSON as plist data (`-cranny.general.demoMode '<74727565>'` is `true`)
 is the same before and after a QA session (AppKit's own state, such as the menu bar item's position after a ⌘-drag,
 is not Cranny's to redirect).
 
+**Your real folders stay protected under an isolated home.** `CFFIXED_USER_HOME` also moves what
+`homeDirectoryForCurrentUser` returns, so CrannyCore's `ProtectedLocations` checks the places of both homes: the
+isolated one and your account's own, looked up in the user database. A QA run therefore never reads a file in your
+real Desktop, Documents or Downloads on its own initiative (no Files & Folders prompt), for example a wallpaper
+there for the Settings miniature or an app left in Downloads (ARCHITECTURE.md §3.13).
+
 ```sh
 QA=(--qa-defaults-suite app.cranny.Cranny.qa)            # an array: bash and zsh pass it as two arguments
 scripts/run.sh -- "${QA[@]}" --qa-state open --qa-page nook --qa-exit-after 8
@@ -227,8 +233,8 @@ Package test processes resolve English for `String(localized:)`; the suites that
 
 Some things only a person at a Mac can check: real input, a hardware notch, permission prompts. The hardware
 checklist is ARCHITECTURE.md §11.2 (item 2 covers menus from the panel; items 11–13 cover permissions, the Tray's
-selection focus and the Pause Live Activities confirmation), and what is still unverified is listed in
-ARCHITECTURE.md §10.20. Also check:
+selection focus, the Pause Live Activities confirmation and the flash labels on a real band), and what is still
+unverified is listed in ARCHITECTURE.md §10.20. Also check:
 
 - **Live visualizer permission.** The app ships no microphone entitlement (`device.audio-input`) and no
   `NSMicrophoneUsageDescription`: the Core Audio process tap is "System Audio Recording", which needs only
@@ -300,6 +306,14 @@ git config merge.xcstrings.driver "python3 scripts/merge-xcstrings.py %O %A %B"
   Items, Low Power Mode.
 - **Typography:** ’ for apostrophes and “ ” for quotes in English (never `'` or `"`), « » in Russian; `…` as
   one character, on a command that asks for more before it acts.
+- **Flash labels** (`NotchControl.flash`, the word in the compact wings) are one short word that must fit the wing
+  **by measured width**, never by a character count, in English and Russian (DESIGN.md §9.1, ruling E4). Let the
+  glyph carry the meaning ("Copied" / «Готово» beside `doc.on.doc`). List every new flash call, as written, in
+  `FlashLabelCatalog` (`CrannyAppShellTests`): `FlashLabelFitTests` renders each listed label at every notch unit
+  from 0.8 to 1.25 and fails if one does not fit, and `everyFlashCallIsListed` fails on a call that is not listed.
+  At run time a word that fits no wing leaves the glyph alone (a safety net, not a design choice). VoiceOver does
+  not read the glyph, so when the word alone says too little, tell VoiceOver another way (the Tray's Copy paths
+  posts "Path copied" as a feedback announcement).
 - **System Settings by pane name, not by path:** "allow Cranny under Login Items in System Settings". Paths and
   pane names change between macOS versions (macOS 15 renamed General ▸ Login Items to "Login Items &
   Extensions"). Cranny's own panes may use paths: "Settings ▸ Keyboard".
@@ -332,6 +346,11 @@ find ~/Library/Preferences -maxdepth 1 -type f \( -name 'cranny.preview.*.plist'
   -o -name 'cranny.hud.tests.*.plist' -o -name 'cranny.tray.tests.*.plist' -o -name 'cranny.timer.sample.*.plist' \
   -o -name 'CrannyEffectsTests.*.plist' \) -delete
 ```
+
+**Changing a default.** A setting equal to its default is never stored, so a new default silently changes every
+existing user who kept the old one. Add a step to `CrannyCore/Settings/SettingsUpgrades.swift` that writes the old
+value for installs from an earlier revision and bump `currentRevision` (ARCHITECTURE.md §3.11; revision 1 kept Type
+to capture on Notes for existing users when the fresh-install default became Off).
 
 **Definition of done.** `scripts/check-modules.sh <YourTarget>` with zero warnings; your tests pass;
 `make strings-check` (Russian for every new key, copy rules); `make build && make smoke`; previews, accessibility

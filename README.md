@@ -6,7 +6,7 @@ you're moving, the volume — glanceable when closed, a full set of widgets when
 Free and open source (MIT), no account, no analytics.
 
 > **Status: 0.1.0, the first complete build.** Every feature below is implemented, reviewed and covered by about
-> 1,760 unit tests, and `make dist` produces a universal app. So far it has run only on macOS 27 on an external
+> 1,800 unit tests, and `make dist` produces a universal app. So far it has run only on macOS 27 on an external
 > display, and nobody has used it with real input yet — see [Known limitations](#known-limitations).
 
 ## Features
@@ -21,7 +21,7 @@ Free and open source (MIT), no account, no analytics.
 - **One HUD, not two** — an optional replacement for the system volume overlay. Brightness and keyboard-backlight
   support is included but off by default until it has been tested on a MacBook.
 - **Keyboard first** — ⌃⌥N opens Cranny from anywhere, ⌘K finds any action, hold ⌘ to see every shortcut, start typing
-  to capture a note or to-do.
+  to capture a note or to-do (off until you pick a layout with Notes, or choose a target in Settings ▸ Keyboard).
 - **For notched MacBooks and external displays** — a shape built to match the notch, a floating island on displays
   without one, per-display settings, an optional ambient light layer drawn with Metal.
 - **Settings you can see** — a live preview of the real notch views, search, per-row reset, and a Welcome window with a
@@ -122,8 +122,8 @@ for most of the automated QA). So far:
   visualizer), Automation and Bluetooth paths, and Launch at login, have not been exercised with a granted
   permission. Brightness and keyboard-backlight HUDs stay off by default for this reason.
 - **No real player control** was tried, and **VoiceOver** has not been run through the app.
-- **Energy** was measured only on a Debug build (about 2–5 % CPU with the light running, depending on the display
-  setup); the Instruments check on a 120-Hz MacBook is still to do.
+- **Energy** was measured only on a Debug build (about 2–8 % CPU with the light running, depending on the display
+  setup and what is playing); the Instruments check on a 120-Hz MacBook is still to do.
 - Builds are **ad-hoc signed and not notarized**; the **update check is off** until releases are published.
 
 The checklists for these runs are [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §11.2 and
