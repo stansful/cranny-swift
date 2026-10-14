@@ -58,15 +58,17 @@ private struct JoinButtonStyle: ButtonStyle {
         var body: some View {
             let u = theme.notchUnit
             let isBand = if case .band = size { true } else { false }
-            let height: CGFloat = switch size { case .band: 20 * u; case .row: 22; case .peek: 28 }
-            let hit: CGSize = isBand ? CGSize(width: 34 * u, height: 24 * u) : HitTarget.nook
+            let height: CGFloat = switch size { case .band: 20 * u; case .row: 22; case .peek: HitTarget.preferred }
+            let hit: CGSize = isBand ? CGSize(width: 34 * u, height: HitTarget.band.height * u) : HitTarget.nook
+            // `success` (= palette.success) and the label colour Core derives for a filled accent: black.
+            let fill = SemanticColor.success.rgb(theme.palette.variant == .highContrast)
             configuration.label
                 .font(labelFont(u))
-                .foregroundStyle(Color.black)
+                .foregroundStyle(fill.onColor.color)
                 .padding(.horizontal, isBand ? 0 : Space.m)
                 .frame(minWidth: isBand ? 34 * u : height, minHeight: height, maxHeight: height)
-                .background(Capsule(style: .continuous).fill(theme.palette.success))
-                .overlay(Capsule(style: .continuous).fill(Color.white.opacity(hovered && !configuration.isPressed ? 0.14 : 0)))
+                .background(Capsule(style: .continuous).fill(fill.color))
+                .overlay(Capsule(style: .continuous).fill(hovered && !configuration.isPressed ? theme.palette.controlHover : .clear))
                 .fixedSize()
                 .frame(minWidth: hit.width, minHeight: hit.height)
                 .contentShape(Rectangle())
@@ -79,7 +81,8 @@ private struct JoinButtonStyle: ButtonStyle {
 
         private func labelFont(_ u: CGFloat) -> Font {
             switch size {
-            case .band: .system(size: (11 * u).rounded(), weight: .semibold)
+            // Band symbols: semibold 13 pt × notch unit (DESIGN.md §14.1), the `compact` size.
+            case .band: CrannyTextStyle.compact.font(notchUnit: u)
             case .row: CrannyTextStyle.caption.font(textSize: theme.textSize).weight(.semibold)
             case .peek: CrannyTextStyle.headline.font(textSize: theme.textSize)
             }

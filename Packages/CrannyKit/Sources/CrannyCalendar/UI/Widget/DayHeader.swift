@@ -70,9 +70,10 @@ struct DayPager: View {
         }
     }
 
+    /// The glyph size comes from `CrannyIconButtonStyle` (13 pt at the 28-pt hit size, DESIGN.md §14.1).
     private func pagerButton(_ symbol: String, label: String, enabled: Bool, action: @escaping @MainActor () -> Void) -> some View {
         Button(action: action) {
-            Image(systemName: symbol).font(.system(size: 11, weight: .semibold))
+            Image(systemName: symbol)
         }
         .buttonStyle(CrannyIconButtonStyle(.plain, size: HitTarget.preferred))
         .frame(width: HitTarget.preferred, height: 16)
@@ -114,11 +115,12 @@ private struct DayChip: View {
 
     var body: some View {
         let p = theme.palette
-        let fill: Color = isToday ? .white : isSelected ? p.controlPressed : hovered ? p.control : .clear
+        // Today: the white capsule with the label colour Core derives for a filled surface (black).
+        let fill: Color = isToday ? RGB.white.color : isSelected ? p.controlPressed : hovered ? p.control : .clear
         Button(action: action) {
             Text(CalendarFormat.dayNumber(date))
                 .crannyFont(.caption).fontWeight(.semibold)
-                .foregroundStyle(isToday ? Color.black : isSelected ? p.label : p.secondaryLabel)
+                .foregroundStyle(isToday ? RGB.white.onColor.color : isSelected ? p.label : p.secondaryLabel)
                 .frame(minWidth: 22, minHeight: 18)
                 .background(Capsule(style: .continuous).fill(fill))
                 .overlay {

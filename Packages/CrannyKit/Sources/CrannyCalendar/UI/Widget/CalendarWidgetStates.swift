@@ -70,7 +70,7 @@ private struct CompactStateTile: View {
         let p = theme.palette
         let content = VStack(spacing: Space.s) {
             Image(systemName: "calendar")
-                .font(.system(size: 20, weight: .medium))
+                .font(CrannyTextStyle.numeral.font(textSize: theme.textSize).weight(.medium))   // Nook symbols: medium
                 .foregroundStyle(p.secondaryLabel)
             if let note {
                 Text(note).crannyFont(.caption).foregroundStyle(p.tertiaryLabel).lineLimit(1)
