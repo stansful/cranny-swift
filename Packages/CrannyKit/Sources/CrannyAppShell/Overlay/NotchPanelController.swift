@@ -2,6 +2,9 @@
 // A fixed-size, non-activating panel at level 26, top-centred on the notch (screen centre without one); every
 // morph is SwiftUI inside it. The controller wires the panel to its view model and input routers (hover zones,
 // swipes, keys, drops, key focus) and keeps theme, layout and light in step with the settings by observation.
+// What every pointer event or every appearance would rebuild is kept until its inputs change: the hover zones
+// (`PanelZonesCache`) and the display's measurements (`DisplayMeasure`); the middle label is measured again only
+// when its text or the notch unit changes, and not at all on a notched display.
 import AppKit
 import CrannyCore
 import CrannyNotchUI
@@ -25,6 +28,12 @@ import SwiftUI
     private let drops: DropRouter
     private var tokens: [ObservationToken] = []
     private var occlusionObserver: (any NSObjectProtocol)?
+    /// `panelZones` until something they derive from changes.
+    private var zonesCache = PanelZonesCache()
+    /// The display as the appearance reads it, measured when the display changes (`init`, `update(screen:style:)`).
+    private var display: DisplayMeasure
+    /// The last middle label measured, at a notch unit, and its width (`middleLabelWidth(of:layout:)`).
+    private var labelMemo: (label: String?, unit: CGFloat, width: CGFloat)?
     /// A layout or canvas-size change that arrived while the surface was not closed (applied once it has been
     /// closed long enough for the morph to land).
     private var layoutIsPending = false
@@ -38,7 +47,9 @@ import SwiftUI
 
     init(screen: NSScreen, key: DisplayKey, style: NoNotchStyle, registry: ModuleRegistry) {
         self.screen = screen; self.key = key; self.style = style; self.registry = registry
-        let appearance = Self.appearance(screen: screen, style: style, registry: registry, primary: nil)
+        let display = DisplayMeasure(screen)
+        self.display = display
+        let appearance = Self.appearance(screen: screen, display: display, style: style, registry: registry, primary: nil)
         scene = NotchSceneModel(layout: appearance.layout, theme: appearance.theme)
         scene.ambient = appearance.ambient
         scene.context.display = key
@@ -85,16 +96,23 @@ import SwiftUI
         keyboard.start()
         // Theme, layout and light follow the settings and the primary activity's palette (observed, no polling).
         tokens.append(observe({ [weak self] in
-            self.map { Self.appearance(screen: $0.screen, style: $0.style, registry: $0.registry, primary: $0.scene.primary) }
+            self.map {
+                Self.appearance(screen: $0.screen, display: $0.display, style: $0.style, registry: $0.registry,
+                                primary: $0.scene.primary)
+            }
         }) { [weak self] appearance in
             if let appearance { self?.apply(appearance) }
         })
         // The floating island's middle label (open issue 3): measured here, drawn by NotchUI, so the shape
         // (`geometry`), the wings and the hit area agree on its width. Follows the primary, its label and the layout.
+        // A notched display (or style Off) has no middle label: the layout is read first, so there the primary's label
+        // is never read and its changes (Now Playing's every snapshot) never wake this observer.
         let labelWidth: @MainActor () -> CGFloat = { [weak self] in
             guard let self else { return 0 }
+            let layout = self.scene.layout
+            guard !layout.metrics.hasNotch, layout.noNotchStyle != .off else { return 0 }
             let label = self.scene.primary.flatMap { self.viewModel.activity($0)?.middleLabel }
-            return MiddleLabelMetrics.width(of: label, layout: self.scene.layout)
+            return self.middleLabelWidth(of: label, layout: layout)
         }
         scene.middleLabelWidth = labelWidth()
         tokens.append(observe(labelWidth) { [weak self] width in
@@ -120,6 +138,7 @@ import SwiftUI
         // event, so the state is watched, not events).
         viewModel.didSync = { [weak self] in
             guard let self else { return }
+            self.zonesCache.invalidate()                                          // state, lineup or scene changed
             let zone = self.dropZoneInCanvas()
             if self.chrome.dropZone != zone { self.chrome.dropZone = zone }
             self.hover.surfaceChanged()
@@ -131,7 +150,9 @@ import SwiftUI
     /// or layout waits until the surface is closed (`PanelFramePlan`).
     func update(screen: NSScreen, style: NoNotchStyle) {
         self.screen = screen; self.style = style
-        apply(Self.appearance(screen: screen, style: style, registry: registry, primary: scene.primary))
+        zonesCache.invalidate()
+        display = DisplayMeasure(screen)
+        apply(Self.appearance(screen: screen, display: display, style: style, registry: registry, primary: scene.primary))
         if !panel.isVisible { panel.orderFrontRegardless() }
     }
 
@@ -176,14 +197,22 @@ import SwiftUI
     /// DESIGN.md §3.6).
     var hoverZones: HoverZones? { hover.hoverZones }
 
-    /// The zones of the shape as drawn, without a menu's region.
+    /// The zones of the shape as drawn, without a menu's region: built once per change (`PanelZonesCache`), not once
+    /// per pointer event.
     private var panelZones: HoverZones? {
+        let frame = panel.frame, screenFrame = screen.frame
+        if let cached = zonesCache.zones(panelFrame: frame, screenFrame: screenFrame) { return cached }
+        let zones = buildZones(panelFrame: frame, screenFrame: screenFrame)
+        zonesCache.store(zones, panelFrame: frame, screenFrame: screenFrame)
+        return zones
+    }
+
+    private func buildZones(panelFrame frame: CGRect, screenFrame: CGRect) -> HoverZones? {
         guard let geometry = viewModel.hoverGeometry else { return nil }
-        let frame = panel.frame
         return HoverZones(shape: HoverZones.shapeRect(geometry, panelFrame: frame),
                           satellite: satelliteInCanvas().map { HoverZones.screenRect($0, panelFrame: frame) },
                           wings: viewModel.courtesyGeometry.map { HoverZones.shapeRect($0, panelFrame: frame) },
-                          screenFrame: screen.frame, band: scene.layout.band,
+                          screenFrame: screenFrame, band: scene.layout.band,
                           expanded: scene.phase == .open || scene.phase == .peek)
     }
 
@@ -215,20 +244,59 @@ import SwiftUI
         var ambient: AmbientPalette
     }
 
-    private static func appearance(screen: NSScreen, style: NoNotchStyle, registry: ModuleRegistry,
+    /// What the appearance reads of the display, measured once per display change rather than with every appearance:
+    /// the appearance observer runs again with each change of the primary activity (every HUD), and the display has
+    /// not changed then. Measured again whenever the frame or the visible frame's top differs (a reconfiguration not
+    /// handled yet, the menu bar starting or stopping to auto-hide), and never kept for a display whose metrics come
+    /// from the window list (an auto-hidden menu bar's height depends on whether it shows at that moment).
+    private struct DisplayMeasure {
+        var metrics: NotchMetrics
+        var model: String?
+        var frame: CGRect
+        var visibleTop: CGFloat
+        var readsWindowList: Bool
+
+        init(_ screen: NSScreen) {
+            metrics = NotchMetrics.measure(screen)
+            model = ThemeResolver.displayModelKey(screen)
+            frame = screen.frame
+            visibleTop = screen.visibleFrame.maxY
+            readsWindowList = DisplayCatalog.menuBarAutoHides(on: screen, hasNotch: metrics.hasNotch)
+        }
+
+        /// `DisplayCatalog.metrics(for: screen)`, from the measurement while it still holds.
+        func metrics(for screen: NSScreen) -> NotchMetrics {
+            guard !readsWindowList, screen.frame == frame, screen.visibleFrame.maxY == visibleTop else {
+                return DisplayCatalog.metrics(for: screen)
+            }
+            return metrics
+        }
+    }
+
+    private static func appearance(screen: NSScreen, display: DisplayMeasure, style: NoNotchStyle, registry: ModuleRegistry,
                                    primary: ActivityID?) -> Appearance {
         let settings = registry.services.settings
-        let metrics = DisplayCatalog.metrics(for: screen)
-        let layout = ThemeResolver.layout(metrics: metrics, displayModel: ThemeResolver.displayModelKey(screen), style: style,
+        let metrics = display.metrics(for: screen)
+        let layout = ThemeResolver.layout(metrics: metrics, displayModel: display.model, style: style,
                                           settings: settings, textSize: settings[CoreSettings.textSize],
                                           density: settings[CoreSettings.density], widgetStyle: settings[CoreSettings.widgetStyle])
+        let systemAccent = AccentResolver.systemAccent()
         let theme = ThemeResolver.theme(settings: settings, albumAccent: registry.services.nowPlaying?.palette?.accent,
                                         notchUnit: metrics.unit, isFloatingDisplay: layout.isFloating)
         // DESIGN.md §5.2: the light takes the top activity's palette (album, meeting, timer…).
         let topPalette = primary.flatMap { registry.activity($0)?.activity.palette }
         let ambient = ThemeResolver.ambientPalette(topActivity: topPalette, accent: settings[CoreSettings.accent],
-                                                   systemAccent: AccentResolver.systemAccent())
+                                                   systemAccent: systemAccent)
         return Appearance(layout: layout, theme: theme, ambient: ambient)
+    }
+
+    /// `MiddleLabelMetrics.width` (a display without a notch), measured again only when the label or the notch unit
+    /// changed: the label's activity changes far more often than its text (Now Playing's elapsed time).
+    private func middleLabelWidth(of label: String?, layout: NotchLayout) -> CGFloat {
+        if let memo = labelMemo, memo.label == label, memo.unit == layout.u { return memo.width }
+        let width = MiddleLabelMetrics.width(of: label, layout: layout)
+        labelMemo = (label, layout.u, width)
+        return width
     }
 
     /// Settings whose change re-arms the idle timers (§4.3 timeouts, per-display toggles).
@@ -262,6 +330,7 @@ import SwiftUI
             Self.panelFrame(canvas: $0, screen: screen)
         }
         if panel.frame != plan.frame { panel.setFrame(plan.frame, display: true) }
+        zonesCache.invalidate()
         layoutIsPending = plan.layout == .pending
         guard plan.layout == .apply else { return }
         pendingTask?.cancel()
@@ -282,7 +351,8 @@ import SwiftUI
             self.pendingTask = nil
             guard self.layoutIsPending, self.viewModel.state.isClosed else { return }
             // Recomputed now: the settings or the display may have changed again meanwhile.
-            self.apply(Self.appearance(screen: self.screen, style: self.style, registry: self.registry, primary: self.scene.primary))
+            self.apply(Self.appearance(screen: self.screen, display: self.display, style: self.style, registry: self.registry,
+                                       primary: self.scene.primary))
         }
     }
 

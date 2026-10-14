@@ -92,7 +92,7 @@ nonisolated enum DisplayCatalog {
     /// (`visibleFrame` then includes the top strip; DESIGN.md §3.1 step 2, R1 §2.3).
     @MainActor static func metrics(for screen: NSScreen) -> NotchMetrics {
         var metrics = NotchMetrics.measure(screen)
-        guard !metrics.hasNotch, screen.frame.maxY - screen.visibleFrame.maxY <= 0, let id = displayID(of: screen) else {
+        guard menuBarAutoHides(on: screen, hasNotch: metrics.hasNotch), let id = displayID(of: screen) else {
             return metrics
         }
         let windows = FullScreenDetector.snapshot()
@@ -100,6 +100,12 @@ nonisolated enum DisplayCatalog {
             metrics.bandHeight = height
         }
         return metrics
+    }
+
+    /// A display without a notch whose menu bar auto-hides (`visibleFrame` reaches the top edge): `metrics(for:)`
+    /// reads its menu bar's height from the window list then.
+    @MainActor static func menuBarAutoHides(on screen: NSScreen, hasNotch: Bool) -> Bool {
+        !hasNotch && screen.frame.maxY - screen.visibleFrame.maxY <= 0
     }
 
     /// The display under a point (AppKit screen coordinates; the top row, y == maxY, counts, R1 §2.5).
