@@ -42,6 +42,7 @@ import Foundation
     func makeKey() {
         guard let panel, panel.isVisible else { return }
         panel.makeKey()
+        if !panel.isKeyWindow { panel.makeKeyAndOrderFront(nil) }              // already front: only takes key
     }
 
     /// Hand key status back to the previously focused window (R1 §3.5): invisible, same run-loop turn.

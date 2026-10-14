@@ -132,6 +132,17 @@ extension OverlayCoordinator {
             controller.viewModel.send(.open(page: page, focus: nil, reason: .programmatic))
         case .calibrate:
             setCalibrating(true)
+        case .keyboard:
+            // The hot key's path: open with keyboard focus, then report what AppKit did (§4.10 [UNVERIFIED before WP13]).
+            controller.viewModel.send(.hotKey)
+            let front = NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "-"
+            Task {
+                try? await Task.sleep(for: .milliseconds(500))
+                log.info("QA keyboard: key=\(controller.panel.isKeyWindow, privacy: .public) appActive=\(NSApp.isActive, privacy: .public) frontmost=\(NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "-", privacy: .public) frontmostBefore=\(front, privacy: .public)")
+                controller.viewModel.send(.escape)
+                try? await Task.sleep(for: .milliseconds(500))
+                log.info("QA keyboard after Esc: key=\(controller.panel.isKeyWindow, privacy: .public) frontmost=\(NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "-", privacy: .public)")
+            }
         }
     }
     #endif

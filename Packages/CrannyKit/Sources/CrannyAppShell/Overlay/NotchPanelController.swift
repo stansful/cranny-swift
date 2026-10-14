@@ -191,6 +191,10 @@ import SwiftUI
     }
 
     private func didEmit(_ event: NotchEvent) {
+        // DESIGN.md §16: opening tells VoiceOver the layout changed, so focus moves into the panel.
+        if case .opened = event, NSWorkspace.shared.isVoiceOverEnabled {
+            NSAccessibility.post(element: root, notification: .layoutChanged)
+        }
         if event == .closed {
             keyboard.panelClosed()
             if let pendingAppearance {

@@ -64,6 +64,7 @@ private struct Loupe: View {
             context.stroke(path, with: .color(theme.accentColor), lineWidth: StrokeWidth.hairline(displayScale))
         }
         .background(palette.controlPressed)
+        .background(palette.surface)                                            // opaque: a loupe, not a window
         .clipShape(Circle())
         .overlay(Circle().strokeBorder(palette.stroke, lineWidth: StrokeWidth.regular))
         .crannyElevation(Elevation.peek)

@@ -29,7 +29,10 @@ private let log = Log.logger(.overlay)
         guard contents.hasFiles else { return [] }
         // The detector normally saw it first; a drag that started over the panel (or a missed event) starts here.
         if viewModel.state.fileDrag == nil { viewModel.send(.fileDragEntered(contents.types)) }
+        let armed = scene.zones.armedDropZone
         scene.zones.dragUpdated(at: Self.canvasPoint(info.draggingLocation, in: view), types: contents.types)
+        // DESIGN.md §8.3, §14.2: a zone arming under the pointer is felt (its highlight is NotchUI's).
+        if let now = scene.zones.armedDropZone, now != armed { registry.services.haptics.play(.alignment) }
         return .copy
     }
 

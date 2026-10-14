@@ -9,7 +9,8 @@
 // - `keyboardFocusIsTakenAndHandedBack` (also opt-in) checks that the hot key's programmatic `makeKey()` gives the
 //   non-activating panel key status without activating Cranny or changing the frontmost app, and that closing
 //   hands it back (ARCHITECTURE.md §4.10 [UNVERIFIED before WP13]). It briefly takes the keyboard: run it on an idle
-//   or locked Mac.
+//   Mac. It skips itself while the login window is in front (locked screen, screen saver), where nothing can become
+//   key — the state WP13's machine was in, so it stays on the §11.2 hardware checklist.
 // - Not covered without real input (manual, §11.2 hardware checklist): a real click is delivered without
 //   activating the app, and the panel shows above another app's full-screen Space.
 import AppKit
@@ -139,8 +140,18 @@ private extension NSScreen {
     #expect(NSWorkspace.shared.frontmostApplication?.processIdentifier == frontBefore)
 }
 
-@Test(.enabled(if: integration)) func keyboardFocusIsTakenAndHandedBack() throws {
+/// While the login window is in front (locked screen, screen saver) no window of any app can become key.
+nonisolated private func sessionIsUnlocked() -> Bool {
+    NSWorkspace.shared.frontmostApplication?.bundleIdentifier != "com.apple.loginwindow"
+}
+
+@Test(.enabled(if: integration), .enabled(if: sessionIsUnlocked(), "needs an unlocked session"))
+func keyboardFocusIsTakenAndHandedBack() throws {
     _ = NSApplication.shared
+    // The test runner is an unbundled process (activation policy `.prohibited`: no key windows at all);
+    // Cranny is an agent app (`LSUIElement`), so run as one.
+    NSApp.setActivationPolicy(.accessory)
+    NSApp.finishLaunching()                                                     // connect like a launched app
     let screen = try #require(NSScreen.screens.first)
     let frontBefore = NSWorkspace.shared.frontmostApplication?.processIdentifier
     let registry = ModuleRegistry(services: .preview())
