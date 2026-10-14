@@ -81,7 +81,7 @@ private struct OpenMethodCard: View {
                         .foregroundStyle(isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
                         .frame(height: Space.xxxl, alignment: .leading)
                     Spacer(minLength: 0)
-                    CheckBadge(isDone: isDetected)
+                    CheckBadge(isDone: isDetected, showsPending: false)
                 }
                 Text(verbatim: title).font(.headline)
                 Text(verbatim: subtitle).font(.caption).foregroundStyle(.secondary)

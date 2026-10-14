@@ -5,7 +5,7 @@ import CrannyCore
 import SwiftUI
 
 struct StepHeader: View {
-    @AccessibilityFocusState private var isFocused: Bool
+    @Environment(\.isStaticSnapshot) private var isStaticSnapshot
     let title: String
     let message: String
 
@@ -22,9 +22,27 @@ struct StepHeader: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
-        .accessibilityFocused($isFocused)
-        .onAppear { isFocused = true }          // a new step: VoiceOver starts reading it from the top
+        .modifier(FocusOnAppear(isEnabled: !isStaticSnapshot))
     }
+}
+
+/// A new step: VoiceOver starts reading it from the top.
+private struct FocusOnAppear: ViewModifier {
+    @AccessibilityFocusState private var isFocused: Bool
+    let isEnabled: Bool
+
+    @ViewBuilder func body(content: Content) -> some View {
+        if isEnabled {
+            content.accessibilityFocused($isFocused).onAppear { isFocused = true }
+        } else {
+            content
+        }
+    }
+}
+
+extension EnvironmentValues {
+    /// Rendered with `ImageRenderer` (render tests): skip what it cannot draw, such as accessibility focus state.
+    @Entry var isStaticSnapshot = false
 }
 
 #Preview("Step header") {

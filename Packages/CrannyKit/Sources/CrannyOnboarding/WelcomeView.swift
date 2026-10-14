@@ -50,6 +50,7 @@ public struct WelcomeView: View {
             Divider()
             WelcomeLowerHalf(flow: flow)
         }
+        .animation(CrannyMotion.animation(.resize, reduceMotion: reduceMotion), value: flow.stage.height)
         .frame(width: WelcomeMetrics.window.width, height: WelcomeMetrics.window.height)
         .background(.background)
         .background(WindowObserver(isVisible: $isVisible, onClose: stopFlow))

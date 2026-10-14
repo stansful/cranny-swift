@@ -22,13 +22,20 @@ struct PermissionsStep: View {
                 }
                 .foregroundStyle(.secondary)
             } else {
-                ScrollView {
-                    VStack(spacing: Space.s) {
-                        ForEach(rows) { row in PermissionRowView(row: row, flow: flow) }
-                    }
+                // Scrolls only if the rows do not fit (long translations).
+                ViewThatFits(in: .vertical) {
+                    rowList(rows)
+                    ScrollView { rowList(rows) }
                 }
-                .scrollBounceBehavior(.basedOnSize)
             }
+        }
+    }
+}
+
+extension PermissionsStep {
+    private func rowList(_ rows: [PermissionRow]) -> some View {
+        VStack(spacing: Space.s) {
+            ForEach(rows) { row in PermissionRowView(row: row, flow: flow) }
         }
     }
 }

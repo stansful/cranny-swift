@@ -21,6 +21,9 @@ import Observation
 
     let model: NotchSceneModel
     private(set) var presentation: Presentation = .idle
+    /// The stage's height in the window (`WelcomeMetrics.stageHeight(for:)`); its width is the window's.
+    var height = WelcomeMetrics.stageHeight
+    var size: CGSize { CGSize(width: WelcomeMetrics.window.width, height: height) }
     /// The stage shows a camera housing (else a floating island or an attached tab).
     var hasNotch: Bool { model.layout.metrics.hasNotch }
     /// What the canvas draws now (also for tests, which do not import CrannyNotchUI).
@@ -157,7 +160,7 @@ import Observation
     // MARK: Scale
 
     /// The stage draws closed and compact at 1:1 (crisp type) and scales the open panel down to fit.
-    var scale: CGFloat { Self.fitScale(for: model.geometry, in: WelcomeMetrics.stageSize) }
+    var scale: CGFloat { Self.fitScale(for: model.geometry, in: size) }
 
     nonisolated static func fitScale(for geometry: NotchGeometry, in size: CGSize) -> CGFloat {
         let margin = WelcomeMetrics.stageMargin

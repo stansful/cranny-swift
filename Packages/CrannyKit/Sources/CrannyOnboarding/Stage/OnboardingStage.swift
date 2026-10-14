@@ -17,7 +17,7 @@ struct OnboardingStage: View {
 
     var body: some View {
         StageContent(stage: stage, registry: registry, isVisible: isVisible, onScroll: onScroll)
-            .frame(width: WelcomeMetrics.stageSize.width, height: WelcomeMetrics.stageSize.height)
+            .frame(width: stage.size.width, height: stage.size.height, alignment: .top)
             .clipped()
             .crannyThemeRoot(stage.model.theme)
     }
@@ -32,7 +32,7 @@ private struct StageContent: View {
     let onScroll: (@MainActor (ScrollSample) -> Void)?
 
     var body: some View {
-        let size = WelcomeMetrics.stageSize
+        let size = stage.size
         let scale = stage.scale
         let logical = CGSize(width: size.width / scale, height: size.height / scale)
         ZStack(alignment: .top) {
@@ -47,6 +47,7 @@ private struct StageContent: View {
             .scaleEffect(scale, anchor: .top)
             .frame(width: size.width, height: size.height, alignment: .top)
             .animation(theme.animation(stage.model.phase == .open ? .open : .close), value: scale)
+            .animation(theme.animation(.resize), value: size)
             if let onScroll {
                 ScrollCatcher(onScroll: onScroll)
             }

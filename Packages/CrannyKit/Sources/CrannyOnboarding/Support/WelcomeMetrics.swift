@@ -9,7 +9,13 @@ nonisolated enum WelcomeMetrics {
     static let window = CGSize(width: 640, height: 480)
     /// The preview stage: the top half, minus a little so the lower half fits six steps of copy and controls.
     static let stageHeight: CGFloat = 216
+    /// Step 5 can list four permission rows: the stage makes room for them (the resize spring animates it).
+    static let compactStageHeight: CGFloat = 132
     static var stageSize: CGSize { CGSize(width: window.width, height: stageHeight) }
+
+    static func stageHeight(for step: WelcomeStep) -> CGFloat {
+        step == .permissions ? compactStageHeight : stageHeight
+    }
     /// Side inset of the lower half.
     static let inset = Space.huge
     /// Space the stage keeps around the notch when the open panel must be scaled down to fit.

@@ -39,7 +39,7 @@ struct DoneStep: View {
     }
 }
 
-/// Six keys in two columns: key cap, then what it does.
+/// Six keys in two columns: key cap, then what it does (labels aligned on one edge per column).
 private struct CheatSheet: View {
     let entries: [CheatSheetEntry]
 
@@ -52,14 +52,13 @@ private struct CheatSheet: View {
     }
 
     private func column(_ entries: [CheatSheetEntry]) -> some View {
-        VStack(alignment: .leading, spacing: Space.s) {
+        Grid(alignment: .leading, horizontalSpacing: Space.m, verticalSpacing: Space.s) {
             ForEach(entries) { entry in
-                HStack(spacing: Space.m) {
-                    WindowKeyCap(entry.keys)
+                GridRow {
+                    WindowKeyCap(entry.keys)                     // hidden from VoiceOver; the label names the keys
                     Text(verbatim: entry.action.title).font(.callout).lineLimit(1).minimumScaleFactor(0.85)
+                        .accessibilityLabel(Text(verbatim: "\(entry.action.title), \(entry.keys)"))
                 }
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(Text(verbatim: "\(entry.action.title), \(entry.keys)"))
             }
         }
     }

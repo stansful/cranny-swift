@@ -24,9 +24,9 @@ struct StageMenuBar: View {
     @Environment(\.cranny) private var theme
     let band: CGFloat
 
-    /// Leading placeholders start after the window's traffic lights.
+    /// Leading placeholders start after the window's traffic lights and stay clear of a 185-pt camera housing.
     private static let leadingStart: CGFloat = 84
-    private static let leading: [CGFloat] = [22, 34, 28, 40, 30]
+    private static let leading: [CGFloat] = [22, 34, 28]
     private static let trailing: [CGFloat] = [14, 14, 18, 52]
 
     var body: some View {

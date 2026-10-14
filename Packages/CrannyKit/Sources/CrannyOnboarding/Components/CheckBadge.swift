@@ -9,6 +9,8 @@ struct CheckBadge: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let isDone: Bool
     var size: CGFloat = Space.xl
+    /// false: nothing shows until it is done (a card's ✓ must not read as an empty radio button).
+    var showsPending = true
 
     var body: some View {
         Image(systemName: isDone ? "checkmark.circle.fill" : "circle")
@@ -17,6 +19,7 @@ struct CheckBadge: View {
             .contentTransition(.symbolEffect(.replace))
             // The bounce plays when the value changes; under Reduce Motion the value never changes.
             .symbolEffect(.bounce, value: isDone && !reduceMotion)
+            .opacity(isDone || showsPending ? 1 : 0)
             .accessibilityHidden(true)
     }
 }
@@ -25,6 +28,7 @@ struct CheckBadge: View {
     HStack(spacing: Space.xl) {
         CheckBadge(isDone: false)
         CheckBadge(isDone: true)
+        CheckBadge(isDone: false, showsPending: false)
     }
     .padding(Space.xxl)
 }
