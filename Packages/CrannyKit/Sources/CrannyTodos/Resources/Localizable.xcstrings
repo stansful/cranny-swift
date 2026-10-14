@@ -1,6 +1,248 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%lld left" : {
+      "comment" : "To-dos widget: header count of unfinished to-dos",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "осталось %lld"
+          }
+        }
+      }
+    },
+    "A short list of things to do" : {
+      "comment" : "Widget library: To-dos description",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Короткий список дел"
+          }
+        }
+      }
+    },
+    "All done" : {
+      "comment" : "To-dos widget: header count and empty state when every to-do is checked",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Всё сделано"
+          }
+        }
+      }
+    },
+    "Back up the laptop" : {
+      "comment" : "To-dos widget: sample to-do on preview stages",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сделать резервную копию"
+          }
+        }
+      }
+    },
+    "Book train tickets" : {
+      "comment" : "To-dos widget: sample to-do on preview stages",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Купить билеты на поезд"
+          }
+        }
+      }
+    },
+    "Couldn’t load your to-dos" : {
+      "comment" : "To-dos widget: error state message",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось загрузить задачи"
+          }
+        }
+      }
+    },
+    "Couldn’t save your to-dos" : {
+      "comment" : "To-dos widget: header warning button label and tooltip after a failed save",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось сохранить задачи"
+          }
+        }
+      }
+    },
+    "Delete" : {
+      "comment" : "To-dos widget: context menu item, VoiceOver action and Undo action name for one to-do",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить"
+          }
+        }
+      }
+    },
+    "Delete completed" : {
+      "comment" : "To-dos widget options: button that deletes every checked to-do (also the Undo action name)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить выполненные"
+          }
+        }
+      }
+    },
+    "Edit" : {
+      "comment" : "To-dos widget: context menu item and VoiceOver action that edits a to-do",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить"
+          }
+        }
+      }
+    },
+    "Hide completed" : {
+      "comment" : "To-dos widget options: toggle that collapses checked to-dos after a moment",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скрывать выполненные"
+          }
+        }
+      }
+    },
+    "Mark as done" : {
+      "comment" : "To-dos widget: context menu item",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отметить как выполненную"
+          }
+        }
+      }
+    },
+    "Mark as not done" : {
+      "comment" : "To-dos widget: context menu item",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снять отметку"
+          }
+        }
+      }
+    },
+    "Move down" : {
+      "comment" : "To-dos widget: context menu item and VoiceOver action",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переместить вниз"
+          }
+        }
+      }
+    },
+    "Move up" : {
+      "comment" : "To-dos widget: context menu item and VoiceOver action",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переместить вверх"
+          }
+        }
+      }
+    },
+    "New to-do" : {
+      "comment" : "To-dos: the trailing “New to-do” row, its placeholder text, the empty-state action and the ⌘K command",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новая задача"
+          }
+        }
+      }
+    },
+    "No to-dos yet" : {
+      "comment" : "To-dos widget: empty state message",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задач пока нет"
+          }
+        }
+      }
+    },
+    "Reply to Sam" : {
+      "comment" : "To-dos widget: sample to-do on preview stages",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ответить Саше"
+          }
+        }
+      }
+    },
+    "To-dos" : {
+      "comment" : "To-dos: module name (widget title, widget header, type-to-capture target, ⌘K result kind)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задачи"
+          }
+        }
+      }
+    },
+    "Try again" : {
+      "comment" : "To-dos widget: error state retry button",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторить"
+          }
+        }
+      }
+    },
+    "Water the plants" : {
+      "comment" : "To-dos widget: sample to-do on preview stages",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Полить цветы"
+          }
+        }
+      }
+    },
+    "todo task add" : {
+      "comment" : "Command palette: search keywords for “New to-do”, separated by spaces (translate, keep the spaces)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "задача дело добавить"
+          }
+        }
+      }
+    }
   },
   "version" : "1.0"
 }
