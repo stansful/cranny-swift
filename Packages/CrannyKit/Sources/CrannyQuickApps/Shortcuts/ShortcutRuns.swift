@@ -1,7 +1,7 @@
 // CrannyQuickApps/Shortcuts/ShortcutRuns.swift — running shortcuts and the state each tile shows
 // (DESIGN.md §7.3: progress ring while running, a check on success, a danger badge on failure).
 //
-// One `Task` per running shortcut, stored here and cancelled on stop (which terminates the process) and on quit.
+// One `Task` per running shortcut, stored here and cancelled on stop (it interrupts the CLI: ShortcutsCLI) and on quit.
 // Results reset with one `Task.sleep` each (no timers): success after `successHold`, failure after `failureHold`.
 import CrannyCore
 import Foundation
@@ -67,7 +67,7 @@ nonisolated enum ShortcutRunOutcome: Equatable, Sendable {
         return true
     }
 
-    /// Stops a running shortcut (terminates its process). No badge follows.
+    /// Stops a running shortcut (interrupts its CLI, which stops the run). No badge follows.
     func cancel(_ id: String) { runs[id]?.cancel() }
 
     /// Quit: stop every run and forget every badge.

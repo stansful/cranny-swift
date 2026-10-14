@@ -1,8 +1,11 @@
 // CrannyQuickApps/Shortcuts/ShortcutsCLI.swift — `/usr/bin/shortcuts list` and `run` (ARCHITECTURE.md §7.6, R3 §6).
 //
-// Threading: `ProcessRunner.run` is `@concurrent`, so the process is launched and drained off the main actor;
-// cancelling the calling task terminates it. The CLI needs no permission of its own (R3 §6); a shortcut's
-// actions may ask on behalf of Shortcuts. Shortcuts run by identifier so a rename in Shortcuts.app keeps working.
+// Threading: `ProcessRunner.run` is `@concurrent`, so the process is launched and drained off the main actor.
+// Stopping: cancelling the calling task sends SIGINT, the CLI's own Ctrl-C path. On macOS 27.0.1 `shortcuts`
+// handles SIGINT itself (a dispatch signal source; "Running was cancelled") and stops the run, while SIGTERM would
+// kill only the CLI process; SIGTERM follows if it has not exited after `interruptGrace`.
+// The CLI needs no permission of its own (R3 §6); a shortcut's actions may ask on behalf of Shortcuts. Shortcuts
+// run by identifier so a rename in Shortcuts.app keeps working.
 import CrannyCore
 import Foundation
 import os
@@ -36,9 +39,12 @@ nonisolated struct ShortcutsCLI: Sendable {
         self.runner = runner
     }
 
-    /// The live runner: `ProcessRunner` (off the main actor, cancellation terminates the process).
+    /// How long a stopped CLI may take to stop its shortcut before it is terminated.
+    static let interruptGrace: Duration = .seconds(2)
+
+    /// The live runner: `ProcessRunner` off the main actor; cancellation interrupts, then terminates the process.
     static let processRunner: Runner = { executable, arguments in
-        let output = try await ProcessRunner.run(executable, arguments)
+        let output = try await ProcessRunner.run(executable, arguments, interruptGrace: interruptGrace)
         return CLIOutput(status: output.status, stdout: output.stdout, stderr: output.stderr)
     }
 
@@ -49,7 +55,7 @@ nonisolated struct ShortcutsCLI: Sendable {
     }
 
     /// Runs the shortcut with this identifier and returns when it finished. Throws `CancellationError` when the
-    /// calling task was cancelled (the process is terminated), `QuickAppsError` when it failed.
+    /// calling task was cancelled (the CLI is interrupted, which stops the shortcut), `QuickAppsError` when it failed.
     func run(_ id: String) async throws {
         _ = try await execute(["run", id], failure: .shortcutFailed)
     }
@@ -65,7 +71,7 @@ nonisolated struct ShortcutsCLI: Sendable {
             log.error("shortcuts \(arguments.first ?? "", privacy: .public) could not start: \(error.localizedDescription, privacy: .public)")
             throw QuickAppsError.shortcutsUnavailable
         }
-        // A terminated process exits with SIGTERM's status; report the cancellation, not a failure.
+        // An interrupted or terminated CLI exits with an error status: report the cancellation, not a failure.
         try Task.checkCancellation()
         guard output.succeeded else {
             let message = String(decoding: output.stderr, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)

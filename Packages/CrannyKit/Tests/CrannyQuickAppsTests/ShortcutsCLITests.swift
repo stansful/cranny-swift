@@ -69,15 +69,23 @@ import Testing
     #expect(ContinuousClock.now - started < .seconds(5))      // not the script's 30 s
 }
 
-@Test func processRunnerCancelledBeforeLaunchNeverStartsTheTool() async throws {
-    // Regression (Core `ProcessRunner`): a cancellation that arrived before the launch used to be lost.
-    let (script, directory) = try makeScript("touch \"$(dirname \"$0\")/started\"; exec /bin/sleep 30")
+@Test func stoppingARunInterruptsTheCLIFirst() async throws {
+    // `shortcuts run` stops the shortcut on SIGINT (its Ctrl-C handler); SIGTERM would kill only the CLI.
+    let (script, directory) = try makeScript("""
+        dir="$(dirname "$0")"
+        trap 'touch "$dir/interrupted"; echo "Running was cancelled" >&2; exit 1' INT
+        trap 'touch "$dir/terminated"; exit 1' TERM
+        touch "$dir/ready"
+        while :; do /bin/sleep 0.05; done
+        """)
     defer { try? FileManager.default.removeItem(at: directory) }
-    let started = ContinuousClock.now
-    let task = Task { try await ProcessRunner.run(script.path, []) }
-    task.cancel()                                     // before the task got to run at all
-    let output = try await task.value
-    #expect(output.status == SIGTERM)
-    #expect(ContinuousClock.now - started < .seconds(5))
-    #expect(!FileManager.default.fileExists(atPath: directory.appending(path: "started").path))
+    let cli = ShortcutsCLI(executable: script.path)
+    let task = Task { try await cli.run("X") }
+    #expect(await waitUntil { FileManager.default.fileExists(atPath: directory.appending(path: "ready").path) })
+    let cancelled = ContinuousClock.now
+    task.cancel()
+    await #expect(throws: CancellationError.self) { try await task.value }   // a stop, not a failure
+    #expect(ContinuousClock.now - cancelled < ShortcutsCLI.interruptGrace)
+    #expect(FileManager.default.fileExists(atPath: directory.appending(path: "interrupted").path))
+    #expect(!FileManager.default.fileExists(atPath: directory.appending(path: "terminated").path))
 }
