@@ -142,9 +142,11 @@ private nonisolated extension KeyedDecodingContainer {
         if let s = try? decodeIfPresent(String.self, forKey: key) { return Double(s) }
         return nil
     }
+    /// nil for values that are not whole-number-like or do not fit an `Int` (a player may hand MediaRemote any
+    /// finite number, e.g. a shuffle mode of 1e20: `Int(1e20)` would trap).
     func lenientInt(_ key: Key) -> Int? {
         if let i = try? decodeIfPresent(Int.self, forKey: key) { return i }
-        if let d = try? decodeIfPresent(Double.self, forKey: key), d.isFinite { return Int(d) }
+        if let d = try? decodeIfPresent(Double.self, forKey: key) { return Int(exactly: d.rounded(.towardZero)) }
         if let s = try? decodeIfPresent(String.self, forKey: key) { return Int(s) }
         return nil
     }

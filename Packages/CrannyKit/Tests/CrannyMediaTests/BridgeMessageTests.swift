@@ -1,5 +1,6 @@
 // Bridge NDJSON fixtures → NowPlaying (ARCHITECTURE.md §10.2 acceptance): full state, missing title, +inf duration
-// dropped, lenient MediaRemote values, artwork keyed by item, protocol messages, malformed lines.
+// dropped, lenient MediaRemote values (out-of-range numbers too), artwork keyed by item, protocol messages,
+// malformed lines; the connection's line splitting.
 import CrannyCore
 import Foundation
 import Testing
@@ -83,6 +84,27 @@ private let now = Date(timeIntervalSince1970: 1_800_000_000)
         #expect(np.itemID == "12345")
     }
 
+    @Test func outOfRangeNumbersAreDroppedNotFatal() throws {
+        // Any finite NSNumber reaches the JSON (`plain()` in the bridge); `Int(1e20)` would trap.
+        let json = #"{"t":"state","playing":true,"pid":812,"title":"T","shuffle":1e20,"repeat":-1e300,"elapsed":5,"isMusicApp":1e20}"#
+        guard case .state(let state)? = BridgeMessage.parse(line(json)) else { Issue.record("not a state"); return }
+        let np = try #require(state.nowPlaying(receivedAt: now))
+        #expect(np.shuffle == nil)
+        #expect(np.repeatMode == nil)
+        #expect(np.elapsed == 5)
+        #expect(state.shuffle == nil && state.repeat == nil)
+        guard case .state(let hugePID)? = BridgeMessage.parse(line(#"{"t":"state","playing":true,"pid":1e20,"title":"T"}"#)) else {
+            Issue.record("not a state"); return
+        }
+        #expect(hugePID.pid == 0)                                          // no usable pid: nothing playing
+        #expect(hugePID.nowPlaying(receivedAt: now) == nil)
+        #expect(BridgeMessage.parse(line(#"{"t":"hello","pid":-1e40}"#)) == .hello(pid: 0))
+        guard case .state(let fractional)? = BridgeMessage.parse(line(#"{"t":"state","playing":true,"pid":7.9,"title":"T"}"#)) else {
+            Issue.record("not a state"); return
+        }
+        #expect(fractional.pid == 7)
+    }
+
     @Test func protocolMessages() {
         #expect(BridgeMessage.parse(line(#"{"t":"hello","v":1,"pid":4242}"#)) == .hello(pid: 4242))
         #expect(BridgeMessage.parse(line(#"{"t":"pong"}"#)) == .pong)
@@ -127,5 +149,34 @@ private let now = Date(timeIntervalSince1970: 1_800_000_000)
     ])
     func commandLines(_ command: MediaCommand, _ expected: String) {
         #expect(MediaRemoteBridgeProvider.line(for: command) == expected)
+    }
+}
+
+@Suite("Bridge stream") struct BridgeStreamTests {
+    private func data(_ s: String) -> Data { Data(s.utf8) }
+
+    @Test func linesAreSplitAcrossChunks() {
+        var buffer = LineBuffer(maxLineBytes: 16, maxDroppedBytes: 64)
+        #expect(buffer.append(data("ab")).isEmpty)
+        #expect(buffer.append(data("c\nde\n\nf")) == [.line(data("abc")), .line(data("de")), .line(Data())])
+        #expect(buffer.pendingCount == 1)
+        #expect(buffer.append(data("\n")) == [.line(data("f"))])
+    }
+
+    @Test func anOversizedLineIsDroppedAndTheStreamGoesOn() {
+        // An artwork the helper could not shrink must not take the helper down (it would re-send it on restart).
+        var buffer = LineBuffer(maxLineBytes: 8, maxDroppedBytes: 64)
+        #expect(buffer.append(data("ok\n0123456789")) == [.line(data("ok"))])
+        #expect(buffer.pendingCount == 0)                                  // dropping, not buffering
+        #expect(buffer.append(data("abcdef")).isEmpty)
+        #expect(buffer.append(data("gh\n{\"t\":\"pong\"}\n")) == [.droppedLine(bytes: 18), .line(data(#"{"t":"pong"}"#))])
+    }
+
+    @Test func noNewlineForTooLongIsARunawayStream() {
+        var buffer = LineBuffer(maxLineBytes: 8, maxDroppedBytes: 32)
+        #expect(buffer.append(Data(repeating: 0x41, count: 20)).isEmpty)
+        #expect(buffer.append(Data(repeating: 0x41, count: 20)) == [.runaway])
+        var once = LineBuffer(maxLineBytes: 8, maxDroppedBytes: 32)
+        #expect(once.append(Data(repeating: 0x41, count: 40)) == [.runaway])
     }
 }

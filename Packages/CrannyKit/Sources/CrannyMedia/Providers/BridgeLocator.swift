@@ -38,7 +38,7 @@ nonisolated enum BridgeLocator {
             log.info("bridge dylib is quarantined; using a copy in Application Support")
             return copy
         } catch {
-            log.error("bridge dylib is quarantined and could not be copied: \(error.localizedDescription, privacy: .public)")
+            log.error("bridge dylib is quarantined and could not be copied: \(error.localizedDescription, privacy: .private)")
             return found          // perl may show a Gatekeeper prompt; the handshake watchdog catches a hang
         }
     }

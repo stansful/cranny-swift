@@ -179,7 +179,8 @@ private nonisolated let log = Log.logger(.media)
     }
 
     private func providerFailed(_ kind: MediaProviderKind, _ failure: ProviderFailure) {
-        log.error("media: \(kind.rawValue, privacy: .public) unavailable: \(String(describing: failure), privacy: .public)")
+        log.error("media: \(kind.rawValue, privacy: .public) unavailable: \(failure.logName, privacy: .public)")
+        if case .launchFailed(let detail) = failure { log.error("media: launch error: \(detail, privacy: .private)") }
         lastError = .provider(kind, failure)
         provider?.stop(); provider = nil
         switch supervisor.recordFailure(at: clock.now) {

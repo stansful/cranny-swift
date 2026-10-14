@@ -46,7 +46,7 @@ private nonisolated let log = Log.logger(.media)
         let configuration = NSWorkspace.OpenConfiguration()
         configuration.activates = true
         NSWorkspace.shared.openApplication(at: url, configuration: configuration) { _, error in
-            if let error { log.error("media: cannot open player: \(error.localizedDescription, privacy: .public)") }
+            if let error { log.error("media: cannot open player: \(error.localizedDescription, privacy: .private)") }
         }
     }
 

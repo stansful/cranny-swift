@@ -8,7 +8,8 @@
 //   stdout  newline-delimited JSON events:
 //           {"t":"hello","v":1,"pid":N}
 //           {"t":"state", ...}            (full snapshot, de-duplicated)
-//           {"t":"artwork","itemID":..,"mime":..,"data":base64}  (only on change)
+//           {"t":"artwork","itemID":..,"mime":..,"data":base64}  (only on change; artwork over
+//                                                     1 MB is re-encoded as a 1024-px JPEG, or skipped)
 //           {"t":"ack"|"error"|"pong", ...}
 //   stdin   one command per line:
 //           cmd <0-13> [expectPID] | seek <seconds> [expectPID]
@@ -21,6 +22,7 @@
 //     -o libCrannyMediaBridge.dylib CrannyMediaBridge.m
 #import <AppKit/AppKit.h>
 #import <Foundation/Foundation.h>
+#import <ImageIO/ImageIO.h>
 #include <dlfcn.h>
 #include <math.h>
 #include <signal.h>
@@ -73,6 +75,33 @@ static id plain(id v) {
 
 static NSString *K(NSString *suffix) { return [@"kMRMediaRemoteNowPlayingInfo" stringByAppendingString:suffix]; }
 
+// Artwork travels base64-encoded in one JSON line, and Cranny drops lines over 8 MB. Large artwork (3000-px
+// podcast PNGs) is re-encoded here as a 1024-px JPEG; Cranny shows at most 512 px. nil = could not shrink it.
+// 4 MB of JPEG is 5.4 MB of base64, well under Cranny's limit.
+enum { kMaxArtworkBytes = 1 << 20, kMaxShrunkBytes = 4 << 20, kArtworkMaxPixels = 1024 };
+
+static NSData *shrunkArtwork(NSData *data) {
+    CGImageSourceRef source = CGImageSourceCreateWithData((__bridge CFDataRef)data, NULL);
+    if (!source) return nil;
+    NSDictionary *options = @{ (__bridge id)kCGImageSourceCreateThumbnailFromImageAlways: @YES,
+                               (__bridge id)kCGImageSourceThumbnailMaxPixelSize: @(kArtworkMaxPixels),
+                               (__bridge id)kCGImageSourceCreateThumbnailWithTransform: @YES };
+    CGImageRef thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, (__bridge CFDictionaryRef)options);
+    CFRelease(source);
+    if (!thumbnail) return nil;
+    NSMutableData *jpeg = [NSMutableData data];
+    CGImageDestinationRef destination = CGImageDestinationCreateWithData((__bridge CFMutableDataRef)jpeg, CFSTR("public.jpeg"), 1, NULL);
+    BOOL ok = NO;
+    if (destination) {
+        NSDictionary *properties = @{ (__bridge id)kCGImageDestinationLossyCompressionQuality: @0.85 };
+        CGImageDestinationAddImage(destination, thumbnail, (__bridge CFDictionaryRef)properties);
+        ok = CGImageDestinationFinalize(destination);
+        CFRelease(destination);
+    }
+    CGImageRelease(thumbnail);
+    return ok && jpeg.length > 0 && jpeg.length <= kMaxShrunkBytes ? jpeg : nil;
+}
+
 static void snapshot(void) {
     MR.pid(gQ, ^(int pid) {
       MR.playing(gQ, ^(Boolean isPlaying) {
@@ -114,9 +143,17 @@ static void snapshot(void) {
                 NSString *artKey = [NSString stringWithFormat:@"%@|%@|%lu", s[@"itemID"], s[@"artworkID"], (unsigned long)art.length];
                 if (![artKey isEqualToString:gLastArtKey]) {
                     gLastArtKey = artKey;
-                    emit(@{ @"t": @"artwork", @"itemID": s[@"itemID"] ?: @"",
-                            @"mime": plain(info[K(@"ArtworkMIMEType")]) ?: @"",
-                            @"data": [art base64EncodedStringWithOptions:0] });
+                    id mime = plain(info[K(@"ArtworkMIMEType")]) ?: @"";
+                    if (art.length > kMaxArtworkBytes) {
+                        art = shrunkArtwork(art);
+                        mime = @"image/jpeg";
+                    }
+                    if (art) {
+                        emit(@{ @"t": @"artwork", @"itemID": s[@"itemID"] ?: @"", @"mime": mime,
+                                @"data": [art base64EncodedStringWithOptions:0] });
+                    } else {
+                        fprintf(stderr, "artwork could not be shrunk; skipped\n");
+                    }
                 }
             }
           });

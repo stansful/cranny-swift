@@ -31,13 +31,16 @@ nonisolated final class BridgeConnection: @unchecked Sendable {   // every mutab
 
     /// perl + dylib + MediaRemote normally say hello in ≈ 0.4 s (R2 test b2).
     static let handshakeTimeout: TimeInterval = 4
-    /// A corrupt or runaway stream: more than this many bytes without a newline terminates the helper.
-    static let maxBufferedBytes = 8 << 20
+    /// A line longer than this is dropped and the helper keeps running (the bridge shrinks artwork above 1 MB,
+    /// so only an artwork it could not shrink gets here).
+    static let maxLineBytes = 8 << 20
+    /// A corrupt or runaway stream: this many bytes without any newline terminates the helper.
+    static let maxDroppedBytes = 64 << 20
 
     private let queue = DispatchQueue(label: "app.cranny.media.bridge", qos: .utility)
     private let process = Process()
     private let input = Pipe(), output = Pipe(), errors = Pipe()
-    private var buffer = Data()
+    private var lines = LineBuffer(maxLineBytes: BridgeConnection.maxLineBytes, maxDroppedBytes: BridgeConnection.maxDroppedBytes)
     private var closedByUs = false
     private var gotHello = false
     private var pingWaiters: [(id: UUID, sent: ContinuousClock.Instant, resume: (Duration?) -> Void)] = []
@@ -69,7 +72,8 @@ nonisolated final class BridgeConnection: @unchecked Sendable {   // every mutab
         errors.fileHandleForReading.readabilityHandler = { handle in
             let data = handle.availableData
             guard !data.isEmpty else { return }
-            log.error("bridge stderr: \(String(decoding: data.prefix(512), as: UTF8.self), privacy: .public)")
+            // perl's loader errors name the dylib's path, which can contain the user's name.
+            log.error("bridge stderr: \(String(decoding: data.prefix(512), as: UTF8.self), privacy: .private)")
         }
         process.terminationHandler = { [weak self] process in
             let status = process.terminationStatus
@@ -92,7 +96,7 @@ nonisolated final class BridgeConnection: @unchecked Sendable {   // every mutab
         queue.async { [self] in
             guard !closedByUs, process.isRunning else { return }
             do { try input.fileHandleForWriting.write(contentsOf: Data((line + "\n").utf8)) } catch {
-                log.error("bridge: write failed: \(error.localizedDescription, privacy: .public)")
+                log.error("bridge: write failed: \(error.localizedDescription, privacy: .private)")
             }
         }
     }
@@ -120,7 +124,7 @@ nonisolated final class BridgeConnection: @unchecked Sendable {   // every mutab
             guard !closedByUs else { return }
             closedByUs = true
             try? input.fileHandleForWriting.close()
-            failPings()
+            failWaiters()
             queue.asyncAfter(deadline: .now() + 1) { [process] in if process.isRunning { process.terminate() } }
         }
     }
@@ -131,7 +135,7 @@ nonisolated final class BridgeConnection: @unchecked Sendable {   // every mutab
             closedByUs = true
             try? input.fileHandleForWriting.close()
             if process.isRunning { process.terminate() }
-            failPings()
+            failWaiters()
         }
     }
 
@@ -139,29 +143,29 @@ nonisolated final class BridgeConnection: @unchecked Sendable {   // every mutab
 
     private func consume(_ chunk: Data) {
         guard !chunk.isEmpty else { return }
-        buffer.append(chunk)
-        while let newline = buffer.firstIndex(of: 0x0A) {
-            let line = buffer[buffer.startIndex..<newline]
-            buffer.removeSubrange(buffer.startIndex...newline)
-            guard let message = BridgeMessage.parse(Data(line)) else { continue }
-            switch message {
-            case .hello: gotHello = true
-            case .pong: if let first = pingWaiters.first { finishPing(first.id, with: ContinuousClock.now - first.sent) }
-            default: break
+        for event in lines.append(chunk) {
+            switch event {
+            case .line(let line):
+                guard let message = BridgeMessage.parse(line) else { continue }
+                switch message {
+                case .hello: gotHello = true
+                case .pong: if let first = pingWaiters.first { finishPing(first.id, with: ContinuousClock.now - first.sent) }
+                default: break
+                }
+                onMessage(message)
+            case .droppedLine(let bytes):
+                log.error("bridge: dropped a \(bytes, privacy: .public)-byte line (artwork too large)")
+            case .runaway:
+                log.error("bridge: \(Self.maxDroppedBytes, privacy: .public) bytes without a newline; terminating")
+                process.terminate()
             }
-            onMessage(message)
-        }
-        if buffer.count > Self.maxBufferedBytes {
-            log.error("bridge: \(self.buffer.count, privacy: .public) bytes without a newline; terminating")
-            buffer.removeAll()
-            process.terminate()
         }
     }
 
     private func ended(status: Int32) {
         output.fileHandleForReading.readabilityHandler = nil
         errors.fileHandleForReading.readabilityHandler = nil
-        failPings()
+        failWaiters()
         guard !closedByUs else { return }
         onEnd(gotHello ? .exited(status: status) : .noHandshake)
     }
@@ -171,7 +175,8 @@ nonisolated final class BridgeConnection: @unchecked Sendable {   // every mutab
         pingWaiters.remove(at: index).resume(result)
     }
 
-    private func failPings() {
+    /// The helper is gone or being closed: every ping still waiting gets "no answer".
+    private func failWaiters() {
         let waiters = pingWaiters
         pingWaiters.removeAll()
         for waiter in waiters { waiter.resume(nil) }

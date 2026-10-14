@@ -26,6 +26,16 @@ nonisolated enum ProviderFailure: Error, Equatable, Sendable {
     case exited(status: Int32)
     /// The user denied Automation for the player (Apple Events error −1743).
     case notPermitted
+
+    /// The failure's kind for logs and diagnostics: never the launch error's text, which can contain paths.
+    var logName: String {
+        switch self {
+        case .launchFailed: "launchFailed"
+        case .noHandshake: "noHandshake"
+        case .exited(let status): "exited(\(status))"
+        case .notPermitted: "notPermitted"
+        }
+    }
 }
 
 /// What a provider reports.
