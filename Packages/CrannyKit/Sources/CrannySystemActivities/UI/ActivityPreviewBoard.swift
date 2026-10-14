@@ -1,7 +1,7 @@
 // CrannySystemActivities/UI/ActivityPreviewBoard.swift — a stand-in for CrannyNotchUI's compact and peek hosts
 // (this layer cannot import it): one activity drawn in the band, as the satellite and as a peek row, with the
 // Core `NotchSurface`/`CompactSlots` and DESIGN.md §3.3 geometry. Used by `#Preview`s and the opt-in
-// snapshot test (`CRANNY_SNAPSHOTS=<dir>`).
+// snapshot test (`CRANNY_SNAPSHOT_DIR=<dir>`).
 import CrannyCore
 import SwiftUI
 

@@ -8,9 +8,9 @@ import UniformTypeIdentifiers
 @testable import CrannyTimer
 
 // Renders every timer surface with `ImageRenderer`. Always checks that each one draws; with
-// CRANNY_TIMER_SNAPSHOTS=<directory> it also writes PNG sheets there for visual QA. Nothing is compared against stored
-// images. (Copy renders in the development language here: the xctest host has no Russian localization; QA Russian in
-// the app.)
+// CRANNY_SNAPSHOT_DIR=<directory> it also writes PNG sheets to <directory>/Timer for visual QA. Nothing is compared
+// against stored images. (Copy renders in the development language here: the xctest host has no Russian
+// localization; QA Russian in the app.)
 
 @MainActor @Suite struct TimerSnapshotTests {
     @Test func widgetStatesDraw() throws {
@@ -119,8 +119,8 @@ import UniformTypeIdentifiers
         renderer.scale = 2
         let image = try #require(renderer.cgImage, "\(name) did not render")
         #expect(image.width > 100 && image.height > 50)
-        guard let directory = ProcessInfo.processInfo.environment["CRANNY_TIMER_SNAPSHOTS"] else { return }
-        let url = URL(fileURLWithPath: directory).appending(path: "\(name).png")
+        guard let directory = SnapshotOutput.directory("Timer") else { return }
+        let url = directory.appending(path: "\(name).png")
         try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
         let destination = try #require(CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil))
         CGImageDestinationAddImage(destination, image, nil)

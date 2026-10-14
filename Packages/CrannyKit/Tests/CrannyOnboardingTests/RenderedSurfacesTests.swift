@@ -1,6 +1,7 @@
 // Renders the onboarding surfaces that are pure SwiftUI (the stage, preset miniatures, the tip bubble) and
-// checks they actually draw. With CRANNY_RENDER_DIR set, the PNGs are written there for a visual check without
-// launching the app (AppKit-backed controls such as menus and switches are not rendered by ImageRenderer).
+// checks they actually draw. With CRANNY_SNAPSHOT_DIR=<dir> set, the PNGs are written to <dir>/Onboarding for a
+// visual check without launching the app (AppKit-backed controls such as menus and switches are not rendered by
+// ImageRenderer).
 import AppKit
 import CrannyCore
 import Foundation
@@ -18,8 +19,9 @@ import Testing
         let renderer = ImageRenderer(content: view.environment(\.isStaticSnapshot, true))
         renderer.scale = scale
         guard let cg = renderer.cgImage else { return nil }
-        if let directory = ProcessInfo.processInfo.environment["CRANNY_RENDER_DIR"] {
-            let url = URL(fileURLWithPath: directory).appendingPathComponent(name + ".png")
+        if let directory = SnapshotOutput.directory("Onboarding") {
+            let url = directory.appending(path: name + ".png")
+            try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             let rep = NSBitmapImageRep(cgImage: cg)
             try? rep.representation(using: .png, properties: [:])?.write(to: url)
         }

@@ -6,12 +6,13 @@ import Testing
 @testable import CrannyCalendar
 
 /// Visual QA without launching the app: renders the widget, the activities and the Settings rows offscreen into
-/// PNGs. Opt-in (`CRANNY_SNAPSHOT_DIR=/some/dir swift test --filter CalendarSnapshots`); nothing is shown on
-/// screen (the window is never ordered in) and nothing is asserted — a person looks at the files.
-@Suite(.enabled(if: ProcessInfo.processInfo.environment["CRANNY_SNAPSHOT_DIR"] != nil))
+/// PNGs. Opt-in (`CRANNY_SNAPSHOT_DIR=/some/dir swift test --filter CalendarSnapshots` writes into
+/// `/some/dir/Calendar`); nothing is shown on screen (the window is never ordered in) and nothing is asserted — a
+/// person looks at the files.
+@Suite(.enabled(if: SnapshotOutput.directory("Calendar") != nil))
 @MainActor struct CalendarSnapshots {
     private var directory: URL {
-        URL(fileURLWithPath: ProcessInfo.processInfo.environment["CRANNY_SNAPSHOT_DIR"] ?? NSTemporaryDirectory(), isDirectory: true)
+        SnapshotOutput.directory("Calendar") ?? URL(filePath: NSTemporaryDirectory(), directoryHint: .isDirectory)
     }
 
     @Test func widgetSizesAndStates() async throws {

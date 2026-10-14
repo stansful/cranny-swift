@@ -121,8 +121,9 @@ import Testing
             renderer.scale = 2
             let image = try #require(renderer.cgImage, "\(name)")
             #expect(image.width == Int(size.width * 2) && image.height == Int(size.height * 2), "\(name)")
-            if let dir = ProcessInfo.processInfo.environment["CRANNY_MIRROR_SNAPSHOTS"] {
-                try writePNG(image, to: URL(fileURLWithPath: dir).appending(path: "mirror-\(name)-\(cells).png"))
+            if let dir = SnapshotOutput.directory("Mirror") {
+                try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+                try writePNG(image, to: dir.appending(path: "mirror-\(name)-\(cells).png"))
             }
         }
     }

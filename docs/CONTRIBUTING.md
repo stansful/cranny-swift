@@ -161,7 +161,7 @@ These suites are skipped unless their variable is set, and never run in CI:
 ```sh
 cd Packages/CrannyKit
 CRANNY_INTEGRATION=1 swift test --scratch-path .build-test --filter panelOnScreen
-CRANNY_SNAPSHOT_DIR=/tmp/notchui swift test --scratch-path .build-test --filter CrannyNotchUITests.SnapshotGallery
+CRANNY_SNAPSHOT_DIR=/tmp/cranny-snapshots swift test --scratch-path .build-test --filter CrannyNotchUITests.SnapshotGallery
 ```
 
 **`CRANNY_INTEGRATION=1`** (tests that show a window, need hardware or the media helper):
@@ -176,18 +176,24 @@ CRANNY_SNAPSHOT_DIR=/tmp/notchui swift test --scratch-path .build-test --filter 
 | `BridgeIntegrationTests`, `BridgeLifetimeIntegrationTests` (CrannyMedia), with `CRANNY_MEDIA_BRIDGE=<path to libCrannyMediaBridge.dylib>` | The real helper under `/usr/bin/perl`: one answer per command (only invalid commands are sent, no player is touched), and the helper exits within 2 s of its host or of stdin closing. |
 | `HUDKeyIntegrationTests`, with `CRANNY_HUD_KEYS=1` | **Changes the output volume by one step for about a second and posts synthetic key events**; the test runner needs Accessibility. Only on your own machine, on purpose. |
 
-**Snapshot galleries** (PNG files for review; nothing is asserted against them):
+**Snapshot suites** (PNG files for review; nothing is asserted against them). One variable turns every one of them
+on: **`CRANNY_SNAPSHOT_DIR=<dir>`**. Each test target writes into its own folder, `<dir>/<Folder>/` (Core's
+`SnapshotOutput`), so one run of several suites never mixes files; pick the suites with `--filter`.
+**`CRANNY_SNAPSHOT_LANGUAGE=ru`** asks the suites that can render Russian for it (English otherwise).
 
-| Variable | Suites |
-|---|---|
-| `CRANNY_SNAPSHOT_DIR=<dir>` | NotchUI gallery, Quick Apps launcher, Calendar (including the Russian Join layouts). |
-| `CRANNY_SNAPSHOTS=<dir>` [`CRANNY_SNAPSHOT_LANGUAGE=ru`] | System activities (the language switch applies to them), To-dos. |
-| `CRANNY_TRAY_SNAPSHOTS=<dir>` [`CRANNY_TRAY_SNAPSHOT_LANGUAGE=ru`] | Tray (run the Russian set in its own process with the `SnapshotTests` filter). |
-| `CRANNY_HUD_SNAPSHOTS`, `CRANNY_MEDIA_SNAPSHOTS`, `CRANNY_MIRROR_SNAPSHOTS`, `CRANNY_NOTES_SNAPSHOTS`, `CRANNY_TIMER_SNAPSHOTS` `=<dir>` | Snapshot PNGs of that module. |
-| `CRANNY_RENDER_DIR=<dir>` | Onboarding's rendered surfaces (Welcome steps, the longest Russian tutorial bubble). |
+| Folder | Suite (`--filter`) | Notes |
+|---|---|---|
+| `NotchUI` | `CrannyNotchUITests.SnapshotGallery` | Every presentation × display × variant, plus the palette, editor, catch state and hints. |
+| `Calendar` | `CalendarSnapshots` | Widget sizes, activities, Settings rows (including the Russian Join layouts). |
+| `QuickApps` | `LauncherSnapshot` | The launcher in its states (real app icons, read-only). |
+| `SystemActivities` | `CrannySystemActivitiesTests.SnapshotRenderTests` | Every sample in the band and the peek, the option rows; follows the language variable. |
+| `Tray` | `CrannyTrayTests.SnapshotTests` | Follows the language variable, which switches the whole test process: run the Russian set alone, with this filter. |
+| `Todos` | `TodosSnapshotTests` | The widget's states. |
+| `Notes` | `CrannyNotesTests.SnapshotGallery` | Cards with the real editor (Debug builds). |
+| `Media` | `CrannyMediaTests.SnapshotRenderTests` | The widget and the Now Playing presentations. |
+| `Timer`, `HUD`, `Mirror`, `Onboarding` | `TimerSnapshotTests`, `HUDRenderTests`, `MirrorResourceTests`, `RenderedSurfacesTests` | Render checks that always run; with the variable set they also write their PNGs (Onboarding: the Welcome steps and the longest Russian tutorial bubble). |
 
-The variables are not unified yet (ARCHITECTURE.md §10.20). Package test processes resolve English for
-`String(localized:)`; the suites that render Russian say so above.
+Package test processes resolve English for `String(localized:)`; the suites that render Russian say so above.
 
 **Benchmarks:** `CRANNY_NOTES_BENCH=<file>` runs the Notes keystroke benchmark (release configuration; see the file).
 

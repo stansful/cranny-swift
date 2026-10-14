@@ -2,8 +2,9 @@
 // Always on: every surface renders at Standard, Increase Contrast, Extra Large text and Compact density, and the page
 // keeps its final size (the tile geometry itself is checked numerically in `tilesGrowWithTextSizeAndNeverClip`).
 // Opt-in PNGs (look at them):
-//   CRANNY_TRAY_SNAPSHOTS=/some/folder swift test --scratch-path .build-test --filter CrannyTrayTests.SnapshotTests
-//   CRANNY_TRAY_SNAPSHOT_LANGUAGE=ru CRANNY_TRAY_SNAPSHOTS=/some/folder swift test … (same filter): Russian renders.
+//   CRANNY_SNAPSHOT_DIR=/some/folder swift test --scratch-path .build-test --filter CrannyTrayTests.SnapshotTests
+//   CRANNY_SNAPSHOT_LANGUAGE=ru CRANNY_SNAPSHOT_DIR=/some/folder swift test … (same filter): Russian renders.
+// Both write into /some/folder/Tray.
 // Why the language needs its own run: the test runner is an English-only tool, so `String(localized:bundle:)` resolves
 // in English whatever the system language or `.environment(\.locale)` says (only `Text(_:bundle:)` follows the
 // environment). The Russian run switches the process to Russian before the first string is read, so it must run
@@ -18,8 +19,8 @@ import UniformTypeIdentifiers
 @testable import CrannyTray
 
 @MainActor @Suite(.serialized) struct SnapshotTests {
-    nonisolated static let folder = ProcessInfo.processInfo.environment["CRANNY_TRAY_SNAPSHOTS"]
-    nonisolated static let language = ProcessInfo.processInfo.environment["CRANNY_TRAY_SNAPSHOT_LANGUAGE"] ?? "en"
+    nonisolated static let folder = SnapshotOutput.directory("Tray")
+    nonisolated static let language = SnapshotOutput.language() ?? "en"
 
     /// Switches this test process to `language` once, before any string is resolved (opt-in runs only).
     private static let processLanguage: Void = {
@@ -121,7 +122,7 @@ import UniformTypeIdentifiers
     }
 
     @Test(.enabled(if: SnapshotTests.folder != nil)) func writeSnapshots() throws {
-        let folder = URL(filePath: try #require(Self.folder), directoryHint: .isDirectory)
+        let folder = try #require(Self.folder)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         #expect(Bundle.module.preferredLocalizations.first == Self.language,
                 "strings resolve in \(Bundle.module.preferredLocalizations); run this suite alone (see the header)")

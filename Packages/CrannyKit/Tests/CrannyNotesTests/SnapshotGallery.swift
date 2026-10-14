@@ -1,6 +1,7 @@
 // Opt-in visual QA without a display: renders Notes cards (real AppKit editor included) in an offscreen window
 // and writes PNGs. Run with
-//   CRANNY_NOTES_SNAPSHOTS=/path/to/dir swift test --scratch-path .build-test --filter SnapshotGallery
+//   CRANNY_SNAPSHOT_DIR=/path/to/dir swift test --scratch-path .build-test --filter CrannyNotesTests.SnapshotGallery
+// (into /path/to/dir/Notes).
 // Nothing is shown on screen and nothing outside the given folder and temporary paths is written.
 // Debug builds only: the typing-effect case uses the DEBUG-only `NotesQAHooks`.
 #if DEBUG
@@ -11,9 +12,9 @@ import SwiftUI
 import Testing
 @testable import CrannyNotes
 
-@Suite("Snapshot gallery", .enabled(if: ProcessInfo.processInfo.environment["CRANNY_NOTES_SNAPSHOTS"] != nil))
+@Suite("Snapshot gallery", .enabled(if: SnapshotOutput.directory("Notes") != nil))
 struct SnapshotGallery {
-    private let folder = URL(fileURLWithPath: ProcessInfo.processInfo.environment["CRANNY_NOTES_SNAPSHOTS"] ?? "/dev/null")
+    private let folder = SnapshotOutput.directory("Notes") ?? URL(filePath: "/dev/null")
 
     private struct Case {
         var name: String

@@ -170,6 +170,7 @@ private typealias ProbeShortcutState = ShortcutState
 private typealias ProbeShortcutTag = ShortcutTag
 private typealias ProbeShuffleMode = ShuffleMode
 private typealias ProbeSlotWidth = SlotWidth
+private typealias ProbeSnapshotOutput = SnapshotOutput
 private typealias ProbeSpace = Space
 private typealias ProbeStrokeWidth = StrokeWidth
 private typealias ProbeSwipeAxis = SwipeAxis

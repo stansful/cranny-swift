@@ -1,8 +1,9 @@
 // Opt-in visual QA: renders every sample (compact, satellite, peek) to PNGs with ImageRenderer, and the
 // Settings ▸ Live Activities option rows (AppKit-backed controls) through an off-screen NSHostingView.
-//   CRANNY_SNAPSHOTS=/tmp/out [CRANNY_SNAPSHOT_LANGUAGE=ru] swift test --scratch-path .build-test --filter SnapshotRenderTests
-// Skipped unless CRANNY_SNAPSHOTS is set (never in CI). Nothing is asserted beyond "it renders". The language
-// switch (`SystemCopy.useLanguage`) exists in Debug builds only.
+//   CRANNY_SNAPSHOT_DIR=/tmp/out [CRANNY_SNAPSHOT_LANGUAGE=ru] swift test --scratch-path .build-test \
+//       --filter CrannySystemActivitiesTests.SnapshotRenderTests
+// writes into /tmp/out/SystemActivities. Skipped unless CRANNY_SNAPSHOT_DIR is set (never in CI). Nothing is
+// asserted beyond "it renders". The language switch (`SystemCopy.useLanguage`) exists in Debug builds only.
 import AppKit
 import CrannyCore
 import Foundation
@@ -11,7 +12,7 @@ import Testing
 @testable import CrannySystemActivities
 
 @MainActor @Suite struct SnapshotRenderTests {
-    nonisolated static let directory = ProcessInfo.processInfo.environment["CRANNY_SNAPSHOTS"]
+    nonisolated static let directory = SnapshotOutput.directory("SystemActivities")
 
     struct Variant {
         let name: String
@@ -44,10 +45,10 @@ import Testing
 
     @Test(.enabled(if: directory != nil)) func renderEverySample() throws {
         let directory = try #require(Self.directory)
-        let language = ProcessInfo.processInfo.environment["CRANNY_SNAPSHOT_LANGUAGE"]
+        let language = SnapshotOutput.language()
         SystemCopy.useLanguage(language)
         defer { SystemCopy.useLanguage(nil) }
-        try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         for variant in Self.variants {
             for (name, activity) in Self.samples {
                 let view = ActivityPreviewBoard(activity: activity, metrics: variant.metrics, theme: variant.theme)
@@ -58,7 +59,7 @@ import Testing
                 let image = try #require(renderer.cgImage, "\(name) did not render")
                 let data = try #require(NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]))
                 let suffix = language.map { "-\($0)" } ?? ""
-                try data.write(to: URL(fileURLWithPath: directory).appending(path: "\(variant.name)-\(name)\(suffix).png"))
+                try data.write(to: directory.appending(path: "\(variant.name)-\(name)\(suffix).png"))
             }
         }
     }
@@ -67,9 +68,10 @@ import Testing
     /// Bluetooth option on with access denied (the warning row). Light and dark; never shown on screen.
     @Test(.enabled(if: directory != nil)) func renderTheOptionRows() throws {
         let directory = try #require(Self.directory)
-        let language = ProcessInfo.processInfo.environment["CRANNY_SNAPSHOT_LANGUAGE"]
+        let language = SnapshotOutput.language()
         SystemCopy.useLanguage(language)
         defer { SystemCopy.useLanguage(nil) }
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let services = CrannyServices.preview()
         services.settings[SystemSettings.lowBatteryThresholds] = [25, 10]
         services.settings[SystemSettings.showsAllBluetoothDevices] = true
@@ -91,7 +93,7 @@ import Testing
             host.cacheDisplay(in: host.bounds, to: bitmap)
             let data = try #require(bitmap.representation(using: .png, properties: [:]))
             let suffix = language.map { "-\($0)" } ?? ""
-            try data.write(to: URL(fileURLWithPath: directory).appending(path: "options-\(name)\(suffix).png"))
+            try data.write(to: directory.appending(path: "options-\(name)\(suffix).png"))
         }
     }
 }

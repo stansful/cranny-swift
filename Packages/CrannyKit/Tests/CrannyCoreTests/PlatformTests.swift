@@ -183,6 +183,22 @@ private struct Document: Codable, Equatable, Sendable {
     #expect(LaunchArguments([]).qaSnapshotDirectory == nil)
 }
 
+// MARK: - Snapshot output (opt-in test suites)
+
+@Test func snapshotSuitesShareOneVariableAndWriteOneFolderEach() {
+    let set = ["CRANNY_SNAPSHOT_DIR": "/tmp/shots", "CRANNY_SNAPSHOT_LANGUAGE": "ru"]
+    #expect(SnapshotOutput.directory("Timer", environment: set)?.path(percentEncoded: false) == "/tmp/shots/Timer/")
+    #expect(SnapshotOutput.directory("Tray", environment: set)?.hasDirectoryPath == true)
+    #expect(SnapshotOutput.language(environment: set) == "ru")
+    // Not set, or set empty: the suites skip themselves (or write nothing) and render in English.
+    for unset in [[:], ["CRANNY_SNAPSHOT_DIR": "", "CRANNY_SNAPSHOT_LANGUAGE": ""]] as [[String: String]] {
+        #expect(SnapshotOutput.directory("Timer", environment: unset) == nil)
+        #expect(SnapshotOutput.language(environment: unset) == nil)
+    }
+    // The module-specific names of phase C are gone.
+    #expect(SnapshotOutput.directory("Tray", environment: ["CRANNY_TRAY_SNAPSHOTS": "/tmp/shots"]) == nil)
+}
+
 // MARK: - Preview stand-ins
 
 @MainActor private final class RealMedia: NookWidget {

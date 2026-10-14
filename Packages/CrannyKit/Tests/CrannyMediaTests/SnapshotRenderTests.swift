@@ -1,6 +1,7 @@
 // Opt-in visual QA: renders the Media widget, the Now Playing presentations and their states to PNG files with
 // `ImageRenderer`, for a human (or a reviewer) to look at. Runs only with
-//   CRANNY_MEDIA_SNAPSHOTS=/some/dir swift test --filter SnapshotRender
+//   CRANNY_SNAPSHOT_DIR=/some/dir swift test --scratch-path .build-test --filter CrannyMediaTests.SnapshotRenderTests
+// (into /some/dir/Media).
 // Core Animation bars (an NSView) do not render here; the app shows them (`--qa-media playing`).
 import AppKit
 import CrannyCore
@@ -9,10 +10,10 @@ import SwiftUI
 import Testing
 @testable import CrannyMedia
 
-@Suite("Snapshot render", .enabled(if: ProcessInfo.processInfo.environment["CRANNY_MEDIA_SNAPSHOTS"] != nil))
+@Suite("Snapshot render", .enabled(if: SnapshotOutput.directory("Media") != nil))
 @MainActor struct SnapshotRenderTests {
     private var directory: URL {
-        URL(fileURLWithPath: ProcessInfo.processInfo.environment["CRANNY_MEDIA_SNAPSHOTS"] ?? NSTemporaryDirectory(), isDirectory: true)
+        SnapshotOutput.directory("Media") ?? URL(filePath: NSTemporaryDirectory(), directoryHint: .isDirectory)
     }
 
     private func write(_ name: String, scale: CGFloat = 2, _ view: some View) throws {
