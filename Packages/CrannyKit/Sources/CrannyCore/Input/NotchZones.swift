@@ -25,6 +25,8 @@ public nonisolated struct DropPayload: Sendable {
         public var frame: CGRect
         public let axis: SwipeAxis
         public let onUpdate: @MainActor (SwipeUpdate) -> Void
+        /// false = a value zone (`crannyContinuousScrollZone`): never commits, `.tracking` for the whole touch.
+        public var commits = true
     }
 
     /// The drop zone under the pointer during a file drag (views highlight when `armedDropZone == id`).
@@ -65,7 +67,7 @@ public nonisolated struct DropPayload: Sendable {
             activeScrollZone = scrollZones.values.first { $0.frame.contains(point) }?.id
         }
         guard let id = activeScrollZone, let zone = scrollZones[id] else { return false }
-        var tracker = trackers[id] ?? SwipeTracker(axis: zone.axis)
+        var tracker = trackers[id] ?? (zone.commits ? SwipeTracker(axis: zone.axis) : .continuous(axis: zone.axis))
         let update = tracker.handle(sample)
         trackers[id] = tracker
         if let update { zone.onUpdate(update) }
@@ -106,10 +108,11 @@ struct ScrollZoneModifier: ViewModifier {
     let id: ScrollZoneID
     let axis: SwipeAxis
     let onUpdate: @MainActor (SwipeUpdate) -> Void
+    var commits = true
     func body(content: Content) -> some View {
         content
             .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .named(NotchCoordinateSpace.name)) }) { frame in
-                zones?.setScrollZone(.init(id: id, frame: frame, axis: axis, onUpdate: onUpdate))
+                zones?.setScrollZone(.init(id: id, frame: frame, axis: axis, onUpdate: onUpdate, commits: commits))
             }
             .onDisappear { zones?.removeScrollZone(id) }
     }
