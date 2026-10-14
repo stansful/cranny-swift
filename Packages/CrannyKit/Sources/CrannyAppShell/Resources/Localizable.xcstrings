@@ -89,28 +89,6 @@
         }
       }
     },
-    "Demo mode off" : {
-      "comment" : "VoiceOver announcement after turning Demo mode off",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Демо-режим выключен"
-          }
-        }
-      }
-    },
-    "Demo mode on" : {
-      "comment" : "VoiceOver announcement after turning Demo mode on",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Демо-режим включён"
-          }
-        }
-      }
-    },
     "Display with the Pointer" : {
       "comment" : "Menu bar ▸ Show On: show Cranny only on the display the pointer is on",
       "localizations" : {
@@ -287,17 +265,6 @@
         }
       }
     },
-    "Live Activities paused for 1 hour" : {
-      "comment" : "VoiceOver announcement after pausing",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Активности приостановлены на 1 час"
-          }
-        }
-      }
-    },
     "Live Activities paused until %@" : {
       "comment" : "Menu bar: status line of a pause; the argument is a time, e.g. 15:42",
       "localizations" : {
@@ -316,17 +283,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Активности приостановлены до завтра"
-          }
-        }
-      }
-    },
-    "Live Activities resumed" : {
-      "comment" : "VoiceOver announcement after resuming",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Активности возобновлены"
           }
         }
       }

@@ -2,7 +2,7 @@
 // Global shortcuts: Open Cranny (⌃⌥N) and Toggle pin → the overlay; Pause activities → `PauseController`.
 // ⌘K: Pause Live Activities for 1 hour (or Resume), Demo mode, Keep Cranny open, Show tutorial, and every
 // Settings pane — and nothing else. Commands resolve state at query time, so their titles always say what they do.
-import Accessibility
+// No VoiceOver announcements: DESIGN.md §16 keeps them for P1 alerts and pipeline completion.
 import Carbon.HIToolbox
 import CrannyCore
 import Foundation
@@ -22,10 +22,7 @@ import Foundation
             id: .pauseActivities,
             title: String(localized: "Pause activities", bundle: .module,
                           comment: "Settings ▸ Keyboard: shortcut name (pauses Live Activities for 1 hour, or resumes them)"),
-            defaultCombo: nil) {
-                pause.toggle()
-                ShellAnnouncement.pause(isPaused: pause.isPaused)
-            })
+            defaultCombo: nil) { pause.toggle() })
         registry.add(commands: ShellCommands(registry: registry, overlay: overlay, pause: pause, demo: demo))
     }
 }
@@ -69,26 +66,17 @@ import Foundation
         if pause.isPaused {
             result.append(PaletteCommand(
                 id: "shell.resume", title: String(localized: "Resume Live Activities", bundle: .module, comment: "Menu bar and ⌘K: ends a pause of Live Activities"),
-                kind: kind, symbol: "play.fill", keywords: Self.keywords(.pause)) {
-                    pause.resume()
-                    ShellAnnouncement.pause(isPaused: false)
-                })
+                kind: kind, symbol: "play.fill", keywords: Self.keywords(.pause)) { pause.resume() })
         } else {
             result.append(PaletteCommand(
                 id: "shell.pause", title: String(localized: "Pause Live Activities for 1 hour", bundle: .module, comment: "⌘K: command"),
-                kind: kind, symbol: "pause.fill", keywords: Self.keywords(.pause)) {
-                    pause.pause(.oneHour)
-                    ShellAnnouncement.pause(isPaused: true)
-                })
+                kind: kind, symbol: "pause.fill", keywords: Self.keywords(.pause)) { pause.pause(.oneHour) })
         }
         result.append(PaletteCommand(
             id: "shell.demo",
             title: demo.isOn ? String(localized: "Turn off demo mode", bundle: .module, comment: "⌘K: command")
                              : String(localized: "Turn on demo mode", bundle: .module, comment: "⌘K: command"),
-            kind: kind, symbol: "sparkles", keywords: Self.keywords(.demo)) {
-                demo.toggle()
-                ShellAnnouncement.demo(isOn: demo.isOn)
-            })
+            kind: kind, symbol: "sparkles", keywords: Self.keywords(.demo)) { demo.toggle() })
         let pinned = overlay?.isPinned ?? false
         result.append(PaletteCommand(
             id: "shell.pin",
@@ -133,23 +121,6 @@ import Foundation
         case .tutorial: String(localized: "tutorial, tour, help, learn", bundle: .module, comment: "⌘K: search words for Show tutorial, comma-separated")
         }
         return ShellPane.split(list)
-    }
-}
-
-/// VoiceOver confirmations for actions that may have no visible result (a global shortcut, a palette command).
-@MainActor enum ShellAnnouncement {
-    static func pause(isPaused: Bool) {
-        post(isPaused ? String(localized: "Live Activities paused for 1 hour", bundle: .module, comment: "VoiceOver announcement after pausing")
-                      : String(localized: "Live Activities resumed", bundle: .module, comment: "VoiceOver announcement after resuming"))
-    }
-
-    static func demo(isOn: Bool) {
-        post(isOn ? String(localized: "Demo mode on", bundle: .module, comment: "VoiceOver announcement after turning Demo mode on")
-                  : String(localized: "Demo mode off", bundle: .module, comment: "VoiceOver announcement after turning Demo mode off"))
-    }
-
-    private static func post(_ text: String) {
-        AccessibilityNotification.Announcement(text).post()
     }
 }
 
