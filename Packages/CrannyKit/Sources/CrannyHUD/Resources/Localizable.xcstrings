@@ -1,6 +1,556 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ can also take the volume and brightness keys. If Cranny's HUD doesn't appear, turn off the HUD in that app." : {
+      "comment" : "Settings ▸ HUD: warning while ONE known app with its own HUD runs; argument is its name, such as MonitorControl",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ тоже может перехватывать клавиши громкости и яркости. Если индикатор Cranny не появляется, выключите индикатор в этом приложении."
+          }
+        }
+      }
+    },
+    "%@ can also take the volume and brightness keys. If Cranny's HUD doesn't appear, turn off the HUD in these apps." : {
+      "comment" : "Settings ▸ HUD: warning while SEVERAL known apps with their own HUD run; argument is a list of names, such as “MonitorControl and SoundSource”",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ тоже могут перехватывать клавиши громкости и яркости. Если индикатор Cranny не появляется, выключите индикатор в этих приложениях."
+          }
+        }
+      }
+    },
+    "Accent" : {
+      "comment" : "Settings ▸ HUD ▸ Colors: bar in the accent colour",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Акцент"
+          }
+        }
+      }
+    },
+    "Accent for volume, yellow for brightness, blue for the keyboard." : {
+      "comment" : "Settings ▸ HUD: footnote explaining the Semantic colours",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Акцентный для громкости, жёлтый для яркости, синий для клавиатуры."
+          }
+        }
+      }
+    },
+    "After the sound output changes, the next volume HUD shows the new device." : {
+      "comment" : "Settings ▸ HUD: footnote under Show output device",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "После смены аудиовыхода индикатор громкости покажет новое устройство."
+          }
+        }
+      }
+    },
+    "Always shown with Differentiate without color." : {
+      "comment" : "Settings ▸ HUD: footnote under Show value (macOS Accessibility ▸ Display setting)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Всегда виден, если включено «Дифференцировать без цвета»."
+          }
+        }
+      }
+    },
+    "Brightness" : {
+      "comment" : "HUD: what the HUD shows (VoiceOver label, peek title, Settings ▸ HUD toggle)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Яркость"
+          }
+        }
+      }
+    },
+    "Brightness, %@" : {
+      "comment" : "HUD: VoiceOver announcement once the level settles; argument is a percentage",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Яркость, %@"
+          }
+        }
+      }
+    },
+    "Built-in display only. Other displays keep the macOS HUD." : {
+      "comment" : "Settings ▸ HUD: footnote under Brightness",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только встроенный дисплей. На других дисплеях остаётся индикатор macOS."
+          }
+        }
+      }
+    },
+    "Changed from the default" : {
+      "comment" : "Settings ▸ HUD: tooltip of the dot before a changed row",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отличается от стандартного"
+          }
+        }
+      }
+    },
+    "Colors" : {
+      "comment" : "Settings ▸ HUD: picker for the level bar's colour",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цвета"
+          }
+        }
+      }
+    },
+    "Cranny draws its HUD only when it can hide the one macOS shows. Without Accessibility, macOS keeps its own HUD and Cranny shows none." : {
+      "comment" : "Settings ▸ HUD: footnote under Replace the system HUD (why Accessibility is needed)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny показывает свой индикатор, только когда может скрыть индикатор macOS. Без универсального доступа остаётся индикатор macOS, а Cranny свой не показывает."
+          }
+        }
+      }
+    },
+    "Cranny handles the keys now." : {
+      "comment" : "Settings ▸ HUD: footnote while the HUD replacement is active",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny обрабатывает эти клавиши."
+          }
+        }
+      }
+    },
+    "Decrease" : {
+      "comment" : "HUD: VoiceOver action that lowers the level",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уменьшить"
+          }
+        }
+      }
+    },
+    "Denied" : {
+      "comment" : "Settings ▸ HUD: Accessibility status pill",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запрещено"
+          }
+        }
+      }
+    },
+    "Duration" : {
+      "comment" : "Settings ▸ HUD: how long the HUD stays",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Длительность"
+          }
+        }
+      }
+    },
+    "For keyboards with backlight keys." : {
+      "comment" : "Settings ▸ HUD: footnote under Keyboard backlight",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Для клавиатур с клавишами подсветки."
+          }
+        }
+      }
+    },
+    "Granted" : {
+      "comment" : "Settings ▸ HUD: Accessibility status pill",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешено"
+          }
+        }
+      }
+    },
+    "HUD" : {
+      "comment" : "Settings sidebar: pane name (the volume and brightness heads-up display)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Индикатор"
+          }
+        }
+      }
+    },
+    "HUD Settings…" : {
+      "comment" : "Live Activities pane: button under the HUD row that opens Settings ▸ HUD",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки индикатора…"
+          }
+        }
+      }
+    },
+    "How long the HUD stays after the last key press." : {
+      "comment" : "Settings ▸ HUD: footnote under Duration",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сколько индикатор виден после последнего нажатия."
+          }
+        }
+      }
+    },
+    "Increase" : {
+      "comment" : "HUD: VoiceOver action that raises the level",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Увеличить"
+          }
+        }
+      }
+    },
+    "Keyboard backlight" : {
+      "comment" : "Settings ▸ HUD: toggle for the keyboard backlight keys",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подсветка клавиатуры"
+          }
+        }
+      }
+    },
+    "Keyboard brightness" : {
+      "comment" : "HUD: what the HUD shows for the keyboard backlight keys (VoiceOver label, peek title)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Яркость клавиатуры"
+          }
+        }
+      }
+    },
+    "Keyboard brightness, %@" : {
+      "comment" : "HUD: VoiceOver announcement once the level settles; argument is a percentage",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Яркость клавиатуры, %@"
+          }
+        }
+      }
+    },
+    "Live Activities Settings…" : {
+      "comment" : "Settings ▸ HUD: button that opens Settings ▸ Live Activities",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки активностей…"
+          }
+        }
+      }
+    },
+    "Mono" : {
+      "comment" : "Settings ▸ HUD ▸ Colors: white bar",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Моно"
+          }
+        }
+      }
+    },
+    "Mute" : {
+      "comment" : "HUD: VoiceOver action that mutes the output",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выключить звук"
+          }
+        }
+      }
+    },
+    "Muted" : {
+      "comment" : "HUD: VoiceOver value and peek subtitle while the output is muted",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Звук выключен"
+          }
+        }
+      }
+    },
+    "Not yet" : {
+      "comment" : "Settings ▸ HUD: Accessibility status pill (not granted yet)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ещё нет"
+          }
+        }
+      }
+    },
+    "Open System Settings" : {
+      "comment" : "Settings ▸ HUD: button that opens Privacy & Security ▸ Accessibility",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть Системные настройки"
+          }
+        }
+      }
+    },
+    "Replace the system HUD" : {
+      "comment" : "Settings ▸ HUD: main toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заменять системный индикатор"
+          }
+        }
+      }
+    },
+    "Replace the system volume and brightness HUD. Cranny uses it only to handle those keys." : {
+      "comment" : "Permissions pane and onboarding: why the HUD needs Accessibility",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заменять системный индикатор громкости и яркости. Cranny использует доступ только для этих клавиш."
+          }
+        }
+      }
+    },
+    "Reset to Default" : {
+      "comment" : "Settings ▸ HUD: row context menu item",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сбросить до стандартного"
+          }
+        }
+      }
+    },
+    "Semantic" : {
+      "comment" : "Settings ▸ HUD ▸ Colors: a meaningful colour per kind (accent, yellow, blue)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По смыслу"
+          }
+        }
+      }
+    },
+    "Show output device" : {
+      "comment" : "Settings ▸ HUD: toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывать устройство вывода"
+          }
+        }
+      }
+    },
+    "Show the HUD for" : {
+      "comment" : "Settings ▸ HUD: section header above Volume / Brightness / Keyboard backlight",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывать индикатор для"
+          }
+        }
+      }
+    },
+    "Show value" : {
+      "comment" : "Settings ▸ HUD: toggle that shows the level as a number",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывать значение"
+          }
+        }
+      }
+    },
+    "Style" : {
+      "comment" : "Settings ▸ HUD: section header above Colors, Show value, Show output device, Duration",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оформление"
+          }
+        }
+      }
+    },
+    "The HUD is off in Live Activities" : {
+      "comment" : "Settings ▸ HUD: row shown while the HUD activity is turned off in Settings ▸ Live Activities",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Индикатор выключен в разделе «Активности»"
+          }
+        }
+      }
+    },
+    "Turn on Cranny in Privacy & Security ▸ Accessibility, then come back here." : {
+      "comment" : "Settings ▸ HUD: footnote while Accessibility is not granted",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Включите Cranny в разделе «Конфиденциальность и безопасность» ▸ «Универсальный доступ» и вернитесь сюда."
+          }
+        }
+      }
+    },
+    "Unmute" : {
+      "comment" : "HUD: VoiceOver action that turns the sound back on",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Включить звук"
+          }
+        }
+      }
+    },
+    "Volume" : {
+      "comment" : "HUD: what the HUD shows (VoiceOver label, peek title, Settings ▸ HUD toggle)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Громкость"
+          }
+        }
+      }
+    },
+    "Volume and brightness" : {
+      "comment" : "Live Activities pane: the HUD activity (volume, brightness and keyboard backlight levels)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Громкость и яркость"
+          }
+        }
+      }
+    },
+    "Volume, %@" : {
+      "comment" : "HUD: VoiceOver announcement once the level settles; argument is a percentage",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Громкость, %@"
+          }
+        }
+      }
+    },
+    "Volume, brightness and keyboard backlight levels appear in the notch." : {
+      "comment" : "Settings ▸ HUD: footnote under Replace the system HUD",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уровни громкости, яркости и подсветки клавиатуры появляются в вырезе."
+          }
+        }
+      }
+    },
+    "Volume, muted" : {
+      "comment" : "HUD: VoiceOver announcement after the mute key",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Громкость, звук выключен"
+          }
+        }
+      }
+    },
+    "macOS did not hand the keys to Cranny. Try turning the HUD off and on." : {
+      "comment" : "Settings ▸ HUD: footnote when the key tap could not start although Accessibility is granted",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS не передала клавиши Cranny. Попробуйте выключить и снова включить индикатор."
+          }
+        }
+      }
+    },
+    "macOS shows its own HUD until you turn it back on there." : {
+      "comment" : "Settings ▸ HUD: footnote under The HUD is off in Live Activities",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пока он там выключен, macOS показывает свой индикатор."
+          }
+        }
+      }
+    },
+    "sound, mute, speaker, display, keys, OSD" : {
+      "comment" : "Settings search: extra comma-separated search terms for the HUD pane (translate each term)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "звук, без звука, динамик, дисплей, клавиши, OSD, HUD"
+          }
+        }
+      }
+    }
   },
   "version" : "1.0"
 }
