@@ -59,6 +59,15 @@ private func zones(expanded: Bool = false, satellite: CGRect? = nil, wings: CGRe
     #expect(zones().bandPosition(CGPoint(x: 590, y: 966)) == .band)            // no wings, no courtesy
 }
 
+/// The satellite sits in the courtesy strip: the pointer on it came for the satellite, so the wings stay.
+@Test func theSatelliteIsNotMenuBarCourtesy() {
+    let wings = CGRect(x: 605, y: 950, width: 301, height: 32)
+    let satellite = CGRect(x: 912, y: 954, width: 24, height: 24)
+    let z = HoverZones(shape: wings, satellite: satellite, wings: wings, screenFrame: screenFrame, band: 32, expanded: false)
+    #expect(z.bandPosition(CGPoint(x: 915, y: 966)) == .band)                  // on the satellite
+    #expect(z.bandPosition(CGPoint(x: 590, y: 966)) == .courtesy)              // the other side still retracts
+}
+
 @Test func theTrackerReportsOnlyTransitions() {
     let tracker = HoverTracker()
     let z = zones()
@@ -188,6 +197,18 @@ private let housing = (left: CGRect(x: 0, y: 950, width: 650, height: 32), right
     #expect(closed == PanelFramePlan(frame: CGRect(x: 276, y: 682, width: 960, height: 300), layout: .apply))
     let density = PanelFramePlan(current: moved.frame, canvas: canvas, layoutChanged: true, isClosed: true, frame: frame)
     #expect(density.layout == .apply && density.frame == moved.frame)          // same canvas, new layout
+}
+
+/// A swipe over a peek acts on the row under the fingers (DESIGN.md §4.4, §9.3).
+@Test func thePeekRowUnderThePointer() {
+    let layout = NotchLayout(metrics: .reference)
+    let g = layout.peek(rows: 3)
+    let rows: [ActivityID] = ["a", "b", "c"]
+    let top = g.topInset + layout.rowHeight
+    #expect(GestureRouter.peekRow(at: CGPoint(x: 450, y: top - 2), layout: layout, geometry: g, rows: rows) == nil)   // band row
+    #expect(GestureRouter.peekRow(at: CGPoint(x: 450, y: top + 10), layout: layout, geometry: g, rows: rows) == "a")
+    #expect(GestureRouter.peekRow(at: CGPoint(x: 450, y: top + NotchLayout.peekRow + 1), layout: layout, geometry: g, rows: rows) == "b")
+    #expect(GestureRouter.peekRow(at: CGPoint(x: 450, y: top + 3 * NotchLayout.peekRow + 2), layout: layout, geometry: g, rows: rows) == nil)
 }
 
 @Test func typeToCaptureTakesPlainPrintableKeysOnly() {

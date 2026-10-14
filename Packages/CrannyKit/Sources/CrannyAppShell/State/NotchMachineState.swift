@@ -158,7 +158,11 @@ nonisolated struct NotchMachineConfig: Equatable {
 // MARK: - Inputs and effects
 
 /// Where a two-finger swipe began (GestureRouter decides from the event location).
-nonisolated enum SwipeTarget: Equatable, Sendable { case shape, satellite, header }
+nonisolated enum SwipeTarget: Equatable, Sendable {
+    case shape, satellite, header
+    /// A peek's row showing this activity.
+    case row(ActivityID)
+}
 
 /// Where the pointer is relative to the menu bar band (menu-bar courtesy, DESIGN.md §4.6).
 nonisolated enum BandPosition: Equatable, Sendable {

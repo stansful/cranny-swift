@@ -43,6 +43,13 @@ nonisolated enum NotchMachine {
         s.isClosed && config.primary != nil && !s.compactCollapsed && !s.wingsRetracted && !s.calibrating
     }
 
+    /// The satellite bubble shows (§4.7, DESIGN.md §9.2): on the closed surface with a primary and a second
+    /// activity, also after the compact inactivity timeout collapsed the wings ("the satellite stays"); not while
+    /// hidden, retracted for the menu bar or frozen for calibration. The scene's `satellite` is written only then.
+    static func satelliteIsVisible(_ s: NotchMachineState, config: NotchMachineConfig) -> Bool {
+        s.isClosed && s.hidden == nil && config.primary != nil && config.satellite != nil && !s.wingsRetracted && !s.calibrating
+    }
+
     /// Whether leaving may close the open panel (§4.4: closeOnLeave; not pinned; no holds — the panel being key
     /// and a tracking menu are holds too; not in a holding mode; not in Demo mode).
     static func mayAutoClose(_ s: NotchMachineState, config: NotchMachineConfig) -> Bool {

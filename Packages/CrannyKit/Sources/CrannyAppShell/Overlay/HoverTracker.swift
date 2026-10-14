@@ -46,11 +46,12 @@ nonisolated struct HoverZones: Equatable, Sendable {
 
     func contains(_ point: CGPoint) -> Bool { hoverZone.contains(point) }
 
-    /// Courtesy = in the band within 24 pt beside the wings, outside the entry zone (DESIGN.md §4.6).
+    /// Courtesy = in the band within 24 pt beside the wings, outside the entry zone (DESIGN.md §4.6). The satellite
+    /// sits in that strip; the pointer on it came for the satellite, not for the menu bar.
     func bandPosition(_ point: CGPoint) -> BandPosition {
         let band = bandRect
         guard band.contains(point) else { return .outside }
-        guard let wings, !expanded else { return .band }
+        guard let wings, !expanded, !hoverZone.contains(point) else { return .band }
         let reach = HoverIntent.menuBarCourtesy, gap = HoverIntent.entryInflation
         let left = CGRect(x: wings.minX - reach, y: band.minY, width: reach - gap, height: band.height)
         let right = CGRect(x: wings.maxX + gap, y: band.minY, width: reach - gap, height: band.height)

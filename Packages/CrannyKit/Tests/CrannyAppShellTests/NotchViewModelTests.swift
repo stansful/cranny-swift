@@ -223,3 +223,21 @@ func quickPeekOnHoverWorksForEveryHoverDelay(_ delay: HoverIntent.Delay) async t
     #expect(f.scene.phase == .open && checks == 1)
     #expect(speedReads < 40, "\(speedReads) speed reads in 0.25 s")
 }
+
+/// The satellite is in the scene exactly while it shows (§4.7): it stays when the compact timeout collapses the
+/// wings (beside the closed shape then), and goes with the wings for the menu bar.
+@Test func theSatelliteStaysInTheSceneAfterTheCompactTimeout() {
+    let f = Fixture()
+    f.settings[CoreSettings.compactInactivityTimeout] = 20
+    f.viewModel.setLineup(Lineup(primary: "probe.one", satellite: "probe.two", primarySlot: .medium))
+    let canvas = CGRect(origin: .zero, size: f.scene.layout.canvasSize)
+    #expect(f.scene.satellite == "probe.two")
+    #expect(f.viewModel.satelliteFrame(in: canvas) == f.scene.layout.satelliteFrame(beside: f.scene.layout.compact(.medium), in: canvas))
+    f.viewModel.send(.timerElapsed(.compactIdle))
+    #expect(f.scene.phase == .idle && f.scene.satellite == "probe.two")
+    #expect(f.viewModel.satelliteFrame(in: canvas) == f.scene.layout.satelliteFrame(beside: f.scene.layout.closed, in: canvas))
+    let g = Fixture()
+    g.viewModel.setLineup(Lineup(primary: "probe.one", satellite: "probe.two"))
+    g.viewModel.send(.band(.courtesy))
+    #expect(g.scene.satellite == nil && g.viewModel.satelliteFrame(in: canvas) == nil)
+}

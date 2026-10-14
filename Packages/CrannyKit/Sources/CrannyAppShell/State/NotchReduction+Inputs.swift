@@ -23,22 +23,39 @@ nonisolated extension NotchReduction {
             fx.append(.haptic(.alignment))
             close()
         case (.closed, .up, .satellite):
-            guard config.swipeToDismiss, compact, let satellite = config.satellite else { return }
+            guard config.swipeToDismiss, NotchMachine.satelliteIsVisible(s, config: config),
+                  let satellite = config.satellite else { return }
             fx += [.haptic(.alignment), .dismissActivity(satellite)]
-        case (.closed, .up, .shape), (.peek, .up, .shape):
-            if (compact || s.isPeeking), config.swipeToDismiss, let primary = config.primary {
-                fx += [.haptic(.alignment), .dismissActivity(primary)]
+        case (.closed, .up, .shape), (.peek, .up, _):
+            if config.swipeToDismiss, let id = swipedActivity(target, compact: compact) {
+                fx += [.haptic(.alignment), .dismissActivity(id)]
                 if s.isPeeking { close() }
             } else if s.isClosed, config.hasHandle, config.primary == nil, !s.handleHidden {
                 fx.append(.haptic(.alignment))
                 s.handleHidden = true                                            // until the next activity
             }
-        case (.closed, .left, .shape), (.closed, .right, .shape), (.peek, .left, .shape), (.peek, .right, .shape):
-            guard config.trackSwipe, compact || s.isPeeking, let primary = config.primary else { return }
+        case (.closed, .left, .shape), (.closed, .right, .shape), (.peek, .left, _), (.peek, .right, _):
+            guard config.trackSwipe, let id = swipedActivity(target, compact: compact) else { return }
             let gesture: ActivityGesture = direction == .left ? .swipeLeft : .swipeRight
-            fx += [.haptic(.alignment), .activityGesture(primary, gesture), .emit(.activityGesture(primary, gesture))]
+            fx += [.haptic(.alignment), .activityGesture(id, gesture), .emit(.activityGesture(id, gesture))]
         default:
             break
+        }
+    }
+
+    /// The activity a swipe acts on (DESIGN.md §4.4: "the peek row", "dismiss this activity"): the peek row under
+    /// the pointer, else the activity an auto-peek shows (it may be the satellite or an overflow activity), else the
+    /// primary in the compact wings or in a hover peek's band row.
+    func swipedActivity(_ target: SwipeTarget, compact: Bool) -> ActivityID? {
+        switch s.surface {
+        case .peek(let peek):
+            if case .row(let id) = target { return id }
+            if case .auto(let id, _) = peek { return id }
+            return config.primary
+        case .closed:
+            return compact && target == .shape ? config.primary : nil
+        case .open:
+            return nil
         }
     }
 

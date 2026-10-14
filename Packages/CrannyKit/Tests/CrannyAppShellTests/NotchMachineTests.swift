@@ -257,6 +257,20 @@ private func phase(_ s: NotchMachineState, _ c: NotchMachineConfig = idle) -> No
     #expect(afterDismiss.isClosed && peekFx.contains(.dismissActivity("test.primary")))
 }
 
+/// A peek's gestures act on what it shows (DESIGN.md §4.4): an auto-peek's activity (here not the primary), or
+/// the hover peek's row under the fingers; the band row of a hover peek is the primary.
+@Test func swipesOnAPeekActOnThePeekedActivity() {
+    let (auto, _) = run([.autoPeek("test.other", until: 2.6)], config: compact)
+    let (_, track) = run([.swipe(.left, target: .shape)], from: auto, config: compact)
+    #expect(track == [.haptic(.alignment), .activityGesture("test.other", .swipeLeft), .emit(.activityGesture("test.other", .swipeLeft))])
+    let (dismissed, up) = run([.swipe(.up, target: .shape)], from: auto, config: compact)
+    #expect(up.contains(.dismissActivity("test.other")) && !up.contains(.dismissActivity("test.primary")) && dismissed.isClosed)
+    let (hover, _) = run([.pointerEntered, .dwellElapsed(shouldOpen: true)], config: compact)
+    #expect(run([.swipe(.up, target: .row("test.third"))], from: hover, config: compact).1.contains(.dismissActivity("test.third")))
+    #expect(run([.swipe(.right, target: .row("test.third"))], from: hover, config: compact).1.contains(.activityGesture("test.third", .swipeRight)))
+    #expect(run([.swipe(.up, target: .shape)], from: hover, config: compact).1.contains(.dismissActivity("test.primary")))
+}
+
 @Test func swipeSettingsGateEveryGesture() {
     var off = compact
     off.swipeOpenClose = false; off.swipeToDismiss = false; off.trackSwipe = false
@@ -485,6 +499,26 @@ private let pdf: [UTType] = [.pdf]
     off.menuBarCourtesy = false
     #expect(!run([.band(.courtesy)], config: off).0.wingsRetracted)
     #expect(!run([.band(.courtesy)]).0.wingsRetracted)                         // nothing to retract
+}
+
+/// §4.7, DESIGN.md §9.2: the compact inactivity timeout collapses the wings but the satellite stays (and can be
+/// swiped away); it goes with the wings for the menu bar, while hidden and while open.
+@Test func theSatelliteStaysAfterTheCompactTimeout() {
+    var c = compact
+    c.satellite = "test.satellite"
+    c.compactInactivityTimeout = 20
+    #expect(NotchMachine.satelliteIsVisible(NotchMachineState(), config: c))
+    let (armed, _) = run([.configChanged], config: c)
+    let (collapsed, _) = run([.timerElapsed(.compactIdle)], from: armed, config: c)
+    #expect(phase(collapsed, c) == .idle && NotchMachine.satelliteIsVisible(collapsed, config: c))
+    #expect(run([.swipe(.up, target: .satellite)], from: collapsed, config: c).1.contains(.dismissActivity("test.satellite")))
+    let (retracted, _) = run([.band(.courtesy)], config: c)
+    #expect(!NotchMachine.satelliteIsVisible(retracted, config: c))
+    #expect(!NotchMachine.satelliteIsVisible(opened(c), config: c))
+    var locked = NotchMachineState()
+    locked.environment.isLocked = true
+    #expect(!NotchMachine.satelliteIsVisible(locked, config: c))
+    #expect(!NotchMachine.satelliteIsVisible(NotchMachineState(), config: compact))     // no second activity
 }
 
 @Test func calibrationFreezesTheClosedShapeInTheBreath() {

@@ -133,6 +133,13 @@ import Foundation
         return state.blocksInput ? nil : scene.geometry
     }
 
+    /// The satellite bubble in canvas coordinates (top-left origin) while it shows, beside the shape as drawn
+    /// (the compact wings, or the closed notch once the inactivity timeout collapsed them).
+    func satelliteFrame(in canvas: CGRect) -> CGRect? {
+        guard scene.satellite != nil, state.isClosed, state.hidden == nil else { return nil }
+        return scene.layout.satelliteFrame(beside: scene.geometry, in: canvas)
+    }
+
     /// The compact wings for menu-bar courtesy (also while retracted): nil without a primary.
     var courtesyGeometry: NotchGeometry? {
         guard lineup.primary != nil, state.isClosed, !state.blocksInput else { return nil }
@@ -239,7 +246,8 @@ import Foundation
         let phase = NotchMachine.phase(state, config: config)
         if scene.phase != phase { scene.phase = phase }
         if scene.primary != lineup.primary { scene.primary = lineup.primary }
-        if scene.satellite != lineup.satellite { scene.satellite = lineup.satellite }
+        let satellite = NotchMachine.satelliteIsVisible(state, config: config) ? lineup.satellite : nil
+        if scene.satellite != satellite { scene.satellite = satellite }
         if scene.primarySlot != lineup.primarySlot { scene.primarySlot = lineup.primarySlot }
         let rows: [ActivityID]
         switch state.surface {

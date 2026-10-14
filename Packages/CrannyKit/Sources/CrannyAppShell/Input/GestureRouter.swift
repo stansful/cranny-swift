@@ -2,6 +2,7 @@
 // Every scroll event reaches `NotchPanel.sendEvent` first, even while the panel is not key (R1 §6). Closed, compact
 // and peek: the shell's own `SwipeTracker(axis: .any)` drives open (down), dismiss (up; over the satellite it
 // dismisses the satellite) and track swipes (left/right), with live rubber-banding in `scene.gestureTranslation`.
+// Over a peek, the gesture acts on the row under the fingers (else on what the peek shows, §4.4).
 // Open: a scroll zone under the pointer takes the event; else a vertical swipe up over the header row closes;
 // else SwiftUI gets it (`ScrollView`s in widgets). Phase-less wheel events never form gestures.
 import AppKit
@@ -43,7 +44,14 @@ import Foundation
 
     private func shapeSwipe(_ sample: ScrollSample, at point: CGPoint, canvas: CGRect) -> Bool {
         if sample.phase.contains(.began) || sample.phase.contains(.mayBegin) {
-            target = satelliteFrame(in: canvas)?.insetBy(dx: -4, dy: -4).contains(point) == true ? .satellite : .shape
+            if viewModel.satelliteFrame(in: canvas)?.insetBy(dx: -4, dy: -4).contains(point) == true {
+                target = .satellite
+            } else if scene.phase == .peek, let id = Self.peekRow(at: point, layout: scene.layout, geometry: scene.geometry,
+                                                                   rows: scene.peekRows) {
+                target = .row(id)                                                // the gesture acts on that row
+            } else {
+                target = .shape
+            }
         }
         let settings = registry.services.settings
         tracker.sensitivity = CGFloat(settings[CoreSettings.gestureSensitivity])
@@ -68,7 +76,8 @@ import Foundation
         let lineup = viewModel.lineup
         switch axis {
         case .horizontal:
-            guard settings[CoreSettings.trackSwipe], lineup.primary != nil, target == .shape else { return .zero }
+            guard settings[CoreSettings.trackSwipe], target != .satellite, lineup.primary != nil || !scene.peekRows.isEmpty
+            else { return .zero }
             return CGSize(width: CrannyMotion.rubberBand(translation, limit: GestureSpec.horizontalTravel), height: 0)
         case .vertical:
             let down = translation > 0
@@ -80,10 +89,13 @@ import Foundation
         }
     }
 
-    /// The satellite bubble in canvas coordinates, while compact shows one.
-    private func satelliteFrame(in canvas: CGRect) -> CGRect? {
-        guard scene.phase == .compact, scene.satellite != nil else { return nil }
-        return scene.layout.satelliteFrame(beside: scene.layout.compact(scene.primarySlot), in: canvas)
+    /// The peek row under `point` (canvas, top-left origin): below the band row, one `NotchLayout.peekRow` per
+    /// activity (DESIGN.md §9.3). Nil over the band row, the bottom inset or outside the rows.
+    static func peekRow(at point: CGPoint, layout: NotchLayout, geometry: NotchGeometry, rows: [ActivityID]) -> ActivityID? {
+        let top = geometry.topInset + layout.rowHeight
+        guard point.y >= top else { return nil }
+        let index = Int((point.y - top) / NotchLayout.peekRow)
+        return rows.indices.contains(index) ? rows[index] : nil
     }
 
     // MARK: Open: swipe up over the header row closes

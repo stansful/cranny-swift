@@ -256,8 +256,7 @@ import SwiftUI
     // MARK: Hit area (canvas: top-left origin; root view: bottom-left)
 
     private func satelliteInCanvas() -> CGRect? {
-        guard scene.phase == .compact, scene.satellite != nil else { return nil }
-        return scene.layout.satelliteFrame(beside: scene.layout.compact(scene.primarySlot), in: CGRect(origin: .zero, size: root.bounds.size))
+        viewModel.satelliteFrame(in: CGRect(origin: .zero, size: root.bounds.size))
     }
 
     /// The enlarged drop zone while a file drag is in progress: the drag zone clipped to the canvas. Only where a drop
