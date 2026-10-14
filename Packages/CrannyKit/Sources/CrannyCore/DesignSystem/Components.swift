@@ -39,14 +39,13 @@ public struct NotchSurface<Content: View>: View {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .clipShape(shape)
-            if openness > 0 || theme.increaseContrast {
-                // HIG key line: separates the shape from dark windows. Never along the screen
-                // edge or beside the menu bar: masked to start below the band.
-                shape.stroke((keylineTint ?? .white).opacity(theme.increaseContrast ? p.spec.keyline : p.spec.keyline * openness),
-                             lineWidth: StrokeWidth.keyline)
-                    .mask(bandMask(fadeTo: 1))
-                    .allowsHitTesting(false)
-            }
+            // HIG key line: separates the shape from dark windows. Never along the screen
+            // edge or beside the menu bar: masked to start below the band. Always present (alpha 0
+            // while closed), so it morphs with the shape instead of appearing at the final size.
+            shape.stroke((keylineTint ?? .white).opacity(theme.increaseContrast ? p.spec.keyline : p.spec.keyline * openness),
+                         lineWidth: StrokeWidth.keyline)
+                .mask(bandMask(fadeTo: 1))
+                .allowsHitTesting(false)
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text(verbatim: "Cranny"))   // a name, not a key (a key would be looked up in Bundle.main)

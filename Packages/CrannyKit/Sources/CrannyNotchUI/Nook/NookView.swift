@@ -1,79 +1,160 @@
-// CrannyNotchUI/Nook/NookView.swift — the open panel: the light layer, the header in the band and the page
-// (DESIGN.md §6.1–§6.3). WP0 skeleton: grid pages from `CoreSettings.pages`, module pages from the registry,
-// placeholder cards for widgets whose module is not built yet. WP12 adds palette, edit mode, focus, catch.
+// CrannyNotchUI/Nook/NookView.swift — the open panel (DESIGN.md §6.1): the header in the band, a 6-pt gap,
+// then the grid area — a grid page, a module page (the Tray), the ⌘K palette, the layout editor, Notes focus or
+// the drag catch zones — inside the panel padding. Content is laid out at the FINAL open size and revealed by
+// the clip (no reflow during the morph); the header enters first (`contentIn`), then the widgets radiate out
+// from the camera — once per open (`notchEntrance`). The light layer behind it is drawn by the canvas.
 import CrannyCore
-import CrannyEffects
 import Foundation
 import SwiftUI
 
 struct NookView: View {
     @Environment(\.cranny) private var theme
+    @Environment(\.notchContext) private var context
+    /// Direction of the last tab change, set one update BEFORE the page changes so the leaving page and the
+    /// arriving page slide the same way (a removed view keeps the transition of its last update).
+    @State private var forward = true
+    /// The panel's entrance: true until its first content has appeared (`notchEntrance`).
+    @State private var isEntering = true
     let model: NotchSceneModel
     let registry: ModuleRegistry
     let actions: NotchUIActions
 
     var body: some View {
-        let layout = model.layout
-        let shape = finalShape
+        let shape = NookView.finalShape(model)
         let grid = theme.grid
-        ZStack(alignment: .top) {
-            if theme.effectiveAmbience != .off {
-                AuroraField(palette: model.ambient, level: theme.effectiveAmbience,
-                            energy: registry.services.nowPlaying?.audioEnergy ?? 0,
-                            budget: registry.services.environment.effectBudget(
-                                isOpen: model.phase == .open, isOnScreen: true,
-                                reduceMotion: theme.reduceMotion || theme.motion == .instant))
-                    .frame(width: shape.bodyWidth, height: shape.height)
-                    .transition(.opacity.animation(theme.animation(.ambientIn)))
-            }
-            VStack(spacing: grid.headerGap) {
-                NookHeader(model: model, registry: registry, actions: actions)
-                    .frame(height: layout.headerHeight)
-                page
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            }
-            .padding(.horizontal, grid.padding)
-            .padding(.bottom, grid.padding)
-            .frame(width: shape.bodyWidth, height: shape.height, alignment: .top)
+        VStack(spacing: grid.headerGap) {
+            NookHeader(model: model, registry: registry, actions: actions, select: select, perform: perform)
+                .frame(height: model.layout.headerHeight)
+                .staggeredReveal(delay: 0)
+            pageArea
+                .frame(width: shape.bodyWidth - 2 * grid.padding, height: NookView.gridAreaHeight(model, grid: grid))
+                .background { if needsScrim { scrim.transition(.opacity.animation(theme.animation(.contentSwap))) } }
         }
+        .padding(.horizontal, grid.padding)
+        .padding(.bottom, grid.padding)
+        .environment(\.notchEntrance, isEntering)
         .frame(width: shape.bodyWidth, height: shape.height, alignment: .top)
         .padding(.top, shape.topInset)
         .foregroundStyle(theme.palette.label)
+        .background { NookHiddenShortcuts(perform: perform) }
+        .lifecycleReport("nook")
+        .onAppear {
+            AccessibilityNotification.LayoutChanged().post()                // VoiceOver lands in the opened panel
+            // The header and the widgets started their entrance in this update; what appears later doesn't stagger.
+            Task { @MainActor in isEntering = false }
+            if let qa = NotchUIQAHooks.mode, !NotchUIQAHooks.didApplyMode, !context.isPreview {   // DEBUG-only visual QA
+                NotchUIQAHooks.didApplyMode = true
+                Task { @MainActor in actions.setMode(qa) }
+            }
+        }
     }
 
-    /// Content is laid out at the FINAL open size and revealed by the clip (no reflow during the morph).
-    private var finalShape: NotchGeometry {
+    // MARK: Geometry
+
+    /// The open shape at rest (Notes focus: all columns × 3 rows).
+    static func finalShape(_ model: NotchSceneModel) -> NotchGeometry {
         if case .focus? = model.open?.mode { return model.layout.open(columns: model.layout.maxColumns, rows: 3) }
         return model.layout.open(columns: model.openColumns)
     }
 
+    /// The grid area: 2 rows (3 in Notes focus).
+    static func gridAreaHeight(_ model: NotchSceneModel, grid: NookGrid) -> CGFloat {
+        var g = grid
+        if case .focus? = model.open?.mode { g.rows = 3 }
+        return g.height
+    }
+
+    // MARK: Pages
+
+    private var mode: NookMode { model.open?.mode ?? .grid }
+    private var pageID: PageID { model.open?.page ?? .nook }
+    private var gridPage: NookPage? { registry.services.settings[CoreSettings.pages].first { $0.id == pageID } }
+    private var tabs: [HeaderTab] {
+        HeaderTabItems.make(pages: registry.services.settings[CoreSettings.pages], modulePages: registry.pages)
+    }
+    private var pageIndex: Int { tabs.firstIndex { $0.id == pageID } ?? 0 }
+
+    @ViewBuilder private var pageArea: some View {
+        let swap = AnyTransition.opacity.animation(theme.animation(.contentSwap))
+        switch mode {
+        case .palette:
+            CommandPaletteView(registry: registry, height: NookView.gridAreaHeight(model, grid: theme.grid),
+                               setMode: actions.setMode)
+                .transition(swap)
+        case .editLayout where gridPage != nil:
+            if let gridPage {
+                EditLayoutView(page: gridPage, model: model, registry: registry, actions: actions)
+                    .transition(swap)
+            }
+        case .focus(let widget):
+            FocusedWidgetPage(widget: widget, model: model, registry: registry)
+        case .catchFiles(let types):
+            CatchHost(types: types, registry: registry)
+                .transition(swap)
+        default:
+            page
+                .id(pageID)
+                .transition(.crannyTab(forward: forward, reduceMotion: theme.reduceMotion)
+                    .animation(theme.animation(.tab)))
+        }
+    }
+
     @ViewBuilder private var page: some View {
-        let pageID = model.open?.page ?? .nook
-        let pages = registry.services.settings[CoreSettings.pages]
-        if let gridPage = pages.first(where: { $0.id == pageID }) {
-            GridPage(page: gridPage, model: model, registry: registry)
+        if let gridPage {
+            WidgetGridPage(page: gridPage, model: model, registry: registry, actions: actions)
         } else if let modulePage = registry.pages.first(where: { $0.id == pageID }) {
-            modulePage.makeView(WidgetContext(cells: model.openColumns, contentSize: CGSize(
-                width: theme.grid.width(cells: model.openColumns), height: theme.grid.height),
-                isPreview: model.context.isPreview, redactsPersonalData: model.context.redactsPersonalData))
+            modulePage.makeView(WidgetContext(
+                cells: model.openColumns, rows: theme.grid.rows,
+                contentSize: CGSize(width: theme.grid.width(cells: model.openColumns), height: theme.grid.height),
+                isPreview: context.isPreview, redactsPersonalData: context.redactsPersonalData))
+            .staggeredReveal(delay: 0)
         } else {
             PlaceholderPage(symbol: pageID == .tray ? "tray.full.fill" : "square.grid.2x2.fill", columns: model.openColumns)
         }
     }
-}
 
-/// A row of cards (2 rows tall), centred under the camera.
-private struct GridPage: View {
-    @Environment(\.cranny) private var theme
-    let page: NookPage
-    let model: NotchSceneModel
-    let registry: ModuleRegistry
+    /// Light never sits behind text without a card or a scrim (DESIGN.md §5): the flat style (§6.3), the palette
+    /// and the catch zones draw text straight on the grid area, so it gets a scrim while the light is on.
+    private var needsScrim: Bool {
+        guard theme.effectiveAmbience != .off else { return false }
+        switch mode {
+        case .palette, .catchFiles: return true
+        default: return theme.widgetStyle == .flat
+        }
+    }
 
-    var body: some View {
-        HStack(spacing: theme.grid.gutter) {
-            ForEach(page.items, id: \.widget) { item in
-                WidgetCard(item: item, registry: registry, context: model.context)
+    private var scrim: some View {
+        RoundedRectangle(cornerRadius: theme.grid.cardRadius, style: .continuous).fill(theme.palette.scrim)
+    }
+
+    // MARK: Commands (keys and header buttons)
+
+    /// Tabs, ⌘1–⌘5 and ⌃Tab: set the slide direction now, change the page on the next turn of the run loop.
+    private func select(_ page: PageID) {
+        guard page != pageID else { return }
+        forward = (tabs.firstIndex { $0.id == page } ?? 0) >= pageIndex
+        Task { @MainActor in actions.selectPage(page) }
+    }
+
+    private func perform(_ command: NookCommand) {
+        switch command {
+        case .togglePalette:
+            actions.setMode(mode == .palette ? .grid : .palette)
+        case .togglePin:
+            actions.togglePin()
+        case .toggleEditLayout:
+            guard gridPage != nil else { return }
+            actions.setMode(mode == .editLayout ? .grid : .editLayout)
+        case .openSettings:
+            actions.openSettings()
+        case .selectPage(let index):
+            if tabs.indices.contains(index) { select(tabs[index].id) }
+        case .nextPage, .previousPage:
+            if let next = NookKeyMap.page(after: pageID, in: tabs.map(\.id), forward: command == .nextPage) {
+                select(next)
             }
+        case .escape:
+            if let back = NookKeyMap.escape(from: mode) { actions.setMode(back) } else { actions.close() }
         }
     }
 }
@@ -95,9 +176,7 @@ private struct PlaceholderPage: View {
 
 #Preview("Open panel · Home") {
     let (model, registry) = previewScene(.open)
-    let shape = model.layout.open(columns: model.openColumns)
-    NookView(model: model, registry: registry, actions: NotchUIActions())
-        .frame(width: shape.bodyWidth, height: shape.height + shape.topInset)
-        .background(.black)
-        .crannyThemeRoot(CrannyTheme())
+    NotchCanvasView(model: model, registry: registry)
+        .frame(width: model.layout.canvasSize.width, height: model.layout.canvasSize.height)
+        .background(Color(white: 0.25))
 }
