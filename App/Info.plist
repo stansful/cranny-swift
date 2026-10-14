@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Merged with the keys Xcode generates (GENERATE_INFOPLIST_FILE = YES). Localized in InfoPlist.xcstrings. -->
+	<key>LSUIElement</key>
+	<true/>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.utilities</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright © 2026 Cranny contributors. MIT License.</string>
+	<!-- Without this, SwiftPM resource bundles fall back to English (R4 §3.4). -->
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>ru</string>
+	</array>
+	<!-- "owner/repo" for the GitHub Releases update check. Empty = update check disabled. -->
+	<key>CrannyGitHubRepository</key>
+	<string></string>
+	<!-- Privacy usage descriptions. -->
+	<key>NSAppleEventsUsageDescription</key>
+	<string>Cranny controls Music and Spotify to show and change what is playing when the system media source is unavailable.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Cranny shows your upcoming events and meeting links in the notch. It never edits or uploads them.</string>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Cranny shows your upcoming events and meeting links in the notch. It never edits or uploads them.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Cranny shows a camera preview in the Mirror widget. Video is never recorded.</string>
+	<key>NSCameraUseContinuityCameraDeviceType</key>
+	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Cranny shows when Bluetooth devices such as headphones connect, and their battery level.</string>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>Cranny listens to system audio output to animate the music visualizer. Audio is never recorded or stored.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Cranny analyzes audio levels to animate the music visualizer. Audio is never recorded or stored.</string>
+	<key>NSDesktopFolderUsageDescription</key>
+	<string>Cranny keeps the files you drop on the notch in its Tray.</string>
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>Cranny keeps the files you drop on the notch in its Tray.</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>Cranny keeps the files you drop on the notch in its Tray.</string>
+	<key>NSRemovableVolumesUsageDescription</key>
+	<string>Cranny keeps the files you drop on the notch in its Tray.</string>
+	<key>NSNetworkVolumesUsageDescription</key>
+	<string>Cranny keeps the files you drop on the notch in its Tray.</string>
+</dict>
+</plist>

@@ -1,0 +1,14 @@
+# Build outputs
+/build/
+/dist/
+DerivedData/
+.derived/
+# SwiftPM (one scratch dir per module: .build-<target>)
+.build/
+.build-*/
+.swiftpm/
+# Xcode per-user state
+xcuserdata/
+*.xcuserstate
+# macOS
+.DS_Store
