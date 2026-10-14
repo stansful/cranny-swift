@@ -1,0 +1,2928 @@
+# Cranny Design System
+
+> **Hardware-true, calm when closed, alive when open.** One black shape that grows out of the camera housing, colour that always means something, light as an optional layer, and every action reachable without hover.
+
+| | |
+|---|---|
+| Status | **v1.0, adopted** (2026-10-14); aligned with ARCHITECTURE.md by the review of the same day (its "Changelog of review fixes"). This file is the single source of truth for every pixel, colour and animation in Cranny. |
+| Applies to | The notch surfaces (closed, compact, peek, HUD, open Nook, Tray), Settings, onboarding and the tutorial, the menu bar extra, the app icon. |
+| Platform | Deployment target macOS 14.0. Newer APIs (`MeshGradient`, `TextRenderer` 15+; Liquid Glass 26+) only behind `#available`, always with a designed fallback. |
+| Code | Every Swift block in this file is copied verbatim from a scratch package that builds with **zero errors and zero warnings** under Swift 6 / macOS 14 / the four CrannyKit upcoming features, with **both** default isolations (nonisolated and `MainActor`). See Appendix C. |
+| Effects | Pure SwiftUI (MeshGradient, Canvas, TimelineView, gradients, shadows). Nothing here needs offline Metal compilation, videos, GIFs or Lottie. |
+| Clean room | Original work for Cranny (MIT). No NotchNook, boring.notch (GPL), Alcove or Atoll code, assets, names or UI text. Competitors were studied only through public reviews, product pages and issue-tracker titles. |
+
+**Contents.** 0 Decision record · 1 Principles · 2 Tokens · 3 Geometry & the NotchShape · 4 Motion · 5 The light layer · 6 The open Nook · 7 Widgets · 8 Tray & pipelines · 9 Live activities · 10 HUD · 11 Settings · 12 Onboarding & tutorial · 13 Menu bar extra · 14 Symbols, haptics, sound · 15 App icon · 16 Accessibility · 17 Copy & localisation · 18 What's better than NotchNook · Appendix A Components · Appendix B Ambient layer · Appendix C Verification.
+
+---
+
+## 0. Decision record
+
+Three directions were proposed: **A "Apple-native precision"**, **B "Expressive Ambient"** and **C "Calm power-user"**. Each was read in full and scored 1–10.
+
+### 0.1 Scores
+
+| Criterion | A · Native precision | B · Expressive Ambient | C · Calm power-user |
+|---|:-:|:-:|:-:|
+| Cohesion & craft | **9** | 7.5 | 8.5 |
+| Feasibility in SwiftUI (no offline Metal) | **9** | 7 | 8 |
+| Delight | 6.5 | **9.5** | 5.5 |
+| Accessibility | 9 | 8 | **9.5** |
+| Differentiation from NotchNook | 6.5 | **9** | 8 |
+| Information clarity | **9** | 7 | 8.5 |
+| **Total (/60)** | **49.0** | 48.0 | 48.0 |
+| Backbone suitability (craft and feasibility weighted ×1.5) | **58.0** | 55.25 | 56.25 |
+
+**A, Native precision (winner, backbone).**
+- Strongest system thinking: one shape, four numbers; closed equals the hardware cutout; concentric radii; HIG compact rules (symmetric slots, content snug against the camera); a hover-intent contract; measured contrast; an energy budget treated as a release gate. Every complaint it cites maps to a section.
+- Most feasible: every API was typechecked against the macOS 14 target, including a staged-morph option and a seam test for the ears.
+- Weaknesses: its delight lives in motion alone, and the "ambient light" setting is named but never specified. Splitting two activities across the leading and trailing slots breaks the rule that both slots describe one thing. It uses `video.fill`, which Apple restricts to FaceTime. The open bounce (0.20) and the activity drop (0.30) risk the "wobbly" complaint that tops competitor issue trackers. The keyline is drawn by rewriting path elements, which is fragile.
+
+**B, Expressive Ambient.**
+- The most distinctive identity: "light is information". It has per-activity colour, a contrast audit against the worst-case glow (it found that Vivid needs its own token set), an honest visualizer that never fakes beat accuracy, a real energy budget and a satellite with a liquid neck.
+- Weaknesses: its closed state draws 4-pt ears outside the hardware outline, a visible black flare on the menu bar that contradicts its own "1 pt inside" rule. Its underglow is a blurred *fill*, which would capture clicks (the window server catches any drawn pixel; R1 §4.1). The 64-pt cells make the default Nook 736 pt wide. Four dials (Ambience × Effect × Motion × Accent) plus eight delight moments create a large QA and energy matrix.
+
+**C, Calm power-user.**
+- The best keyboard model (global shortcut, ⌘K palette, hold-⌘ hints, type-to-capture, a VoiceOver rotor) and the best Settings UX: a live preview fed by *draft* settings, "Show on Notch", per-row reset, and Permissions and Keyboard panes. It also brings a never-two-HUDs rule, attention to SF Symbol restrictions and spring physics it actually measured.
+- Weaknesses: it under-delivers on delight. Its default shortcut ⌃⌥Space collides with macOS "Select next input source", which Russian-layout users (one of our two locales) press daily. Its semantic colours resolve through dynamic `NSColor` inside a forced-dark view, which is fragile. Its 66 % width cap covers more of the menu bar.
+
+### 0.2 What was grafted onto the backbone
+
+| Idea | From | Where |
+|---|---|---|
+| The optional **light layer**: aurora, motes, tide and halo; per-activity palettes; k-means palette extraction; underglow; progress rim; honest visualizer modes; capped delight moments | B | §5, App. B |
+| **Smoked** cards, a `lit` token set, and a contrast audit against the worst-case glow | B | §2.1 |
+| A **Motion** dial (Calm / Standard / Lively, plus C's Instant) and the rule "never overshoot when shrinking into the hardware" | B + C | §4 |
+| **Floating island** as the default on displays without a notch | B + C | §3.5 |
+| Menu-bar courtesy; no open while a mouse button is down; longer dwell in full screen | B | §4.6 |
+| Keyboard model, ⌘K command palette, hold-⌘ hints, type-to-capture, pages, keyboard-driven layout editing | C | §6, §16 |
+| Settings live preview with **Show on Notch** (C proposed draft settings; Cranny applies settings instantly and previews them live, with a 10-s Undo for Reset All — ARCHITECTURE D14); simulate chips (B); per-row reset, a dot on non-default values, Permissions and Keyboard panes, search | C + B | §11 |
+| Never two HUDs; a Carbon hot key that needs no Accessibility permission; awareness of symbol restrictions; spring physics measured, not guessed | C | §10, §14, §4.1 |
+| Ears **unioned** into one outline, so the keyline is a plain stroke | C | §3.3 |
+| Excluded apps; Demo mode that redacts calendar titles | C | §11 |
+
+### 0.3 Conflicts and how they were resolved
+
+| # | Topic | A | B | C | **Decision** (why) |
+|---|---|---|---|---|---|
+| 1 | Geometry bounce | open .20, activity .30 | open .14, close 0 | open .08, close 0 | **Standard: open .14 (0.5 % overshoot ≈ 2 pt), activity drop .24 (2.5 %), anything that shrinks 0.** The drop stays alive without the wobble users complain about most. Calm / Lively / Instant dial. |
+| 2 | Hover delay | 120 ms | 120 ms | 220 ms | **120 ms default** plus pass-through speed, ⌥ suppression, mouse-button check and 400 ms in full screen. Presets 0 / 120 / 220 / 450 ms. |
+| 3 | No-notch default | attached pill | floating pill | floating island | **Floating island** (a fake notch reads as fake on external displays). Attached and Off are options; the handle can be hidden until hover. |
+| 4 | Card fill | white 7 % | smoked | white 6 % | **Smoked, white 0.10 at 80 %** (#141414 over black, nearly the tone of A’s 7 % white). It dims light underneath instead of washing out. |
+| 5 | Text opacities | .68 / .50 | .68 / .52 | .70 / .55 | **.70 / .55**: tertiary 6.2:1 on cards and 5.45:1 over the worst Subtle glow. |
+| 6 | Grid | 56/8/12, r 32 | 64/8/12, r 30 | 56/8/10, r 28 | **56 / 8 / 12, panel 32, card 20, inner 8.** The panel radius changes per density so cards stay at 20 (C's idea). |
+| 7 | Slot widths | 40/52/68/88 | 48/72/104 | 40/62/96 | **40 / 52 / 68 / 92.** Wide gets +4 pt so the HUD fits a glyph and a 64-pt bar. |
+| 8 | Two activities | split slots | satellite | satellite | **Satellite** (the Mac analogue of iOS "minimal"). The liquid neck plays only in Standard and Lively. |
+| 9 | Accent | System | per activity | System + swatches | **Automatic** (album art while music plays, else system accent) · System · 8 swatches · Monochrome. Semantic colours never change. |
+| 10 | Ambient default | off | Subtle | off | **Subtle**, only while the Nook is open, ≤ 30 fps, automatically off in Low Power Mode and with Reduce Transparency. |
+| 11 | Global shortcut | ⌃⌥N | ⌥⌘N | ⌃⌥Space | **⌃⌥N**. ⌥⌘N is Finder's New Smart Folder and ⌃⌥Space switches input sources. Registered via Carbon `RegisterEventHotKey`, so no Accessibility permission. |
+| 12 | Uppercase labels | yes | yes | no | Section labels use **sentence case** (`eyebrow`). UPPERCASE (`micro`) is limited to tokens of 4 characters or fewer ("TUE", "LIVE"); uppercase Cyrillic runs long. |
+| 13 | Liquid Glass | floating island by default | settings only | controls | Notch surfaces are **opaque black by default**. "Glass island" (26+, no-notch only, `lit` tokens, audited) and "Translucent background" are opt-in. The attached notch never uses glass. |
+| 14 | Keyline | rewritten open path | gradient mask | rim × openness | **Stroke of the unioned outline × openness, masked to start below the band.** Always on under Increase Contrast; tinted with the album accent. |
+| 15 | Join glyph | `video.fill` | `video.fill` | `person.2.wave.2.fill` | **`person.2.wave.2.fill` plus a "Join" label.** `video*` symbols may only refer to FaceTime (`symbol_restrictions.strings`, verified). |
+| 16 | Click-through | toggle `ignoresMouseEvents` | toggle | toggle | **Never assign `ignoresMouseEvents`.** Per-pixel pass-through is verified (R1). Light outside the shape is a coloured `.shadow`, which passes clicks through. |
+| 17 | Nook max width | 55 % / 880 | screen − 96 | 66 % | **min(55 % of the screen, 880 pt)**, so menu-bar extras stay reachable. |
+| 18 | Visualizer | 5 bars | 5 bars + modes | 4 bars | **5 bars**; Live (opt-in permission) / **Ambient** (default) / Static / Off. |
+| 19 | Timer colour | orange | ember | accent | **`warning` orange** in every form (the iOS convention), so a timer is recognisable at a glance. |
+| 20 | HUD height | band | band + 16 chin | band | **Band only.** The HUD never covers content. |
+
+---
+
+## 1. Principles
+
+Each principle comes with a test that a build either passes or fails.
+
+1. **Hardware-true.** Closed *is* the camera housing: drawn 0.5 pt inside it, never decorated, never shadowed. Every expansion grows out of the hardware and lands back on it exactly.
+   *Test:* at rest, no Cranny pixel is visible outside the cutout; close overshoot is 0.
+2. **One continuous object.** There is one shape, six animatable numbers and no window resizing. Elements that persist across states *move* (matched geometry) rather than vanish and reappear. Content lays out at its final size and is revealed by the clip.
+   *Test:* no frame pops, and no text reflows during a morph.
+3. **Glanceable, then actionable.** Compact shows one datum per side. Peek shows one row per activity with at most three controls. The Nook holds the rest. You go deeper on purpose: hover, click, keyboard or swipe.
+   *Test:* every compact state can be read in under 0.5 s; no compact slot holds free text.
+4. **Colour is information; light is optional.** Surfaces are black, text is white at fixed opacities, there is one accent at a time, and semantic colours mean what they mean on iOS. Ambient light comes only from something real (the album, the event, the timer) and never sits behind text without a card or a scrim.
+   *Test:* every text token meets ≥ 4.5:1 in the audit (§2.1), including over worst-case light.
+5. **Calm when closed, alive when open.** Nothing loops in your peripheral vision except a visualizer while audio actually plays. Light and delight live inside the Nook you opened. There are no sounds by default.
+   *Test:* Energy Impact < 1.0 while idle; zero timers while closed.
+6. **Intent over proximity.** Cranny opens on dwell, click, shortcut or swipe, never on a pointer passing through. It closes after you leave plus a grace period, never while you type, drag, pin or use a menu.
+   *Test:* moving to a display above, or reaching for a menu, never opens it.
+7. **Nothing is hover-only.** Every action has a click, keyboard and VoiceOver path. Holding ⌘ shows the shortcuts in place.
+   *Test:* every feature passes a keyboard-only run and a VoiceOver-only run.
+8. **Native, on every supported OS.** Cranny uses system controls in Settings, SF Symbols and continuous corners, honours every accessibility display option live, and asks for permissions only when a feature needs them. On macOS 14 it must look intentional, not degraded.
+   *Test:* snapshot suites pass on 14, 15, 26 and 27.
+
+---
+
+## 2. Tokens
+
+### 2.0 Placement and rules
+
+- **Where:** `CrannyKit/Sources/CrannyCore/DesignSystem/`, in the files `Color.swift`, `Typography.swift`, `Layout.swift`, `Motion.swift`, `Notch.swift`, `Theme.swift` and `Components.swift`. Appendix B is split: `AmbientPalette` and `EffectBudget` live in `CrannyCore/DesignSystem/AmbientPalette.swift` (Media, the shell and Effects share them); `AuroraField` and every other effect live in `CrannyEffects`.
+- **Naming in UI text:** "Nook" is this document's internal name for the open panel and stays in code identifiers, but it never appears in UI copy (ARCHITECTURE D20): the panel is "Cranny" ("Open Cranny"), the grid page is **Home**, the Settings pane is **Layout & Widgets**.
+- **Isolation:** pure value types are declared `nonisolated`, so the files compile unchanged whether the module defaults to `nonisolated` or to `MainActor`.
+- **Rules:**
+  1. Feature modules never write literal colours, sizes, radii or animations.
+  2. They read `@Environment(\.cranny)` only, and never raw accessibility flags.
+  3. Every Cranny surface applies `.crannyThemeRoot(theme)` exactly once at its root: the notch panel, the Settings preview stage and the onboarding stage.
+  4. The hosting `NSPanel` sets `appearance = NSAppearance(named: .darkAqua)`, so AppKit-backed controls inside it resolve to dark.
+- **Two worlds:** the notch is always dark. Settings, onboarding and menus are ordinary windows and use **system** colours and text styles, so they follow Light/Dark.
+
+### 2.1 Colour
+
+**Palette variants.** The theme root picks one automatically:
+- `standard` when Ambient light is Off or Subtle;
+- `lit` with Vivid light or the glass island;
+- `highContrast` under Increase Contrast;
+- `opaque` under Reduce Transparency.
+
+| Token | standard | lit | highContrast | opaque | Use |
+|---|---|---|---|---|---|
+| `surface` | #000 | #000 | #000 | #000 | The shape. Equal to the hardware notch; never tinted. |
+| `card` | white .10 @ 80 % | white .10 @ 88 % | white .14 opaque | white .09 opaque | Widget card ("smoked") |
+| `cardHover` | white .15 @ 80 % | white .15 @ 88 % | white .20 | white .13 | Card under the pointer |
+| `control` | white 11 % | 11 % | 20 % | 11 % | Buttons, chips, segmented track, scrubber and HUD track |
+| `controlHover` / `controlPressed` | 16 % / 22 % | 16 / 22 | 26 / 32 | 16 / 22 | Hover; pressed; selected segment or row |
+| `well` | white 6 % | 6 % | 12 % | 6 % | Inset text fields (search, palette) |
+| `scrim` | black 55 % | 62 % | 80 % | 100 % | Under text that sits directly on light |
+| `hairline` | white 10 % | 12 % | 34 % | 12 % | Card edge (1 px), flat-style dividers |
+| `stroke` | white 24 % | 26 % | 62 % | 26 % | Outlines, idle dashed drop zones |
+| `keyline` | white 14 % | 18 % | 45 % | 16 % | Rim of peek and open, × openness |
+| `label` | white 100 % | 100 % | 100 % | 100 % | Titles, values |
+| `secondaryLabel` | 70 % | 76 % | 86 % | 70 % | Artist, times, inactive tabs |
+| `tertiaryLabel` | 55 % | 62 % | 74 % | 55 % | Metadata, comments, past events |
+| `quaternaryLabel` | 32 % | 36 % | 50 % | 32 % | Placeholders and disabled text only |
+
+**Contrast audit.** WCAG 2.x, sRGB "over" compositing, computed by the harness. "Worst glow" assumes the brightest permitted light pixel (grey 0.92 at the level's alpha cap: Subtle 0.45, Vivid 0.80) directly under the card.
+
+| Text on → | black | card | card over worst glow | control on card |
+|---|:-:|:-:|:-:|:-:|
+| standard label / secondary / tertiary | 21.0 / 9.96 / 6.27 | 18.4 / 9.32 / 6.16 | 14.5 / 7.85 / **5.45** | 13.5 / 7.47 / 5.24 |
+| lit (Vivid) label / secondary / tertiary | 21.0 / 11.8 / 7.85 | 18.0 / 10.7 / 7.46 | 13.8 / 8.63 / **6.30** | 13.2 / 8.33 / 6.11 |
+| highContrast label / secondary / tertiary | 21.0 / 15.2 / 11.1 | 15.6 / 11.8 / 9.12 | (cards opaque) | 8.12 / 6.53 / 5.34 |
+| opaque label / secondary / tertiary | 21.0 / 9.96 / 6.27 | 17.9 / 9.18 / 6.11 | (no light) | 13.1 / 7.28 / 5.14 |
+
+Two cases where text sits on something other than a card:
+- **Flat widget style with Subtle light:** text on `scrim` over the worst glow measures 13.3 / 7.36 / **5.18** (label / secondary / tertiary).
+- **Glass island** (`lit` tokens) over a pure white wallpaper: 10.4 / 6.82 / **5.15**.
+
+`quaternaryLabel` measures 2.7–3.3 (5.3 under Increase Contrast) and may never carry information.
+
+**Semantic colours** (dark-appearance values, with accessible variants under Increase Contrast). They are used only for their meaning, and always together with a glyph or text cue (§16).
+
+| Token | Standard | Increase Contrast | On black / on card | Meaning |
+|---|---|---|:-:|---|
+| `success` | #30D158 | #30DB5B | 10.4 / 9.1 | Charging, Join, done, meeting in progress |
+| `warning` | #FF9F0A | #FFB340 | 10.2 / 8.9 | Timer (always), last minute, ≤ 20 % battery |
+| `danger` | #FF453A | #FF6961 | 6.2 / 5.4 | ≤ 10 % battery, failed pipeline, destructive actions, today's weekday |
+| `info` | #409CFF | #70B7FF | 7.4 / 6.5 | Links, AirDrop, Bluetooth |
+| `caution` | #FFD60A | #FFD426 | 14.9 / 13.0 | Low Power Mode, brightness (coloured HUD) |
+
+**Brand ramp "Afterglow"** (icon, onboarding, About, fallback light): mint #9EFFEB · lagoon #2ED3C6 · sky #54C7F2 · iris #8B6CFF · rose #FF4F8B · ember #FF7A45 · night #0B0A14 · graphite #1E2026.
+
+**Accent strategy**
+- **Sources** (Appearance ▸ Accent):
+  - **Automatic** (default): the album accent while media plays, otherwise the system accent.
+  - **System:** `controlAccentColor` resolved in Dark appearance; Graphite stays grey.
+  - **Swatch:** 8 curated colours, each ≥ 7.4:1 on cards.
+  - **Monochrome:** white only. This is the "disable colours" option.
+- **Guard:** the resolved accent is lifted until it reaches ≥ 4.5:1 on a card, or ≥ 7:1 under Increase Contrast. Measured examples: #0000FF → #7373FF (4.9), navy #1B2A6B → #5A79FF (4.9), deep red #720C14 → #F52535 (4.5), system blue #0A84FF → #2692FF (5.8; 7.5 under Increase Contrast).
+- **Track changes:** the accent cross-fades with `colorShift` (0.8 s).
+- **Where accent appears:** scrubber and progress fills, rings, the visualizer, checkboxes and toggles, the focus ring, an armed drop target, the selected-file ring, the code-mode toggle and the keyline tint.
+- **Where it never appears:** body text, card or panel fills, the default HUD, and anything that has a semantic meaning (Join is always green, the timer always orange).
+
+**Swatches** (on black / on card): blue #5CA8FF 8.5/7.4 · teal #4FD1C4 11.3/9.8 · green #66D487 11.3/9.9 · yellow #F5C452 12.9/11.3 · orange #FF9E5C 10.3/9.0 · pink #FF80B5 9.0/7.9 · purple #B89EFF 9.4/8.2 · graphite #C7C7CC 12.5/10.9.
+
+**Notes code-mode syntax** (on card): keyword #FF7AB8 7.6 · type #62D6FF 11.0 · string #FF9466 8.5 · number #E8C66C 11.1 · function #A6E37A 12.1 · link #6BB3FF 8.3. Comments use `tertiaryLabel` italic (6.2) and headings use `label` semibold.
+
+```swift
+// CrannyCore/DesignSystem/Color.swift
+// Colour tokens. The notch surfaces are ALWAYS dark (they extend the black hardware
+// notch). Settings, onboarding and menus are ordinary windows and use system colours.
+import SwiftUI
+import AppKit
+
+// MARK: - RGB: palette math (sRGB 0…1), animatable
+
+/// sRGB triple used for contrast math, accents and ambient palettes. It is
+/// `VectorArithmetic`, so palettes cross-fade inside Canvas/MeshGradient effects.
+public nonisolated struct RGB: Hashable, Sendable, VectorArithmetic {
+    public var r: Double, g: Double, b: Double
+
+    public init(_ r: Double, _ g: Double, _ b: Double) { self.r = r; self.g = g; self.b = b }
+    public init(white w: Double) { self.init(w, w, w) }
+    public init(hex: UInt32) {
+        self.init(Double((hex >> 16) & 0xFF) / 255, Double((hex >> 8) & 0xFF) / 255, Double(hex & 0xFF) / 255)
+    }
+
+    public var color: Color { color(1) }
+    public func color(_ opacity: Double) -> Color {
+        Color(.sRGB, red: Self.clamp(r), green: Self.clamp(g), blue: Self.clamp(b), opacity: opacity)
+    }
+    public var nsColor: NSColor {
+        NSColor(srgbRed: Self.clamp(r), green: Self.clamp(g), blue: Self.clamp(b), alpha: 1)
+    }
+    private static func clamp(_ v: Double) -> Double { min(max(v, 0), 1) }
+
+    // VectorArithmetic
+    public static var zero: RGB { RGB(0, 0, 0) }
+    public static func + (a: RGB, b: RGB) -> RGB { RGB(a.r + b.r, a.g + b.g, a.b + b.b) }
+    public static func - (a: RGB, b: RGB) -> RGB { RGB(a.r - b.r, a.g - b.g, a.b - b.b) }
+    public mutating func scale(by k: Double) { r *= k; g *= k; b *= k }
+    public var magnitudeSquared: Double { r * r + g * g + b * b }
+
+    // WCAG 2.x
+    public var luminance: Double {
+        func lin(_ c: Double) -> Double { c <= 0.04045 ? c / 12.92 : pow((c + 0.055) / 1.055, 2.4) }
+        return 0.2126 * lin(Self.clamp(r)) + 0.7152 * lin(Self.clamp(g)) + 0.0722 * lin(Self.clamp(b))
+    }
+    /// Contrast ratio 1…21.
+    public func contrast(with o: RGB) -> Double {
+        let a = luminance, b = o.luminance
+        return (max(a, b) + 0.05) / (min(a, b) + 0.05)
+    }
+    /// `self` drawn at `alpha` over `background` (sRGB "over"; matches how the tokens composite).
+    public func over(_ background: RGB, alpha: Double) -> RGB {
+        RGB(r * alpha + background.r * (1 - alpha), g * alpha + background.g * (1 - alpha), b * alpha + background.b * (1 - alpha))
+    }
+
+    public var hsb: (h: Double, s: Double, v: Double) {
+        let mx = max(r, g, b), mn = min(r, g, b), d = mx - mn
+        var h = 0.0
+        if d > 0 {
+            if mx == r { h = ((g - b) / d).truncatingRemainder(dividingBy: 6) }
+            else if mx == g { h = (b - r) / d + 2 }
+            else { h = (r - g) / d + 4 }
+            h /= 6
+            if h < 0 { h += 1 }
+        }
+        return (h, mx == 0 ? 0 : d / mx, mx)
+    }
+    public init(h: Double, s: Double, v: Double) {
+        let i = floor(h * 6), f = h * 6 - i
+        let p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s)
+        switch Int(i) % 6 {
+        case 0: self.init(v, t, p)
+        case 1: self.init(q, v, p)
+        case 2: self.init(p, v, t)
+        case 3: self.init(p, q, v)
+        case 4: self.init(t, p, v)
+        default: self.init(v, p, q)
+        }
+    }
+
+    /// Brighten, then desaturate, until the colour reaches `ratio` against `background`.
+    /// Used for every FOREGROUND mark derived from content (accent, calendar colour).
+    public func legible(on background: RGB = .black, ratio: Double = 4.5) -> RGB {
+        var (h, s, v) = hsb
+        s = min(s, 0.85); v = max(v, 0.72)
+        var out = RGB(h: h, s: s, v: v)
+        var guardrail = 0
+        while out.contrast(with: background) < ratio && guardrail < 40 {
+            if v < 1 { v = min(1, v + 0.04) } else { s = max(0, s - 0.05) }
+            out = RGB(h: h, s: s, v: v); guardrail += 1
+        }
+        return out
+    }
+    /// Label colour to place ON a filled accent (prominent button, Join capsule).
+    public var onColor: RGB { contrast(with: .black) >= contrast(with: .white) ? .black : .white }
+    /// Glows read as light: saturated and bright, never neon-white (ambient layer only).
+    public var luminous: RGB {
+        let (h, s, v) = hsb
+        return RGB(h: h, s: min(max(s, 0.45), 0.90), v: min(max(v, 0.75), Glow.maxBrightness))
+    }
+
+    public static let black = RGB(0, 0, 0)
+    public static let white = RGB(1, 1, 1)
+}
+
+// MARK: - Palette (surfaces, lines, text, semantic)
+
+/// One palette per contrast/transparency situation. Text is white at fixed opacities, so it
+/// composites identically on every surface. Values are audited in DESIGN.md §2.1.
+public nonisolated struct CrannyPalette: Equatable, Sendable {
+    public nonisolated enum Variant: String, CaseIterable, Sendable {
+        case standard       // default (ambience Off or Subtle)
+        case lit            // ambience Vivid, or the glass floating island: denser cards, lifted text
+        case highContrast   // System ▸ Accessibility ▸ Increase contrast
+        case opaque         // System ▸ Accessibility ▸ Reduce transparency
+    }
+
+    /// Raw numbers (white level / opacity) so the contrast audit and the colours share one source.
+    public nonisolated struct Spec: Equatable, Sendable {
+        public var cardWhite: Double, cardOpacity: Double, cardHoverWhite: Double
+        public var control: Double, controlHover: Double, controlPressed: Double, well: Double
+        public var scrim: Double, hairline: Double, stroke: Double, keyline: Double
+        public var label: Double, secondary: Double, tertiary: Double, quaternary: Double
+        /// Card composited over pure black (the colour text actually sits on in the worst-lit case).
+        public var cardOverBlack: RGB { RGB(white: cardWhite * cardOpacity) }
+    }
+
+    public let variant: Variant
+    public let spec: Spec
+
+    // Surfaces
+    public var surface: Color { .black }                                         // = hardware notch, never tinted
+    public var card: Color { Color(.sRGB, white: spec.cardWhite, opacity: spec.cardOpacity) }   // smoked widget card
+    public var cardHover: Color { Color(.sRGB, white: spec.cardHoverWhite, opacity: spec.cardOpacity) }
+    public var control: Color { white(spec.control) }                            // buttons, chips, tracks
+    public var controlHover: Color { white(spec.controlHover) }
+    public var controlPressed: Color { white(spec.controlPressed) }              // pressed + selected segment/row
+    public var well: Color { white(spec.well) }                                  // inset text fields
+    public var scrim: Color { Color(.sRGB, white: 0, opacity: spec.scrim) }      // under text placed directly on light
+    // Lines
+    public var hairline: Color { white(spec.hairline) }                          // card edge, flat-style dividers
+    public var stroke: Color { white(spec.stroke) }                              // outlines, idle dashed drop zones
+    public var keyline: Color { white(spec.keyline) }                            // rim of peek/open (× openness)
+    // Text & glyphs
+    public var label: Color { white(spec.label) }
+    public var secondaryLabel: Color { white(spec.secondary) }
+    public var tertiaryLabel: Color { white(spec.tertiary) }
+    public var quaternaryLabel: Color { white(spec.quaternary) }                 // placeholders / disabled only
+    // Semantic (dark-appearance values; accessible variants under Increase Contrast)
+    public var success: Color { SemanticColor.success.rgb(variant == .highContrast).color }
+    public var warning: Color { SemanticColor.warning.rgb(variant == .highContrast).color }
+    public var danger: Color { SemanticColor.danger.rgb(variant == .highContrast).color }
+    public var info: Color { SemanticColor.info.rgb(variant == .highContrast).color }
+    public var caution: Color { SemanticColor.caution.rgb(variant == .highContrast).color }
+
+    private func white(_ a: Double) -> Color { Color(.sRGB, white: 1, opacity: a) }
+
+    public static func make(_ v: Variant) -> CrannyPalette {
+        switch v {
+        case .standard:
+            return .init(variant: v, spec: .init(
+                cardWhite: 0.10, cardOpacity: 0.80, cardHoverWhite: 0.15,
+                control: 0.11, controlHover: 0.16, controlPressed: 0.22, well: 0.06,
+                scrim: 0.55, hairline: 0.10, stroke: 0.24, keyline: 0.14,
+                label: 1.0, secondary: 0.70, tertiary: 0.55, quaternary: 0.32))
+        case .lit:
+            return .init(variant: v, spec: .init(
+                cardWhite: 0.10, cardOpacity: 0.88, cardHoverWhite: 0.15,
+                control: 0.11, controlHover: 0.16, controlPressed: 0.22, well: 0.06,
+                scrim: 0.62, hairline: 0.12, stroke: 0.26, keyline: 0.18,
+                label: 1.0, secondary: 0.76, tertiary: 0.62, quaternary: 0.36))
+        case .highContrast:
+            return .init(variant: v, spec: .init(
+                cardWhite: 0.14, cardOpacity: 1.0, cardHoverWhite: 0.20,
+                control: 0.20, controlHover: 0.26, controlPressed: 0.32, well: 0.12,
+                scrim: 0.80, hairline: 0.34, stroke: 0.62, keyline: 0.45,
+                label: 1.0, secondary: 0.86, tertiary: 0.74, quaternary: 0.50))
+        case .opaque:
+            return .init(variant: v, spec: .init(
+                cardWhite: 0.09, cardOpacity: 1.0, cardHoverWhite: 0.13,
+                control: 0.11, controlHover: 0.16, controlPressed: 0.22, well: 0.06,
+                scrim: 1.0, hairline: 0.12, stroke: 0.26, keyline: 0.16,
+                label: 1.0, secondary: 0.70, tertiary: 0.55, quaternary: 0.32))
+        }
+    }
+}
+
+/// Semantic colours mean only what they mean on iOS. Never decorative.
+public nonisolated enum SemanticColor: String, CaseIterable, Sendable {
+    case success    // charging, Join, done, "live" (meeting in progress)
+    case warning    // timer (iOS convention), last minute, ≤ 20 % battery
+    case danger     // ≤ 10 % battery, failed pipeline, destructive
+    case info       // links, AirDrop, Bluetooth
+    case caution    // Low Power Mode, brightness (coloured HUD)
+
+    public func rgb(_ highContrast: Bool) -> RGB {
+        switch self {
+        case .success: RGB(hex: highContrast ? 0x30DB5B : 0x30D158)
+        case .warning: RGB(hex: highContrast ? 0xFFB340 : 0xFF9F0A)
+        case .danger:  RGB(hex: highContrast ? 0xFF6961 : 0xFF453A)
+        case .info:    RGB(hex: highContrast ? 0x70B7FF : 0x409CFF)
+        case .caution: RGB(hex: highContrast ? 0xFFD426 : 0xFFD60A)
+        }
+    }
+}
+
+/// Brand ramp "Afterglow": app icon, onboarding, About, and the fallback ambient palette.
+public nonisolated enum BrandColor {
+    public static let mint     = RGB(hex: 0x9EFFEB)
+    public static let lagoon   = RGB(hex: 0x2ED3C6)
+    public static let sky      = RGB(hex: 0x54C7F2)
+    public static let iris     = RGB(hex: 0x8B6CFF)
+    public static let rose     = RGB(hex: 0xFF4F8B)
+    public static let ember    = RGB(hex: 0xFF7A45)
+    public static let night    = RGB(hex: 0x0B0A14)
+    public static let graphite = RGB(hex: 0x1E2026)
+}
+
+// MARK: - Accent
+
+/// Settings ▸ Appearance ▸ Accent. One accent at a time, for state and progress only
+/// (scrubber, rings, visualizer, toggles, focus ring, armed drop target) — never body
+/// text, never large fills, never anything with a semantic meaning.
+public nonisolated enum AccentSource: Codable, Hashable, Sendable {
+    case automatic              // album art while media plays, otherwise the system accent (default)
+    case system                 // NSColor.controlAccentColor, lifted for black
+    case swatch(AccentSwatch)   // curated, all ≥ 7:1 on black
+    case monochrome             // white only ("disable colours")
+}
+
+public nonisolated enum AccentSwatch: String, CaseIterable, Codable, Sendable {
+    case blue, teal, green, yellow, orange, pink, purple, graphite
+    public var rgb: RGB {
+        switch self {
+        case .blue:     RGB(hex: 0x5CA8FF)
+        case .teal:     RGB(hex: 0x4FD1C4)
+        case .green:    RGB(hex: 0x66D487)
+        case .yellow:   RGB(hex: 0xF5C452)
+        case .orange:   RGB(hex: 0xFF9E5C)
+        case .pink:     RGB(hex: 0xFF80B5)
+        case .purple:   RGB(hex: 0xB89EFF)
+        case .graphite: RGB(hex: 0xC7C7CC)
+        }
+    }
+}
+
+public nonisolated enum AccentResolver {
+    /// The accent actually drawn. Guarded against the darkest surface it sits on (a card over
+    /// black): ≥ 4.5:1, or ≥ 7:1 with Increase Contrast.
+    public static func resolve(_ source: AccentSource, albumAccent: RGB?, systemAccent: RGB,
+                               palette: CrannyPalette.Spec, increaseContrast: Bool) -> RGB {
+        let raw: RGB = switch source {
+        case .automatic: albumAccent ?? systemAccent
+        case .system: systemAccent
+        case .swatch(let s): s.rgb
+        case .monochrome: .white
+        }
+        return raw.legible(on: palette.cardOverBlack, ratio: increaseContrast ? 7 : 4.5)
+    }
+
+    /// `NSColor.controlAccentColor` resolved in Dark appearance (Graphite stays grey).
+    @MainActor public static func systemAccent() -> RGB {
+        var out = RGB(hex: 0x0A84FF)
+        NSAppearance(named: .darkAqua)?.performAsCurrentDrawingAppearance {
+            if let c = NSColor.controlAccentColor.usingColorSpace(.sRGB) {
+                out = RGB(Double(c.redComponent), Double(c.greenComponent), Double(c.blueComponent))
+            }
+        }
+        return out
+    }
+}
+
+// MARK: - Notes code mode
+
+/// Syntax palette for Notes "code mode" (Markdown + common languages). Each ≥ 4.5:1 on `card`.
+public nonisolated enum SyntaxPalette {
+    public static let keyword  = RGB(hex: 0xFF7AB8)
+    public static let type     = RGB(hex: 0x62D6FF)
+    public static let string   = RGB(hex: 0xFF9466)
+    public static let number   = RGB(hex: 0xE8C66C)
+    public static let function = RGB(hex: 0xA6E37A)
+    public static let link     = RGB(hex: 0x6BB3FF)
+    /// Comments use `tertiaryLabel` + italic; headings use `label` + semibold.
+}
+```
+
+### 2.2 Typography
+
+SF Pro is used for words. **SF Pro Rounded with monospaced digits** is used for live numbers, so countdowns never jitter, and SF Mono for code. Nothing is ever smaller than 10 pt. macOS gives third-party apps no Dynamic Type, so Cranny ships its own **Text size** setting: Small 0.92 · Standard 1.0 · Large 1.12 · Extra Large 1.24. It scales every Nook and peek style **and grows the grid cell** (§2.3). Band styles scale with the notch unit instead, because the band is hardware height.
+
+| Style | Size / weight / design | Line | Digits | Use |
+|---|---|---|---|---|
+| `display` | 28 semibold rounded, −0.3 | 32 | mono | Focused timer, big numbers in a peek |
+| `numeral` | 22 semibold rounded, −0.2 | 26 | mono | Timer ring, battery % in peek, calendar date |
+| `title` | 15 semibold, −0.1 | 20 | | Track title, event title, peek primary line |
+| `headline` | 13 semibold | 16 | | Widget headers, tabs, note title |
+| `body` | 13 regular | 17 | | Notes, to-dos: the minimum size for sentences |
+| `callout` | 12 regular | 15 | | Artist, secondary lines |
+| `caption` | 11 medium, +0.1 | 14 | mono | Times, metadata, file names, chips |
+| `eyebrow` | 11 semibold, +0.2, sentence case | 13 | | Section labels ("Up next") |
+| `micro` | 10 semibold rounded, +0.6, UPPERCASE | 12 | mono | Weekday "TUE", "LIVE", badges, counts (≤ 4 characters) |
+| `compact` | 13 semibold rounded (× unit) | 16 | mono | Values in the band: "4:59", "82%" |
+| `compactLabel` | 12 medium rounded (× unit) | 14 | mono | Short labels in the band: "in 4m" |
+| `code` | 12 regular SF Mono | 16 | mono | Notes code mode |
+
+Rules:
+- Changing numbers use `.contentTransition(.numericText(countsDown:))` (or `(value:)`).
+- Titles are a single line with tail truncation; file names truncate in the middle.
+- In the Nook, an overflowing track title marquees after a 1.5 s hover. That is the only marquee anywhere, and it never runs under Reduce Motion (a `.help` tooltip shows the full title instead).
+- Settings and onboarding use system text styles (`.body`, `.title2`, …), not these tokens.
+
+```swift
+// CrannyCore/DesignSystem/Typography.swift
+// SF Pro for words, SF Pro Rounded with monospaced digits for live numbers, SF Mono for code.
+// macOS has no Dynamic Type for third-party UI, so Cranny ships its own Text Size setting.
+import SwiftUI
+
+/// Settings ▸ Appearance ▸ Text size. Scales every Nook/peek style AND grows the grid cell.
+public nonisolated enum CrannyTextSize: String, CaseIterable, Codable, Sendable {
+    case small, standard, large, extraLarge
+    public var scale: CGFloat {
+        switch self {
+        case .small: 0.92
+        case .standard: 1
+        case .large: 1.12
+        case .extraLarge: 1.24
+        }
+    }
+}
+
+public nonisolated enum CrannyTextStyle: String, CaseIterable, Sendable {
+    case display       // 28 semibold rounded, mono digits — focused timer, big peek numbers
+    case numeral       // 22 semibold rounded, mono digits — timer ring, calendar date, battery % in peek
+    case title         // 15 semibold — track title, event title, peek primary line
+    case headline      // 13 semibold — widget headers, tabs, note title
+    case body          // 13 regular — notes, to-dos (minimum size for sentences)
+    case callout       // 12 regular — artist, secondary lines
+    case caption       // 11 medium, mono digits — times, metadata, file names, chips
+    case eyebrow       // 11 semibold, sentence case — section labels ("Up next")
+    case micro         // 10 semibold rounded, UPPERCASE — weekday "TUE", badges (≤ 4 characters)
+    case compact       // 13 semibold rounded, mono digits — values in the band ("4:59", "82%")
+    case compactLabel  // 12 medium rounded, mono digits — short labels in the band ("in 4m")
+    case code          // 12 regular SF Mono — Notes code mode
+
+    public nonisolated enum Scaling: Sendable { case textSize, notchUnit }
+
+    public nonisolated struct Spec: Equatable, Sendable {
+        public let size: CGFloat
+        public let weight: Font.Weight
+        public let design: Font.Design
+        public let lineHeight: CGFloat
+        public let tracking: CGFloat
+        public let monoDigits: Bool
+        public let uppercase: Bool
+    }
+
+    public var spec: Spec {
+        switch self {
+        case .display:      Spec(size: 28, weight: .semibold, design: .rounded,    lineHeight: 32, tracking: -0.3, monoDigits: true,  uppercase: false)
+        case .numeral:      Spec(size: 22, weight: .semibold, design: .rounded,    lineHeight: 26, tracking: -0.2, monoDigits: true,  uppercase: false)
+        case .title:        Spec(size: 15, weight: .semibold, design: .default,    lineHeight: 20, tracking: -0.1, monoDigits: false, uppercase: false)
+        case .headline:     Spec(size: 13, weight: .semibold, design: .default,    lineHeight: 16, tracking: 0,    monoDigits: false, uppercase: false)
+        case .body:         Spec(size: 13, weight: .regular,  design: .default,    lineHeight: 17, tracking: 0,    monoDigits: false, uppercase: false)
+        case .callout:      Spec(size: 12, weight: .regular,  design: .default,    lineHeight: 15, tracking: 0,    monoDigits: false, uppercase: false)
+        case .caption:      Spec(size: 11, weight: .medium,   design: .default,    lineHeight: 14, tracking: 0.1,  monoDigits: true,  uppercase: false)
+        case .eyebrow:      Spec(size: 11, weight: .semibold, design: .default,    lineHeight: 13, tracking: 0.2,  monoDigits: false, uppercase: false)
+        case .micro:        Spec(size: 10, weight: .semibold, design: .rounded,    lineHeight: 12, tracking: 0.6,  monoDigits: true,  uppercase: true)
+        case .compact:      Spec(size: 13, weight: .semibold, design: .rounded,    lineHeight: 16, tracking: 0,    monoDigits: true,  uppercase: false)
+        case .compactLabel: Spec(size: 12, weight: .medium,   design: .rounded,    lineHeight: 14, tracking: 0,    monoDigits: true,  uppercase: false)
+        case .code:         Spec(size: 12, weight: .regular,  design: .monospaced, lineHeight: 16, tracking: 0,    monoDigits: true,  uppercase: false)
+        }
+    }
+
+    /// Band styles must fit the hardware row, so they scale with the notch unit (display
+    /// scaling), never with Text Size. Everything else follows Text Size.
+    public var scaling: Scaling { self == .compact || self == .compactLabel ? .notchUnit : .textSize }
+
+    public func pointSize(textSize: CrannyTextSize, notchUnit: CGFloat) -> CGFloat {
+        let k = scaling == .notchUnit ? notchUnit : textSize.scale
+        return max((spec.size * k).rounded(), 10)          // nothing is ever smaller than 10 pt
+    }
+
+    public func font(textSize: CrannyTextSize = .standard, notchUnit: CGFloat = 1) -> Font {
+        let s = spec
+        let f = Font.system(size: pointSize(textSize: textSize, notchUnit: notchUnit), weight: s.weight, design: s.design)
+        return s.monoDigits ? f.monospacedDigit() : f
+    }
+}
+
+public struct CrannyFontModifier: ViewModifier {
+    @Environment(\.cranny) private var theme
+    public let style: CrannyTextStyle
+    public init(_ style: CrannyTextStyle) { self.style = style }
+
+    public func body(content: Content) -> some View {
+        let s = style.spec
+        let size = style.pointSize(textSize: theme.textSize, notchUnit: theme.notchUnit)
+        let lineHeight = s.lineHeight * size / s.size
+        content
+            .font(style.font(textSize: theme.textSize, notchUnit: theme.notchUnit))
+            .tracking(s.tracking)
+            .lineSpacing(max(0, lineHeight - size * 1.2))
+            .textCase(s.uppercase ? .uppercase : nil)
+    }
+}
+
+public extension View {
+    /// `Text(track.title).crannyFont(.title)` — font, tracking, line height and case in one call.
+    func crannyFont(_ style: CrannyTextStyle) -> some View { modifier(CrannyFontModifier(style)) }
+}
+```
+
+### 2.3 Spacing, radii, strokes, hit targets, elevation, glow, grid
+
+- **Spacing:** a 4-pt grid with 2/6-pt half steps: 2 · 4 · 6 · 8 · 12 · 16 · 20 · 24 · 32.
+- **Radii:** always `.continuous` and always concentric (inner = outer − inset):
+  - panel 32 → card 20 → inner 8;
+  - peek 22 → peek artwork 10;
+  - tile 12, chip 6, rounded button 8, key cap 4;
+  - band-anchored radii (closed 10u, hover 12u, compact 13u, ears 4–10u) live in `NotchLayout`.
+  - On macOS 26+, inner shapes may use `ConcentricRectangle()` inside a card's `.containerShape(...)`.
+- **Strokes:**
+  - hairline = exactly 1 device pixel; regular and keyline 1;
+  - dashed drop zone 1.5 with dash [5, 4]; focus ring 2;
+  - scrubber 4 (6 while hovered or dragged), HUD bar 6;
+  - rings: 2.5 in the band, 5 in widgets.
+- **Hit targets:** at least 28 × 24 inside the Nook and 32 × 24 for embedded controls in the band. The macOS minimum is 20.
+- **Elevation:**
+  - none for closed and compact (a shadow would reveal the seam);
+  - peek: two layers (22 % r 1.5 y 1, and 28 % r 14 y 6);
+  - open: two layers (25 % r 2 y 1, and 35 % r 28 y 12), scaled by openness;
+  - a dragged tray tile uses 50 % r 12 y 6.
+  - The canvas keeps a 48-pt transparent margin.
+- **Glow:**
+  - album halo 30 % at r 36;
+  - underglow 30 % at r 36, y 10 (Vivid only, drawn as a coloured shadow);
+  - alpha caps for the light layer: Subtle 0.45, Vivid 0.80; maximum glow brightness 0.95.
+
+| Density | cell | gutter | padding | card padding | panel r | card r | inner r | Open, 10 cells (14″) | Max columns (14″) |
+|---|---|---|---|---|---|---|---|---|---|
+| Compact | 52 | 6 | 10 | 10 | 30 | 20 | 10 | 594 × 158 | 14 |
+| **Standard** | **56** | **8** | **12** | **12** | **32** | **20** | **8** | **656 × 170** | **12** |
+| Roomy | 64 | 10 | 14 | 12 | 34 | 20 | 8 | 758 × 190 | 10 |
+| Standard at XL text | 68 | 8 | 12 | 12 | 32 | 20 | 8 | 776 × 194 | 10 |
+
+```swift
+// CrannyCore/DesignSystem/Layout.swift
+// Spacing, radii, strokes, hit targets, elevation, glow and the Nook cell grid.
+import SwiftUI
+
+/// 4-pt grid with 2/6-pt half steps for optical tweaks.
+public nonisolated enum Space {
+    public static let xxs: CGFloat = 2
+    public static let xs: CGFloat = 4
+    public static let s: CGFloat = 6
+    public static let m: CGFloat = 8
+    public static let l: CGFloat = 12
+    public static let xl: CGFloat = 16
+    public static let xxl: CGFloat = 20
+    public static let xxxl: CGFloat = 24
+    public static let huge: CGFloat = 32
+}
+
+/// Always `.continuous`. Nested radii are concentric: inner = outer − inset.
+/// Notch-anchored radii (closed, hover, compact, ears) live in `NotchLayout` and scale with `unit`.
+public nonisolated enum Radius {
+    public static let panel: CGFloat = 32        // open Nook bottom corners (Standard density)
+    public static let peek: CGFloat = 22         // peek / quick-peek bottom corners
+    public static let card: CGFloat = 20         // = panel − padding (all densities)
+    public static let inner: CGFloat = 8         // = card − card padding: artwork, wells, thumbnails
+    public static let tile: CGFloat = 12         // 56-pt launcher hover well
+    public static let artPeek: CGFloat = 10      // 40-pt artwork in a peek row (22 − 12)
+    public static let artCompact: CGFloat = 5    // 20-pt artwork in the band (× unit)
+    public static let control: CGFloat = 8       // "Rounded" button shape
+    public static let chip: CGFloat = 6
+    public static let keycap: CGFloat = 4
+    public static let focusRingOutset: CGFloat = 3
+
+    public static func concentric(_ outer: CGFloat, inset: CGFloat, minimum: CGFloat = 4) -> CGFloat {
+        max(outer - inset, minimum)
+    }
+}
+
+public nonisolated enum StrokeWidth {
+    /// Exactly one device pixel (0.5 pt on Retina).
+    public static func hairline(_ displayScale: CGFloat) -> CGFloat { 1 / max(displayScale, 1) }
+    public static let regular: CGFloat = 1
+    public static let keyline: CGFloat = 1
+    public static let emphasis: CGFloat = 1.5         // dashed drop zones
+    public static let dash: [CGFloat] = [5, 4]
+    public static let focus: CGFloat = 2              // keyboard focus ring (accent)
+    public static let scrubber: CGFloat = 4           // 6 while hovered or dragged
+    public static let scrubberActive: CGFloat = 6
+    public static let hudBar: CGFloat = 6
+    public static let ringCompact: CGFloat = 2.5      // rings in the band
+    public static let ring: CGFloat = 5               // rings in widgets (timer)
+}
+
+/// Minimum interactive sizes (macOS minimum is 20 × 20).
+public nonisolated enum HitTarget {
+    public static let nook = CGSize(width: 28, height: 24)       // any control inside the Nook
+    public static let band = CGSize(width: 32, height: 24)       // embedded controls in compact (Join, ⏯)
+    public static let preferred: CGFloat = 28
+}
+
+// MARK: - Elevation & glow
+
+public nonisolated struct CrannyShadow: Equatable, Sendable {
+    public let opacity: Double, radius: CGFloat, y: CGFloat
+    public init(opacity: Double, radius: CGFloat, y: CGFloat) { self.opacity = opacity; self.radius = radius; self.y = y }
+    public static let none = CrannyShadow(opacity: 0, radius: 0, y: 0)
+}
+
+/// Closed and compact have NO shadow: the shape is part of the bezel and a shadow would reveal
+/// the seam. SwiftUI `.shadow` pixels are click-through for the window server (R1 §4.1).
+public nonisolated enum Elevation {
+    public static let peek: [CrannyShadow] = [.init(opacity: 0.22, radius: 1.5, y: 1), .init(opacity: 0.28, radius: 14, y: 6)]
+    public static let open: [CrannyShadow] = [.init(opacity: 0.25, radius: 2, y: 1), .init(opacity: 0.35, radius: 28, y: 12)]
+    public static let lifted: [CrannyShadow] = [.init(opacity: 0.50, radius: 12, y: 6)]     // dragged tray tile
+    /// Transparent margin the fixed canvas keeps around the largest shape (shadow + underglow).
+    public static let canvasMargin: CGFloat = 48
+}
+
+public nonisolated enum Glow {
+    /// Halo behind artwork in the Media widget and peek (album accent).
+    public static let albumHaloOpacity: Double = 0.30
+    public static let albumHaloRadius: CGFloat = 36
+    /// Coloured light spilling onto the desktop below the open Nook. Vivid only; drawn as a
+    /// coloured `.shadow` so it stays click-through.
+    public static let underglow = CrannyShadow(opacity: 0.30, radius: 36, y: 10)
+    /// Hard caps that the contrast audit assumes. Effects must clamp to these.
+    public static let maxBrightness: Double = 0.95
+    public static func ambientAlphaCap(_ level: AmbienceLevel) -> Double {
+        switch level {
+        case .off: 0
+        case .subtle: 0.45
+        case .vivid: 0.80
+        }
+    }
+}
+
+public extension View {
+    /// Two-layer elevation, scaled by `amount` (0 closed … 1 open).
+    func crannyElevation(_ layers: [CrannyShadow], amount: Double = 1) -> some View {
+        let a = layers.first ?? .none
+        let b = layers.count > 1 ? layers[1] : .none
+        return self
+            .shadow(color: .black.opacity(a.opacity * amount), radius: a.radius, x: 0, y: a.y * amount)
+            .shadow(color: .black.opacity(b.opacity * amount), radius: b.radius, x: 0, y: b.y * amount)
+    }
+}
+
+// MARK: - Buttons
+
+/// Settings ▸ Appearance ▸ Buttons.
+public nonisolated enum ButtonShapeStyle: String, CaseIterable, Codable, Sendable { case capsule, rounded }
+
+public nonisolated struct CrannyButtonShape: Shape {
+    public var style: ButtonShapeStyle
+    public init(_ style: ButtonShapeStyle) { self.style = style }
+    public func path(in r: CGRect) -> Path {
+        let radius = style == .capsule ? min(r.width, r.height) / 2 : Radius.control
+        return RoundedRectangle(cornerRadius: radius, style: .continuous).path(in: r)
+    }
+}
+
+// MARK: - The Nook grid
+
+/// Settings ▸ Appearance ▸ Density.
+public nonisolated enum NookDensity: String, CaseIterable, Codable, Sendable {
+    case compact, standard, roomy
+    public var cell: CGFloat { switch self { case .compact: 52; case .standard: 56; case .roomy: 64 } }
+    public var gutter: CGFloat { switch self { case .compact: 6; case .standard: 8; case .roomy: 10 } }
+    public var padding: CGFloat { switch self { case .compact: 10; case .standard: 12; case .roomy: 14 } }
+    public var cardPadding: CGFloat { switch self { case .compact: 10; case .standard: 12; case .roomy: 12 } }
+    /// Panel radius per density keeps the CARD radius at 20 everywhere (concentric).
+    public var panelRadius: CGFloat { Radius.card + padding }
+}
+
+/// Settings ▸ Appearance ▸ Widgets: smoked cards (default) or flat with hairline dividers.
+public nonisolated enum WidgetStyle: String, CaseIterable, Codable, Sendable { case cards, flat }
+
+public nonisolated struct NookGrid: Equatable, Sendable {
+    public var density: NookDensity
+    public var textSize: CrannyTextSize
+    public var style: WidgetStyle
+    public var rows: Int
+    /// Settings ▸ Appearance ▸ Panel padding (±4 pt on top of the density). Radii stay concentric.
+    public var paddingTune: CGFloat
+
+    public init(density: NookDensity = .standard, textSize: CrannyTextSize = .standard,
+                style: WidgetStyle = .cards, rows: Int = 2, paddingTune: CGFloat = 0) {
+        self.density = density; self.textSize = textSize; self.style = style; self.rows = rows
+        self.paddingTune = min(max(paddingTune, -4), 4)
+    }
+
+    /// Larger text grows the cell (rounded to 4 pt), so content never clips.
+    public var cell: CGFloat { (density.cell * max(textSize.scale, 1) / 4).rounded() * 4 }
+    /// Flat style puts a 1-px divider in the middle of a double gutter.
+    public var gutter: CGFloat { style == .flat ? density.gutter * 2 + 1 : density.gutter }
+    public var padding: CGFloat { density.padding + paddingTune }
+    public var headerGap: CGFloat { 6 }
+    public var panelRadius: CGFloat { Radius.card + padding }    // = density.panelRadius when the tune is 0
+    public var cardRadius: CGFloat { Radius.concentric(panelRadius, inset: padding) }
+    public var innerRadius: CGFloat { Radius.concentric(cardRadius, inset: density.cardPadding) }
+
+    public func width(cells n: Int) -> CGFloat { CGFloat(n) * cell + CGFloat(max(n - 1, 0)) * gutter }
+    public var height: CGFloat { CGFloat(rows) * cell + CGFloat(max(rows - 1, 0)) * gutter }
+}
+```
+
+### 2.4 Theme and environment
+
+```swift
+// CrannyCore/DesignSystem/Theme.swift
+// One environment value. Feature modules read `@Environment(\.cranny)` and never
+// write literal colours, sizes, radii or animations, and never read raw a11y flags.
+import SwiftUI
+
+/// Settings ▸ Appearance ▸ Ambient light (the optional "Afterglow" layer, DESIGN.md §5).
+public nonisolated enum AmbienceLevel: String, CaseIterable, Codable, Sendable, Comparable {
+    case off, subtle, vivid
+    public var intensity: Double { switch self { case .off: 0; case .subtle: 0.55; case .vivid: 1 } }
+    private var rank: Int { switch self { case .off: 0; case .subtle: 1; case .vivid: 2 } }
+    public static func < (a: Self, b: Self) -> Bool { a.rank < b.rank }
+}
+
+public nonisolated enum AmbientEffect: String, CaseIterable, Codable, Sendable {
+    case aurora   // MeshGradient (15+) / Canvas curtains (14) — default
+    case motes    // slow rising specks
+    case tide     // luminous wave lines along the bottom edge
+    case halo     // one static bloom (Low Power Mode fallback)
+}
+
+public nonisolated struct CrannyTheme: Equatable, Sendable {
+    // User settings
+    public var accent: RGB = RGB(hex: 0x409CFF)        // already resolved by AccentResolver
+    public var textSize: CrannyTextSize = .standard
+    public var density: NookDensity = .standard
+    public var widgetStyle: WidgetStyle = .cards
+    public var buttonShape: ButtonShapeStyle = .capsule
+    public var panelPaddingTune: CGFloat = 0               // ±4 pt (Appearance ▸ Panel padding)
+    public var motion: MotionPersonality = .standard
+    public var ambience: AmbienceLevel = .subtle
+    public var effect: AmbientEffect = .aurora
+    public var translucentBackground = false
+    public var glassIsland = false                       // Liquid Glass island (26+); set by the panel only on floating-style displays
+    public var hapticsEnabled = true
+    public var notchUnit: CGFloat = 1
+    // System state — resolved by CrannyThemeRoot, never set by features
+    public var reduceMotion = false
+    public var reduceTransparency = false
+    public var increaseContrast = false
+    public var differentiateWithoutColor = false
+    public var voiceOverRunning = false
+
+    public init() {}
+
+    public var effectiveAmbience: AmbienceLevel {
+        if reduceTransparency { return .off }
+        if increaseContrast || widgetStyle == .flat { return min(ambience, .subtle) }
+        return ambience
+    }
+    public var paletteVariant: CrannyPalette.Variant {
+        if increaseContrast { return .highContrast }
+        if reduceTransparency { return .opaque }
+        if effectiveAmbience == .vivid || glassIsland { return .lit }
+        return .standard
+    }
+    public var palette: CrannyPalette { .make(paletteVariant) }
+    public var grid: NookGrid { NookGrid(density: density, textSize: textSize, style: widgetStyle, paddingTune: panelPaddingTune) }
+    public var accentColor: Color { accent.color }
+    public var accentContrast: Double { increaseContrast ? 7 : 4.5 }
+    public var allowsUnderglow: Bool { effectiveAmbience == .vivid }
+    /// VoiceOver users get click-to-open automatically (hover is never the only way in).
+    public var opensOnHover: Bool { !voiceOverRunning }
+
+    public func animation(_ k: CrannyMotion.Kind) -> Animation? {
+        CrannyMotion.animation(k, personality: motion, reduceMotion: reduceMotion)
+    }
+}
+
+public extension EnvironmentValues {
+    @Entry var cranny: CrannyTheme = CrannyTheme()
+}
+
+/// Apply once at the root of every Cranny surface (notch panel, Settings preview stage,
+/// onboarding stage). Merges user settings with the live system accessibility state.
+public struct CrannyThemeRoot: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
+    @Environment(\.colorSchemeContrast) private var contrast
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
+    public var base: CrannyTheme
+    public init(_ base: CrannyTheme) { self.base = base }
+
+    public func body(content: Content) -> some View {
+        var t = base
+        t.reduceMotion = base.reduceMotion || reduceMotion
+        t.reduceTransparency = base.reduceTransparency || reduceTransparency
+        t.increaseContrast = base.increaseContrast || contrast == .increased
+        t.differentiateWithoutColor = base.differentiateWithoutColor || differentiateWithoutColor
+        t.voiceOverRunning = base.voiceOverRunning || voiceOver
+        t.accent = t.accent.legible(on: t.palette.spec.cardOverBlack, ratio: t.accentContrast)
+        return content
+            .environment(\.cranny, t)
+            .environment(\.colorScheme, .dark)     // the notch is always dark
+            .tint(t.accent.color)
+    }
+}
+
+public extension View {
+    func crannyThemeRoot(_ theme: CrannyTheme) -> some View { modifier(CrannyThemeRoot(theme)) }
+}
+```
+
+---
+
+## 3. Geometry and the NotchShape
+
+### 3.1 Measuring the hardware
+
+- **Notch width** = `screen.frame.width − auxiliaryTopLeftArea.width − auxiliaryTopRightArea.width`. Use only the widths; the coordinate space of those rects is undocumented. **Band height** = `safeAreaInsets.top`.
+- **No notch:** the band is the menu bar.
+  1. Use `frame.maxY − visibleFrame.maxY` when it is > 0.
+  2. Otherwise use the height of the Window Server layer-24 menu-bar window (R1).
+  3. Fall back to 30.
+
+  Never use `NSStatusBar.thickness` (it reports a stale 22; the menu bar is 30 pt on macOS 27).
+- **Re-measure** on `NSApplication.didChangeScreenParametersNotification`. Display scaling changes the notch's size in points.
+- **Unit:** `u = clamp(band / 32, 0.8, 1.25)`. Every band-anchored value (slots, band radii, ears, `compact` text) is multiplied by `u`. Nook content is not.
+- **Fine-tune:** Settings ▸ Appearance ▸ **Notch fit**. Width ±10 pt in 0.5-pt steps (an `.alignment` haptic detent at 0), bottom radius ±3 pt.
+  - While a slider is dragged, the real notch freezes in hover and shows a 1-px accent outline of the closed shape over the hardware, magnified 2× in a loupe.
+  - Stored per display model.
+
+### 3.2 One shape, six numbers
+
+`NotchGeometry` holds `bodyWidth`, `height`, `bottomRadius`, `earRadius`, `topRadius` and `topInset`. It is itself `VectorArithmetic`, so it *is* the shape's `animatableData`, and one spring moves all six numbers together; the outline can never wobble out of sync.
+- **Ears** are the concave flares where the top edge meets the screen. They grow 0 → 4u → 6u → 8u → 10u from closed to open, swelling like a meniscus during a morph, and fade out over the first 2 pt of `topInset`. Attached ⇄ floating is therefore a single morph.
+- **Bottom corners** (and floating top corners) are Apple's continuous curve via `UnevenRoundedRectangle(style: .continuous)`.
+- **Ears** are quarter-circle cubics with a 0.5-pt overlap, **unioned** (`Path.union`, macOS 14) into one outline. That means no anti-aliasing seam and a strokable keyline.
+- **Cost:** measured at 0.64 µs per interpolated path (release), so animating it is free.
+- **Fixed canvas:** the panel never resizes during a morph. Content is laid out at its final size, top-centred, and revealed by `clipShape(NotchShape(...))`.
+
+```swift
+// CrannyCore/DesignSystem/Notch.swift
+// One shape, six animatable numbers, every state. The canvas window never resizes;
+// only `NotchShape.animatableData` animates.
+import SwiftUI
+import AppKit
+
+// MARK: - Measured hardware
+
+public nonisolated struct NotchMetrics: Equatable, Sendable {
+    public var hasNotch: Bool
+    public var notchWidth: CGFloat     // camera-housing width (0 without a notch)
+    public var bandHeight: CGFloat     // notch height on notched displays, else the menu-bar height
+    public var screenWidth: CGFloat
+    public var displayScale: CGFloat
+
+    public init(hasNotch: Bool, notchWidth: CGFloat, bandHeight: CGFloat, screenWidth: CGFloat, displayScale: CGFloat = 2) {
+        self.hasNotch = hasNotch; self.notchWidth = notchWidth; self.bandHeight = bandHeight
+        self.screenWidth = screenWidth; self.displayScale = displayScale
+    }
+
+    /// 1.0 on a 32-pt notch (14″/16″ MacBook Pro, default scaling). The physical notch is fixed
+    /// in pixels, so its height in points encodes display scaling: band-anchored sizes × unit.
+    public var unit: CGFloat { min(max(bandHeight / 32, 0.8), 1.25) }
+
+    /// Reference machine used by every table in DESIGN.md.
+    public static let reference = NotchMetrics(hasNotch: true, notchWidth: 185, bandHeight: 32, screenWidth: 1512)
+
+    /// Measure — never hard-code. Re-run on `NSApplication.didChangeScreenParametersNotification`.
+    @MainActor public static func measure(_ screen: NSScreen) -> NotchMetrics {
+        let f = screen.frame
+        let top = screen.safeAreaInsets.top
+        if top > 0, let l = screen.auxiliaryTopLeftArea, let r = screen.auxiliaryTopRightArea,
+           l.width > 0, r.width > 0, f.width - l.width - r.width > 0 {
+            return NotchMetrics(hasNotch: true, notchWidth: f.width - l.width - r.width, bandHeight: top,
+                                screenWidth: f.width, displayScale: screen.backingScaleFactor)
+        }
+        // No notch: the band is the menu bar. NSStatusBar.thickness is stale (22) — measure the top inset.
+        let menuBar = f.maxY - screen.visibleFrame.maxY
+        return NotchMetrics(hasNotch: false, notchWidth: 0, bandHeight: menuBar > 0 ? menuBar : 30,
+                            screenWidth: f.width, displayScale: screen.backingScaleFactor)
+    }
+}
+
+/// Settings ▸ Appearance ▸ On displays without a notch.
+public nonisolated enum NoNotchStyle: String, CaseIterable, Codable, Sendable {
+    case floatingIsland   // default: detached pill under the menu bar, all corners round
+    case attached         // a small tab hanging from the top edge, with ears (notch look)
+    case off              // Cranny does not appear on this display
+}
+
+// MARK: - Geometry (animatable)
+
+public nonisolated struct NotchGeometry: VectorArithmetic, Sendable {
+    public var bodyWidth: CGFloat      // black body, excluding ears
+    public var height: CGFloat         // body height (below topInset)
+    public var bottomRadius: CGFloat   // convex, continuous
+    public var earRadius: CGFloat      // concave flare into the screen's top edge (attached only)
+    public var topRadius: CGFloat      // convex top corners (floating only)
+    public var topInset: CGFloat       // 0 = attached to the top edge; > 0 = floating island
+
+    public init(bodyWidth: CGFloat, height: CGFloat, bottomRadius: CGFloat, earRadius: CGFloat,
+                topRadius: CGFloat = 0, topInset: CGFloat = 0) {
+        self.bodyWidth = bodyWidth; self.height = height; self.bottomRadius = bottomRadius
+        self.earRadius = earRadius; self.topRadius = topRadius; self.topInset = topInset
+    }
+
+    public static var zero: NotchGeometry { .init(bodyWidth: 0, height: 0, bottomRadius: 0, earRadius: 0) }
+    public static func + (a: Self, b: Self) -> Self {
+        .init(bodyWidth: a.bodyWidth + b.bodyWidth, height: a.height + b.height, bottomRadius: a.bottomRadius + b.bottomRadius,
+              earRadius: a.earRadius + b.earRadius, topRadius: a.topRadius + b.topRadius, topInset: a.topInset + b.topInset)
+    }
+    public static func - (a: Self, b: Self) -> Self {
+        .init(bodyWidth: a.bodyWidth - b.bodyWidth, height: a.height - b.height, bottomRadius: a.bottomRadius - b.bottomRadius,
+              earRadius: a.earRadius - b.earRadius, topRadius: a.topRadius - b.topRadius, topInset: a.topInset - b.topInset)
+    }
+    public mutating func scale(by rhs: Double) {
+        let k = CGFloat(rhs)
+        bodyWidth *= k; height *= k; bottomRadius *= k; earRadius *= k; topRadius *= k; topInset *= k
+    }
+    public var magnitudeSquared: Double {
+        Double(bodyWidth * bodyWidth + height * height + bottomRadius * bottomRadius
+               + earRadius * earRadius + topRadius * topRadius + topInset * topInset)
+    }
+
+    /// Ears fade out over the first 2 pt of detaching, so attached ⇄ floating is one morph.
+    public var attachment: CGFloat { max(0, 1 - topInset / 2) }
+    public var outerWidth: CGFloat { bodyWidth + 2 * max(earRadius, 0) * attachment }
+    public var bottom: CGFloat { topInset + height }
+    public var isFloating: Bool { topInset > 0.5 }
+}
+
+// MARK: - Shape
+
+/// Centred horizontally in its rect and top-aligned. Host it in the FIXED canvas.
+/// Bottom (and floating top) corners use Apple's continuous curve via `UnevenRoundedRectangle`;
+/// the ears are quarter-circle cubics unioned into ONE outline (macOS 14 `Path.union`), so a
+/// stroke (the keyline) never shows an internal seam.
+public nonisolated struct NotchShape: Shape {
+    public var geometry: NotchGeometry
+    public init(_ geometry: NotchGeometry) { self.geometry = geometry }
+
+    public var animatableData: NotchGeometry {
+        get { geometry }
+        set { geometry = newValue }
+    }
+
+    public func path(in rect: CGRect) -> Path {
+        let g = geometry
+        let w = max(g.bodyWidth, 0), h = max(g.height, 0)
+        guard w > 0.5, h > 0.5 else { return Path() }
+        let body = CGRect(x: rect.midX - w / 2, y: rect.minY + max(g.topInset, 0), width: w, height: h)
+        let rb = min(max(g.bottomRadius, 0), h / 2, w / 2)
+        let rt = min(max(g.topRadius, 0), h - rb, w / 2)
+        let base = UnevenRoundedRectangle(topLeadingRadius: rt, bottomLeadingRadius: rb,
+                                          bottomTrailingRadius: rb, topTrailingRadius: rt,
+                                          style: .continuous).path(in: body)
+        let e = min(max(g.earRadius, 0) * g.attachment, h - rb, body.minX - rect.minX)
+        guard e > 0.25 else { return base }
+
+        let k: CGFloat = 0.4477                              // 1 − 0.5523: cubic ≈ quarter circle
+        var ears = Path()
+        for side in [-1.0, 1.0] as [CGFloat] {
+            let x0 = side < 0 ? body.minX : body.maxX       // body edge
+            let xo = x0 + side * e                          // ear tip on the screen edge
+            let lap = -side * 0.5                           // overlap into the body: no AA seam
+            ears.move(to: CGPoint(x: xo, y: body.minY))
+            ears.addLine(to: CGPoint(x: x0 + lap, y: body.minY))
+            ears.addLine(to: CGPoint(x: x0 + lap, y: body.minY + e))
+            ears.addLine(to: CGPoint(x: x0, y: body.minY + e))
+            ears.addCurve(to: CGPoint(x: xo, y: body.minY),
+                          control1: CGPoint(x: x0, y: body.minY + e * k),
+                          control2: CGPoint(x: xo - side * e * (1 - k), y: body.minY))
+            ears.closeSubpath()
+        }
+        return base.union(ears)
+    }
+}
+
+// MARK: - Compact slots
+
+/// Width of ONE side slot (outer margin 12 + content + 8 gap to the camera), × unit.
+/// Both sides always take the wider class, so the camera stays optically centred.
+public nonisolated enum SlotWidth: Int, CaseIterable, Comparable, Sendable {
+    case none, glyph, short, medium, wide
+    public var base: CGFloat {
+        switch self {
+        case .none: 0
+        case .glyph: 40     // 20-pt artwork, a glyph, a 16-pt ring
+        case .short: 52     // 5-bar visualizer, "82%", battery ring + value
+        case .medium: 68    // "4:59", "in 4m", Join capsule
+        case .wide: 92      // HUD: glyph | level bar 64 (+ optional value)
+        }
+    }
+    public func points(unit: CGFloat) -> CGFloat { (base * unit).rounded() }
+    public static func < (a: Self, b: Self) -> Bool { a.rawValue < b.rawValue }
+}
+
+// MARK: - Per-state geometry
+
+public nonisolated struct NotchLayout: Equatable, Sendable {
+    public var metrics: NotchMetrics
+    public var noNotchStyle: NoNotchStyle
+    public var widthTune: CGFloat      // Settings ▸ Appearance ▸ Notch fit: −10…+10 pt, 0.5 steps
+    public var radiusTune: CGFloat     // −3…+3 pt
+    public var grid: NookGrid
+
+    public static let peekRow: CGFloat = 52
+    public static let satelliteDiameter: CGFloat = 24
+
+    public init(metrics: NotchMetrics, noNotchStyle: NoNotchStyle = .floatingIsland,
+                widthTune: CGFloat = 0, radiusTune: CGFloat = 0, grid: NookGrid = NookGrid()) {
+        self.metrics = metrics; self.noNotchStyle = noNotchStyle
+        self.widthTune = widthTune; self.radiusTune = radiusTune; self.grid = grid
+    }
+
+    public var u: CGFloat { metrics.unit }
+    public var band: CGFloat { metrics.bandHeight }
+    public var isFloating: Bool { !metrics.hasNotch && noNotchStyle == .floatingIsland }
+    /// The compact/HUD row: the hardware notch height, or a pill inside the menu bar.
+    public var rowHeight: CGFloat { isFloating ? max(band - 6, 22) : band }
+    public var rowInset: CGFloat { isFloating ? 3 : 0 }
+    /// The Nook header row lives in the band (tabs left of the camera, actions right).
+    public var headerHeight: CGFloat { max(band, 28) }
+
+    /// The content-free middle: the camera housing, or a label/gap on displays without a notch.
+    public func middle(label: CGFloat = 0) -> CGFloat {
+        metrics.hasNotch ? metrics.notchWidth + widthTune : max(label, 12)
+    }
+
+    /// CLOSED: exactly the cutout, inset 0.5 pt per side so anti-aliasing never peeks out.
+    public var closed: NotchGeometry {
+        if metrics.hasNotch {
+            let r = min(max((0.30 * band).rounded(), 6), 12) + radiusTune
+            return .init(bodyWidth: metrics.notchWidth + widthTune - 1, height: band - 0.5, bottomRadius: r, earRadius: 0)
+        }
+        switch noNotchStyle {
+        case .floatingIsland: return .init(bodyWidth: 64, height: 5, bottomRadius: 2.5, earRadius: 0, topRadius: 2.5, topInset: 4)
+        case .attached:       return .init(bodyWidth: 64, height: 5, bottomRadius: 2.5, earRadius: 2)
+        case .off:            return .zero
+        }
+    }
+
+    /// HOVER "breath": acknowledges the dwell before anything opens.
+    public var hover: NotchGeometry {
+        var g = closed
+        if metrics.hasNotch {
+            g.bodyWidth += 12 * u; g.height += 3 * u; g.earRadius = 4 * u; g.bottomRadius += 2 * u
+        } else if noNotchStyle != .off {
+            g.bodyWidth += 24; g.height += 3; g.bottomRadius = g.height / 2
+            if isFloating { g.topRadius = g.height / 2 } else { g.earRadius = 3 }
+        }
+        return g
+    }
+
+    /// COMPACT live activity: band height, widened symmetrically by two slots.
+    public func compact(_ slot: SlotWidth, label: CGFloat = 0) -> NotchGeometry {
+        let w = middle(label: label) + 2 * slot.points(unit: u)
+        let h = rowHeight
+        if isFloating { return .init(bodyWidth: w, height: h, bottomRadius: h / 2, earRadius: 0, topRadius: h / 2, topInset: rowInset) }
+        return .init(bodyWidth: w, height: h, bottomRadius: 13 * u, earRadius: 6 * u)
+    }
+
+    /// HUD: the widest compact form. It never adds height, so it never covers content.
+    public var hud: NotchGeometry { compact(.wide) }
+
+    /// PEEK: the compact row stays, 52-pt rows grow below it.
+    public func peek(rows: Int = 1) -> NotchGeometry {
+        let base = metrics.hasNotch ? metrics.notchWidth + widthTune : 180
+        let w = min(max(base + 240 * u, 380), 460)
+        let h = rowHeight + CGFloat(min(max(rows, 1), 4)) * Self.peekRow + 8
+        if isFloating { return .init(bodyWidth: w, height: h, bottomRadius: Radius.peek, earRadius: 0, topRadius: Radius.peek, topInset: rowInset) }
+        return .init(bodyWidth: w, height: h, bottomRadius: Radius.peek, earRadius: 8 * u)
+    }
+
+    /// OPEN: grid-driven; never narrower than the header needs, never wider than `maxWidth`.
+    public func open(columns: Int, rows: Int = 2) -> NotchGeometry {
+        var gr = grid; gr.rows = rows
+        let cols = min(max(columns, 1), maxColumns)
+        let width = min(max(gr.width(cells: cols) + 2 * gr.padding, middle() + 2 * 160), maxWidth)
+        let h = headerHeight + gr.headerGap + gr.height + gr.padding
+        if isFloating {
+            return .init(bodyWidth: width, height: h, bottomRadius: gr.panelRadius, earRadius: 0, topRadius: gr.panelRadius, topInset: 6)
+        }
+        return .init(bodyWidth: width, height: h, bottomRadius: gr.panelRadius, earRadius: 10 * u)
+    }
+
+    /// The Nook never exceeds 55 % of the screen or 880 pt, so menu-bar extras stay reachable.
+    public var maxWidth: CGFloat { min(metrics.screenWidth * 0.55, 880) }
+    public var maxColumns: Int {
+        max(4, Int((maxWidth - 2 * grid.padding + grid.gutter) / (grid.cell + grid.gutter)))
+    }
+
+    /// Second concurrent activity: a detached black circle 6u beside the compact body.
+    public func satelliteFrame(beside compact: NotchGeometry, in canvas: CGRect) -> CGRect {
+        let d = Self.satelliteDiameter * u
+        let x = canvas.midX + compact.bodyWidth / 2 + 6 * u
+        let y = canvas.minY + rowInset + (rowHeight - d) / 2
+        return CGRect(x: x, y: y, width: d, height: d)
+    }
+
+    /// Fixed canvas (panel) size: the largest shape (Notes focus = 3 rows) + margins.
+    /// Resize it only while closed, when layout settings change (R1 §4.3).
+    public var canvasSize: CGSize {
+        let o = open(columns: maxColumns, rows: 3)
+        return CGSize(width: (o.outerWidth + 2 * Elevation.canvasMargin).rounded(.up),
+                      height: (o.bottom + Elevation.canvasMargin).rounded(.up))
+    }
+}
+```
+
+### 3.3 State geometry: reference 14″ MacBook Pro (notch 185 × 32, screen 1512 pt, u = 1)
+
+These numbers are printed by the harness. "Outer W" includes the ears.
+
+| State | Body W × H | Bottom r | Ear | Outer W | Shadow | Keyline | Notes |
+|---|---|---|---|---|---|---|---|
+| **closed** | 184 × 31.5 | 10 | 0 | 184 | none | none | Cutout −0.5 pt per side; r = clamp(0.30·band, 6, 12) + tune |
+| **hover "breath"** | 196 × 34.5 | 12 | 4 | 204 | none | none | Shown during the dwell; tells you it noticed |
+| **compact · glyph** | 265 × 32 | 13 | 6 | 277 | none | none | Artwork, a single glyph |
+| **compact · short** | 289 × 32 | 13 | 6 | 301 | none | none | Now Playing, charging, Bluetooth |
+| **compact · medium** | 321 × 32 | 13 | 6 | 333 | none | none | Timer, meeting |
+| **HUD (wide)** | 369 × 32 | 13 | 6 | 381 | none | none | Never taller than the band |
+| **satellite** | Ø 24 | — | — | — | none | none | 6u beyond the compact body's edge, vertically centred in the band |
+| **peek · 1 row** | 425 × 92 | 22 | 8 | 441 | peek | × 1 | Width = clamp(N + 240u, 380, 460); rows of 52 + 8 bottom |
+| **peek · 2 rows** | 425 × 144 | 22 | 8 | 441 | peek | × 1 | At most 4 rows |
+| **open · 10 cells** (default) | 656 × 170 | 32 | 10 | 676 | open | × 1 | Band 32 + gap 6 + grid 120 + padding 12 |
+| **open · 12 cells** (max) | 784 × 170 | 32 | 10 | 804 | open | × 1 | Max = min(55 % of screen, 880) |
+| **open · Notes focus** (3 rows) | 784 × 234 | 32 | 10 | 804 | open | × 1 | Temporary; holds the Nook open |
+| Canvas (fixed panel) | 900 × 282 | | | | | | Largest shape + 48-pt margins; resized only while closed |
+
+**Other displays** (illustrative; always measured at runtime):
+
+| Display | u | closed | compact · short | HUD | peek | open (10) | Max columns · canvas |
+|---|---|---|---|---|---|---|---|
+| 16″ MBP (185 × 32, 1728 pt) | 1.0 | 184 × 31.5 | 289 × 32 | 369 × 32 | 425 × 92 | 656 × 170 | 13 · 964 × 282 |
+| 13″ Air (185 × 32, 1470 pt) | 1.0 | 184 × 31.5 | 289 × 32 | 369 × 32 | 425 × 92 | 656 × 170 | 12 · 900 × 282 |
+| 14″ "Larger Text" (≈ 214 × 37) | 1.156 | 213 × 36.5, r 11 | 334 × 37, r 15 | 426 × 37 | 460 × 97 | 656 × 175 | 11 · 840 × 287 |
+| External, **floating island** (menu bar 30) | 0.94 | handle 64 × 5, 4 pt below the edge | 110 × 24 capsule, inset 3 | 184 × 24 | 405 × 84, all corners 22 | 656 × 168, all corners 32, inset 6 | 13 · 944 × 286 |
+| External, **attached** (menu bar 30) | 0.94 | tab 64 × 5, ears 2 | 110 × 30, r 12.2, ears 5.6 | 184 × 30 | 405 × 90 | 656 × 168 | 13 · 963 × 280 |
+
+**Slots** (one side; both sides always take the wider class so the camera stays optically centred), × u:
+
+| Class | Width | Content budget (− 12 outer − 8 gap) | Used by |
+|---|---|---|---|
+| `glyph` | 40 | 20 | 20-pt artwork, a single glyph, a 16-pt ring |
+| `short` | 52 | 32 | 5-bar visualizer, "82%", device battery |
+| `medium` | 68 | 48 | "4:59", "in 4m" / "4 мин", Join capsule |
+| `wide` | 92 | 72 | HUD level bar 64 + inset |
+
+### 3.4 Closed equals the hardware
+
+The closed shape is drawn 0.5 pt inside the measured cutout, with a radius slightly larger than the housing's own corner. At rest it is invisible, and the first frame of any morph grows *out of* the camera. This fixes the "close animation does not fit the real notch" and "slides sideways, revealing the real notch" failures: width and height are symmetric about the notch centre, and close has zero bounce.
+
+### 3.5 Displays without a notch
+
+| Setting | Closed | Compact / HUD / peek / open | Notes |
+|---|---|---|---|
+| **Floating island** (default) | 64 × 5 handle pill, 4 pt below the top edge, all corners round | A pill *inside* the menu-bar band (height band − 6, inset 3, capsule). Peek and open are detached panels with all corners round (22 / 32). | Doesn't pretend to be hardware. Handle: **Visible** (default) or **Hidden until hover** (alpha 0, so it is click-through; hover is geometric). |
+| **Attached** | 64 × 5 tab with 2-pt ears, flush with the top edge | Same states as a hardware notch, with a 12-pt (or label-width) virtual middle | For people who like the notch look |
+| **Off** | — | — | Cranny does not appear on this display |
+
+- **The middle:** without a camera, the compact middle is a 12-pt gap or a **label** (`compactLabel`, max 160 pt, e.g. the track title). In the open header the empty camera zone shows **time and date** (`eyebrow`, secondary), so the centre is never dead space.
+- **Glass island** (macOS 26+, opt-in, floating style only): `Color.clear.glassEffect(.regular.tint(.black.opacity(0.75)), in: shape)` with the `lit` palette, audited at 5.15:1 tertiary over a pure white wallpaper. It is off under Reduce Transparency and Increase Contrast, and on macOS 14/15 it falls back to opaque black.
+- **Handle visibility** (Appearance): **Visible** (default) or **Hidden until hover** — the "transparent handle": drawn at alpha 0, so it is click-through, while hover stays geometric and still breathes it in.
+- **Hide when idle** (General, off by default; `general.hideHandleWhenIdle` + `general.handleIdleDelay`, default 10 s, range 3–60 s): after that long with no activity and no hover, the handle fades out (`hoverOut`); a swipe up on the handle does the same immediately. The next activity, or the pointer entering the entry zone, brings it back (auto-unhide).
+
+### 3.6 Window and input contract (from R1; the design depends on it)
+
+- **Panels:** one `NSPanel` per display, keyed by display UUID.
+  - Style `[.borderless, .nonactivatingPanel]` **passed at init**; level `.statusBar + 1`.
+  - Collection behaviour `[.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]`.
+  - `hidesOnDeactivate = false`, `becomesKeyOnlyIfNeeded`, `canBecomeKey` → true, `animationBehavior = .none`.
+  - `NSHostingView` with `sizingOptions = []` and `safeAreaRegions = []`.
+- **Click-through is per pixel.** Never assign `ignoresMouseEvents` (it is tri-state; an explicit `false` captures the whole rectangle).
+  - Alpha-0 pixels and SwiftUI `.shadow` pass clicks, moves and drags through. Any drawn pixel, even at alpha 0.001, captures them.
+  - Consequences: light outside the shape must be a coloured `.shadow`, and an enlarged drop zone during a file drag is an `opacity(0.001)` fill that is removed afterwards.
+- **Hit zones:**
+  - Entry: the shape + 4 pt on each side, extended above `frame.maxY` (the pointer's y can equal maxY).
+  - Exit while open: the shape + 14 pt, then a 300 ms grace period.
+  - File-drag proximity: the shape + 80 pt wide and 40 pt below the band.
+  - A root-view `hitTest` override keeps SwiftUI gestures from firing outside the shape.
+- **Focus:**
+  - The panel becomes key only when opened by the keyboard or when a text field is clicked.
+  - On close, `orderOut` + `orderFrontRegardless` hands key status back to the previous window.
+  - ⌘A/C/V/X/Z work because the SwiftUI `App` lifecycle installs a main menu with Edit (verified by `scripts/smoke.sh`, ARCHITECTURE D12); R1's hidden Edit menu is the fallback only if a future SDK drops it.
+- **Full screen** is detected per R1: the menu-bar window is missing on that display, and another app's window covers it.
+
+### 3.7 Display and full-screen policy
+
+- **Show on:** Built-in display (default when present) · Display with pointer · All displays · a custom list. Each display has its own **style** (Island / Attached / Off) and its own toggles for **activities, peeks and HUD**.
+- **Peeks** and alerts appear only on the display that has the pointer.
+- **In full-screen apps:** Hide everything · **Alerts and HUD only** (default) · Show all. Hovering there needs a 400 ms dwell. **Excluded apps** (a list) behave like full screen.
+- **Screen sharing:** Demo mode acts as Pin plus "Show all" (never auto-closes or hides, including over full-screen apps), mutes every Cranny sound and can redact calendar titles and note text. `sharingType = .none` is not used, because it is unreliable on macOS 15+.
+
+---
+
+## 4. Motion
+
+### 4.1 The spring table (Standard personality)
+
+All springs are `.spring(duration:bounce:)` (perceptual duration, macOS 14). The physics below come from the SDK's `Spring(duration:bounce:)`, and overshoot was sampled on a 0 → 1 step. **The rule: geometry may overshoot when it grows, and never when it shrinks back into the hardware.** Every animation is interruptible: springs retarget with velocity preserved, and nothing is queued. Every duration is well under the HIG's 2-second cap.
+
+| Token | duration / bounce | ζ | stiffness / damping | settles | overshoot (Lively) | Used for |
+|---|---|---|---|---|---|---|
+| `open` | 0.42 / 0.14 | 0.86 | 223.8 / 25.7 | 0.74 s | **0.50 %** (1.75 %) | closed/compact/peek → open |
+| `close` | 0.34 / **0** | 1.00 | 341.5 / 37.0 | 0.50 s | **0** | any → closed (lands exactly) |
+| `resize` | 0.40 / 0.10 | 0.90 | 246.7 / 28.3 | 0.68 s | 0.15 % (0.63 %) | open → open: tab or page height, Notes focus |
+| `activityIn` | 0.46 / 0.24 | 0.76 | 186.6 / 20.8 | 0.90 s | **2.54 %** (6.81 %) | closed → compact: the "drop" |
+| `activityOut` | 0.30 / 0 | 1.00 | 438.6 / 41.9 | 0.50 s | 0 | compact → closed |
+| `activitySwap` | 0.30 / 0.04 | 0.96 | 438.6 / 40.2 | 0.50 s | 0 | slot class change (music → meeting) |
+| `peekIn` | 0.38 / 0.14 | 0.86 | 273.4 / 28.4 | 0.68 s | 0.50 % (1.75 %) | compact → peek |
+| `peekOut` | 0.28 / 0 | 1.00 | 503.6 / 44.9 | 0.50 s | 0 | peek → compact |
+| `hoverIn` | 0.26 / 0.20 | 0.80 | 584.0 / 38.7 | 0.51 s | 1.52 % (4.60 %) | the hover breath (3 pt) |
+| `hoverOut` | 0.24 / 0 | 1.00 | 685.4 / 52.4 | 0.40 s | 0 | breath → closed |
+| `satellite` | 0.38 / 0.18 | 0.82 | 273.4 / 27.1 | 0.71 s | 1.11 % (3.49 %) | second activity buds off |
+| `hudIn` | 0.30 / 0.16 | 0.84 | 438.6 / 35.2 | 0.56 s | 0.77 % (2.54 %) | first key press |
+| `hudLevel` | 0.16 / 0 | 1.00 | 1542 / 78.5 | 0.30 s | 0 | the bar follows key repeat (~30 Hz) |
+| `hudOut` | 0.30 / 0 | 1.00 | 438.6 / 41.9 | 0.50 s | 0 | 1.5 s after the last change |
+| `tab` | 0.26 / 0 | 1.00 | 584.0 / 48.3 | 0.40 s | 0 | page content |
+| `tabIndicator` | 0.30 / 0.10 | 0.90 | 438.6 / 37.7 | 0.52 s | 0.15 % | selection capsule (matched geometry) |
+| `press` | 0.18 / 0.20 | 0.80 | 1218 / 55.9 | 0.37 s | 1.52 % | button scale 0.94 |
+| `commit` | 0.30 / 0 | 1.00 | 438.6 / 41.9 | 0.50 s | 0 | drop accepted, checkbox, armed target |
+| `listReorder` | 0.32 / 0.06 | 0.94 | 385.5 / 36.9 | 0.54 s | 0.02 % | to-do completion, tray insert, grid reorder |
+| `snapBack` | 0.36 / 0.12 | 0.88 | 304.6 / 30.7 | 0.63 s | 0.30 % | released gesture below threshold |
+| `contentIn` | easeOut 0.22, **delay 0.06** | | | | | content after the shape is ~25 % open |
+| `contentOut` | easeIn 0.10 | | | | | content leaves *before* the shape shrinks |
+| `contentSwap` | smooth 0.30 | | | | | artwork, value and activity swaps (with `.blurReplace`) |
+| `colorShift` | easeInOut 0.80 | | | | | accent and light palette on a track change |
+| `ambientIn` / `ambientOut` | easeOut 0.50, delay 0.10 / easeIn 0.20 | | | | | the light layer fills, then drains |
+| `hover` | easeOut 0.12 | | | | | fills on hover |
+
+Overshoot in points: `open` 0.5 % of a 472-pt widening is about 2.4 pt, and `activityIn` 2.5 % of a 105-pt widening is about 2.6 pt. Both are visible as life, never as wobble.
+
+### 4.2 Personalities and Reduce Motion
+
+| Setting | Effect |
+|---|---|
+| **Standard** (default) | The table above |
+| **Calm** | Every bounce × 0: everything is critically damped. Effects still run. |
+| **Lively** | Bounce × 1.5, capped at 0.35. Anything that lands is still 0. |
+| **Instant** | No animation at all (`nil`), even without Reduce Motion |
+| **Reduce Motion** (system) | `open`, `close` and `resize` **do not travel**: old and new shapes cross-fade at their final sizes (easeInOut 0.20). Small morphs (activity, peek, HUD, satellite) keep morphing, with easeInOut 0.18 and no bounce. The hover breath and HUD level animation are off. Content transitions are opacity only. No stagger, marquee, typing effect, pulse, ember or neck. The light layer **freezes on a resting frame**: the colour stays, the movement goes. Rubber-banding stays (it is direct manipulation) but releases without overshoot. |
+
+```swift
+// CrannyCore/DesignSystem/Motion.swift
+// Every animation in Cranny comes from this table. Rule: geometry may overshoot when it
+// GROWS; it never overshoots when it SHRINKS back into the hardware.
+import SwiftUI
+
+/// Settings ▸ Appearance ▸ Motion. Scales bounce only; durations are fixed.
+public nonisolated enum MotionPersonality: String, CaseIterable, Codable, Sendable {
+    case calm       // no bounce anywhere
+    case standard   // default
+    case lively     // bounce × 1.5 (capped at 0.35)
+    case instant    // no animation at all
+    public var bounceScale: Double {
+        switch self {
+        case .calm, .instant: 0
+        case .standard: 1
+        case .lively: 1.5
+        }
+    }
+}
+
+public nonisolated enum CrannyMotion {
+    public nonisolated enum Kind: String, CaseIterable, Sendable {
+        // Shape geometry
+        case open, close, resize, activityIn, activityOut, activitySwap
+        case peekIn, peekOut, hoverIn, hoverOut, satellite, hudIn, hudLevel, hudOut
+        // Content
+        case contentIn, contentOut, contentSwap, tab, tabIndicator, colorShift, ambientIn, ambientOut
+        // Controls & direct manipulation
+        case hover, press, commit, listReorder, snapBack
+    }
+
+    public nonisolated enum Curve: Equatable, Sendable {
+        case spring(duration: Double, bounce: Double)
+        case easeOut(Double), easeIn(Double), easeInOut(Double), smooth(Double)
+    }
+
+    public nonisolated struct Spec: Equatable, Sendable {
+        public let curve: Curve
+        public let delay: Double
+        /// Shrinking toward the hardware: bounce is forced to 0 for every personality.
+        public let lands: Bool
+        init(_ curve: Curve, delay: Double = 0, lands: Bool = false) { self.curve = curve; self.delay = delay; self.lands = lands }
+    }
+
+    /// The Standard table (DESIGN.md §4.1).
+    public static func spec(_ k: Kind) -> Spec {
+        switch k {
+        case .open:          Spec(.spring(duration: 0.42, bounce: 0.14))
+        case .close:         Spec(.spring(duration: 0.34, bounce: 0), lands: true)
+        case .resize:        Spec(.spring(duration: 0.40, bounce: 0.10))
+        case .activityIn:    Spec(.spring(duration: 0.46, bounce: 0.24))
+        case .activityOut:   Spec(.spring(duration: 0.30, bounce: 0), lands: true)
+        case .activitySwap:  Spec(.spring(duration: 0.30, bounce: 0.04))
+        case .peekIn:        Spec(.spring(duration: 0.38, bounce: 0.14))
+        case .peekOut:       Spec(.spring(duration: 0.28, bounce: 0), lands: true)
+        case .hoverIn:       Spec(.spring(duration: 0.26, bounce: 0.20))
+        case .hoverOut:      Spec(.spring(duration: 0.24, bounce: 0), lands: true)
+        case .satellite:     Spec(.spring(duration: 0.38, bounce: 0.18))
+        case .hudIn:         Spec(.spring(duration: 0.30, bounce: 0.16))
+        case .hudLevel:      Spec(.spring(duration: 0.16, bounce: 0))
+        case .hudOut:        Spec(.spring(duration: 0.30, bounce: 0), lands: true)
+        case .contentIn:     Spec(.easeOut(0.22), delay: 0.06)
+        case .contentOut:    Spec(.easeIn(0.10))
+        case .contentSwap:   Spec(.smooth(0.30))
+        case .tab:           Spec(.spring(duration: 0.26, bounce: 0))
+        case .tabIndicator:  Spec(.spring(duration: 0.30, bounce: 0.10))
+        case .colorShift:    Spec(.easeInOut(0.80))
+        case .ambientIn:     Spec(.easeOut(0.50), delay: 0.10)
+        case .ambientOut:    Spec(.easeIn(0.20))
+        case .hover:         Spec(.easeOut(0.12))
+        case .press:         Spec(.spring(duration: 0.18, bounce: 0.20))
+        case .commit:        Spec(.spring(duration: 0.30, bounce: 0))
+        case .listReorder:   Spec(.spring(duration: 0.32, bounce: 0.06))
+        case .snapBack:      Spec(.spring(duration: 0.36, bounce: 0.12))
+        }
+    }
+
+    /// Reduce Motion: big morphs become dissolves at the final size (see `morphsShape`),
+    /// small morphs lose their bounce, nothing scales/blurs/slides.
+    public static func reducedSpec(_ k: Kind) -> Curve? {
+        switch k {
+        case .open, .close, .resize: .easeInOut(0.20)
+        case .activityIn, .activityOut, .activitySwap, .peekIn, .peekOut, .satellite, .hudIn, .hudOut: .easeInOut(0.18)
+        case .hoverIn, .hoverOut, .hudLevel: nil
+        case .contentIn: .easeOut(0.15)
+        case .contentOut: .easeIn(0.08)
+        case .contentSwap, .tab, .tabIndicator: .easeInOut(0.15)
+        case .colorShift: .easeInOut(0.30)
+        case .ambientIn, .ambientOut: .easeInOut(0.20)
+        case .hover, .press: .easeOut(0.08)
+        case .commit, .listReorder, .snapBack: .easeOut(0.18)
+        }
+    }
+
+    public static func animation(_ k: Kind, personality: MotionPersonality = .standard,
+                                 reduceMotion: Bool = false) -> Animation? {
+        if personality == .instant { return nil }
+        if reduceMotion { return reducedSpec(k).map { make($0) } }
+        let s = spec(k)
+        var curve = s.curve
+        if case .spring(let d, let b) = curve {
+            let bounce = s.lands ? 0 : min(b * personality.bounceScale, 0.35)
+            curve = .spring(duration: d, bounce: bounce)
+        }
+        let a = make(curve)
+        return s.delay > 0 ? a.delay(s.delay) : a
+    }
+
+    private static func make(_ c: Curve) -> Animation {
+        switch c {
+        case .spring(let d, let b): .spring(duration: d, bounce: b)
+        case .easeOut(let d): .easeOut(duration: d)
+        case .easeIn(let d): .easeIn(duration: d)
+        case .easeInOut(let d): .easeInOut(duration: d)
+        case .smooth(let d): .smooth(duration: d)
+        }
+    }
+
+    /// With Reduce Motion, open/close/resize do not travel: the old and new shapes cross-fade
+    /// at their final sizes. Small morphs (compact, peek, HUD) still morph, without bounce.
+    public static func morphsShape(_ k: Kind, reduceMotion: Bool) -> Bool {
+        !(reduceMotion && (k == .open || k == .close || k == .resize))
+    }
+
+    /// Widgets enter radiating outward from the camera: `ring` = |column distance from the
+    /// centre| in widget order. 18 ms per ring, at most 4 rings (72 ms).
+    public static func stagger(ring: Int, reduceMotion: Bool) -> Double {
+        reduceMotion ? 0 : Double(min(max(ring, 0), 4)) * 0.018
+    }
+
+    /// iOS-style rubber band: resistance grows with distance and never hard-stops.
+    public static func rubberBand(_ offset: CGFloat, limit: CGFloat, coefficient c: CGFloat = 0.55) -> CGFloat {
+        guard limit > 0 else { return 0 }
+        let sign: CGFloat = offset < 0 ? -1 : 1
+        return sign * (1 - 1 / (abs(offset) * c / limit + 1)) * limit
+    }
+
+    /// Hand the gesture's velocity (pt/s) to the spring so a release never "restarts".
+    public static func release(velocity: CGFloat, remaining distance: CGFloat) -> Animation {
+        let v = abs(distance) < 0.5 ? 0 : Double(velocity / distance)
+        return .interpolatingSpring(duration: 0.40, bounce: 0.14, initialVelocity: v)
+    }
+}
+
+// MARK: - Hover intent (the anti-flicker contract)
+
+public nonisolated enum HoverIntent {
+    /// Settings ▸ General ▸ Hover delay.
+    public nonisolated enum Delay: String, CaseIterable, Codable, Sendable {
+        case instant, short, standard, long
+        public var seconds: Double { switch self { case .instant: 0; case .short: 0.12; case .standard: 0.22; case .long: 0.45 } }
+    }
+    public static let defaultDelay = Delay.short
+    public static let peekDwell: Double = 0.18           // compact → peek
+    public static let fullScreenDwell: Double = 0.40     // in a full-screen Space (tabs/toolbars live up there)
+    public static let closeGrace: Double = 0.30          // leave the exit zone this long before closing
+    public static let entryInflation: CGFloat = 4        // + the very top pixel row (mouse y == frame.maxY)
+    public static let exitInflation: CGFloat = 14        // hysteresis while open
+    public static let passThroughSpeed: CGFloat = 1200   // pt/s: travelling to a menu or display, not aiming
+    public static let dragProximity = CGSize(width: 80, height: 40)   // file drag opens the Tray, no dwell
+    public static let menuBarCourtesy: CGFloat = 24      // pointer this close beside the wings → wings retract
+    public static let peekAutoDismiss: Double = 2.6
+    public static let hudAutoDismiss: Double = 1.5
+
+    /// Pure decision function (unit-tested). The shell calls it from its pointer monitor.
+    public static func shouldOpen(dwell: Double, pointerSpeed: CGFloat, delay: Delay,
+                                  mouseButtonDown: Bool, optionHeld: Bool,
+                                  isFileDrag: Bool, fullScreenSpace: Bool) -> Bool {
+        if isFileDrag { return true }
+        if mouseButtonDown || optionHeld { return false }
+        if pointerSpeed > passThroughSpeed { return false }
+        return dwell >= (fullScreenSpace ? max(delay.seconds, fullScreenDwell) : delay.seconds)
+    }
+}
+
+/// Two-finger trackpad gestures over the shape (precise scroll deltas only, R1 §6).
+public nonisolated enum GestureSpec {
+    public static let trackSwipeCommit: CGFloat = 40       // pt of finger travel …
+    public static let trackSwipeVelocity: CGFloat = 400    // … or pt/s at release
+    public static let pullOpen: CGFloat = 24               // swipe down on closed/compact
+    public static let pushClose: CGFloat = 18              // swipe up on open/compact/peek
+    public static let verticalVelocity: CGFloat = 300
+    public static let horizontalTravel: CGFloat = 24       // rubber-band limit for content
+    public static let verticalTravel: CGFloat = 20         // rubber-band limit for the shape
+    public static let axisLock: CGFloat = 1.6              // dominant axis ≥ 1.6 × the other
+    public static let cooldown: Double = 0.15              // one gesture per touch sequence
+    public static let limitBump: CGFloat = 2               // HUD bar overshoot when pressing past 0 / 100 %
+}
+
+// MARK: - Transitions
+
+/// Blur + scale + fade. Content materialises out of the notch and leaves before the shape shrinks.
+public nonisolated struct BlurScale: ViewModifier {
+    public var blur: CGFloat, scale: CGFloat, opacity: Double, anchor: UnitPoint
+    public func body(content: Content) -> some View {
+        content.blur(radius: blur).scaleEffect(scale, anchor: anchor).opacity(opacity)
+    }
+}
+
+public extension AnyTransition {
+    /// Nook/peek content. Reduce Motion → opacity only.
+    static func crannyContent(reduceMotion: Bool, anchor: UnitPoint = .top) -> AnyTransition {
+        guard !reduceMotion else { return .opacity }
+        return .asymmetric(
+            insertion: .modifier(active: BlurScale(blur: 6, scale: 0.96, opacity: 0, anchor: anchor),
+                                 identity: BlurScale(blur: 0, scale: 1, opacity: 1, anchor: anchor)),
+            removal: .modifier(active: BlurScale(blur: 3, scale: 0.98, opacity: 0, anchor: anchor),
+                               identity: BlurScale(blur: 0, scale: 1, opacity: 1, anchor: anchor)))
+    }
+    /// Compact slot content grows out of the camera edge (anchored on the camera side).
+    static func crannySlot(edge: HorizontalEdge, reduceMotion: Bool) -> AnyTransition {
+        guard !reduceMotion else { return .opacity }
+        let anchor: UnitPoint = edge == .leading ? .trailing : .leading
+        return .modifier(active: BlurScale(blur: 4, scale: 0.6, opacity: 0, anchor: anchor),
+                         identity: BlurScale(blur: 0, scale: 1, opacity: 1, anchor: anchor))
+    }
+    /// Tab/page switch: symmetric, direction-aware ±12 pt slide + fade (never "fades one way, slides the other").
+    static func crannyTab(forward: Bool, reduceMotion: Bool) -> AnyTransition {
+        guard !reduceMotion else { return .opacity }
+        return .asymmetric(insertion: .offset(x: forward ? 12 : -12).combined(with: .opacity),
+                           removal: .offset(x: forward ? -12 : 12).combined(with: .opacity))
+    }
+}
+```
+
+### 4.3 Choreography (t in seconds from the trigger)
+
+**Open** (dwell met, click, shortcut or swipe commit)
+
+| t | Shape | Content |
+|---|---|---|
+| 0 | `open` begins: width, height, ears and radius together; shadow and keyline ramp with openness | Compact slot content `contentOut` (0.10). Album art does **not** fade: it flies (matched geometry) from the 20-pt slot to the media card. |
+| 0.06 | | Header (tabs, actions) `contentIn` with `crannyContent`: blur 6 → 0, scale 0.96 → 1 anchored top |
+| 0.06 + stagger | | Widgets `contentIn`, **radiating outward from the camera**: the centre column first, then 18 ms per ring, at most 4 rings (72 ms) |
+| 0.10 | | The light layer `ambientIn` fills from the bottom edge up (backdrop sized to the *current* shape) |
+| ≈ 0.45 | visually settled | settled. A focus ring appears only if opened by keyboard. |
+
+**Close:** content `contentOut` at 0 with no stagger, and the light drains (`ambientOut`). The shape starts `close` at 0.04, so the camera "swallows" an empty shape. When the animation is logically complete, any compact activity returns with `crannySlot` at about 0.22, and key status is handed back.
+
+**Activity in:** `activityIn` on the shape. Slot content grows out of the camera edge (`crannySlot`: scale 0.6 → 1 anchored on the camera side, blur 4 → 0) at +0.08. **Activity out:** the reverse with `activityOut`; content leaves first.
+
+**Activity swap** (for example Now Playing → meeting): the old content `contentOut`, slot width `activitySwap`, new content `crannySlot`.
+
+**Peek:** `peekIn` grows 52-pt rows downward. Elements that also exist in the row (artwork, visualizer) **move** with matched geometry (20 → 40 pt artwork). Only new elements use `contentIn`. Peek rows stagger 30 ms top to bottom. An auto-peek retracts after 2.6 s unless hovered.
+
+**Satellite:** a second ongoing activity buds off the trailing edge with `satellite`. In Standard and Lively a liquid neck connects them for the first 0.38 s (Canvas blur + `alphaThreshold`, clipped to the strip between the shape and the bubble). In Calm and Reduce Motion it simply fades in.
+
+**HUD:** the first key press runs `hudIn`. Later presses animate **only** the bar (`hudLevel`) and the number (`.numericText`); the shape never moves. Pressing past 0 % or 100 % rubber-bands the bar by 2 pt and springs it back (`snapBack`). After 1.5 s idle, `hudOut` restores the previous presentation.
+
+**Tab or page switch:** the selection capsule moves with matched geometry and `tabIndicator`. Content uses `crannyTab(forward:)`: a symmetric ±12-pt slide plus fade with `tab`. If the pages differ in height, the shape uses `resize`.
+
+**Notes focus:** the other widgets `contentOut`, the shape `resize`s to all columns × 3 rows, and Notes expands with matched geometry. Esc or ⌘↩ reverses it.
+
+**Song change:** the artwork swaps with `.blurReplace` and `contentSwap`. The accent and light palette cross-fade (`colorShift`), and the tide or aurora gets a 0.6-s energy ripple. If the Nook is closed, it auto-peeks (option).
+
+### 4.4 Gestures and rubber-banding
+
+These are two-finger trackpad scrolls over the shape, using precise deltas only. The phase-aware recognizer runs in `NotchPanel.sendEvent`, ignores momentum, fires once per touch sequence with a 0.15-s cooldown, and locks to an axis once one axis is 1.6× the other.
+
+| Gesture | Where | Live feedback | Commit | Result |
+|---|---|---|---|---|
+| Horizontal swipe | compact Now Playing, the peek row, the Media artwork or title | Content follows `rubberBand(dx, 24)`; the next/previous glyph fades in at the leading edge | 40 pt or 400 pt/s | Next/previous track (*Invert* setting); the old artwork slides out 24 pt and the new one blur-replaces in; `.alignment` haptic at the threshold |
+| Swipe **down** | closed, compact | Shape height + `rubberBand(dy, 20)` | 24 pt or 300 pt/s | Open, carrying the gesture velocity (`CrannyMotion.release`) |
+| Swipe **up** | open | The shape follows, up to −20 | 18 pt | Close |
+| Swipe **up** | compact, peek | Content lifts by the rubber-banded distance | 18 pt | **Dismiss** this activity until its next meaningful change (auto-unhide) |
+| Swipe **up** | closed handle (no notch) | | 18 pt | Hide the handle until the next activity |
+| Release below the threshold | | | | `snapBack` with the gesture's velocity |
+
+The Nook has no horizontal page-swipe: horizontal swipes belong to media. A horizontal scroll over the scrubber seeks; over the artwork or title it changes track.
+
+### 4.5 Staggering
+
+Only the Nook staggers, outward from the camera. Peek rows stagger 30 ms. Lists (events, to-dos, tray tiles) never stagger on open, to avoid a slot-machine effect.
+
+### 4.6 Hover intent (the anti-flicker contract)
+
+```
+closed ──enter entry zone──▶ breath (hoverIn)
+breath ──dwell ≥ delay (120 ms) ∧ speed < 1200 pt/s ∧ no mouse button ∧ no ⌥──▶ open     [Hover mode]
+breath ──click──▶ open                                                                    [Click mode: breath only]
+breath ──leave──▶ closed (hoverOut)
+compact ──dwell 180 ms──▶ peek ──click──▶ open, focused on the related widget
+open ──leave exit zone (+14 pt)──▶ grace 300 ms ──▶ closed / compact
+grace ──re-enter──▶ open
+open ──holds open: pinned · typing · dragging · menu/popover/sheet open · palette open · Demo──▶ never auto-closes
+open ──inactivity timeout (off by default; 5–60 s)──▶ close
+file drag within proximity ──▶ open straight to the Tray catch state (no dwell)
+full-screen Space ──▶ dwell ≥ 400 ms
+VoiceOver running ──▶ hover never opens; click, shortcut or VO action does
+```
+
+**Menu-bar courtesy:** while the pointer is in the band within 24 pt *beside* the compact wings (reaching for a menu or status item under them), the wings retract with `activityOut` and return 1.5 s after the pointer leaves the band. Pointer moves along the rest of the menu bar do nothing.
+
+### 4.7 Energy budget (a release gate)
+
+| State | Allowed work |
+|---|---|
+| Closed, nothing playing | **None**: no timers, no `TimelineView`, no Canvas. Event-driven only. |
+| Compact Now Playing | Visualizer ≤ 30 fps on AC, ≤ 20 fps on battery, only while audio plays; static otherwise |
+| Peek | The tide or row visuals only for the peek's lifetime |
+| Open | Light layer ≤ 30 fps on AC, 20 fps on battery |
+| Low Power Mode, `thermalState ≥ .serious` | Light becomes a static halo (0 fps) |
+| Full-screen app in front, panel occluded, Reduce Motion | Paused (Reduce Motion keeps a frozen frame) |
+| **Targets** | Activity Monitor Energy Impact < 1.0 idle; open plus aurora ≤ 3 % CPU; no hitches at 120 Hz. Measured with Instruments before each release. |
+
+---
+
+## 5. The light layer ("Afterglow")
+
+An optional layer, grafted from proposal B: **the Nook is a black crevice that light leaks out of**. The colour comes from what is happening. It is never random, never on the closed or compact shape, and never behind text without a card or a scrim.
+
+### 5.1 Controls and defaults
+
+- **Ambient light:** Off · **Subtle** (default; light alpha capped at 0.45) · Vivid (alpha cap 0.80; switches to the `lit` tokens and allows the underglow).
+- **Effect:** **Aurora** (default) · Motes · Tide. Halo is the automatic Low Power fallback.
+- Increase Contrast and the Flat widget style cap the light at Subtle. Reduce Transparency turns it off.
+- **Album glow** (default on): a halo behind the artwork in the Media widget and the peek row, in the album accent at 30 %, r 36, scale 1.08.
+- **Underglow** (Vivid only): coloured light spilling onto the desktop below the open Nook, as a `.shadow` of the shape in `glow1` at 30 %, r 36, y 10. It is click-through.
+- **Progress rim** (off by default): playback progress drawn as a 1.5-pt accent line along the *lower* outline of compact Now Playing, as a `trim(0…progress)` of the outline. The same path carries a one-shot green sweep when a charger connects.
+- **Keyline tint:** while music plays, the keyline takes the album accent.
+
+### 5.2 Palette per activity
+
+| Source | Light (`glow1…3`) | Accent |
+|---|---|---|
+| Media | `AmbientPalette.extract(artwork)`: deterministic k-means (k 5) on a 24 × 24 thumbnail, ranked by population × colourfulness, three hue-distinct glows clamped `luminous` (s 0.45–0.90, v ≤ 0.95); greyscale art → an honest silver `.mono` | Most chromatic cluster, guarded legible. 0.021 ms per artwork (release); cached by track ID; off the main actor |
+| Meeting | `AmbientPalette.tinted(calendar colour)` | Calendar colour, guarded |
+| Timer | `.timer` (ember → amber → rose) | `warning` |
+| Charging / low battery | `.charging` / `.lowBattery` | `success` / `danger` |
+| Nothing | `tinted(system accent)` (Accent = Automatic or System); `.afterglow` (Accent = Swatch); `.mono` (Monochrome) | the resolved accent |
+
+### 5.3 Effects
+
+All effects are pure functions of time, palette, energy and intensity. They hold no per-particle state and no timers; `TimelineView(.animation(minimumInterval:paused:))` supplies time, and pausing it costs nothing. The backdrop is framed to the shape's **current** bounds, so the light rises with the bottom edge as the Nook opens.
+
+| Effect | Engine | Look | Parameters |
+|---|---|---|---|
+| **Aurora** | `MeshGradient` 4 × 4 (15+); macOS 14: Canvas with 3 blurred sine curtains, normal blending | Curtains of content colour rising from the bottom; the top 40 % stays black, so the band merges with the hardware | Interior points drift on incommensurate sines (0.21–0.71 rad/s, amplitude 3–8 %); louder audio lifts the light by up to 6 % |
+| **Motes** | Canvas, 36 stateless hash-seeded particles | Slow rising specks that twinkle | Speed 5–14 pt/s; radius 0.8–2.4; twinkle 1.2–3.2 Hz × 0.45 amplitude |
+| **Tide** | Canvas, 3 tapered sine strokes + 3-pt bloom | Luminous wave lines along the bottom edge | Amplitude 3–10 pt × energy; also used in the song-change peek |
+| **Halo** | `RadialGradient` | One static bloom | Low Power Mode and thermal fallback |
+
+**Audio energy:** real RMS (60 ms attack, 300 ms release) only when the user enables **Live** visualizer mode, which asks for System Audio Recording permission on macOS 14.2+ via a Core Audio process tap. Otherwise energy is 0 and the visualizer runs in **Ambient** mode: an honest breathing pattern, labelled as such in Settings.
+
+### 5.4 Translucency
+
+- **Default: opaque black.** The shape must be indistinguishable from the hardware.
+- **Translucent background** (opt-in):
+  - The band stays opaque black, so there is never a seam around the camera.
+  - Below the band the fill ramps over 24 pt to **72 % black** over glass: `glassEffect(.regular.tint(.black.opacity(0.35)))` on 26+, `NSVisualEffectView(.hudWindow, .behindWindow)` on 14/15.
+  - Cards stay smoked.
+  - Forced off by Reduce Transparency.
+- **Liquid Glass** is never used on the attached shape. Settings, menus and onboarding get it automatically from system controls on 26+.
+
+### 5.5 Delight moments
+
+All are original and capped: at most one plays at a time, none play in full screen, none play while Live Activities are paused, and none play under Calm, Instant or Reduce Motion unless noted.
+
+**Who triggers what** (ARCHITECTURE §3.6, §4.6 step 7): feature modules cannot import `CrannyEffects`, so an activity only *names* its moment (`LiveActivity.delight`: Timer done → `.emberBurst`, Charging → `.chargeSweep`); the shell adds `.songRipple`, `.firstLight` and `.gulp`, applies the caps above, and CrannyNotchUI draws the moment from `CrannyEffects`. The to-do check and its Lively motes are drawn inside the To-dos widget; the drop, satellite neck and HUD bump are motion owned by NotchUI and the HUD.
+
+| Moment | What happens | Calm / Reduce Motion |
+|---|---|---|
+| **The drop** | `activityIn`'s 2.5 % overshoot as an activity appears | Calm: no overshoot |
+| **First light** | The first open per session: the light fills outward from the camera over 1.0 s | Static fade |
+| **Song change** | Palette cross-fade plus a tide or aurora ripple | Colour only |
+| **Timer done** | An ember burst (18 stateless particles, 0.9 s) fans out of the notch; the ring pulses twice (`phaseAnimator`) | Static ember glow; ring colour only |
+| **File caught** | The shape "gulps" (height −3 pt, spring back over 0.25 s) and plays a `.generic` haptic | No gulp; haptic stays |
+| **Charger connected** | A green sweep along the lower rim | Instant rim |
+| **Satellite split** | The liquid neck, 0.38 s | Fade |
+| **To-do done** | The check draws itself (trim 0 → 1, 0.25 s); Lively adds six motes | Instant check |
+| **HUD at a limit** | A 2-pt rubber-band bump | Kept, with no overshoot |
+
+---
+
+## 6. The open Nook
+
+### 6.1 Anatomy (14″, Standard, default layout)
+
+```
+ ◜ear 10                                     band = header (32)                                      ear 10◝
+ ┌──────────────────────────────────┬──────────── camera housing (N) ─────────┬──────────────────────────────┐
+ │12 (▣ Home | ▤ Tray 3 | ✎ Focus)  │      never draw here (time/date if       │   (⌕) (📌) (⚙︎)  12          │  ← header lives IN the band
+ │                                   └────────── no notch) ───────────────────┘                              │  headerGap 6
+ │12 ┌──────── Media · 5 cells (312) ─────────┐ 8 ┌── Calendar · 3 (184) ──┐ 8 ┌ Apps · 2 (120) ┐       12  │
+ │   │ 120 = 2 rows × 56 + 8, r 20, padding 12 │   │                         │   │  ▢    ▢        │           │
+ │   └─────────────────────────────────────────┘   └─────────────────────────┘   └────────────────┘           │
+ │                                                                                              padding 12  │
+ ╰──────────────────────────────────────────── r 32 continuous · keyline × openness ─────────────────────────╯
+                                                   656 × 170 (676 with ears)
+```
+
+### 6.2 Header (in the band)
+
+- **Leading: tabs and pages.**
+  - A capsule track (`control`, 2-pt inset). Segments are 22 pt high with an icon and title (`headline`); the selected segment is `controlPressed` and moves with matched geometry.
+  - Built-in pages are **Home** (the widget grid; code id `nook`) and **Tray**; the Tray shows a `micro` count badge.
+  - Users can add up to **3 pages** (for example "Focus": Notes 4 · To-dos 3 · Timer 2 · Shortcuts 1).
+  - If titles don't fit their zone (Russian, XL text), they collapse to icons with tooltips and VoiceOver labels.
+- **Trailing: actions.**
+  - ⌕ Command palette (⌘K), 📌 Pin (`pin` / `pin.fill`; pinned shows a `control` well), ⚙︎ Settings (⌘,).
+  - Plain icon buttons, 28 pt, 13-pt semibold glyphs; their shape follows Appearance ▸ Buttons.
+- **Centre:** the camera zone (N + 16) stays empty. On displays without a notch it shows the time and date.
+
+### 6.3 Grid
+
+- **Rows:** always 2 (3 only during Notes focus).
+- **Widths:** a widget is an integer number of cells: `width(n) = n·cell + (n−1)·gutter`. The Nook's width is the sum of its visible widgets, clamped between the header minimum (N + 2·160) and `maxWidth`.
+- **Overflow:** a layout that exceeds the maximum columns is refused in the editor ("2 cells over; move a widget to another page"). The Nook never scrolls horizontally.
+- **Styles** (Appearance ▸ Widgets):
+  - **Cards** (default): smoked `card` + 1-px `hairline`.
+  - **Flat with dividers:** no fills; a 1-px `hairline` divider in a doubled gutter, inset 10 pt at top and bottom. The light layer is capped at Subtle and sits under a `scrim` in the grid area.
+- **Padding fine-tune:** a panel padding of ±4 pt on top of the density. Radii follow automatically and stay concentric.
+
+### 6.4 Command palette (⌘K)
+
+- **Layout:** it replaces the grid area at the same height, so the shape does not move.
+  - A 28-pt search field in a `well` (r 8), then up to 4 result rows of 22 pt each.
+  - Each row: icon 16, title (`body`), kind (`caption`, tertiary) and its shortcut as a `KeyCap`.
+- **What it searches:**
+  - actions ("Start 25-minute timer", "New note", "Pause live activities for 1 hour", "Demo mode", "Clear tray");
+  - quick apps, Shortcuts.app shortcuts, notes, to-dos and Settings panes.
+- **Keys:** ↑ ↓ ↩ navigate; Esc returns to the grid.
+
+### 6.5 Hold ⌘ for hints
+
+Holding ⌘ for 0.5 s makes `KeyCap` hints appear beside every tab, action, quick-app tile (⌥1–⌥9) and the focused widget's commands. They disappear on release. VoiceOver gets the same shortcuts as accessibility hints instead.
+
+### 6.6 Edit layout (⌘E, or from Settings)
+
+- **Visuals:** cards get a dashed `stroke` outline and an 8 × 24 resize handle on the trailing edge. Tiles wiggle; under Reduce Motion they show a "–" badge instead.
+- **Pointer:**
+  - Drag to reorder (`listReorder`).
+  - Drag the handle to resize in whole cells. It snaps with an `.alignment` haptic per cell and shows a "4 cells" tooltip; a counter shows "N cells left".
+  - A "+" tile at the end opens the widget library.
+- **Keyboard:** ⌥← / ⌥→ move the focused widget; ⌥⇧← / ⌥⇧→ resize it. Every change is announced to VoiceOver. ↩ or Esc finishes.
+
+### 6.7 Widget sizes (cells wide × 2 rows)
+
+| Widget | Min | **Default** | Max | What changes with width |
+|---|---|---|---|---|
+| Media | 4 | **5** | 6 | 4: 72-pt artwork, transport under the title · 5: 96-pt artwork · 6: + shuffle, repeat and output device |
+| Calendar | 2 | **3** | 5 | 2: next 2 events, times only · 3: header + rows + Join · 4: + day strip · 5: today and tomorrow columns |
+| Quick Apps & Shortcuts | 1 column | **2** | 6 | Each column is 2 tiles |
+| Mirror | 2 | **2** | 3 | 3: wider 4:3 preview |
+| Notes | 3 | **4** | 8 | ≥ 6: note list sidebar (1 cell) + line numbers in code mode |
+| To-dos | 2 | **3** | 6 | 2: no header counter |
+| Timer | 2 | **2** | 3 | 3: presets column beside the ring |
+| AirDrop | 1 | **2** | 2 | 1: icon only |
+| Files (mini shelf) | 3 | **4** | 8 | Recent tray items; the full Tray is a page |
+
+### 6.8 Shared card anatomy
+
+`.crannyCard(cells:)` sizes a card to `grid.width(cells)` × `grid.height` (120) with padding 12 and radius 20. The radius is set as the `containerShape`, so inner `ContainerRelativeShape` / `ConcentricRectangle` stay concentric.
+- **No title bars.** Content identifies itself (artwork, date, icons), as in Apple's widgets.
+- **Overflow menu:** hovering a card shows a 20-pt `ellipsis` button (tertiary, top-trailing). It holds widget options, *Resize*, *Remove* and *Edit Layout…*, and is also available from the keyboard (⌘. on a focused card) and as a VoiceOver action.
+- **Every widget defines these states:**
+  - content;
+  - **empty** (one line + one action);
+  - **needs permission** (one-line why + an inline button: the only place that permission is ever requested);
+  - **loading** (≤ 300 ms: nothing; longer: a quiet 2.5-pt ring);
+  - **error** (a `danger` glyph + one line + retry).
+- **Hover:** a card fill change only, nothing moves. Press: controls only.
+
+---
+
+## 7. Widgets
+
+Each widget is a VoiceOver container named after itself and a keyboard `focusSection()`. Tab moves between widgets and arrow keys move within one. All copy is original.
+
+### 7.1 Media (5 cells · 312 × 120 · content 288 × 96)
+
+```
+┌──────────────────────────────────────────────── r 20 ┐
+│ ┌──────────┐  Midnight Window                    ⌁   │  title (15 semibold) · ⌁ airplayaudio route menu (tertiary, 12)
+│ │ artwork  │  The Example Band                       │  artist (callout, secondary) · halo behind art (album glow)
+│ │  96 × 96 │  ━━━━━━━━━━━━━━━━──────────────────────  │  scrubber 4 → 6 pt on hover, accent fill
+│ │   r 8    │  1:24                           −2:11   │  caption mono, tertiary
+│ └──────────┘          ⏮       (⏸)       ⏭           │  28 plain · 32 prominent (white, black glyph) · 28 plain
+└──────────────────────────────────────────────────────┘
+```
+- **Interactions:**
+  - Click the artwork to open the source app (tooltip "Open in Music").
+  - Drag the scrubber, or scroll horizontally over it, to seek (`.levelChange` haptic at 10 % steps).
+  - A two-finger swipe over the artwork or title changes the track.
+  - Artwork swaps with `.blurReplace`.
+- **States:**
+  - Playing.
+  - Paused: the play glyph via `.contentTransition(.symbolEffect(.replace))`, and the visualizer goes static.
+  - Nothing playing: the last source's icon + "Nothing playing" (callout, secondary) + a prominent **Play** if resumable, or "Open Music" as a text button.
+  - Unsupported player: title only.
+  - Missing artwork: an accent gradient + `music.note`.
+- **Keyboard:** Space play/pause · ⌘← / ⌘→ previous/next · ← / → seek ±10 s while the scrubber is focused.
+- **VoiceOver:** "Now playing: Midnight Window by The Example Band"; actions Play/Pause, Next, Previous, Open in app; the scrubber is adjustable (±10 s).
+
+### 7.2 Calendar (3 cells · 184 × 120)
+
+```
+┌──────────────────────────────── r 20 ┐
+│ TUE  14 October               ‹  ›   │  micro (danger) + headline · ‹ › change day within days behind/ahead
+│ ▍ Design review         10:30        │  3 × 14 calendar-colour capsule · caption title · caption mono time (secondary)
+│ ▍ Standup — now · 12m left  [⦿ Join] │  live/next event: two lines, success Join capsule (person.2.wave.2.fill + "Join")
+│ ▍ Lunch with Ana        13:00        │  past events today: tertiary + strikethrough (option "Show today's past events")
+└──────────────────────────────────────┘
+```
+- **Rows:** 18 pt, single line. Only the live or next event gets two lines ("Now · 12m left" or "In 4m", in the guarded event colour) and the **Join** capsule when a Zoom, Meet, Teams or Webex link is found in the URL, location or notes.
+- **Scrolling:** a 12-pt fade mask at the bottom; "+3 more" in `caption`.
+- **Day strip:** at ≥ 4 cells, a strip of the days behind/ahead appears (0–7 each, from Settings), with today as a white capsule with black text.
+- **States:**
+  - Empty: "No more events today" + tomorrow's first event (tertiary).
+  - No permission: "Show your events" (inline button → the EventKit prompt, just in time).
+  - All calendars hidden: "Calendars: 0 of 5 shown · Choose…".
+- **Keyboard:** ↑ ↓ events · ↩ open in Calendar · ⌘J join · ← → change day.
+
+### 7.3 Quick Apps & Shortcuts (columns of 2 tiles)
+
+- **App tiles:** 56-pt cells holding a 36-pt app icon (`NSWorkspace.icon(forFile:)`).
+  - Hover: a `control` well (r 12) and a `.help` name.
+  - Running apps get a 4-pt `secondaryLabel` dot under the icon, Dock-style.
+- **Shortcut tiles:** a 36-pt continuous squircle (r 9) in the shortcut's colour, or a stable hue hashed from its name, with its SF Symbol glyph or first letter (17 pt, white).
+  - Runs via `shortcuts run`.
+  - While running: a 2.5-pt progress ring. Success: a check with `.symbolEffect(.bounce)`. Failure: a `danger` badge with a tooltip.
+- **Editing:**
+  - Drag an app from Finder or the Dock onto the widget to add it.
+  - In edit mode a trailing "+" tile adds items; drag to reorder.
+- **Keyboard:** arrows within; ↩ launch; ⌥1–⌥9 launch from anywhere in the Nook.
+
+### 7.4 Mirror (2 cells · 120 × 120, frameless)
+
+- **Off:** a dark gradient + `web.camera` (22) + "Preview camera" (caption, secondary). One click starts it (the camera permission is asked here on first use, never in onboarding).
+- **On:** the preview fills the card (aspect-fill, r 20), mirrored by default.
+  - A hover toolbar sits top-trailing: 24-pt circles on black 50 % for flip (`flip.horizontal`) and a camera menu that lists every `AVCaptureDevice`, external and Continuity cameras included.
+- **Privacy:** never starts by itself; stops when the Nook closes or the page changes. The system's green camera indicator is the privacy cue, and Cranny adds nothing that competes with it.
+- **VoiceOver:** "Camera preview, on".
+
+### 7.5 Notes (4 cells · 248 × 120; focus = all columns × 3 rows)
+
+```
+┌──────────────────────────────────────────── r 20 ┐
+│ deploy.md ⌄                       </>   ⤢   +    │  headline title (double-click or ⌘R to rename) · ⌄ note list · code toggle · focus · new (⌘N)
+│ ## Release                                       │  body 13 / code 12 mono · insertion point in accent
+│ let build = "1.4.2"                              │  code mode: SyntaxPalette, comments tertiary italic
+│ retry(3) // flaky CI                             │
+└──────────────────────────────────────────────────┘
+```
+- **Editor:** `NSTextView` with TextKit 2, line height 1.3, text directly on the card. The note list menu offers New, Rename and Delete (with confirmation).
+- **Code mode:** Markdown plus common languages, auto-detected from a fence, shebang or extension, or chosen in the menu. Line numbers (quaternary) appear at ≥ 6 cells.
+- **Typing effect** (Appearance; on by default; off under Reduce Motion and Instant):
+  - Newly typed characters appear in the accent and settle to `label` over 300 ms.
+  - Implemented with TextKit 2 *rendering attributes* (`NSTextLayoutManager.addRenderingAttribute`), so the storage and undo stack are untouched, stepped by one display link and touching only the last ≤ 32 ranges.
+  - Read-only animated text drawn by CrannyNotchUI or onboarding (tutorial bubble, welcome headlines) uses `CrannyEffects.TypewriterText`: a SwiftUI `TextRenderer` typewriter on 15+ and a plain fade on 14. Feature modules (peek rows) cannot import Effects and do not animate text.
+- **Focus mode:** ⌘↩ or ⤢. The Nook holds open while a note is focused; Esc exits.
+- **Type-to-capture:** if the Nook was opened by the shortcut and nothing is focused, the first printable key starts a new note or to-do (setting).
+
+### 7.6 To-dos (3 cells)
+
+- **Header:** "To-dos" (`eyebrow`) + "3 left" (`caption`, tertiary).
+- **Rows:** 22 pt: a 16-pt circle (1.5-pt `stroke`; checked = accent fill with a black check that draws itself) + `body` text.
+- **Completing:** the item is struck through, turns tertiary and, after 1.2 s, collapses with `listReorder` (option "Hide completed", on by default).
+- **New items:** a trailing "New to-do" row (`plus`, quaternary). Return adds the next row, ⌫ on an empty row deletes it, Space toggles, ⌘↑ / ⌘↓ reorder.
+
+### 7.7 Timer (2 cells · 120 × 120)
+
+- **Running:**
+  - An 88-pt ring with a 5-pt stroke in `warning`. Remaining time inside (`numeral` 22, `.numericText(countsDown: true)`) and the label in `caption`.
+  - Hover swaps the label for ⏸ and ⏹ (24 pt).
+  - In the last 10 s the digits pulse once per second (Calm or Reduce Motion: colour only).
+- **Idle:**
+  - Preset chips 1 · 5 · 10 · 25 min in a 2 × 2 grid.
+  - Scrolling over the face adjusts ±1 min (`.levelChange` per detent).
+  - When focused you can type digits: "25" ↩ = 25 min, "90s" ↩ = 90 s.
+- **Done:**
+  - The ring pulses twice (`phaseAnimator`) and plays an ember burst.
+  - The notch auto-peeks "Timer done" with Stop and +1 min; the chosen *system* sound plays; VoiceOver announces it.
+  - The timer keeps running as a live activity when the Nook closes.
+
+### 7.8 AirDrop (2 cells)
+
+- **Idle:** a `DropZone` with a dashed 1.5-pt `stroke` (r 8, concentric), `dot.radiowaves.up.forward` (22) and "AirDrop".
+- **Drag over:** an `info` stroke (solid under Differentiate Without Color), `info` at 15 % fill, scale 1.03, `.bounce` and an `.alignment` haptic.
+- **Drop:** shows the AirDrop picker (`NSSharingService(named: .sendViaAirDrop)`).
+- **Click without files:** a tooltip, "Drop files here to send them with AirDrop".
+
+### 7.9 Files (mini shelf, 4 cells)
+
+The 6 most recent tray items as 44-pt thumbnails. It is also a drop target, and "Open Tray" (⌘2) jumps to the Tray page. Tiles behave as in §8.
+
+---
+
+## 8. Tray and pipelines
+
+### 8.1 Tray page (full width)
+
+```
+┌──────────────────────────── files · (width − 2 cells) ───────────────────────────────┐ ┌ AirDrop · 2 ┐
+│ ┌────┐  ┌────┐  ┌────┐  ┌────┐  ┌────┐                                               │ │   ⦿))       │
+│ │ QL │  │ QL✓│  │ QL✓│  │ ◔  │  │ QL │   tiles 64 × 66: 44-pt Quick Look thumb r 8   │ │  AirDrop    │
+│ └────┘  └────┘  └────┘  └────┘  └────┘   + caption (11, middle-truncated)            │ └─────────────┘
+│ Brief.pdf hero@2x… notch.heic assets.zip IMG_2041…                                   │
+│ 2 selected  (⤡ Compress) (⟳ Convert ▾) (⇲ Resize ▾) (Zip) (🔗 Copy paths) (✦ Web export) … │  22-pt chips
+└──────────────────────────────────────────────────────────────────────────────────────┘
+```
+- **Tiles:** `QLThumbnailGenerator` thumbnails. The row scrolls horizontally with a fade mask.
+  - Hover shows a remove ✕ (a 16-pt circle).
+  - Selected: a `controlPressed` well (r 8), a 1.5-pt accent ring and a 14-pt check badge (the badge is not colour-only).
+- **When nothing is selected,** the chip row shows "5 items · 48 MB" and **Clear** (⌥⌘⌫).
+- **Interaction:** click, ⌘-click and ⇧-click select; ⌘A selects all; Space opens Quick Look; ⌘C copies; ⌘⌫ removes. Drag out goes through AppKit `NSDraggingSource` with `NSURL` writers, so the receiving app gets the original file, not a temporary copy (R1 §5.3). The context menu holds Open, Reveal in Finder, Quick Look, Copy Path, Share…, Remove.
+- **Retention:** Until removed (default) · Clear on quit · Clear after 1 day.
+- **Empty:** `tray.and.arrow.down.fill` + "Drop files on the notch to keep them here".
+
+### 8.2 Pipelines
+
+Chips are contextual: only actions valid for **every** selected item are shown, as 22-pt capsules (`control`, glyph + `caption` semibold).
+
+| Selection | Built-in actions |
+|---|---|
+| Images | **Compress** (HEIC or JPEG at quality 0.8, keeps dimensions) · **Convert ▾** PNG / JPEG / HEIC / TIFF · **Resize ▾** 50 % · max 1600 · max 2048 |
+| Archives (.zip) | **Unzip** |
+| Anything | **Zip** · **Copy paths** · **AirDrop** · Share… · Reveal in Finder · Remove |
+| User pipelines ✦ (`wand.and.stars`) | Saved chains, for example "Resize 50 % → JPEG 80 % → Copy path", built in Settings ▸ Tray |
+
+- **Running:** the source tile dims to 50 % behind a 22-pt `ProgressRing` (accent). Pipelines run off the main actor and are cancellable (✕ on the ring).
+- **Result:** written next to the source (or to Downloads for files the tray owns). It slides in beside the source with `listReorder` and a 6-pt accent "new" dot. An **Undo** chip stays for 5 s. A `.generic` haptic plays and a VoiceOver announcement is made.
+- **Error:** a `danger` `exclamationmark` badge on the tile; its tooltip and accessibility value say what failed, in one line.
+
+### 8.3 The drag "catch" state
+
+When a file drag enters the proximity zone (§3.6), the shape opens straight to the Tray geometry with **drop zones**, filtered by the dragged `UTType`s. Zones are laid out in grid cells:
+
+```
+[ Keep in Tray  (wide, ≥ 4 cells) ] [ AirDrop · 2 ] [ Compress · 2 ] [ Zip · 2 ] [ ✦ Web export · 2 ]
+```
+- **Which zones:** Keep in Tray and AirDrop always appear, followed by up to 3 **pinned pipelines** that accept the types.
+- **Arming:** the zone under the pointer arms: accent at 15 % fill, a solid stroke, scale 1.03, `.bounce` on its glyph and an `.alignment` haptic.
+- **Dropping on an action** runs the pipeline directly and keeps the result in the Tray. The shape "gulps" (§5.5).
+- **Hit zone:** while the drag lasts, the enlarged zone is an `opacity(0.001)` fill, removed on drag end (R1).
+- **Leaving** the zones without dropping closes after the grace period.
+
+---
+
+## 9. Live activities
+
+### 9.1 Compact anatomy
+
+```
+ ◜ │12u│  leading content  │8u│ ████ camera housing (N) — never draw here ████ │8u│  trailing content │12u│ ◝
+       aligned → camera                                                           aligned ← camera
+```
+- `CompactSlots` (Appendix A) builds this: both slots are the same width, content hugs the camera, and the outer 12u keeps content off the corner curve.
+- **One activity, one datum per side.** Leading and trailing always describe the *same* activity.
+- **No free text in compact,** except `compactLabel` abbreviations that are tested in both languages ("in 4m" / "4 мин").
+- **Compact height = band height.** Compact never pushes down; only peek and open grow.
+
+### 9.2 Activities
+
+| Activity | Slot | Leading | Trailing | Peek row (52 pt) | Shows / auto-peeks | Priority |
+|---|---|---|---|---|---|---|
+| **Now Playing** | short | Artwork 20u, r 5u (+ halo with Album glow) | 5-bar visualizer: 3-pt bars, 2-pt gaps, 4–16 pt tall, accent; paused → 3-pt static dots | Artwork 40 r 10 · title `headline` / artist `callout` · ⏮ ⏯ ⏭ (28) · 2-pt progress | While playing; peeks 2.6 s on a track change (option) | P2; paused → P3, hidden after 30 s, auto-unhides on resume |
+| **Meeting soon** | medium | Calendar-colour dot 7 + "in 4m" (`compactLabel`) | **Join** capsule 34 × 20, `success` with a black `person.2.wave.2.fill` (if there's a link), else the start time | Title · "10:30–11:00 · Room 4" · **Join** (prominent) · Dismiss | N min before (default 5), again at 1 min | P1 when it appears, then P2 |
+| **Meeting in progress** | medium | Elapsed ring 16u in the calendar colour | "12m left" (`compact`) | Title · elapsed / remaining bar (2 pt, `success`) · Join | During the event (option: elapsed or remaining) | P2 |
+| **Timer** | medium | Ring 16u, 2.5 stroke, `warning` | "4:59" (`compact`; `warning` in the last minute) | Ring 40 · label · ⏸ ⏹ · +1 min | While running; peeks at 1 min left (option) | P2 |
+| **Timer done** | medium | `timer` in `warning` (+ `.bounce`) | "Done" | Stop · +1 min | Until dismissed or 1 min | P1 |
+| **Charging** | short | `bolt.fill` in `success` | "82%" (`compact`) | Code-drawn battery 24 × 12 (exact fill) · `numeral` % · "1 h 20 m to full" | 2.6 s on plug / unplug | P1, transient |
+| **Low battery** | short | `battery.25percent` or `battery.0percent` in `danger` + "!" | "10%" in `danger` | … + **Low Power Mode…** button (opens Battery settings; there is no public API to toggle it, ARCHITECTURE D18) | At 20 % and 10 % (persists at ≤ 10 %; thresholds are the activity's option) | P1 |
+| **Bluetooth device** | short | Device glyph: `airpodspro`, `airpodsmax`, `airpods`, `beats.headphones`, `earbuds`, `headphones` | 12-pt battery ring (`success`; < 20 % `warning`) + "84%", or ✓ when unknown | Name · L / R / Case rings with % | 2.6 s on connect | P1, transient |
+| **HUD** | wide | §10 | §10 | — | On key press | P0 |
+
+**Interaction**
+- **Hover** (180 ms) → peek (Settings: "Quick peek on hover"). **Click** compact or peek → open the Nook focused on the related widget.
+- **Embedded controls** (Join, ⏯ in peek) are directly clickable. Hit areas are ≥ 32 × 24, padded beyond the glyph, with a hover `control` fill and a press scale. Compact has at most **one** interactive control (Join).
+- **Swipe up** dismisses the activity until its next meaningful change: a new track, the last minute of a timer, a meeting starting.
+- **Inactivity timeout** (Live Activities settings, 0 = never) collapses compact to closed but keeps the satellite.
+- **Pause Live Activities** (menu bar extra): for 1 hour · until tomorrow · until resumed. It silences activities, peeks and delight moments; the HUD still works.
+
+### 9.3 Peek anatomy
+
+The band row stays exactly as it was in compact (its elements persist and move). Below it, each 52-pt row is laid out as:
+
+`[12] [visual 40 × 40, r 10] [12] [title headline / subtitle callout, flexible] [8] [≤ 3 controls, 28-pt hit] [12]`
+
+Peek is 380–460 pt wide (425 on a 14″) and always has the keyline and `Elevation.peek`. Rows without controls (Charging) end with their value in `numeral`.
+
+### 9.4 Concurrency: priority and the satellite
+
+- **Priority:**
+  - **P0** HUD: transient; pre-empts everything for 1.5 s, then restores.
+  - **P1** alerts: meeting soon, timer done, low battery, device connected, charging, song-change peek. Each peeks once, on the pointer's display only.
+  - **P2** ongoing: meeting in progress, timer running, Now Playing.
+  - **P3** passive: paused media.
+- **One ongoing activity:** compact.
+- **Two:** the higher one stays compact; the other becomes the **satellite**.
+  - A Ø 24u black circle, 6u beyond the trailing edge, vertically centred in the band, showing its minimal glyph (ring, artwork or calendar dot).
+  - Click it to swap the two. Swipe up on it to dismiss it.
+- **Three or more:** the satellite shows the second-highest; a hover peek lists all of them as stacked rows (at most 4).
+- **Transient P1 and P0** activities temporarily take the wings (`activitySwap`) and then hand them back.
+
+---
+
+## 10. HUD (volume, brightness, keyboard backlight)
+
+```
+ ◜╭──────────── 92 ─────────────┬═══════════ camera (185) ═══════════┬──────────── 92 ────────────╮◝
+  │        (62)  🔊 13 pt       │                                     │  ━━━━━━━━━━━━──────  64u × 6 │   369 × 32 · r 13 · ears 6
+  ╰─────────────────────────────┴═════════════════════════════════════┴────────────────────────────╯
+```
+- **Geometry:** `NotchLayout.hud` (369 × 32 on a 14″). It never adds height. On floating-island displays it is a 184 × 24 pill.
+- **Leading:**
+  - A 13-pt semibold glyph, hugging the camera: `speaker.wave.3.fill` with `variableValue`, `speaker.slash.fill` when muted, `sun.max.fill`, `light.max`.
+  - When the output device changes, the glyph becomes the device glyph with one `.bounce`.
+  - Optional value "62" (`compactLabel`, secondary) before the glyph (*Show value*).
+- **Trailing:** `LevelBar`, 64u × 6, with a `control` track.
+  - Fill: **white by default**. HUD ▸ Colours offers Mono · Accent · Semantic (accent for volume, `caution` for brightness, `info` for the keyboard).
+  - Muted: the bar shows `tertiaryLabel`.
+- **Steps:** 16 standard steps. Fine steps (⌥⇧) move in quarter steps and show 16 tick marks; ticks always show under Differentiate Without Color or Increase Contrast.
+- **Motion:** `hudIn`, then `hudLevel` on the bar and digits only, plus a 2-pt bump at 0 % and 100 %; `hudOut` after 1.5 s (adjustable 0.8–3 s).
+- **Never two HUDs:** the replacement needs an Accessibility event tap to suppress the system HUD. Without it, Cranny draws **no** HUD, and Settings ▸ HUD explains why with a status pill and a button that opens System Settings.
+- **Sound:** if "Play feedback when volume is changed" is on in macOS, Cranny plays the same system feedback.
+- **VoiceOver:** "Volume, 62 percent" is posted once the value settles (0.5 s), only while VoiceOver runs.
+- **Full screen:** the HUD is allowed under the default full-screen policy.
+- **While the panel is open:** the HUD's leading and trailing views take the header row, left and right of the camera, replacing tabs and actions with `contentSwap` for the HUD's lifetime. The open geometry never changes (ARCHITECTURE §4.11).
+
+---
+
+## 11. Settings window
+
+### 11.1 Structure
+
+- **Window:** an AppKit-managed `NSWindow` hosting a SwiftUI `NavigationSplitView` (not a SwiftUI `Settings` scene, so Cranny can open any pane programmatically from an agent app — ARCHITECTURE D11). The sidebar is 190–260 pt (default 210) with `.searchable(placement: .sidebar)`. Default size 860 × 620, minimum 780 × 560; size and pane are restored.
+- **Opening:** opening Settings from the menu bar extra activates the app and orders the window front, in response to the user's click (cooperative activation).
+- **Appearance:** Settings follows system Light/Dark. On macOS 26+ the sidebar and toolbar get Liquid Glass from the system, and Cranny adds none of its own.
+- **Sidebar:** each row has a 20 × 20 rounded-square icon (r 5, continuous) with a white glyph on a system colour, as in System Settings.
+
+| Group | Pane | Icon (glyph on colour) | Contents |
+|---|---|---|---|
+| — | **General** | `gearshape.fill` / gray | Launch at login (`SMAppService.mainApp`) · **Show on** (built-in / pointer / all / custom) + a **per-display table**: style Island · Attached · Off, Activities, Peeks, HUD · **Open the Nook** on Hover / Click / Shortcut only · Hover delay (Instant 0 · **Short 120 ms** · Standard 220 · Long 450) · Hold ⌥ to pass over · Close when the pointer leaves (+ grace) · Inactivity timeout (Off, 5–60 s) · Hide when idle (no-notch handle, after 3–60 s, default 10) · In full-screen apps (Hide / **Alerts & HUD only** / Show) · Excluded apps · **Demo mode** (+ redact calendar titles) · UI sounds (off) · Show menu bar icon · Updates: check daily via GitHub Releases, Check Now, include pre-releases · **Reset All Settings…** |
+| — | **Appearance** | `paintbrush.fill` / purple | Accent (Automatic / System / swatches / Monochrome) · Text size · **Motion** (Calm / Standard / Lively / Instant) · **Ambient light** (Off / Subtle / Vivid) + Effect (Aurora / Motes / Tide) · Album glow · Underglow · Progress rim · Translucent background · Glass island (26+) · Buttons (Capsule / Rounded) · Widgets (Cards / Flat with dividers) · Density + panel padding ±4 · **Notch fit** (width ±10, radius ±3, live outline) · On displays without a notch (Floating island / Attached / Off) + handle (Visible / Hidden until hover) · Typing effect |
+| — | **Keyboard** | `keyboard` / indigo | Shortcut recorders: **Open Cranny ⌃⌥N** (on), Open Tray, New note, Start timer, Toggle pin, Pause activities (off by default) · type-to-capture target (Notes / To-dos / Off) · read-only in-panel reference (the same data as the hold-⌘ overlay). Conflicts are flagged inline: registration failures, plus a best-effort match against the enabled system shortcuts (`com.apple.symbolichotkeys`). |
+| Notch | **Layout & Widgets** | `square.grid.2x2.fill` / blue | **Grid editor on the preview stage** (§6.6) · pages (add, rename, reorder, up to 3 user pages) · widget library ("+", with one-line descriptions) · per-widget options in a popover: Calendar days behind/ahead and past events, Mirror camera and mirroring, Notes typing effect and default mode, To-dos hide completed, Timer presets and sound, Media visualizer in the widget |
+| Notch | **Live Activities** | `capsule.tophalf.filled` / pink | A **draggable priority list** with a toggle per activity and, under each, the activity's own options supplied by its module: peek on change (per activity) · meeting lead time (1–30 min, default 5) and show while in an event (elapsed / remaining) under the meeting rows · hide paused media after N s under Now Playing · peek at one minute left under Timer · thresholds under Low battery · "Show all Bluetooth devices" under Bluetooth. Global rows: peek duration · swipe up to dismiss · auto-unhide · quick peek on hover · satellite · inactivity timeout · menu-bar courtesy |
+| Notch | **HUD** | `speaker.wave.2.fill` / teal | Replace the system HUD (needs Accessibility; status pill + why) · Volume / Brightness / Keyboard backlight · Colours (Mono / Accent / Semantic) · Show value · Show output device · Duration |
+| Notch | **Gestures** | `hand.draw.fill` / orange | Swipe sideways to change track (+ Invert) · Swipe down to open, up to close · Swipe up to dismiss an activity · Sensitivity · **Haptic feedback** + "Feel it" test button |
+| Features | **Media** | `music.note` / red | Source status (the helper in use and the last error) · ignore apps · show browser media · Apple Events fallback for Music/Spotify (off) · **Visualizer**: Live (asks for System Audio Recording, with a why-sheet) / **Ambient** / Static / Off · peek on track change · artwork in compact · Test media detection. No "source priority": macOS exposes only the system's current now-playing app (R2), so the ignore list is the control. |
+| Features | **Calendar** | `calendar` / red | Calendars (a checkbox list with colours) · days behind / ahead · today's past events · meeting-link providers (Zoom, Meet, Teams, Webex) · join in the app or the browser |
+| Features | **Shortcuts** | `square.2.layers.3d.fill` / indigo | Pick Shortcuts.app shortcuts (search, add, symbol and colour) · Quick Apps list (drag from Finder or the Dock) · tile labels |
+| Features | **Tray** | `tray.full.fill` / green | Retention · max items · dropping on the notch opens the Tray · AirDrop zone · **pinned pipelines** (drop zones) · **pipeline editor** (a chain builder: steps, reorder, a preview of the output name) · defaults: JPEG quality, max dimension, output location, zip naming |
+| — | **Permissions** | `hand.raised.fill` / blue | Calendar · Camera · Accessibility · Automation (per media app) · Bluetooth · System Audio Recording (optional): a status pill (Granted / Not yet / Denied) + a one-line why + Grant… or Open System Settings |
+| — | **About** | `info.circle.fill` / gray | The live icon · version · Check for Updates · release notes · GitHub · MIT licence · acknowledgements · **Replay tutorial** · Show welcome |
+
+### 11.2 The live preview stage (the signature of Settings)
+
+- **Placement:** a 176-pt band pinned at the top of every pane except Permissions and About.
+- **What it renders:** the **real** notch views, fed by the **live** settings (every change applies instantly, ARCHITECTURE D14; Reset All has a 10-s Undo), over a miniature of the user's own wallpaper (`NSWorkspace.desktopImageURL(for:)`, read only when the file is outside Desktop, Documents, Downloads and removable volumes — reading those would raise a Files & Folders prompt from Settings; otherwise a neutral dark gradient) and a miniature menu bar.
+  - Closed, compact, peek and HUD render at 1:1, so the type is crisp. The open Nook is scaled to fit (never below 0.75).
+- **Controls:**
+  - A segmented picker: Closed · Activity · Peek · Open · HUD. It auto-selects the state that is relevant to the pane.
+  - **Simulate** chips: Song change · Timer · Meeting · Volume · Drop file.
+  - **Show on Notch** plays the preview on the real notch for 5 s.
+- **Behaviour:** every control change animates the stage with the real motion tokens, so nobody toggles blind. Under Reduce Motion it updates without looping demos.
+
+### 11.3 Controls and conventions
+
+- **Controls:** `Form { … }.formStyle(.grouped)`; `Toggle` with `.switch` and `.controlSize(.small)`; segmented pickers for ≤ 4 options, menu pickers otherwise; sliders always show their value with units and ticks at meaningful stops ("120 ms", "±0 pt"); steppers for minutes.
+- **Footnotes:** every non-obvious row has a one-line footnote in `.secondary`.
+- **Non-default values:** a 6-pt accent dot before the label marks a changed value. Every row's context menu has **Reset to Default**; every pane footer has **Reset ‹Pane›…**.
+- **Reset All Settings…** is destructive (red), asks for confirmation and offers undo for 10 s.
+- **Search** matches pane names, row labels and localized keywords ("volume" → HUD, "external monitor" → displays, "dock" → Quick Apps). Picking a result opens the pane, scrolls to the row and highlights it with an accent wash that fades over 1 s.
+
+---
+
+## 12. Onboarding and the interactive tutorial
+
+### 12.1 Welcome window
+
+- **Window:** 640 × 480, hidden title bar, not resizable, centred.
+  - The **top half** is a preview stage: a dark desktop with the brand aurora at Subtle, which is a still frame under Reduce Motion.
+  - The **bottom half** holds copy and controls on the system background.
+- **Navigation:** progress dots + "Step 2 of 6" for VoiceOver. ↩ continues, ⌘[ goes back, Esc asks "Skip setup?". Every step can be skipped.
+
+| Step | Content | Interaction |
+|---|---|---|
+| 1 · Hello | The **real notch** plays `activityIn` with `hand.wave.fill` and "Hi" (`NotchControl.flash`) while the stage mirrors it. Headline: "Look up. That's Cranny." One sentence about what it does. | Continue |
+| 2 · Open it your way | Three option cards: **Hover** (with delay presets), **Click**, **Shortcut only** (⌃⌥N). A coach mark around the real notch: "Rest the pointer here, or press ⌃⌥N." | Detects the *actual* opening of the real notch: ✓ (green, `.bounce`) per method; Continue enables after one |
+| 3 · Gestures | Only if a trackpad is present. A practice notch on the stage with live rubber-banding and haptics. | Pull down to open; swipe sideways (skipped if nothing plays) |
+| 4 · Pick a starting layout | Preset cards, each a live mini panel: **Listener** (Media 5 · Calendar 3 · Apps 2, the default), **Maker** (Notes 4 · To-dos 3 · Timer 2 · Shortcuts 1), **Meetings** (Calendar 4 · Mirror 2 · Timer 2 · Apps 2), **Minimal** (Media 4, HUD) | Pick one; the stage updates |
+| 5 · Permissions, only for what you chose | Rows for the features the preset needs, all **off**: Calendar, Accessibility (HUD), Automation (media apps), Bluetooth. Each says why and what Cranny does *not* do. Camera is never asked here; Mirror asks on first use. | Allow triggers the system prompt then and there; "Later" is fine |
+| 6 · You're set | Launch at login (on) · Check for updates (on) · a cheat sheet of 6 keys | **Take the 1-minute tour** (primary) · Done (opens the Nook once) |
+
+### 12.2 Interactive tutorial (in the real notch)
+
+- **The tip:** a bubble 10 pt under the shape, using `.regularMaterial` (opaque under Reduce Transparency). It holds one sentence, a `KeyCap` where relevant, "2 of 5" (`micro`) and an always-visible **Skip tour**.
+- **Steps:** each completes on real detection, with a ✓ `.bounce`, an `.alignment` haptic and a VoiceOver announcement.
+  1. "Rest the pointer on the notch, or press ⌃⌥N"
+  2. "Drag any file onto the notch"
+  3. "Swipe sideways with two fingers to change the track" (skipped if nothing plays)
+  4. "Hold ⌘ to see every shortcut"
+  5. "Pin it with 📌, then press Esc"
+- Replayable from the menu bar extra and from Settings ▸ About.
+
+---
+
+## 13. Menu bar extra
+
+- **Scene:** `MenuBarExtra(isInserted:)` with `.menuBarExtraStyle(.menu)`: a standard native menu, nothing custom. The app is an agent (`LSUIElement = YES`) with no Dock icon.
+- **Icon:** an original 18 × 14 template image: a rounded screen outline (1.5 pt) with a filled `NotchShape` tab at its top centre, drawn in code (`NSImage` drawing handler, `isTemplate = true`; no asset). The fallback symbol is `rectangle.topthird.inset.filled`. In Demo mode a 4-pt dot badge marks the icon. Its accessibility label is "Cranny".
+- **Menu:**
+  ```
+  Open Cranny                      ⌃⌥N
+  Keep Cranny Open                 (✓ when pinned)
+  ───────────
+  Pause Live Activities          ▸ For 1 Hour · Until Tomorrow · Until I Resume
+  Show On                        ▸ ✓ Built-in Display · ✓ External Display · …
+  Demo Mode
+  ───────────
+  Settings…                        ⌘,     (Button → AppControl.openSettings; no SwiftUI Settings scene)
+  Check for Updates…
+  Show Tutorial
+  ───────────
+  About Cranny
+  Quit Cranny                      ⌘Q
+  ```
+- **Hide menu bar icon** (General): if the icon is hidden, launching the app again from Finder or Spotlight opens Settings, so nobody gets locked out.
+
+---
+
+## 14. Symbols, haptics, sound
+
+### 14.1 SF Symbols
+
+Every symbol below was verified on this machine against `name_availability.plist` (minimum macOS shown) and `symbol_restrictions.strings`. Keep them in one `enum CrannySymbol` with a unit test asserting each name resolves on macOS 14.
+
+| Role | Symbols (minimum macOS) |
+|---|---|
+| Header, pages | `square.grid.2x2.fill` · `tray.full.fill` · `note.text` (11) · `magnifyingglass` · `pin` / `pin.fill` · `gearshape.fill` (11) · `ellipsis` · `plus` · `xmark` · `chevron.down` |
+| Media | `play.fill` · `pause.fill` · `backward.fill` · `forward.fill` · `shuffle` · `repeat` · `airplayaudio` · `music.note` · `music.note.list` · `waveform` |
+| Calendar, meetings | `calendar` · `person.2.wave.2.fill` (12, Join) · `clock` · `mappin.and.ellipse` |
+| Launcher | app icons via `NSWorkspace` · `app.dashed` (12, placeholder) · `square.2.layers.3d.fill` (14, Shortcuts pane) |
+| Mirror | `web.camera` (13) · `camera.fill` · `flip.horizontal` |
+| Notes, to-dos | `chevron.left.forwardslash.chevron.right` (12) · `arrow.up.left.and.arrow.down.right` / `arrow.down.right.and.arrow.up.left` (focus) · `checklist` (12) · `circle` · `checkmark.circle.fill` |
+| Timer | `timer` · `pause.fill` · `stop.fill` · `arrow.counterclockwise` |
+| AirDrop, Tray | `dot.radiowaves.up.forward` (12; there is no public `airdrop` symbol) · `tray.and.arrow.down.fill` · `doc.zipper` (11) · `photo.badge.arrow.down` (14, compress) · `arrow.triangle.2.circlepath` (convert) · `square.resize` (14, resize) · `link` · `doc.on.doc` · `square.and.arrow.up` · `folder` · `eye` · `trash` · `archivebox` · `wand.and.stars` · `arrow.uturn.backward` (undo) |
+| HUD, power | `speaker.wave.3.fill` (variable value) · `speaker.slash.fill` · `sun.max.fill` · `sun.min.fill` · `light.max` · `light.min` · `bolt.fill` · `battery.100percent.bolt` · `battery.25percent` · `battery.0percent` (14) · `exclamationmark` |
+| Devices | `airpodspro` (11) · `airpodsmax` (11.3) · `airpods` ⚑ · `airpods.gen3` ⚑ · `beats.headphones` ⚑ · `earbuds` (12) · `headphones` |
+| Settings, onboarding | `gearshape.fill` · `paintbrush.fill` · `keyboard` · `capsule.tophalf.filled` (12) · `speaker.wave.2.fill` · `hand.draw.fill` · `hand.raised.fill` · `info.circle.fill` · `hand.wave.fill` · `cursorarrow.motionlines` · `sparkles` · `accessibility` ⚑ (14) · `laptopcomputer` · `display` |
+| Menu bar fallback | `rectangle.topthird.inset.filled` (12) |
+
+- ⚑ **Restricted:** these may only refer to that product or feature: AirPods, Beats headphones, Apple's Accessibility features. Use them only for exactly that.
+- **Never use** `video`, `video.fill` or any `video.*` symbol (FaceTime only), `airplay.audio` (AirPlay only; use `airplayaudio`), `macbook*` (MacBook only; use `laptopcomputer`), `safari` or `message`.
+- **Rendering:**
+  - Hierarchical, white. Semibold at 13 pt in the band; medium in the Nook; transport glyphs at 48 % of the button size.
+  - Symbols animate only on a state change: `.contentTransition(.symbolEffect(.replace))` for toggles, `.symbolEffect(.bounce)` for an armed drop target, a device change or a completed step. There are no looping symbol effects, and none under Reduce Motion.
+
+### 14.2 Haptics
+
+Haptics use `NSHapticFeedbackManager.defaultPerformer.perform(_, performanceTime: .now)`. They reach the user only while a finger is on a Force Touch trackpad, so **every haptic has a visual counterpart**. Gestures ▸ Haptic feedback turns them all off.
+
+| Event | Pattern |
+|---|---|
+| A gesture crosses its commit threshold (track, open, close, dismiss), fired once while the finger is still down | `.alignment` |
+| A drag enters a drop zone · the grid editor snaps to a cell · the calibration slider crosses 0 · a tutorial step completes | `.alignment` |
+| A value detent: scrubber at 10 % steps · timer minute · HUD reaching 0 or 100 | `.levelChange` |
+| A drop is accepted · a pipeline finishes · a to-do is completed · the Nook opens by gesture | `.generic` |
+| **Hover, peek, an activity arriving** | **never** |
+
+### 14.3 Sound
+
+**None by default; Cranny ships no audio files.**
+- **Timer finished:** a user-chosen *system* alert sound (`NSSound(named:)`, for example "Glass") or None.
+- **HUD:** mirrors the system's "Play feedback when volume is changed".
+- **UI sounds** (General ▸ UI sounds, `general.uiSounds`, off by default): "Pop" when a file is caught and "Tink" when a to-do is completed (both system sounds, played by name; never copied into the app).
+- Demo mode mutes everything.
+
+---
+
+## 15. App icon: "Light from the nook"
+
+**Concept.** A graphite slab (the Mac at night). Its top edge carries a precise notch silhouette, built from the **same `NotchShape`** as the app, and a soft fan of light spills from beneath it: a mint core, then sky, then iris, with a faint rose edge. It reads as "a small opening where useful things live". At 16 px it stays legible as a dark tile with a notch and a bright crescent. It shares no shapes or colours with any competitor's icon.
+
+**Icon Composer (macOS 26+): `App/AppIcon.icon`** (the name must match `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon`, ARCHITECTURE §8.2; the verification below used the scratch name `Cranny.icon`). Compiled with `actool --app-icon AppIcon --minimum-deployment-target 14.0`, which produces `Assets.car` **and** a fallback `AppIcon.icns` for macOS 14/15. The first group is the top-most.
+
+```json
+{
+  "fill" : {
+    "linear-gradient" : [
+      "display-p3:0.17000,0.18000,0.22000,1.00000",
+      "display-p3:0.05000,0.05000,0.07000,1.00000"
+    ],
+    "orientation" : { "start" : { "x" : 0.5, "y" : 0 }, "stop" : { "x" : 0.5, "y" : 1 } }
+  },
+  "groups" : [
+    {
+      "name" : "Notch",
+      "layers" : [ { "name" : "notch", "image-name" : "notch.png", "glass" : true } ],
+      "shadow" : { "kind" : "neutral", "opacity" : 0.6 },
+      "translucency" : { "enabled" : false, "value" : 0 },
+      "specular" : true
+    },
+    {
+      "name" : "Light",
+      "layers" : [ { "name" : "light", "image-name" : "light.png", "glass" : false, "blend-mode" : "plus-lighter" } ],
+      "shadow" : { "kind" : "none", "opacity" : 0 },
+      "translucency" : { "enabled" : false, "value" : 0 }
+    }
+  ],
+  "supported-platforms" : { "squares" : [ "macOS" ] }
+}
+```
+- **Notch group:** `notch.png` (or `.svg`) is a 1024 canvas with the notch path hanging from y = 0: body 0.40 × 0.15 of the 824-pt body width, ears 0.045, bottom radius 0.06. It is black. Glass is on, so the system's specular edge gives it the "precision" highlight.
+- **Light group:** `light.png` (no background) holds two radial gradients:
+  - the core #9EFFEB → #54C7F2 → transparent #8B6CFF at (512, 170), r 400, squashed 1.25× vertically;
+  - a rose #FF4F8B lobe at 30 % at (650, 330).
+  - Blended plus-lighter, with glass off so the light stays soft.
+- **Appearance variants** (set in Icon Composer): **Dark** is a deeper fill (0.04 → 0.02). **Tinted** and **Clear** let the system tint the light at 50 % while the notch silhouette carries the mark.
+- **Only two groups,** because Icon Composer warns when there are too many visible groups.
+
+**In-app use:** About and onboarding show the compiled icon via `NSApp.applicationIconImage`; actool already generates the macOS 14/15 fallback, so v1 ships no second renderer.
+
+**Flat fallback** (optional tooling, not in v1: only if a build path ever skips actool, or to export the two Icon Composer layers). `CrannyIconRenderer.draw(in: CGContext, side:)` uses CoreGraphics only, with no blur filters, so it renders identically at every size:
+1. Follow the macOS icon grid: an 824-pt body centred on 1024, clipped by a continuous squircle (r 185.4, taken from `RoundedRectangle(style: .continuous).path(in:).cgPath`).
+2. Draw a drop shadow: black 35 %, blur 28, y −10.
+3. Fill the body with a P3 gradient from (0.20, 0.21, 0.25) to (0.055, 0.058, 0.07).
+4. Add the light: the same two radial gradients with `plusLighter`.
+5. Fill the notch path (from `NotchShape`, flipped into CG space) with black.
+6. Stroke a 4-pt mint rim (#9EFFEB at 70 %) along the notch's *lower* outline: the product's keyline as a motif.
+7. Stroke a 10 % white inner highlight along the squircle.
+
+The same renderer exports the two Icon Composer layers. A build script renders 16–1024 px for an `AppIcon.appiconset`, used only if a build path ever skips actool.
+
+---
+
+## 16. Accessibility
+
+| Setting / need | Behaviour |
+|---|---|
+| **Reduce Motion** | §4.2: open, close and resize become dissolves at the final size; small morphs lose their bounce; no blur, scale, slide, stagger, marquee, typing effect, pulse, ember or neck; the light freezes on a resting frame; the visualizer shows static dots; rubber-banding releases without overshoot. |
+| **Reduce Transparency** | The `opaque` palette. Translucent background, glass island, light layer and underglow are off. The tutorial bubble is opaque. |
+| **Increase Contrast** | The `highContrast` palette: opaque cards, a 34 % hairline on every card, tertiary 9–11:1, quaternary 5.3:1, **keyline always on (45 %)**, accessible semantic variants, accent guarded at 7:1, light capped at Subtle, HUD ticks. |
+| **Differentiate Without Color** | Colour is never the only carrier. Low battery adds "!" and the stepped glyph; Join always has its glyph *and* "Join" text in peek and the Nook; a live meeting says "Now"; past events are struck through as well as dimmed; a timer's urgency is carried by its digits, not its colour; an armed drop zone turns its dash solid; selected files carry a check badge; pipeline errors show "!" with text; the HUD shows ticks and the value. |
+| **Text size** (Cranny setting) | S / M / L / XL = 0.92 / 1 / 1.12 / 1.24 on every Nook and peek style, **and the cell grows** (56 → 68 at XL), so nothing clips. Band text follows the notch unit; at L and XL, compact text activities switch to their glyph form and the details move to the peek. |
+| **VoiceOver** | See below. Hover-to-open turns off automatically while VoiceOver runs. |
+| **Keyboard / Full Keyboard Access** | See below. Every action has a key path; nothing is hover-only. |
+| **Pointer and motor** | Click-to-open mode; hover delay up to 450 ms; generous exit hysteresis (14 pt / 300 ms); "Close when the pointer leaves" can be turned off; Pin; hit targets ≥ 28 × 24 in the Nook and ≥ 32 × 24 in the band; every swipe has a click or key equivalent. |
+| **Time limits** (WCAG 2.2.1) | Peek, HUD and inactivity durations are adjustable or can be disabled; Pin keeps the Nook open indefinitely. |
+| **Flashing** (WCAG 2.3.1) | Nothing flashes more than once per second: the timer pulse is 1 Hz for at most 10 cycles, the visualizer ≤ 30 fps with smoothed amplitude, ambient drift < 0.2 Hz, and there are no full-panel brightness changes. |
+| **Photosensitive art** | Album light is clamped (v ≤ 0.95, alpha caps), so a white album cover never floods the panel. |
+
+**VoiceOver**
+- **The panel** is one container labelled "Cranny".
+  - Closed: "Cranny, collapsed" with the action "Open".
+  - Opening posts a layout-changed notification and puts focus on the first widget, or on the focused page if opened by keyboard.
+- **Each live activity** is one element with a label, a value and named actions:
+  - Label "Now playing: Midnight Window by The Example Band"; value "2 minutes 11 seconds left".
+  - Actions: Play or Pause, Next track, Join meeting, Open, Dismiss.
+- **Widgets** are containers; a **"Widgets" rotor** jumps between them.
+- **Adjustable elements:** the scrubber (±10 s), the timer (±1 min) and the HUD level (`accessibilityAdjustableAction`). Tabs carry `.isSelected`.
+- **Decorative layers** (light, halos, visualizer, satellite neck, key caps) are `accessibilityHidden`.
+- **Announcements** (`AccessibilityNotification.Announcement`):
+  - Only P1 alerts (timer done, meeting in 1 minute, device connected, low battery) and pipeline completion.
+  - Rate-limited to one per 10 s.
+  - HUD values are announced only on settle, and only while VoiceOver runs.
+
+**Keyboard map**
+
+| Where | Keys |
+|---|---|
+| Anywhere | ⌃⌥N open/close the Nook with keyboard focus (rebindable; a Carbon hot key, no Accessibility permission) |
+| In the Nook | Tab / ⇧Tab between widgets · arrows within a widget · ↩ / Space activate · ⌘1–⌘5 pages · ⌃Tab next page · ⌘K palette · hold ⌘ hints · ⌘P pin · ⌘E edit layout · ⌘, Settings · Esc closes (after leaving the palette, focus mode or edit mode first) |
+| Media | Space play/pause · ⌘← / ⌘→ previous/next · ← / → seek ±10 s on the scrubber |
+| Notes | ⌘N new · ⌘R rename · ⌘[ / ⌘] previous/next note · ⌘↩ focus · ⌘/ code mode |
+| To-dos | ↩ new · Space toggle · ⌫ on an empty row deletes · ⌘↑ / ⌘↓ reorder |
+| Timer | Digits ↩ start ("25", "90s") · Space pause/resume · ⌫ reset |
+| Tray | Arrows · ⇧ extend · ⌘A · Space Quick Look · ⌘C · ⌘⌫ remove · ⌥⌘⌫ clear |
+| Focus ring | A 2-pt accent stroke, concentric (radius + 3, outset 3), shown only after keyboard interaction. The system focus effect is disabled on the same elements (`focusEffectDisabled()`) so rings never double up. |
+
+---
+
+## 17. Copy and localisation
+
+- **Languages:** English and Russian, in String Catalogs (`.xcstrings`) with translator comments.
+- **Formatting:** numbers, dates and durations always go through `FormatStyle`, never concatenation (12/24-hour clock from the locale).
+- **Voice:** calm, plain and sentence case. No exclamation marks, no "Oops", no marketing words inside the product. Examples:
+  - empty Media "Nothing playing"; Calendar "No more events today"; Tray "Drop files on the notch to keep them here";
+  - permission rows "Show your events in Cranny. Cranny never edits or uploads them."
+- **Length:** Russian runs 15–35 % longer.
+  - Compact slots never hold free text except tested `compactLabel` abbreviations.
+  - Tab labels collapse to icons rather than truncate; titles truncate at the tail and file names in the middle.
+  - Pseudo-localisation at 1.4× is part of the snapshot suite.
+- **Names:** Cranny's user-facing vocabulary is **Cranny** (the open panel: "Open Cranny"), **Home** (the widget page), **Layout & Widgets**, **Tray**, **live activity**, **peek**, **pipeline**. "Nook" is an internal code name only and never appears in UI text, because NotchNook labels its own panel tabs "Nook" and "Tray" (ARCHITECTURE D20). It uses no competitor product names or UI strings; WP-Final greps every catalog against the denylist in ARCHITECTURE §8.7.
+
+---
+
+## 18. What's better than NotchNook
+
+1. **Hardware-exact morph.** Closed *is* the cutout (0.5 pt inside, calibrated per display model), close lands with zero bounce, and the morph is symmetric, so it never slides sideways or "jiggles". It renders at display rate from one fixed panel.
+2. **Calm by contract.** There is an energy budget with zero work while closed, nothing over full-screen video by default, and an excluded-apps list.
+3. **Intent, not proximity.** Dwell, pass-through speed, ⌥ suppression, button-down and full-screen rules, close grace and menu-bar courtesy prevent accidental opens. Click, shortcut and swipe are first-class.
+4. **A real keyboard and VoiceOver story.** A global shortcut with no Accessibility permission, the ⌘K palette, hold-⌘ hints, type-to-capture, a rotor, adjustable controls and announcements. Nothing is hover-only.
+5. **Light that means something.** An optional aurora, motes or tide in the album's or event's colour, contrast-audited against the worst case, with honest visualizer modes.
+6. **A better external-display story.** A floating island instead of a fake notch, plus per-display styles and toggles.
+7. **Settings you can see.** A live preview of the real views on your own wallpaper, Simulate chips, Show on Notch, search, per-row reset and a WYSIWYG grid editor (drag to reorder, drag to resize in cells), instead of reordering widgets with arrow buttons.
+8. **A smarter Tray.** Multi-select, Quick Look, contextual pipelines, user-built chains, drop-on-action zones while dragging, and Undo.
+9. **Defined concurrency.** A priority queue, a satellite for the second activity, swipe-to-dismiss and auto-unhide.
+10. **Trust.** Just-in-time permissions with a Permissions pane, never two HUDs, no network except the update check, MIT-licensed and open source.
+
+---
+
+## Appendix A: Components (`CrannyCore/DesignSystem/Components.swift`)
+
+These are the primitives every feature builds on: `NotchSurface`, `CompactSlots`, the card modifier, the focus ring, the icon button style, `LevelBar`, `ProgressRing`, `KeyCap` and `DropZone`.
+
+```swift
+// CrannyCore/DesignSystem/Components.swift
+// The primitives every feature module builds on. They read tokens only.
+import SwiftUI
+import AppKit
+
+// MARK: - NotchSurface: fill + clipped content + keyline + elevation (+ optional underglow)
+
+/// Fills the FIXED canvas. Content states lay themselves out at their final size, top-centred,
+/// and are revealed by the animated clip — text never reflows during a morph (R1 §7.2).
+public struct NotchSurface<Content: View>: View {
+    @Environment(\.cranny) private var theme
+    @Environment(\.displayScale) private var displayScale
+    public var geometry: NotchGeometry
+    public var band: CGFloat
+    public var openness: Double                 // 0 closed/compact … 1 peek/open
+    public var elevation: [CrannyShadow]
+    public var keylineTint: Color?              // album accent while music plays
+    public var underglow: Color?                // ambient glow1 (Vivid only)
+    private let content: Content
+
+    public init(geometry: NotchGeometry, band: CGFloat, openness: Double, elevation: [CrannyShadow] = Elevation.open,
+                keylineTint: Color? = nil, underglow: Color? = nil, @ViewBuilder content: () -> Content) {
+        self.geometry = geometry; self.band = band; self.openness = openness; self.elevation = elevation
+        self.keylineTint = keylineTint; self.underglow = underglow; self.content = content()
+    }
+
+    public var body: some View {
+        let shape = NotchShape(geometry)
+        let p = theme.palette
+        ZStack(alignment: .top) {
+            if let underglow, theme.allowsUnderglow {
+                // Coloured *shadow* = light on the desktop that stays click-through.
+                shape.fill(Color.black)
+                    .shadow(color: underglow.opacity(Glow.underglow.opacity * openness),
+                            radius: Glow.underglow.radius, x: 0, y: Glow.underglow.y)
+            }
+            surfaceFill(shape, p)
+                .crannyElevation(elevation, amount: openness)
+            content
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .clipShape(shape)
+            if openness > 0 || theme.increaseContrast {
+                // HIG key line: separates the shape from dark windows. Never along the screen
+                // edge or beside the menu bar: masked to start below the band.
+                shape.stroke((keylineTint ?? .white).opacity(theme.increaseContrast ? p.spec.keyline : p.spec.keyline * openness),
+                             lineWidth: StrokeWidth.keyline)
+                    .mask(bandMask(fadeTo: 1))
+                    .allowsHitTesting(false)
+            }
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text(verbatim: "Cranny"))   // a name, not a key (a key would be looked up in Bundle.main)
+    }
+
+    @ViewBuilder private func surfaceFill(_ shape: NotchShape, _ p: CrannyPalette) -> some View {
+        let canGlass = !theme.reduceTransparency && !theme.increaseContrast
+        if geometry.isFloating && theme.glassIsland && canGlass {
+            if #available(macOS 26.0, *) {
+                Color.clear.glassEffect(.regular.tint(.black.opacity(0.75)), in: shape)
+            } else {
+                shape.fill(p.surface)
+            }
+        } else if theme.translucentBackground && canGlass {
+            ZStack {
+                if #available(macOS 26.0, *) {
+                    Color.clear.glassEffect(.regular.tint(.black.opacity(0.35)), in: shape)
+                } else {
+                    VisualEffectBackdrop().clipShape(shape)
+                }
+                // The band stays pure black (no seam around the camera); below it 72 % black.
+                shape.fill(p.surface).mask(bandMask(fadeTo: 0.72))
+            }
+        } else {
+            shape.fill(p.surface)
+        }
+    }
+
+    /// Opaque through the band, then a 6-pt ramp to `fadeTo` (layout-independent mask).
+    private func bandMask(fadeTo: Double) -> some View {
+        VStack(spacing: 0) {
+            Color.white.frame(height: geometry.topInset + band).opacity(fadeTo == 1 ? 0 : 1)
+            LinearGradient(colors: [.white.opacity(fadeTo == 1 ? 0 : 1), .white.opacity(fadeTo)],
+                           startPoint: .top, endPoint: .bottom).frame(height: fadeTo == 1 ? 6 : 24)
+            Color.white.opacity(fadeTo)
+        }
+    }
+}
+
+/// macOS 14/15 translucent backdrop.
+public struct VisualEffectBackdrop: NSViewRepresentable {
+    public init() {}
+    public func makeNSView(context: Context) -> NSVisualEffectView {
+        let v = NSVisualEffectView()
+        v.material = .hudWindow; v.blendingMode = .behindWindow; v.state = .active
+        v.appearance = NSAppearance(named: .darkAqua)
+        return v
+    }
+    public func updateNSView(_ nsView: NSVisualEffectView, context: Context) {}
+}
+
+// MARK: - Compact slots around the camera
+
+/// leading | camera housing (never draw here) | trailing. Content hugs the camera.
+public struct CompactSlots<Leading: View, Center: View, Trailing: View>: View {
+    public var layout: NotchLayout
+    public var slot: SlotWidth
+    public var label: CGFloat
+    private let leading: Leading, center: Center, trailing: Trailing
+
+    public init(layout: NotchLayout, slot: SlotWidth, label: CGFloat = 0,
+                @ViewBuilder leading: () -> Leading, @ViewBuilder center: () -> Center,
+                @ViewBuilder trailing: () -> Trailing) {
+        self.layout = layout; self.slot = slot; self.label = label
+        self.leading = leading(); self.center = center(); self.trailing = trailing()
+    }
+
+    public var body: some View {
+        let u = layout.u, s = slot.points(unit: u)
+        let outer = 12 * u, gap = 8 * u
+        HStack(spacing: 0) {
+            leading.frame(width: max(s - outer - gap, 0), alignment: .trailing)
+                .padding(.leading, outer).padding(.trailing, gap)
+            Color.clear.frame(width: layout.middle(label: label)).overlay { center }  // not EmptyView().frame()
+            trailing.frame(width: max(s - outer - gap, 0), alignment: .leading)
+                .padding(.leading, gap).padding(.trailing, outer)
+        }
+        .frame(height: layout.rowHeight)
+        .padding(.top, layout.rowInset)
+    }
+}
+
+// MARK: - Card
+
+public struct CrannyCardModifier: ViewModifier {
+    @Environment(\.cranny) private var theme
+    @Environment(\.displayScale) private var displayScale
+    public var cells: Int
+    public var hovered: Bool
+    public var frameless: Bool          // Mirror: the preview IS the card
+
+    public func body(content: Content) -> some View {
+        let g = theme.grid, p = theme.palette
+        let shape = RoundedRectangle(cornerRadius: g.cardRadius, style: .continuous)
+        let carded = theme.widgetStyle == .cards && !frameless
+        content
+            .padding(frameless ? 0 : g.density.cardPadding)
+            .frame(width: g.width(cells: cells), height: g.height, alignment: .topLeading)
+            .background { if carded { shape.fill(hovered ? p.cardHover : p.card) } }
+            .overlay {
+                if carded {
+                    shape.strokeBorder(p.hairline, lineWidth: theme.increaseContrast ? 1 : StrokeWidth.hairline(displayScale))
+                }
+            }
+            .clipShape(shape)
+            .containerShape(shape)          // inner ContainerRelativeShape stays concentric
+            .animation(theme.animation(.hover), value: hovered)
+    }
+}
+
+public extension View {
+    func crannyCard(cells: Int, hovered: Bool = false, frameless: Bool = false) -> some View {
+        modifier(CrannyCardModifier(cells: cells, hovered: hovered, frameless: frameless))
+    }
+
+    /// Keyboard focus: 2-pt accent ring, concentric (radius + 3, outset 3). Shown only after
+    /// keyboard interaction; disable the system focus effect on the same element.
+    func crannyFocusRing(_ focused: Bool, radius: CGFloat) -> some View {
+        modifier(FocusRingModifier(focused: focused, radius: radius))
+    }
+}
+
+struct FocusRingModifier: ViewModifier {
+    @Environment(\.cranny) private var theme
+    var focused: Bool, radius: CGFloat
+    func body(content: Content) -> some View {
+        content.overlay {
+            RoundedRectangle(cornerRadius: radius + Radius.focusRingOutset, style: .continuous)
+                .strokeBorder(theme.accentColor, lineWidth: StrokeWidth.focus)
+                .padding(-Radius.focusRingOutset)
+                .opacity(focused ? 1 : 0)
+                .allowsHitTesting(false)
+        }
+    }
+}
+
+// MARK: - Buttons
+
+/// Icon button used everywhere in the notch. `.prominent` = the ONE primary action per card.
+public struct CrannyIconButtonStyle: ButtonStyle {
+    public enum Role: Sendable { case plain, filled, prominent }
+    public var role: Role
+    public var size: CGFloat
+    public init(_ role: Role = .plain, size: CGFloat = HitTarget.preferred) { self.role = role; self.size = size }
+    public func makeBody(configuration: Configuration) -> some View {
+        IconButtonBody(configuration: configuration, role: role, size: size)
+    }
+
+    struct IconButtonBody: View {
+        @Environment(\.cranny) private var theme
+        @Environment(\.isEnabled) private var enabled
+        @State private var hovered = false
+        let configuration: Configuration, role: Role, size: CGFloat
+        var body: some View {
+            let p = theme.palette
+            let fill: Color = switch role {
+            case .prominent: .white
+            case .filled: configuration.isPressed ? p.controlPressed : hovered ? p.controlHover : p.control
+            case .plain: configuration.isPressed ? p.controlPressed : hovered ? p.control : .clear
+            }
+            configuration.label
+                .font(.system(size: (size * 0.48).rounded(), weight: .semibold))
+                .foregroundStyle(role == .prominent ? Color.black : p.label)
+                .frame(width: size, height: size)
+                .background(CrannyButtonShape(theme.buttonShape).fill(fill))
+                .contentShape(CrannyButtonShape(theme.buttonShape))
+                .scaleEffect(configuration.isPressed && !theme.reduceMotion ? 0.94 : 1)
+                .opacity(enabled ? (configuration.isPressed && theme.reduceMotion ? 0.7 : 1) : 0.4)
+                .onHover { hovered = $0 }
+                .animation(theme.animation(.hover), value: hovered)
+                .animation(theme.animation(.press), value: configuration.isPressed)
+        }
+    }
+}
+
+// MARK: - Level bar (HUD, scrubber) and progress ring
+
+public struct LevelBar: View {
+    @Environment(\.cranny) private var theme
+    public var value: Double                // 0…1
+    public var tint: Color?                 // nil = white (default HUD)
+    public var thickness: CGFloat
+    public var steps: Int                   // ticks drawn under DWC / Increase Contrast / fine steps
+    public var showsTicks: Bool
+    public var muted: Bool
+
+    public init(value: Double, tint: Color? = nil, thickness: CGFloat = StrokeWidth.hudBar,
+                steps: Int = 16, showsTicks: Bool = false, muted: Bool = false) {
+        self.value = value; self.tint = tint; self.thickness = thickness
+        self.steps = steps; self.showsTicks = showsTicks; self.muted = muted
+    }
+
+    public var body: some View {
+        let p = theme.palette
+        GeometryReader { g in
+            ZStack(alignment: .leading) {
+                Capsule(style: .continuous).fill(p.control)
+                Capsule(style: .continuous).fill(muted ? p.tertiaryLabel : (tint ?? p.label))
+                    .frame(width: value <= 0 ? 0 : max(thickness, g.size.width * min(value, 1)))
+                if showsTicks || theme.differentiateWithoutColor || theme.increaseContrast {
+                    HStack(spacing: 0) {
+                        ForEach(1..<max(steps, 2), id: \.self) { _ in
+                            Spacer(minLength: 0)
+                            Rectangle().fill(Color.black.opacity(0.5)).frame(width: 1)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                }
+            }
+        }
+        .frame(height: thickness)
+        .animation(theme.animation(.hudLevel), value: value)
+    }
+}
+
+public struct ProgressRing: View {
+    @Environment(\.cranny) private var theme
+    public var progress: Double, color: Color, lineWidth: CGFloat
+    public init(progress: Double, color: Color, lineWidth: CGFloat) {
+        self.progress = progress; self.color = color; self.lineWidth = lineWidth
+    }
+    public var body: some View {
+        ZStack {
+            Circle().stroke(theme.palette.control, lineWidth: lineWidth)
+            Circle().trim(from: 0, to: max(0, min(progress, 1)))
+                .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+        }
+    }
+}
+
+// MARK: - Key cap (hold-⌘ hints, command palette, tutorial)
+
+public struct KeyCap: View {
+    @Environment(\.cranny) private var theme
+    public var keys: String
+    public init(_ keys: String) { self.keys = keys }
+    public var body: some View {
+        let p = theme.palette
+        Text(keys)
+            .font(.system(size: 10, weight: .semibold, design: .rounded))
+            .foregroundStyle(p.secondaryLabel)
+            .padding(.horizontal, 4).frame(minWidth: 16, minHeight: 16)
+            .background(RoundedRectangle(cornerRadius: Radius.keycap, style: .continuous).fill(p.control))
+            .overlay(RoundedRectangle(cornerRadius: Radius.keycap, style: .continuous).strokeBorder(p.hairline, lineWidth: 1))
+            .fixedSize()
+            .accessibilityHidden(true)       // shortcuts are exposed as accessibility hints instead
+    }
+}
+
+// MARK: - Drop zone (Tray, AirDrop, pipelines)
+
+public struct DropZone: View {
+    @Environment(\.cranny) private var theme
+    /// `title` is ALREADY localized by the caller (`String(localized:bundle: .module)`): a `LocalizedStringKey`
+    /// passed into CrannyCore would be looked up in Bundle.main and stay English (ARCHITECTURE §3.2).
+    public var symbol: String, title: String, targeted: Bool, tint: Color?
+    public init(symbol: String, title: String, targeted: Bool, tint: Color? = nil) {
+        self.symbol = symbol; self.title = title; self.targeted = targeted; self.tint = tint
+    }
+    public var body: some View {
+        let p = theme.palette, r = theme.grid.innerRadius
+        let armed = tint ?? theme.accentColor
+        VStack(spacing: Space.s) {
+            Image(systemName: symbol).font(.system(size: 22, weight: .medium))
+                .symbolEffect(.bounce, value: targeted)
+            Text(title).crannyFont(.caption).multilineTextAlignment(.center)
+        }
+        .foregroundStyle(targeted ? p.label : p.secondaryLabel)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(RoundedRectangle(cornerRadius: r, style: .continuous).fill(targeted ? armed.opacity(0.15) : .clear))
+        .overlay(RoundedRectangle(cornerRadius: r, style: .continuous)
+            .strokeBorder(targeted ? armed : p.stroke,
+                          style: StrokeStyle(lineWidth: StrokeWidth.emphasis,
+                                             dash: targeted && theme.differentiateWithoutColor ? [] : StrokeWidth.dash)))
+        .scaleEffect(targeted && !theme.reduceMotion ? 1.03 : 1)
+        .animation(theme.animation(.commit), value: targeted)
+        .accessibilityElement(children: .combine)
+    }
+}
+```
+
+## Appendix B: The light layer
+
+This code holds palette extraction, the energy budget and the signature Aurora field. In the package it is split in two files: everything down to and including `EffectBudget` is `CrannyCore/DesignSystem/AmbientPalette.swift` (shared by Media, the shell and Effects); `AuroraField` is `CrannyEffects/AuroraField.swift` (add `import CrannyCore`). Motes and Tide follow the same pattern, a pure function of time, palette, energy and intensity drawn in a Canvas, using the parameters in §5.3.
+
+```swift
+// CrannyCore/DesignSystem/AmbientPalette.swift (AmbientPalette, EffectBudget) + CrannyEffects/AuroraField.swift
+// — the optional "Afterglow" light layer.
+// Pure SwiftUI: MeshGradient on macOS 15+, Canvas on macOS 14. No Metal, no video.
+import SwiftUI
+import CoreGraphics
+import AppKit
+
+// MARK: - Palette from content
+
+/// `glow1…3` are LIGHT (aurora, halo, underglow) and are clamped by `Glow` caps.
+/// `accent` is a FOREGROUND mark and is contrast-guarded. Never put text on a glow without a card or scrim.
+public nonisolated struct AmbientPalette: Equatable, Sendable {
+    public var glow1: RGB, glow2: RGB, glow3: RGB
+    public var accent: RGB
+    public var isMonochrome: Bool
+
+    public init(glow1: RGB, glow2: RGB, glow3: RGB, accent: RGB, isMonochrome: Bool = false) {
+        self.glow1 = glow1; self.glow2 = glow2; self.glow3 = glow3; self.accent = accent; self.isMonochrome = isMonochrome
+    }
+    public var glows: [RGB] { [glow1, glow2, glow3] }
+
+    /// Animatable form, so a track change cross-fades the light (`CrannyMotion.Kind.colorShift`).
+    public typealias Vector = AnimatablePair<AnimatablePair<RGB, RGB>, AnimatablePair<RGB, RGB>>
+    public var vector: Vector {
+        get { .init(.init(glow1, glow2), .init(glow3, accent)) }
+        set { glow1 = newValue.first.first; glow2 = newValue.first.second
+              glow3 = newValue.second.first; accent = newValue.second.second }
+    }
+
+    // Palettes for activities without artwork (per-activity light, never random).
+    public static let afterglow = AmbientPalette(glow1: BrandColor.iris, glow2: BrandColor.lagoon, glow3: BrandColor.rose, accent: RGB(hex: 0xA996FF))
+    public static let timer = AmbientPalette(glow1: BrandColor.ember, glow2: RGB(hex: 0xFFB347), glow3: BrandColor.rose, accent: RGB(hex: 0xFF9F0A))
+    public static let charging = AmbientPalette(glow1: RGB(hex: 0x30D158), glow2: RGB(hex: 0x9CF06B), glow3: BrandColor.lagoon, accent: RGB(hex: 0x30D158))
+    public static let lowBattery = AmbientPalette(glow1: RGB(hex: 0xFF453A), glow2: BrandColor.ember, glow3: BrandColor.rose, accent: RGB(hex: 0xFF6961))
+    public static let mono = AmbientPalette(glow1: RGB(0.78, 0.80, 0.86), glow2: RGB(0.55, 0.58, 0.66),
+                                            glow3: RGB(0.90, 0.90, 0.95), accent: RGB(0.94, 0.94, 0.96), isMonochrome: true)
+    /// Calendar event colour or the system accent → three analogous glows.
+    public static func tinted(_ c: RGB) -> AmbientPalette {
+        let (h, s, v) = c.hsb
+        return .init(glow1: c.luminous,
+                     glow2: RGB(h: (h + 0.06).truncatingRemainder(dividingBy: 1), s: s, v: v).luminous,
+                     glow3: RGB(h: (h + 0.94).truncatingRemainder(dividingBy: 1), s: s * 0.8, v: v).luminous,
+                     accent: c.legible())
+    }
+
+    /// Deterministic k-means (k = 5, 8 iterations) on a 24×24 thumbnail. ~0.1–0.3 ms.
+    /// Run off the main actor; cache by track identifier; greyscale art → honest `.mono`.
+    public static func extract(from image: CGImage) -> AmbientPalette {
+        let side = 24
+        var px = [UInt8](repeating: 0, count: side * side * 4)
+        let ok: Bool = px.withUnsafeMutableBytes { buf in
+            guard let space = CGColorSpace(name: CGColorSpace.sRGB),
+                  let ctx = CGContext(data: buf.baseAddress, width: side, height: side, bitsPerComponent: 8,
+                                      bytesPerRow: side * 4, space: space,
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+            ctx.interpolationQuality = .medium
+            ctx.draw(image, in: CGRect(x: 0, y: 0, width: side, height: side))
+            return true
+        }
+        guard ok else { return .afterglow }
+        var samples: [RGB] = []
+        samples.reserveCapacity(side * side)
+        for i in stride(from: 0, to: px.count, by: 4) where px[i + 3] > 200 {
+            samples.append(RGB(Double(px[i]) / 255, Double(px[i + 1]) / 255, Double(px[i + 2]) / 255))
+        }
+        guard samples.count > 16 else { return .afterglow }
+
+        let k = 5
+        var centers = (0..<k).map { samples[$0 * samples.count / k] }
+        var counts = [Int](repeating: 0, count: k)
+        for _ in 0..<8 {
+            var sums = [RGB](repeating: .zero, count: k)
+            counts = [Int](repeating: 0, count: k)
+            for s in samples {
+                var best = 0, bestD = Double.infinity
+                for (j, c) in centers.enumerated() {
+                    let d = (s - c).magnitudeSquared
+                    if d < bestD { bestD = d; best = j }
+                }
+                sums[best] = sums[best] + s; counts[best] += 1
+            }
+            for j in 0..<k where counts[j] > 0 { var c = sums[j]; c.scale(by: 1 / Double(counts[j])); centers[j] = c }
+        }
+        func chroma(_ c: RGB) -> Double { max(c.r, c.g, c.b) - min(c.r, c.g, c.b) }
+        let total = Double(samples.count)
+        func score(_ c: RGB, _ w: Double) -> Double {
+            let (_, s, v) = c.hsb
+            let penalty = (v < 0.12 || (s < 0.08 && v > 0.9)) ? 0.15 : 1
+            return w * (0.25 + chroma(c)) * penalty
+        }
+        let ranked = zip(centers, counts).filter { $0.1 > 0 }
+            .map { (c: $0.0, w: Double($0.1) / total) }
+            .sorted { score($0.c, $0.w) > score($1.c, $1.w) }
+        if (ranked.map { chroma($0.c) }.max() ?? 0) < 0.10 { return .mono }
+
+        var picks: [RGB] = []
+        for cand in ranked.map(\.c) {
+            let h = cand.hsb.h
+            if picks.allSatisfy({ let d = abs($0.hsb.h - h); return d > 0.06 && d < 0.94 }) { picks.append(cand) }
+            if picks.count == 3 { break }
+        }
+        while picks.count < 3, let base = picks.first?.hsb {   // single-hued art → analogous neighbours
+            let shift = picks.count == 1 ? 0.07 : -0.07
+            picks.append(RGB(h: (base.h + shift + 1).truncatingRemainder(dividingBy: 1), s: base.s, v: base.v))
+        }
+        let vivid = ranked.map(\.c).max { chroma($0) < chroma($1) } ?? picks[0]
+        return .init(glow1: picks[0].luminous, glow2: picks[1].luminous, glow3: picks[2].luminous,
+                     accent: vivid.legible())
+    }
+}
+
+// MARK: - Energy budget (contract)
+
+public nonisolated struct EffectBudget: Equatable, Sendable {
+    public var isOpen: Bool             // ambient runs only while the Nook is open
+    public var onScreen: Bool           // panel visible and not occluded (NSWindow.occlusionState)
+    public var lowPower: Bool           // ProcessInfo.isLowPowerModeEnabled || thermalState ≥ .serious
+    public var fullScreenFront: Bool
+    public var reduceMotion: Bool
+    public var onBattery: Bool
+    public init(isOpen: Bool, onScreen: Bool, lowPower: Bool, fullScreenFront: Bool, reduceMotion: Bool, onBattery: Bool) {
+        self.isOpen = isOpen; self.onScreen = onScreen; self.lowPower = lowPower
+        self.fullScreenFront = fullScreenFront; self.reduceMotion = reduceMotion; self.onBattery = onBattery
+    }
+    /// nil = paused → TimelineView stops ticking (zero cost). Reduce Motion FREEZES a resting frame.
+    public var minimumInterval: Double? {
+        guard isOpen, onScreen, !fullScreenFront, !reduceMotion, !lowPower else { return nil }
+        return onBattery ? 1.0 / 20 : 1.0 / 30
+    }
+    /// Low Power Mode downgrades every effect to the static halo.
+    public func effective(_ e: AmbientEffect) -> AmbientEffect { lowPower ? .halo : e }
+}
+
+// MARK: - Aurora (signature effect)
+
+/// Curtains of content colour rising from the bottom edge of the open Nook. The top 40 % stays
+/// black so the band merges with the hardware. Alpha is clamped to `Glow.ambientAlphaCap`.
+public struct AuroraField: View, Animatable {
+    public var palette: AmbientPalette
+    public var level: AmbienceLevel
+    public var energy: Double            // 0…1 (real RMS with permission, else 0)
+    public var budget: EffectBudget
+    public var restingTime: Double = 7.3
+
+    public init(palette: AmbientPalette, level: AmbienceLevel, energy: Double, budget: EffectBudget) {
+        self.palette = palette; self.level = level; self.energy = energy; self.budget = budget
+    }
+
+    public nonisolated var animatableData: AnimatablePair<AmbientPalette.Vector, Double> {
+        get { .init(palette.vector, energy) }
+        set { palette.vector = newValue.first; energy = newValue.second }
+    }
+
+    public var body: some View {
+        let interval = budget.minimumInterval
+        TimelineView(.animation(minimumInterval: interval ?? 1, paused: interval == nil)) { tl in
+            let t = interval == nil ? restingTime : tl.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3600)
+            Group {
+                if budget.effective(.aurora) == .halo {
+                    RadialGradient(colors: [palette.glow1.color(cap * 0.6), .clear], center: .bottom, startRadius: 0, endRadius: 260)
+                } else if #available(macOS 15.0, *) {
+                    mesh(t)
+                } else {
+                    curtains(t)
+                }
+            }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private var cap: Double { Glow.ambientAlphaCap(level) }
+
+    @available(macOS 15.0, *)
+    private func mesh(_ time: Double) -> some View {
+        let t = Float(time), e = Float(energy)
+        func drift(_ i: Int, _ amp: Float) -> Float { amp * sin(t * (0.21 + 0.05 * Float(i)) + Float(i) * 1.7) }
+        let swell = 0.08 + 0.06 * e
+        let points: [SIMD2<Float>] = [
+            [0, 0], [0.33, 0], [0.67, 0], [1, 0],
+            [0, 0.42], [0.33 + drift(1, 0.05), 0.40 + drift(2, 0.03)], [0.67 + drift(3, 0.05), 0.42 + drift(4, 0.03)], [1, 0.42],
+            [0, 0.72 - swell], [0.30 + drift(5, 0.08), 0.70 - swell + drift(6, 0.06)],
+            [0.70 + drift(7, 0.08), 0.68 - swell + drift(8, 0.06)], [1, 0.74 - swell],
+            [0, 1], [0.33 + drift(9, 0.04), 1], [0.67 + drift(10, 0.04), 1], [1, 1],
+        ]
+        let a = cap * (0.8 + 0.2 * energy)
+        let g = palette.glows, clear = Color.black.opacity(0)
+        let colors: [Color] = [
+            clear, clear, clear, clear,
+            clear, g[1].color(a * 0.10), g[2].color(a * 0.10), clear,
+            g[0].color(a * 0.35), g[1].color(a * 0.55), g[2].color(a * 0.50), g[0].color(a * 0.30),
+            g[2].color(a * 0.70), g[0].color(a * 1.00), g[1].color(a * 0.90), g[2].color(a * 0.65),
+        ]
+        return MeshGradient(width: 4, height: 4, points: points, colors: colors,
+                            background: .clear, smoothsColors: true, colorSpace: .perceptual)
+    }
+
+    /// macOS 14: three blurred sine curtains, normal blending (keeps the audited alpha cap).
+    private func curtains(_ time: Double) -> some View {
+        let palette = palette, cap = cap, energy = energy
+        return Canvas(opaque: false, colorMode: .linear, rendersAsynchronously: true) { ctx, size in
+            ctx.addFilter(.blur(radius: max(10, size.height * 0.10)))
+            let w = Double(size.width), hgt = Double(size.height)
+            for (i, c) in palette.glows.enumerated() {
+                let fi = Double(i)
+                let phase = time * (0.09 + 0.035 * fi) * 2 * .pi
+                let base = hgt * (0.62 + 0.10 * fi)
+                let amp = hgt * (0.09 + 0.06 * energy) * (1 - 0.2 * fi)
+                var path = Path()
+                path.move(to: CGPoint(x: -40, y: hgt + 40))
+                var x = -40.0
+                while x <= w + 40 {
+                    let u = x / max(w, 1)
+                    path.addLine(to: CGPoint(x: x, y: base + amp * sin(u * 2 * .pi * (0.75 + 0.35 * fi) + phase)
+                                                   + amp * 0.45 * sin(u * 2 * .pi * (1.9 + 0.2 * fi) - phase * 1.4)))
+                    x += 10
+                }
+                path.addLine(to: CGPoint(x: w + 40, y: hgt + 40)); path.closeSubpath()
+                let a = cap * 0.6 * (0.8 + 0.2 * energy)
+                let grad = Gradient(stops: [.init(color: c.color(0), location: 0), .init(color: c.color(a), location: 0.35),
+                                            .init(color: c.color(a * 0.25), location: 0.75), .init(color: c.color(0), location: 1)])
+                ctx.fill(path, with: .linearGradient(grad, startPoint: CGPoint(x: 0, y: base - amp * 1.6), endPoint: CGPoint(x: 0, y: hgt)))
+            }
+        }
+    }
+}
+```
+
+## Appendix C: Verification log
+
+| Claim | How it was verified |
+|---|---|
+| All Swift in this document compiles | Scratch package `scratchpad/poc/design-final` (tools 6.2, macOS 14 platform, Swift 6 mode, `NonisolatedNonsendingByDefault`, `InferIsolatedConformances`, `MemberImportVisibility`, `ExistentialAny`). Built the same files as `CrannyCore` (`defaultIsolation(nil)`) **and** `CrannyCoreMA` (`defaultIsolation(MainActor.self)`): **0 errors, 0 warnings**. Debug and release. |
+| Contrast numbers (§2.1) | Harness `DSHarness` computes WCAG 2.x ratios from the same `CrannyPalette.Spec` values the colours use (`out/report.txt`). |
+| Geometry tables (§3.3) | Harness prints every state for the 14″/16″/13″ MacBooks, a "Larger Text" scale, and external displays in floating and attached styles. |
+| Spring physics (§4.1) | SDK `Spring(duration:bounce:)`: damping ratio, stiffness, damping, settling duration; overshoot sampled at 1 ms. |
+| Path cost | 20,000 interpolated `NotchShape` paths, including `Path.union` ears: 0.64 µs each (release). |
+| Palette extraction | 0.021 ms per artwork (release); an orange-on-navy test cover gives an accent with 8.5:1 on black. |
+| Renders | `out/states-notch.png`, `states-floating.png`, `states-attached.png` (closed inside the red hardware outline; ears; shadows only when elevated), `corner-zoom.png` (ear + keyline starting below the band), `open-subtle.png` / `open-vivid.png` / `open-off.png` (full Nook composition with smoked cards, header in the band and the aurora). |
+| Icon Composer | `actool --compile … --app-icon Cranny --minimum-deployment-target 14.0` on the 2-group `Cranny.icon` above → `Assets.car` + `Cranny.icns`, no errors. |
+| SF Symbols | Every name in §14.1 checked against `name_availability.plist` (all ≤ macOS 14) and `symbol_restrictions.strings` (`video*` = FaceTime only; `airpods*`, `beats.*`, `accessibility` restricted to those products/features). |
+| Window behaviour the design relies on | Research R1 (`scratchpad/research/R1-notch-window.md`): per-pixel click-through, `.shadow` pass-through, the tri-state `ignoresMouseEvents`, nonactivating-at-init, key hand-back, fixed-canvas morph at 222–238 fps. |
+| Review amendments (2026-10-14) | `DropZone.title: String`, `Text(verbatim: "Cranny")`, `NookGrid.paddingTune`, `CrannyTheme.panelPaddingTune`: rebuilt inside the full CrannyKit layout (`scratchpad/poc/review`), 0 warnings, Core tests pass incl. `NookGrid(paddingTune: 3)` → padding 15, panel r 35, card r 20. |
+| Not verified here | Real notch radii and widths on each MacBook model (this Mac runs in clamshell mode with an external display). The closed radius 0.30·band and the 0.5-pt inset are starting values; calibrate on 13″/14″/15″/16″ hardware at every scaling mode with the Notch fit sheet and record per-model defaults. On-screen CPU/energy (Instruments on hardware). Haptic delivery from a background agent. |
