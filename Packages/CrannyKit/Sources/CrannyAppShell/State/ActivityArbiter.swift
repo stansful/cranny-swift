@@ -143,11 +143,15 @@ nonisolated struct ActivityArbiter {
 
     static func isVisible(_ activity: ActivitySnapshot, on display: DisplayFilter) -> Bool {
         if activity.id == .flash { return display.key == display.flashDisplay }
-        if activity.priority == .hud { return display.showsHUD && display.isPointerDisplay }
+        if activity.priority == .hud { return showsHUD(on: display) }
         guard display.showsActivities else { return false }
         if activity.priority == .alert { return display.isPointerDisplay }
         return !display.restrictsToAlerts
     }
+
+    /// The HUD (P0) appears only on the pointer's display, and only where General ▸ Displays ▸ HUD is on. The HUD
+    /// module learns the same answer through `SystemEnvironment.canPresentHUD`, so it never takes a key nobody shows.
+    static func showsHUD(on display: DisplayFilter) -> Bool { display.showsHUD && display.isPointerDisplay }
 
     // MARK: User actions
 
