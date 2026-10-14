@@ -36,6 +36,7 @@ public struct AuroraField: View, Animatable {
     }
 
     public var body: some View {
+        let budget = EffectsQA.adjusted(budget)
         AmbientFieldView(effect: budget.effective(.aurora), palette: palette, level: level, energy: energy, fill: 1,
                          budget: budget, restingTime: restingTime)
     }

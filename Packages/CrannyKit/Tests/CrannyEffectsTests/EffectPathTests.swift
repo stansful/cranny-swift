@@ -56,6 +56,8 @@ private func budget(isOpen: Bool = true, onScreen: Bool = true, lowPower: Bool =
     let paused = budget(onScreen: false)
     let adjusted = EffectsQA.adjusted(paused)
     #expect(adjusted.isOpen == paused.isOpen && adjusted.reduceMotion == paused.reduceMotion
-            && adjusted.lowPower == paused.lowPower && adjusted.fullScreenFront == paused.fullScreenFront)
+            && adjusted.fullScreenFront == paused.fullScreenFront && adjusted.onBattery == paused.onBattery)
     #expect(adjusted.onScreen == (EffectsQA.keepsRunning || paused.onScreen))
+    let lowPower = budget(lowPower: true)
+    #expect(EffectsQA.adjusted(lowPower).lowPower == !EffectsQA.keepsRunning)
 }

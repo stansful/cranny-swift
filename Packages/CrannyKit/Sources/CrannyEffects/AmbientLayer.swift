@@ -40,6 +40,7 @@ public struct AmbientLayer: View, Animatable {
 
     public var body: some View {
         if level != .off {
+            let budget = EffectsQA.adjusted(budget)
             AmbientFieldView(effect: budget.effective(effect), palette: palette, level: level, energy: energy,
                              fill: fill, budget: budget, restingTime: 7.3)
                 .onAppear { setFilled(budget.isOpen) }

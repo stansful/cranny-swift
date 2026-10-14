@@ -29,20 +29,26 @@ extension EnvironmentValues {
 }
 
 /// Debug-only measurement switch: launching a Debug-flagged build with `-CrannyQAEffectsAlwaysOn YES` keeps the
-/// ambient light running while the screen is locked or the panel is occluded, so CPU can be measured on a locked
-/// machine (ARCHITECTURE.md §10.1, issue 1). Compiled out of Release builds.
+/// ambient light running at full quality while the screen is locked, the panel is occluded or Low Power Mode is on,
+/// so the light's CPU cost can be measured on a locked test machine (ARCHITECTURE.md §10.1, issue 1); add
+/// `-CrannyQAEffectsOnBattery YES` to measure the battery rate (20 fps). Compiled out of Release builds; never changes
+/// a system setting.
 nonisolated enum EffectsQA {
     #if DEBUG
     static let keepsRunning = UserDefaults.standard.bool(forKey: "CrannyQAEffectsAlwaysOn")
+    static let simulatesBattery = UserDefaults.standard.bool(forKey: "CrannyQAEffectsOnBattery")
     #else
     static let keepsRunning = false
+    static let simulatesBattery = false
     #endif
 
-    /// `budget` with `onScreen` forced on while the QA switch is set.
+    /// `budget` as if on screen and without Low Power (and on battery if asked) while the QA switch is set.
     static func adjusted(_ budget: EffectBudget) -> EffectBudget {
         guard keepsRunning else { return budget }
         var adjusted = budget
         adjusted.onScreen = true
+        adjusted.lowPower = false
+        adjusted.onBattery = adjusted.onBattery || simulatesBattery
         return adjusted
     }
 }
