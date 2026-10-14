@@ -695,6 +695,7 @@
     },
     "Reset to Default" : {
       "comment" : "Settings: context menu item that restores a row's default value",
+      "extractionState" : "stale",
       "localizations" : {
         "ru" : {
           "stringUnit" : {

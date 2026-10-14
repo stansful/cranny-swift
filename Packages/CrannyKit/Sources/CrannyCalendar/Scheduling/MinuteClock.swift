@@ -1,15 +1,14 @@
 // CrannyCalendar/Scheduling/MinuteClock.swift — the time for minute-resolution text ("in 4m", "12m left") and
-// the meeting ring. It wakes once per minute, exactly when the shown value changes (minutes counted from the
-// anchor: an event's start or end), and only while the view is on screen (ARCHITECTURE.md §7.4: "a
-// once-per-minute tick only while its activity is visible"). Not a `TimelineView`: those keep SwiftUI
-// updating at the display rate (§9.2).
+// the meeting ring: Core's `AlignedClock` with a one-minute period anchored to an event's start or end, so it wakes
+// once per minute exactly when the shown value changes, and only while the view is on screen (ARCHITECTURE.md §7.4:
+// "a once-per-minute tick only while its activity is visible"). Not a `TimelineView` (§9.2).
+import CrannyCore
 import Foundation
 import SwiftUI
 
 struct MinuteClock<Content: View>: View {
     private let anchor: Date
     private let content: (Date) -> Content
-    @State private var date = Date()
 
     /// - Parameter anchor: values change at `anchor ± k × 60 s` (e.g. the event's start for "in 4m").
     init(anchor: Date, @ViewBuilder content: @escaping (Date) -> Content) {
@@ -17,28 +16,12 @@ struct MinuteClock<Content: View>: View {
         self.content = content
     }
 
-    var body: some View {
-        content(date)
-            .task(id: anchor) {
-                date = Date()
-                while !Task.isCancelled {
-                    let wait = Self.nextTick(after: Date(), anchor: anchor).timeIntervalSinceNow
-                    do {
-                        try await Task.sleep(for: .milliseconds(Int64(max(wait, 0.05) * 1000)), tolerance: .milliseconds(250))
-                    } catch {
-                        return                                                // the view went away
-                    }
-                    date = Date()
-                }
-            }
-    }
+    var body: some View { AlignedClock(period: 60, anchor: anchor, content: content) }
 
     /// The first instant after `now` that lies a whole number of minutes from `anchor`, plus a few
     /// milliseconds so the new value is already current when the view redraws.
     nonisolated static func nextTick(after now: Date, anchor: Date) -> Date {
-        let elapsed = now.timeIntervalSince(anchor)
-        let steps = (elapsed / 60).rounded(.down) + 1
-        return anchor.addingTimeInterval(steps * 60 + 0.02)
+        AlignedClock<Content>.nextTick(after: now, anchor: anchor, period: 60)
     }
 }
 

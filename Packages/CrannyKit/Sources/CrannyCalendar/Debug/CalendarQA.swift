@@ -21,8 +21,7 @@ enum CalendarQA {
     /// The fixture source and access for the `--qa-calendar` argument, or nil without it.
     static func fixture(arguments: [String] = ProcessInfo.processInfo.arguments)
         -> (source: any EventSource, access: any CalendarAccess)? {
-        guard let index = arguments.firstIndex(of: "--qa-calendar"), index + 1 < arguments.count else { return nil }
-        let state = arguments[index + 1]
+        guard let state = LaunchArguments(arguments).value(after: "--qa-calendar") else { return nil }
         let now = Date()
         let calendars = CalendarSamples.calendars
         log.info("QA: calendar fixture \(state, privacy: .public)")
