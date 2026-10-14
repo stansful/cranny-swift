@@ -2,11 +2,14 @@
 // §6.6, R2 §8): a Core Audio process tap of everything that plays EXCEPT Cranny (browsers play from helper
 // processes, so a per-PID tap would miss them), a private aggregate device and an IO proc that mixes to mono.
 //
-// Threading: `start`/`stop` are called from the main actor; the IO block runs on the HAL's real-time thread and
-// touches only `SampleRing`, which never blocks it (try-lock, drops a buffer on contention).
+// Threading: `start`/`stop` run on `LiveSpectrum`'s serial tap queue, never on the main thread (creating the tap and
+// its aggregate device makes coreaudiod build and publish a device: tens of ms). The IO block runs on the HAL's
+// real-time thread and touches only `SampleRing`, which never blocks it (try-lock, drops a buffer on contention) and
+// mixes each buffer down in at most two contiguous vDSP runs (no per-sample index arithmetic on that thread).
 // Permission: macOS asks for "System Audio Recording" on the first `AudioDeviceStart`. There is no query API;
 // a denied tap fails with `kAudioDevicePermissionsError` or delivers silence. Never started by tests.
 // Needs `NSAudioCaptureUsageDescription` in the app's hand-written Info.plist (R2 §8).
+import Accelerate
 import AudioToolbox
 import CoreAudio
 import Foundation
@@ -27,13 +30,30 @@ nonisolated final class SampleRing: @unchecked Sendable {
     }
     deinit { storage.deallocate() }
 
-    /// IO thread: interleaved stereo Float32. Drops the buffer instead of waiting for the lock.
+    /// IO thread: interleaved stereo Float32. Drops the buffer instead of waiting for the lock. Only the last
+    /// `capacity` frames of a longer buffer can survive, so only those are mixed, each at the slot it always had.
     func pushStereo(_ samples: UnsafePointer<Float>, frames: Int) {
+        guard frames > 0 else { return }
         _ = lock.withLockIfAvailableUnchecked {
-            for i in 0..<frames { storage[(write + i) % capacity] = 0.5 * (samples[2 * i] + samples[2 * i + 1]) }
+            let kept = min(frames, capacity)
+            let skipped = frames - kept
+            let start = (write + skipped) % capacity
+            let first = min(kept, capacity - start)                   // up to the end of the storage …
+            Self.mixDown(samples + 2 * skipped, into: storage + start, frames: first)
+            if kept > first {                                         // … and the rest from its start
+                Self.mixDown(samples + 2 * (skipped + first), into: storage, frames: kept - first)
+            }
             write = (write + frames) % capacity
             written &+= frames
         }
+    }
+
+    /// `out[i] = 0.5 · (left[i] + right[i])` for `frames` interleaved stereo frames.
+    private static func mixDown(_ stereo: UnsafePointer<Float>, into out: UnsafeMutablePointer<Float>, frames: Int) {
+        let n = vDSP_Length(frames)
+        var half: Float = 0.5
+        vDSP_vadd(stereo, 2, stereo + 1, 2, out, 1, n)
+        vDSP_vsmul(out, 1, &half, out, 1, n)
     }
 
     /// Mono samples (tests, mono sources).
@@ -65,7 +85,7 @@ nonisolated enum SystemAudioTapError: Error, Equatable, Sendable {
 }
 
 @available(macOS 14.2, *)
-nonisolated final class SystemAudioTap: @unchecked Sendable {   // the IDs are touched only by start/stop on the main actor
+nonisolated final class SystemAudioTap: @unchecked Sendable {   // the IDs are touched only by start/stop on one serial queue
     let ring = SampleRing()
     private var tapID = AudioObjectID(kAudioObjectUnknown)
     private var aggregateID = AudioObjectID(kAudioObjectUnknown)

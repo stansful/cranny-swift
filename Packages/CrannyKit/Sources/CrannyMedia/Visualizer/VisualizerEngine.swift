@@ -1,9 +1,14 @@
 // CrannyMedia/Visualizer/VisualizerEngine.swift — decides what every visualizer draws (ARCHITECTURE.md §6.6) and
 // runs the Live tap only while it is useful: the app's real service (never a sample, preview or QA service),
-// mode Live, something plays (or paused < 10 s), a visualizer is on screen, and the Mac is not in Low Power Mode,
-// locked or asleep. A running tap follows the frame-rate cap: plugging or unplugging the charger retunes its
-// analysis loop (30 ↔ 20 fps) without restarting the tap. Ambient bars cost nothing here: they loop in the render
-// server (`VisualizerLayerView`).
+// mode Live, something plays (or paused < 10 s), a visualizer that uses levels is on screen (`wantsLevels`: bars
+// that can move, or the widget's, whose loudness also lights the panel; Reduce Motion rests the compact bars, so
+// they never start the tap), and the Mac is not in Low Power Mode, locked or asleep. A running tap follows the
+// frame-rate cap: plugging or unplugging the charger retunes its analysis loop (30 ↔ 20 fps) without restarting the
+// tap. While nothing the loop computes is shown (the tap hears only silence, or the player is paused and the tap
+// hears nothing) the loop drops to a 4-Hz probe that notices sound coming back. A tap that could not start (denied,
+// a Core Audio error) is tried again after 30 s at the earliest, not on every panel open; asking for access (the
+// why-sheet) or choosing Live again tries at once. Ambient bars cost nothing here: they loop in the render server
+// (`VisualizerLayerView`).
 import CrannyCore
 import Foundation
 import Observation
@@ -35,10 +40,12 @@ nonisolated struct LiveFrame: Equatable, Sendable {
 /// The Live tap and its analysis loop, as the engine drives them: `LiveSpectrum` in the app, a recording fake in
 /// tests (tests never start the system audio tap or its permission prompt).
 @MainActor protocol LiveLevelSource: AnyObject {
+    /// From `start` until `stop` or a reported failure (also while the tap is still starting).
     var isRunning: Bool { get }
-    /// Starts the tap (prompting the first time) and the analysis loop at `interval` seconds per frame.
-    func start(interval: Double) throws(SystemAudioTapError)
-    /// Changes the running loop's frame interval from its next frame on. The tap keeps running.
+    /// Starts the tap (prompting the first time) off the main thread, then the analysis loop at `interval` seconds
+    /// per frame. A tap that cannot start is reported to `onFailure` (on the main actor); the source is stopped then.
+    func start(interval: Double, onFailure: @escaping @MainActor (SystemAudioTapError) -> Void)
+    /// Changes the running loop's frame interval from its next frame on (at once when shorter). The tap keeps running.
     func retune(interval: Double)
     func stop()
 }
@@ -54,6 +61,11 @@ nonisolated struct LiveFrame: Equatable, Sendable {
 
     static let pausedGrace: Duration = .seconds(10)
     static let silenceTimeout: TimeInterval = 5
+    /// Seconds per analysis frame while nothing the loop computes is shown: enough to notice sound coming back.
+    static let probeInterval = 0.25
+    /// A tap that could not start is tried again after this long at the earliest: each try builds and tears down a
+    /// process tap and an aggregate device in coreaudiod.
+    static let retryAfter: TimeInterval = 30
 
     /// False for every engine except the live service's: samples show a fictional track, so their visualizers
     /// must never start the system audio tap (or its permission prompt and privacy indicator).
@@ -70,6 +82,10 @@ nonisolated struct LiveFrame: Equatable, Sendable {
     @ObservationIgnored private let makeLiveSource: LiveSourceFactory
     @ObservationIgnored private var live: (any LiveLevelSource)?    // created on the first start
     @ObservationIgnored private var lastAudio: Date?
+    /// When the last start failed (nil after any other start): automatic retries wait `retryAfter`.
+    @ObservationIgnored private var lastFailedStart: Date?
+    /// The last frame heard nothing and the energy has decayed to 0.
+    @ObservationIgnored private var idleFrames = false
 
     /// Makes the Live source that calls back with every frame; nil = the system cannot tap (before macOS 14.2).
     typealias LiveSourceFactory =
@@ -97,6 +113,13 @@ nonisolated struct LiveFrame: Equatable, Sendable {
     func bind(isPlaying: @escaping @MainActor () -> Bool) {
         self.isPlaying = isPlaying
         token = observe({ [weak self] in self?.conditions ?? Conditions() }) { [weak self] _ in self?.reevaluate() }
+    }
+
+    /// Whether a visualizer on screen uses Live levels, so its view registers as a sink (`attach`): mode Live on an
+    /// engine that may tap, with bars that can move, or bars that feed the light (`feedsLight`: the widget's, whose
+    /// tap drives `energy` even while Reduce Motion rests them). The others never start the tap or re-evaluate.
+    func wantsLevels(reduceMotion: Bool, feedsLight: Bool) -> Bool {
+        allowsLive && mode == .live && (!reduceMotion || feedsLight)
     }
 
     func render(isPlaying: Bool, trackKey: String?, reduceMotion: Bool) -> VisualizerRender {
@@ -131,11 +154,12 @@ nonisolated struct LiveFrame: Equatable, Sendable {
 
     // MARK: Live
 
-    /// After the why-sheet: runs the tap briefly so macOS asks for System Audio Recording now, in context.
+    /// After the why-sheet: runs the tap briefly so macOS asks for System Audio Recording now, in context (also
+    /// right after a failed start).
     func requestLiveAccess() {
         guard allowsLive else { return }
         let wasRunning = isLiveRunning
-        startLive()
+        startLive(force: true)
         guard !wasRunning, liveStatus != .unsupported else { return }
         Task { [weak self] in
             try? await self?.clock.sleep(for: .milliseconds(1500))
@@ -190,29 +214,46 @@ nonisolated struct LiveFrame: Equatable, Sendable {
         case .stop:
             pausedStop?.cancel(); pausedStop = nil
             stopLive()
-            if c.mode != .live, liveStatus != .off { liveStatus = .off }
+            if c.mode != .live {
+                lastFailedStart = nil                                 // choosing Live again tries at once
+                if liveStatus != .off { liveStatus = .off }
+            }
         }
     }
 
     private var isLiveRunning: Bool { live?.isRunning ?? false }
 
-    /// Starts the tap at the current frame-rate cap, or retunes a running one to it.
-    private func startLive() {
+    /// The analysis loop's frame interval: the frame-rate cap, or the probe while nothing the loop computes is shown
+    /// (silence: Ambient bars and no energy; paused with nothing heard: dots and no energy).
+    private var liveInterval: Double {
+        liveStatus == .silent || (idleFrames && !isPlaying()) ? Self.probeInterval : 1 / frameRateCap
+    }
+
+    /// Starts the tap at the current frame-rate cap, or retunes a running one to it. After a failed start it waits
+    /// `retryAfter` unless `force`d (the why-sheet).
+    private func startLive(force: Bool = false) {
         guard allowsLive else { return }                              // belt and braces: samples never tap
         guard let source = live ?? makeLiveSource({ [weak self] frame in self?.deliver(frame) }) else {
             liveStatus = .unsupported
             return
         }
         live = source
-        guard !source.isRunning else { source.retune(interval: 1 / frameRateCap); return }
-        do {
-            try source.start(interval: 1 / frameRateCap)
-            liveStatus = .waiting
-            lastAudio = clock.now
-        } catch .permissionDenied {
+        guard !source.isRunning else { source.retune(interval: liveInterval); return }
+        if !force, let lastFailedStart, clock.now.timeIntervalSince(lastFailedStart) < Self.retryAfter { return }
+        lastFailedStart = nil
+        liveStatus = .waiting                                         // before `start`: a failure may be reported in it
+        lastAudio = clock.now
+        source.start(interval: liveInterval) { [weak self] error in self?.liveStartFailed(error) }
+    }
+
+    /// The tap could not start: the status says why, render() keeps drawing Ambient, and no retry for `retryAfter`.
+    private func liveStartFailed(_ error: SystemAudioTapError) {
+        lastFailedStart = clock.now
+        switch error {
+        case .permissionDenied:
             liveStatus = .denied
             permissions.record(.denied, for: .systemAudioRecording)
-        } catch {
+        case .coreAudio:
             liveStatus = .failed
         }
     }
@@ -220,11 +261,12 @@ nonisolated struct LiveFrame: Equatable, Sendable {
     /// A running tap follows the frame-rate cap (≤ 20 fps on battery) while it is kept through a pause, too.
     private func retuneLive() {
         guard let live, live.isRunning else { return }
-        live.retune(interval: 1 / frameRateCap)
+        live.retune(interval: liveInterval)
     }
 
     private func stopLive() {
         live?.stop()
+        idleFrames = false
         if energy != 0 { energy = 0 }
         if [.receiving, .waiting, .silent].contains(liveStatus) { liveStatus = .off }
     }
@@ -241,6 +283,8 @@ nonisolated struct LiveFrame: Equatable, Sendable {
         }
         let quantized = (frame.energy * 50).rounded() / 50
         if quantized != energy { energy = quantized }
+        idleFrames = !frame.hasAudio && quantized == 0
+        if let live, live.isRunning { live.retune(interval: liveInterval) }   // probe ↔ frame rate; no-op if unchanged
         guard liveStatus == .receiving else { return }
         for weak in sinks.values { weak.sink?.receive(levels: frame.bars) }
     }

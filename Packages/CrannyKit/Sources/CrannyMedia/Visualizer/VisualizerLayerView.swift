@@ -4,7 +4,9 @@
 //     (≤ 20 on battery) through `preferredFrameRateRange`: zero work in the app while it plays.
 //   • Live: heights pushed by `VisualizerEngine` (`LevelSink`) inside `CATransaction.setDisableActions`.
 //   • Dots: paused / Static / Reduce Motion; the bars ease to 3-pt dots over 400 ms (instantly under Reduce Motion).
-// Off screen (no window, occluded) every animation is removed: nothing runs while hidden.
+// Off screen (no window, occluded) every animation is removed: nothing runs while hidden. The view registers with the
+// engine as a level sink only while it is on screen AND its configuration wants Live levels (`wantsLevels`), so
+// Ambient, Static and Off bars, and compact bars resting under Reduce Motion, never start the tap.
 import AppKit
 import CrannyCore
 import QuartzCore
@@ -37,6 +39,8 @@ struct VisualizerConfiguration: Equatable {
     var color: RGB
     var fps: Double
     var reduceMotion: Bool
+    /// Attach to the engine while on screen (`VisualizerEngine.wantsLevels`): only then can the Live tap run for it.
+    var wantsLevels = false
 }
 
 /// SwiftUI wrapper. Decorative: hidden from accessibility, never takes clicks.
@@ -142,9 +146,10 @@ final class VisualizerNSView: NSView, LevelSink {
     private func refresh() {
         guard let configuration else { return }
         let visible = isOnScreen
-        if visible != isAttached {
-            isAttached = visible
-            if visible { engine.attach(self) } else { engine.detach(self) }
+        let attaches = visible && configuration.wantsLevels
+        if attaches != isAttached {
+            isAttached = attaches
+            if attaches { engine.attach(self) } else { engine.detach(self) }
         }
         layoutBars(configuration.metrics)
         guard visible else {

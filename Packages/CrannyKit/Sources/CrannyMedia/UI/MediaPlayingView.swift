@@ -105,7 +105,7 @@ struct MediaPlayingView: View {
                 Spacer(minLength: 0)
                 if showsBars {
                     VisualizerBars(engine: service.visualizer, isPlaying: nowPlaying.isPlaying,
-                                   trackKey: nowPlaying.trackKey, metrics: .widget)
+                                   trackKey: nowPlaying.trackKey, metrics: .widget, feedsLight: true)
                 }
             }
         }

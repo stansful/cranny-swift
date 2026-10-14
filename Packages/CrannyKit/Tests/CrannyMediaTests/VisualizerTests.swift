@@ -1,5 +1,6 @@
 // Visualizer logic: the synthetic spectrum (determinism, range, seamless loop, rest), the FFT analyzer on synthetic
-// buffers (no audio tap is ever started), the energy follower and the sample ring.
+// buffers (no audio tap is ever started), the energy follower and the sample ring, and the engine's tap decisions
+// (when it runs, the 4-Hz probe while nothing is shown, retries after a failed start, which views ask for levels).
 import CrannyCore
 import Foundation
 import Testing
@@ -132,6 +133,17 @@ import Testing
         #expect([Float]().withUnsafeBufferPointer(SpectrumAnalyzer.rms) == 0)
     }
 
+    @Test func barLevelsAreTheFoldedBands() throws {
+        // Written in place by `analyze` (no per-frame arrays), with exactly `fold`'s values.
+        let analyzer = try #require(SpectrumAnalyzer())
+        for hz in [90.0, 700, 5_000] {
+            sine(hz).withUnsafeBufferPointer { analyzer.analyze($0) }
+            #expect(analyzer.barLevels == SpectrumAnalyzer.fold(analyzer.bands.map(Double.init), into: 5))
+        }
+        #expect(SpectrumAnalyzer.foldGroups(24, into: 5) == [0..<3, 3..<8, 8..<13, 13..<18, 18..<24])   // 3/5/5/5/6
+        #expect(SpectrumAnalyzer.foldGroups(0, into: 5).isEmpty)
+    }
+
     @Test func foldGroupsBandsIntoFiveBars() {
         var levels = [Double](repeating: 0, count: 24)
         levels[0] = 0.9; levels[23] = 0.4
@@ -173,12 +185,43 @@ import Testing
         out.withUnsafeMutableBufferPointer { _ = ring.latest(into: $0) }
         #expect(out == [0.5, 0.5, 0])
     }
+
+    /// Frame `i` of a stereo buffer: left `i`, right `i + 1`, so its mono mix is `i + 0.5`.
+    private func stereo(_ frames: Range<Int>) -> [Float] { frames.flatMap { [Float($0), Float($0 + 1)] } }
+
+    @Test func stereoWrapsAroundTheRing() {
+        // 50 frames, then 30 that run past the end of a 64-sample ring: the mix continues at its start.
+        let ring = SampleRing(capacity: 64)
+        stereo(0..<50).withUnsafeBufferPointer { ring.pushStereo($0.baseAddress!, frames: 50) }
+        stereo(50..<80).withUnsafeBufferPointer { ring.pushStereo($0.baseAddress!, frames: 30) }
+        var out = [Float](repeating: -1, count: 64)
+        let written = out.withUnsafeMutableBufferPointer { ring.latest(into: $0) }
+        #expect(written == 80)
+        #expect(out == (16..<80).map { Float($0) + 0.5 })
+    }
+
+    @Test func aBufferLongerThanTheRingKeepsItsNewestFrames() {
+        let ring = SampleRing(capacity: 64)
+        stereo(0..<10).withUnsafeBufferPointer { ring.pushStereo($0.baseAddress!, frames: 10) }
+        stereo(10..<110).withUnsafeBufferPointer { ring.pushStereo($0.baseAddress!, frames: 100) }
+        var out = [Float](repeating: -1, count: 64)
+        let written = out.withUnsafeMutableBufferPointer { ring.latest(into: $0) }
+        #expect(written == 110)
+        #expect(out == (46..<110).map { Float($0) + 0.5 })
+        stereo(110..<113).withUnsafeBufferPointer { ring.pushStereo($0.baseAddress!, frames: 3) }   // and goes on from there
+        var last = [Float](repeating: -1, count: 4)
+        last.withUnsafeMutableBufferPointer { _ = ring.latest(into: $0) }
+        #expect(last == (109..<113).map { Float($0) + 0.5 })
+    }
 }
 
-/// Stands in for `LiveSpectrum`: records what the engine asks for and never touches Core Audio.
+/// Stands in for `LiveSpectrum`: records what the engine asks for and never touches Core Audio. A `failure` is
+/// reported at once, inside `start` (the real source reports it a queue hop later).
 @MainActor final class FakeLiveSource: LiveLevelSource {
     private(set) var starts = 0
     private(set) var stops = 0
+    /// Starts that `failure` refused.
+    private(set) var failedStarts = 0
     /// Seconds per frame the loop would run at now (nil = never started).
     private(set) var interval: Double?
     private(set) var isRunning = false
@@ -187,8 +230,8 @@ import Testing
 
     init(onFrame: @escaping @MainActor (LiveFrame) -> Void) { self.onFrame = onFrame }
 
-    func start(interval: Double) throws(SystemAudioTapError) {
-        if let failure { throw failure }
+    func start(interval: Double, onFailure: @escaping @MainActor (SystemAudioTapError) -> Void) {
+        if let failure { failedStarts += 1; onFailure(failure); return }
         starts += 1
         isRunning = true
         self.interval = interval
@@ -217,12 +260,12 @@ import Testing
     }
 
     private func engine(_ mode: MediaVisualizerMode, environment: PreviewSystemEnvironment = PreviewSystemEnvironment(),
-                        allowsLive: Bool = true) -> (VisualizerEngine, SettingsStore, Sources) {
+                        clock: ManualClock = ManualClock(), allowsLive: Bool = true) -> (VisualizerEngine, SettingsStore, Sources) {
         let services = CrannyServices.preview(environment: environment)
         services.settings[MediaSettings.visualizer] = mode
         let sources = Sources()
         let engine = VisualizerEngine(settings: services.settings, environment: services.environment,
-                                      permissions: services.permissions, clock: ManualClock(), allowsLive: allowsLive) { onFrame in
+                                      permissions: services.permissions, clock: clock, allowsLive: allowsLive) { onFrame in
             let source = FakeLiveSource(onFrame: onFrame)
             source.failure = sources.failure
             sources.made.append(source)
@@ -386,6 +429,102 @@ import Testing
         #expect(e.liveStatus == .denied)
         #expect(sources.made.count == 1)
         withExtendedLifetime(sink) {}
+    }
+
+    @Test func aFailedStartIsRetriedAfterThirtySecondsOrWhenAsked() async throws {
+        // Every panel open used to build and tear down a tap and an aggregate device again.
+        let clock = ManualClock()
+        let (e, settings, sources) = engine(.live, clock: clock)
+        sources.failure = .coreAudio(step: "create aggregate", status: -1)
+        e.bind(isPlaying: { true })
+        let sink = RecordingSink()
+        e.attach(sink)
+        await settle()
+        let live = try #require(sources.made.first)
+        #expect(e.liveStatus == .failed)
+        #expect(live.failedStarts == 1)
+
+        e.detach(sink); e.attach(sink)                                    // the panel closes and opens again
+        await settle()
+        #expect(live.failedStarts == 1)                                   // no new try within 30 s
+        #expect(e.liveStatus == .failed)
+        #expect(e.render(isPlaying: true, trackKey: "k", reduceMotion: false) == .ambient(SyntheticSpectrum(trackKey: "k")))
+
+        await clock.advance(by: .seconds(30))
+        e.detach(sink); e.attach(sink)
+        await settle()
+        #expect(live.failedStarts == 2)
+
+        e.requestLiveAccess()                                              // the why-sheet tries at once
+        #expect(live.failedStarts == 3)
+
+        settings[MediaSettings.visualizer] = .ambient                     // choosing Live again, too
+        await settle()
+        #expect(e.liveStatus == .off)
+        live.failure = nil
+        settings[MediaSettings.visualizer] = .live
+        await settle()
+        #expect(live.failedStarts == 3)
+        #expect(live.starts == 1)
+        #expect(e.liveStatus == .waiting)
+        #expect(sources.made.count == 1)
+        withExtendedLifetime(sink) {}
+    }
+
+    @Test func theLoopProbesWhileNothingItComputesIsShown() async throws {
+        // Silence (a silently denied tap, muted output) and a pause that hears nothing: 4 Hz instead of 30 fps,
+        // back to the frame rate with the first frame that hears sound.
+        let clock = ManualClock()
+        let environment = PreviewSystemEnvironment()
+        let (e, _, sources) = engine(.live, environment: environment, clock: clock)
+        let player = Player()
+        e.bind(isPlaying: { player.isPlaying })
+        let sink = RecordingSink()
+        e.attach(sink)
+        await settle()
+        let live = try #require(sources.made.first)
+        let quiet = LiveFrame(bars: [0, 0, 0, 0, 0], energy: 0, hasAudio: false)
+        let loud = LiveFrame(bars: [0.5, 0.5, 0.5, 0.5, 0.5], energy: 0.5, hasAudio: true)
+
+        live.onFrame(quiet)                                               // waiting, playing: frames go on
+        #expect(live.interval == 1.0 / 30)
+        await clock.advance(by: .seconds(6))
+        live.onFrame(quiet)
+        #expect(e.liveStatus == .silent)
+        #expect(live.interval == VisualizerEngine.probeInterval)
+        live.onFrame(loud)
+        #expect(e.liveStatus == .receiving)
+        #expect(live.interval == 1.0 / 30)
+        #expect(sink.levels == [loud.bars])
+
+        player.isPlaying = false                                          // paused (dots), still hearing the fade-out
+        live.onFrame(LiveFrame(bars: [0, 0, 0, 0, 0], energy: 0.2, hasAudio: false))
+        #expect(live.interval == 1.0 / 30)                                // the light still shows the energy
+        live.onFrame(quiet)
+        #expect(live.interval == VisualizerEngine.probeInterval)
+        environment.isOnBattery = true                                    // re-evaluated while kept through the pause
+        await settle()
+        #expect(live.interval == VisualizerEngine.probeInterval)
+        player.isPlaying = true                                           // not observed: the next change re-evaluates
+        environment.isOnBattery = false
+        await settle()
+        #expect(live.interval == 1.0 / 30)
+        #expect(live.starts == 1)
+        #expect(live.stops == 0)
+        withExtendedLifetime(sink) {}
+    }
+
+    @Test func onlyVisualizersThatUseLevelsAskForThem() {
+        let (e, settings, _) = engine(.live)
+        #expect(e.wantsLevels(reduceMotion: false, feedsLight: false))
+        #expect(!e.wantsLevels(reduceMotion: true, feedsLight: false))   // compact dots under Reduce Motion
+        #expect(e.wantsLevels(reduceMotion: true, feedsLight: true))     // the widget's tap lights the panel
+        for mode in [MediaVisualizerMode.ambient, .static, .off] {
+            settings[MediaSettings.visualizer] = mode
+            #expect(!e.wantsLevels(reduceMotion: false, feedsLight: true))
+        }
+        let (sample, _, _) = engine(.live, allowsLive: false)
+        #expect(!sample.wantsLevels(reduceMotion: false, feedsLight: true))
     }
 
     @Test func noLiveSourceMeansUnsupported() async {

@@ -1,5 +1,6 @@
 // CrannyMedia/Visualizer/SpectrumAnalyzer.swift — FFT 1024 → 24 log-spaced bands → 5 bars, plus RMS, for the
-// opt-in Live visualizer (ARCHITECTURE.md §6.6, R2 §8: ≈ 1.5 µs per frame). Allocation-free after `init`.
+// opt-in Live visualizer (ARCHITECTURE.md §6.6, R2 §8: ≈ 1.5 µs per frame). Allocation-free after `init`: the
+// bar groups are computed once and `barLevels` is rewritten in place (no temporary arrays per frame).
 // Not thread-safe: one analyzer per consumer (the live spectrum's main-actor loop). Tested with synthetic buffers.
 import Accelerate
 import Foundation
@@ -11,8 +12,12 @@ nonisolated final class SpectrumAnalyzer {
     private var window: [Float]
     private var frame: [Float], evens: [Float], odds: [Float], outReal: [Float], outImag: [Float], magnitudes: [Float]
     private let edges: [Int]            // FFT bin boundaries of each band
+    private let barGroups: [Range<Int>] // the bands of each bar (`fold`'s groups)
     /// 0…1 per band, smoothed (fast attack, slow release).
     private(set) var bands: [Float]
+    /// The bands folded into the 5 visualizer bars (bass … treble): the loudest band of each group, as of the last
+    /// `analyze` (`fold(bands, into: 5)`).
+    private(set) var barLevels: [Double]
 
     /// nil when vDSP cannot build a DFT of `size` (must be a supported power of two, e.g. 1024).
     init?(size: Int = 1024, bands: Int = 24, sampleRate: Double = 48_000, minHz: Double = 40, maxHz: Double = 16_000) {
@@ -25,6 +30,8 @@ nonisolated final class SpectrumAnalyzer {
         evens = .init(repeating: 0, count: size / 2)
         odds = evens; outReal = evens; outImag = evens; magnitudes = evens
         self.bands = .init(repeating: 0, count: bands)
+        barGroups = Self.foldGroups(bands, into: SyntheticSpectrum.barCount)
+        barLevels = .init(repeating: 0, count: SyntheticSpectrum.barCount)
         let binHz = sampleRate / Double(size)
         edges = (0...bands).map { i in
             let hz = minHz * pow(maxHz / minHz, Double(i) / Double(bands))      // log-spaced
@@ -74,11 +81,11 @@ nonisolated final class SpectrumAnalyzer {
             let k = target > bands[b] ? attack : release
             bands[b] += (target - bands[b]) * k
         }
-    }
-
-    /// The 24 bands folded into the 5 visualizer bars (bass … treble): the loudest band of each group.
-    var barLevels: [Double] {
-        Self.fold(bands.map(Double.init), into: SyntheticSpectrum.barCount)
+        for (bar, group) in barGroups.enumerated() {
+            var peak = bands[group.lowerBound]
+            for b in group.dropFirst() where peak < bands[b] { peak = bands[b] }    // as `Sequence.max()`
+            barLevels[bar] = Double(peak)
+        }
     }
 
     /// Root mean square of `samples` (0 … 1 for full-scale audio).
@@ -92,11 +99,17 @@ nonisolated final class SpectrumAnalyzer {
     /// Splits `levels` into `count` contiguous groups (lower groups narrower, like the ear) and takes each max.
     static func fold(_ levels: [Double], into count: Int) -> [Double] {
         guard !levels.isEmpty, count > 0 else { return Array(repeating: 0, count: max(count, 0)) }
+        return foldGroups(levels.count, into: count).map { levels[$0].max() ?? 0 }
+    }
+
+    /// `fold`'s groups of `levelCount` levels (each non-empty; empty list for no levels or no groups).
+    static func foldGroups(_ levelCount: Int, into count: Int) -> [Range<Int>] {
+        guard levelCount > 0, count > 0 else { return [] }
         // Group boundaries on a gentle power curve: 24 bands → 3, 4, 5, 6, 6.
-        let bounds = (0...count).map { i in Int((Double(levels.count) * pow(Double(i) / Double(count), 1.25)).rounded()) }
+        let bounds = (0...count).map { i in Int((Double(levelCount) * pow(Double(i) / Double(count), 1.25)).rounded()) }
         return (0..<count).map { g in
-            let lo = min(bounds[g], levels.count - 1), hi = max(min(bounds[g + 1], levels.count), lo + 1)
-            return levels[lo..<hi].max() ?? 0
+            let lo = min(bounds[g], levelCount - 1)
+            return lo..<max(min(bounds[g + 1], levelCount), lo + 1)
         }
     }
 }
