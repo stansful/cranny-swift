@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Launch smoke test of build/Cranny.app without UI: `Cranny --diagnostics <json>` writes a report and quits.
 # Checks: every CrannyKit resource bundle is embedded, the media bridge dylib is present, the Edit menu exists,
-# and CrannyEffects' compiled shader library (default.metallib) loads through Bundle.module inside the app.
+# CrannyEffects' compiled shader library (default.metallib) loads through Bundle.module inside the app, and no
+# shader source or header ships.
 #
 #   scripts/smoke.sh                 # uses build/Cranny.app
 #   APP=/path/Cranny.app scripts/smoke.sh
@@ -17,6 +18,9 @@ mkdir -p "$BUILD_DIR/logs"; rm -f "$OUT"
 [[ -s "$OUT" ]] || die "no diagnostics written"
 METALLIB="$APP/Contents/Resources/CrannyKit_CrannyEffects.bundle/Contents/Resources/default.metallib"
 [[ -f "$METALLIB" ]] || die "CrannyEffects' default.metallib is not in the app (is the Metal Toolchain installed?)"
+# Only the compiled library ships: no shader sources or headers in any bundle (ARCHITECTURE.md §8.8).
+sources="$(find "$APP/Contents" \( -name '*.metal' -o -name '*.h' \) -print | head -5)"
+[[ -z "$sources" ]] || die "shader sources or headers are in the app: $sources"
 expected=$(find "$PACKAGE_DIR/Sources" -mindepth 2 -maxdepth 2 -name Resources -type d | wc -l | tr -d ' ')
 /usr/bin/python3 -I - "$OUT" "$expected" <<'PY' || die "smoke test failed (see $OUT)"
 import json, sys

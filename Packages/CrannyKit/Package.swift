@@ -5,8 +5,7 @@
 // Layering (enforced by the dependency lists below — never add an edge that is not here):
 //   L0  CrannyCore                      design system, contracts, settings, permissions, platform utils
 //       CrannyMediaBridge (ObjC)        loaded by /usr/bin/perl at runtime, never imported by Swift
-//   L1  feature modules + CrannyEffects depend on CrannyCore ONLY (never on each other);
-//       CrannyEffects also compiles Metal shaders (Sources/CrannyEffects/Shaders)
+//   L1  feature modules + CrannyEffects depend on CrannyCore ONLY (never on each other)
 //   L2  CrannyNotchUI                   notch/Nook composition views (Core + Effects)
 //       CrannySettingsUI, CrannyOnboarding (Core + NotchUI [+ Effects])
 //   L3  CrannyAppShell                  windows, state machine, composition root (depends on everything)
@@ -27,12 +26,9 @@ let mainActorByDefault: [SwiftSetting] = common + [.defaultIsolation(MainActor.s
 let nonisolatedByDefault: [SwiftSetting] = common + [.defaultIsolation(nil)]
 
 /// A layer-1 module: MainActor by default, depends on CrannyCore only, owns a String Catalog.
-/// CrannyEffects also owns Metal shaders: `Shaders/*.metal` compile into `default.metallib` inside its
-/// resource bundle (needs the Metal Toolchain Xcode component; `scripts/lib.sh` checks for it).
 func feature(_ name: String) -> Target {
-    let resources: [Resource] = name == "CrannyEffects" ? [.process("Resources"), .process("Shaders")] : [.process("Resources")]
-    return .target(name: name, dependencies: ["CrannyCore"], resources: resources,
-                   swiftSettings: mainActorByDefault)
+    .target(name: name, dependencies: ["CrannyCore"], resources: [.process("Resources")],
+            swiftSettings: mainActorByDefault)
 }
 /// A layer-2/3 module.
 func shellLayer(_ name: String, _ dependencies: [Target.Dependency]) -> Target {

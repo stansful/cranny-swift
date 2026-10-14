@@ -1,4 +1,5 @@
 import CrannyCore
+import Foundation
 import Testing
 @testable import CrannyEffects
 
@@ -15,4 +16,14 @@ import Testing
     #expect(!ShaderEffects.usesShader(budget(lowPower: true)))              // Low Power / thermal → static halo
     #expect(ShaderEffects.usesShader(budget(isOpen: false)) == ShaderEffects.usesShader(budget()))   // pausing never flips paths
     #expect(ShaderEffects.requiredFunctions == ["crannyDither", "auroraField"])
+}
+
+/// Only the compiled library ships: SwiftPM's built-in rule compiles `Shaders/*.metal` into `default.metallib`
+/// and must not copy the sources or `CrannyShaders.h` into the bundle (ARCHITECTURE.md §2.2, §8.8).
+@Test func bundleShipsNoShaderSources() throws {
+    let resources = try #require(Bundle.module.resourceURL)
+    let files = (FileManager.default.enumerator(at: resources, includingPropertiesForKeys: nil)?.allObjects ?? [])
+        .compactMap { ($0 as? URL)?.lastPathComponent }
+    #expect(files.contains("default.metallib"))
+    #expect(files.filter { $0.hasSuffix(".metal") || $0.hasSuffix(".h") }.isEmpty)
 }
