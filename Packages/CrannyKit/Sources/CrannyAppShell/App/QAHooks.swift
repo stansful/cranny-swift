@@ -7,6 +7,8 @@
 //   --qa-capture <directory>              write a PNG of each visible window (the panel, Settings) after
 //   --qa-capture-after <seconds>          … this many seconds (default 3). Rendered in-process (`cacheDisplay`):
 //                                         works where `screencapture` cannot, needs no Screen Recording access
+//   --qa-snapshot <file.png>              render the primary panel's canvas offscreen to that PNG (handled by
+//                                         CrannyNotchUI's NotchUIQAHooks; no Screen Recording access needed)
 //
 // No input is synthesized: the state is written through the same view-model inputs the pointer uses.
 // The whole file is compiled out of Release builds.
