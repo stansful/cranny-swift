@@ -30,20 +30,33 @@ MARKETING_VERSION="${MARKETING_VERSION:-$(tr -d "[:space:]" < "$ROOT/VERSION")}"
 overrides+=(MARKETING_VERSION="$MARKETING_VERSION")
 [[ -n "${BUILD_NUMBER:-}" ]] && overrides+=(CURRENT_PROJECT_VERSION="$BUILD_NUMBER")
 
-log "Building $SCHEME ($CONFIGURATION, $ARCHS) with $(xcodebuild -version | head -1)"
-# 'generic/platform=macOS' (= "Any Mac") is what makes xcodebuild honour ARCHS; with the
-# implicit "My Mac" run destination it silently builds only the host architecture.
-set +e
-xcodebuild build \
-  -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIGURATION" \
-  -destination 'generic/platform=macOS' \
-  -derivedDataPath "$DERIVED_DIR" \
-  "${overrides[@]}" 2>&1 | tee "$LOG" | xcpretty_filter
-status=${PIPESTATUS[0]}
-set -e
-(( status == 0 )) || die "xcodebuild failed ($status); full log: $LOG"
-
 PRODUCT="$DERIVED_DIR/Build/Products/$CONFIGURATION/Cranny.app"
+
+run_xcodebuild() {
+  # 'generic/platform=macOS' (= "Any Mac") is what makes xcodebuild honour ARCHS; with the
+  # implicit "My Mac" run destination it silently builds only the host architecture.
+  set +e
+  xcodebuild build \
+    -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIGURATION" \
+    -destination 'generic/platform=macOS' \
+    -derivedDataPath "$DERIVED_DIR" \
+    "${overrides[@]}" 2>&1 | tee "$LOG" | xcpretty_filter
+  local status=${PIPESTATUS[0]}
+  set -e
+  (( status == 0 )) || die "xcodebuild failed ($status); full log: $LOG"
+}
+
+log "Building $SCHEME ($CONFIGURATION, $ARCHS) with $(xcodebuild -version | head -1)"
+run_xcodebuild
+# An incremental build that only changed package resources (String Catalogs) can copy new
+# .lproj files into the app without re-signing it ("a sealed resource is missing or invalid").
+# Rebuild the app product once from scratch in that case.
+if ! codesign --verify --deep --strict "$PRODUCT" 2>/dev/null; then
+  log "Stale signature on the incremental product; rebuilding Cranny.app"
+  rm -rf "$PRODUCT"
+  run_xcodebuild
+fi
+
 rm -rf "$BUILD_DIR/Cranny.app" "$BUILD_DIR/Cranny.app.dSYM"
 ditto "$PRODUCT" "$BUILD_DIR/Cranny.app"
 [[ -d "$PRODUCT.dSYM" ]] && ditto "$PRODUCT.dSYM" "$BUILD_DIR/Cranny.app.dSYM"
