@@ -17,7 +17,7 @@ import SwiftUI
     private(set) var expiresAt: Date?
     @ObservationIgnored private let expiry = ActivityExpiry()
     /// The newest connection whose glyph has bounced (see `claimBounce(for:)`).
-    @ObservationIgnored private var bouncedRevision = 0
+    @ObservationIgnored private(set) var bouncedRevision = 0
 
     var isActive: Bool { accessory != nil }
 
