@@ -66,7 +66,8 @@ import Testing
     private func inputs(_ change: (inout HUDTapConfig.Inputs) -> Void = { _ in }) -> HUDTapConfig.Inputs {
         var inputs = HUDTapConfig.Inputs(replaceSystemHUD: true, volume: true, brightness: true, keyboardBacklight: true,
                                          activityEnabled: true, accessibilityGranted: true, screenLocked: false,
-                                         displaysAsleep: false, fullScreenInFront: false, fullScreenPolicy: .alertsAndHUD)
+                                         displaysAsleep: false, fullScreenInFront: false, fullScreenPolicy: .alertsAndHUD,
+                                         shellCanPresentHUD: true)
         change(&inputs)
         return inputs
     }
@@ -101,6 +102,21 @@ import Testing
         #expect(HUDTapConfig(inputs { $0.fullScreenPolicy = .hideAll }).isPresentable)
         // A locked screen keeps the tap (it only passes keys through), so unlocking needs no re-creation.
         #expect(HUDTapConfig(inputs { $0.screenLocked = true }).wantsTap)
+    }
+
+    @Test func aDisplayThatWouldNotDrawTheHUDGetsNoKeys() {
+        // The pointer's display has General ▸ Displays ▸ HUD off (or no visible panel): the shell says so, and the
+        // keys go to macOS, so its HUD shows instead of none (D10).
+        let hidden = HUDTapConfig(inputs { $0.shellCanPresentHUD = false })
+        #expect(!hidden.isPresentable)
+        #expect(hidden.wantsTap)                                    // moving back to a HUD display needs no new tap
+        #expect(PassThroughPolicy.route(MediaKeyEvent(key: .soundUp, isDown: true), config: hidden)
+                == .passThrough(.notPresentable))
+        #expect(PassThroughPolicy.route(MediaKeyEvent(key: .brightnessDown, isDown: true), config: hidden)
+                == .passThrough(.notPresentable))
+        let shown = HUDTapConfig(inputs { $0.shellCanPresentHUD = true })
+        #expect(shown.isPresentable)
+        #expect(PassThroughPolicy.route(MediaKeyEvent(key: .soundUp, isDown: true), config: shown) == .handle(.volume, .up))
     }
 
     @Test func boxHoldsTheLatestSnapshot() {

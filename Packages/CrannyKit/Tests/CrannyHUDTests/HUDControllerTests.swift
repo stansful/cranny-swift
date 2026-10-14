@@ -227,6 +227,32 @@ import Testing
         #expect(fake.taps.count == 1)                                // the tap stays for after unlocking
     }
 
+    @Test func theConfigReadsWhetherTheShellWouldDrawTheHUD() {
+        #expect(controller.configInputs().shellCanPresentHUD)
+        environment.canPresentHUD = false                           // General ▸ Displays ▸ HUD off on the pointer's display
+        #expect(!controller.configInputs().shellCanPresentHUD)
+    }
+
+    @Test func aDisplayWithoutTheHUDHandsTheKeysToMacOS() async throws {
+        settings[HUDSettings.replaceSystemHUD] = true
+        controller.now = { [start = Date()] in start }              // frozen: the HUD stays up however busy the main actor is
+        controller.start()
+        defer { controller.stop() }
+        let tap = try #require(fake.taps.first)
+        _ = tap.handler.handle(MediaKeyEvent(key: .soundUp, isDown: true))
+        #expect(await eventually { activity.isActive })
+        let calls = fake.volume.calls.count
+        environment.canPresentHUD = false                           // the pointer moves to a display with the HUD off
+        #expect(await eventually { !activity.isActive })            // the visible HUD goes with it
+        #expect(!tap.handler.handle(MediaKeyEvent(key: .soundUp, isDown: true)))     // macOS changes it and shows its HUD
+        #expect(!tap.handler.handle(MediaKeyEvent(key: .brightnessUp, isDown: true)))
+        #expect(fake.volume.calls.count == calls)                   // Cranny wrote nothing
+        #expect(fake.taps.count == 1 && tap.stopCount == 0)         // the tap stays for the way back
+        environment.canPresentHUD = true                            // back on a display that shows the HUD
+        #expect(await eventually { tap.handler.handle(MediaKeyEvent(key: .soundUp, isDown: true)) })
+        #expect(await eventually { activity.isActive })
+    }
+
     @Test func voiceOverActionsAdjustTheLevel() async throws {
         settings[HUDSettings.replaceSystemHUD] = true
         controller.now = { [start = Date()] in start }              // frozen: the HUD stays up however busy the main actor is

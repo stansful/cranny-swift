@@ -81,6 +81,19 @@ private func filter(_ key: DisplayKey = here, pointer: Bool = true, restricted: 
     #expect(noHUD.primary == "battery")
 }
 
+@Test func theHUDRuleIsTheOneTheLineupApplies() {
+    // `showsHUD(on:)` is what the HUD module learns through `SystemEnvironment.canPresentHUD`; it must match the lineup.
+    var arbiter = ActivityArbiter()
+    let ranked = arbiter.update([activity("hud", .hud)], settings: ArbiterSettings(), now: t0).ranked
+    for display in [filter(), filter(hud: false), filter(pointer: false), filter(pointer: false, hud: false),
+                    filter(restricted: true), filter(activities: false)] {
+        #expect(ActivityArbiter.showsHUD(on: display) == arbiter.lineup(ranked, on: display, satellite: true).contains("hud"))
+    }
+    #expect(ActivityArbiter.showsHUD(on: filter()))
+    #expect(!ActivityArbiter.showsHUD(on: filter(hud: false)))
+    #expect(!ActivityArbiter.showsHUD(on: filter(pointer: false)))
+}
+
 // MARK: - Peeks, announcements, delights (steps 4 and 7)
 
 @Test func onlyNewRevisionsPeekAndNothingPeeksAtLaunch() {

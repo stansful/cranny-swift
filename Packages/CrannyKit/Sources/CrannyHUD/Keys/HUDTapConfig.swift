@@ -11,8 +11,9 @@ nonisolated struct HUDTapConfig: Sendable, Equatable {
     var handlesVolume: Bool
     var handlesBrightness: Bool
     var handlesKeyboardBacklight: Bool
-    /// The shell can draw the HUD right now. False while the screen is locked or asleep, or while a full-screen
-    /// (or excluded) app is in front under "Hide everything": the keys then go to macOS and its own HUD shows.
+    /// The shell can draw the HUD right now. False while the screen is locked or asleep, while a full-screen
+    /// (or excluded) app is in front under "Hide everything", or while the display the HUD would appear on has no
+    /// visible panel or has General ▸ Displays ▸ HUD off: the keys then go to macOS and its own HUD shows.
     var isPresentable: Bool
 
     /// Nothing is handled; the state before launch and after `stop()`.
@@ -43,6 +44,9 @@ nonisolated struct HUDTapConfig: Sendable, Equatable {
         var displaysAsleep: Bool
         var fullScreenInFront: Bool
         var fullScreenPolicy: FullScreenPolicy
+        /// `SystemEnvironment.canPresentHUD`: the shell has a visible panel for the HUD on its display, and that
+        /// display's General ▸ Displays ▸ HUD toggle is on.
+        var shellCanPresentHUD: Bool
     }
 
     init(isReplacing: Bool, handlesVolume: Bool, handlesBrightness: Bool, handlesKeyboardBacklight: Bool,
@@ -58,7 +62,8 @@ nonisolated struct HUDTapConfig: Sendable, Equatable {
                   handlesVolume: replacing && inputs.volume,
                   handlesBrightness: replacing && inputs.brightness,
                   handlesKeyboardBacklight: replacing && inputs.keyboardBacklight,
-                  isPresentable: !inputs.screenLocked && !inputs.displaysAsleep && !hiddenByFullScreen)
+                  isPresentable: inputs.shellCanPresentHUD && !inputs.screenLocked && !inputs.displaysAsleep
+                      && !hiddenByFullScreen)
     }
 }
 

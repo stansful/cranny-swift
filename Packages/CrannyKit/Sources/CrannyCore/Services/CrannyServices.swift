@@ -112,6 +112,7 @@ import Observation
     public var areLiveActivitiesPaused = false
     /// See `SystemEnvironment.hasTrackpad`.
     public var hasTrackpad = true
+    public var canPresentHUD = true
     public init() {}
 }
 

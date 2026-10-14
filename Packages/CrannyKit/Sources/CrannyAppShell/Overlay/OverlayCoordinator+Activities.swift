@@ -98,13 +98,29 @@ extension OverlayCoordinator {
         return facts
     }
 
-    /// Pushes every display's environment and lineup (after arbitration, a rebuild or a facts change).
+    /// Pushes every display's environment and lineup (after arbitration, a rebuild or a facts change), and tells the
+    /// HUD whether it would be drawn.
     func applyDisplayFacts() {
         let satellite = registry.services.settings[CoreSettings.satellite]
         for controller in controllers.values {
             controller.viewModel.setEnvironment(environmentFacts(for: controller.key))
             controller.viewModel.setLineup(arbiter.lineup(ranked, on: displayFilter(for: controller.key), satellite: satellite))
         }
+        environment.setCanPresentHUD(canPresentHUD())
+    }
+
+    /// `SystemEnvironment.canPresentHUD`: the HUD goes to the alert display (the pointer's, else the primary one).
+    /// It is drawn only if that display has a panel, keeps the HUD in its lineup and is not hidden. Otherwise the HUD
+    /// leaves its keys to macOS, so its own HUD shows (D10: never none).
+    func canPresentHUD() -> Bool {
+        guard let key = alertController?.key else { return false }          // every chosen display is style Off
+        return Self.canPresentHUD(filter: displayFilter(for: key), environment: environmentFacts(for: key))
+    }
+
+    /// Pure: the HUD survives this display's lineup filter and the panel is not hidden. The idle handle does not
+    /// count: a new HUD revision brings it back.
+    nonisolated static func canPresentHUD(filter: DisplayFilter, environment: NotchEnvironment) -> Bool {
+        ActivityArbiter.showsHUD(on: filter) && environment.hardHidden == nil && !environment.notThisDisplay
     }
 
     func displayFilter(for key: DisplayKey) -> DisplayFilter {

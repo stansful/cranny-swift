@@ -87,6 +87,9 @@ public nonisolated enum NotchEvent: Sendable, Equatable {
     var areLiveActivitiesPaused: Bool { get }
     /// Built-in or Magic Trackpad present (onboarding gesture step, haptics copy).
     var hasTrackpad: Bool { get }
+    /// A HUD shown now would be drawn: the display it appears on has a panel that is not hidden and whose
+    /// General ▸ Displays ▸ HUD toggle is on. Default `true` (Additions/WP09-HUDPresentability.swift).
+    var canPresentHUD: Bool { get }
 }
 
 public extension SystemEnvironment {

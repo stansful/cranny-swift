@@ -26,6 +26,9 @@ import Observation
     private(set) var fronts: [CGDirectDisplayID: FullScreenDetector.Front] = [:]
     /// The display under the pointer (the coordinator updates it when the pointer crosses displays).
     private(set) var pointerDisplay: CGDirectDisplayID?
+    /// A HUD shown now would be drawn (`SystemEnvironment.canPresentHUD`); the coordinator decides it with every
+    /// display-facts update (`OverlayCoordinator.canPresentHUD()`).
+    private(set) var canPresentHUD = true
 
     /// A full-screen app (or an excluded app) is in front on the pointer's display.
     var isFullScreenInFront: Bool {
@@ -113,6 +116,11 @@ import Observation
     /// The coordinator tracks the pointer's display (`isFullScreenInFront` is about that one).
     func setPointerDisplay(_ id: CGDirectDisplayID?) {
         if pointerDisplay != id { pointerDisplay = id }
+    }
+
+    /// The coordinator's answer to "would a HUD be drawn now?" (the HUD passes its keys to macOS while it is false).
+    func setCanPresentHUD(_ value: Bool) {
+        if canPresentHUD != value { canPresentHUD = value }
     }
 
     /// Re-reads the window list now (§5.7 "lazily right before a hover-open or auto-peek").
