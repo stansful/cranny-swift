@@ -69,11 +69,13 @@ extension StrokeWidth {
     nonisolated static let rim: CGFloat = 1.5
 }
 
-/// Playback progress of Now Playing along the rim. One redraw per second (`EffectClock`), only while the
-/// track plays and the panel is on screen (not covered, not locked); otherwise it draws a still line and costs
-/// nothing.
+/// Playback progress of Now Playing along the rim, redrawn by an `EffectClock` only while the track plays and the
+/// panel is on screen (not covered, not locked); otherwise it draws a still line and costs nothing. The clock ticks
+/// once a second, unless the line takes two seconds or more to move one device pixel (a long mix, a podcast, an
+/// audiobook): then once per whole number of seconds a pixel takes, so a tick never moves the line more than a pixel.
 struct PlaybackRim: View {
     @Environment(\.cranny) private var theme
+    @Environment(\.displayScale) private var displayScale
     let geometry: NotchGeometry
     let source: any NowPlayingSource
     /// `EffectBudget.onScreen` of the canvas.
@@ -81,11 +83,27 @@ struct PlaybackRim: View {
 
     var body: some View {
         if let playing = source.nowPlaying, let duration = playing.duration, duration > 0 {
-            EffectClock(minimumInterval: playing.isPlaying && isOnScreen ? 1 : nil) { date in
+            let interval = PlaybackRim.interval(duration: duration, rate: playing.rate,
+                                                pixels: geometry.bodyWidth * displayScale)
+            EffectClock(minimumInterval: playing.isPlaying && isOnScreen ? interval : nil) { date in
                 LowerRim(geometry: geometry, progress: playing.position(at: date) / duration, color: theme.accentColor)
             }
         }
     }
+
+    /// Seconds between redraws for a track of `duration` played at `rate` along a rim `pixels` device pixels wide:
+    /// the whole seconds the line takes to move one pixel, at least 1 and at most `maximumInterval`. Whole seconds,
+    /// so a small change of the rim's width rarely changes the schedule (a new one restarts the clock). Pure.
+    nonisolated static func interval(duration: TimeInterval, rate: Double, pixels: CGFloat) -> Double {
+        let speed = rate > 0 ? rate : 1                           // as `NowPlaying.position(at:)` advances
+        let perPixel = duration / (max(Double(pixels), 1) * speed)
+        guard perPixel.isFinite else { return 1 }
+        return min(max(perPixel.rounded(.down), 1), maximumInterval)
+    }
+
+    /// The slowest redraw (a recording of many hours, whose line moves less than a pixel in this time). A seek,
+    /// a pause or a new track redraws at once whatever the interval: the snapshot changes.
+    nonisolated static let maximumInterval: Double = 30
 }
 
 /// The charger-connected sweep: CrannyEffects' `ChargeSweep`, a green head with a fading tail travelling leading →

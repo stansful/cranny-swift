@@ -3,7 +3,8 @@
 // at the camera (`CompactSlots`); band text scales with the notch unit and is rounded to whole points, so a word that
 // fits at one unit can overflow at another. The fit is therefore measured at every notch unit a display can have,
 // never counted in characters. The shell's flash (`NotchControl.flash`) picks its slot with it and draws its symbol
-// alone when the label fits no wing.
+// alone when the label fits no wing. What depends only on the style (the units grouped by point size, the fonts) is
+// built once and kept; only the text is measured per call.
 import AppKit
 import CrannyCore
 import SwiftUI
@@ -42,13 +43,22 @@ public enum WingTextMetrics {
     public static func narrowestSlot(for text: String, among slots: [SlotWidth],
                                      style: CrannyTextStyle = .compact) -> SlotWidth? {
         guard !text.isEmpty else { return slots.min() }
-        // The units that draw at each point size; the text is as wide at all of them.
-        let unitsBySize = Dictionary(grouping: notchUnits) { style.pointSize(textSize: .standard, notchUnit: $0) }
-        let widths = unitsBySize.map { size, units in (BandFont.width(of: text, style: style, size: size), units) }
+        let widths = unitsBySize(style).map { size, units in (BandFont.width(of: text, style: style, size: size), units) }
         return slots.sorted().first { slot in
             widths.allSatisfy { width, units in units.allSatisfy { width <= contentWidth(slot, notchUnit: $0) } }
         }
     }
+
+    /// The units that draw `style` at each point size (the text is as wide at all of them), grouped once per style.
+    private static func unitsBySize(_ style: CrannyTextStyle) -> [CGFloat: [CGFloat]] {
+        if let groups = unitGroups[style] { return groups }
+        let groups = Dictionary(grouping: notchUnits) { style.pointSize(textSize: .standard, notchUnit: $0) }
+        unitGroups[style] = groups
+        return groups
+    }
+
+    /// `unitsBySize` per style (a few styles × about 15 point sizes).
+    private static var unitGroups: [CrannyTextStyle: [CGFloat: [CGFloat]]] = [:]
 
     /// `CompactSlots`' outer inset, which keeps content off the corner curve (DESIGN.md §9.1).
     static let cornerInset: CGFloat = 12
@@ -57,7 +67,8 @@ public enum WingTextMetrics {
 }
 
 /// The AppKit twin of `CrannyTextStyle.font` for measuring band text: the same weight and design, monospaced digits
-/// when the style has them, the style's tracking and the font's kerning, as SwiftUI draws them.
+/// when the style has them, the style's tracking and the font's kerning, as SwiftUI draws them. Each font is built
+/// once per style and whole point size, and kept.
 enum BandFont {
     /// Width of `text` in `style` at `size` points, rounded up to whole points.
     static func width(of text: String, style: CrannyTextStyle, size: CGFloat) -> CGFloat {
@@ -69,6 +80,22 @@ enum BandFont {
     }
 
     static func font(_ style: CrannyTextStyle, size: CGFloat) -> NSFont {
+        let key = FontKey(style: style, size: size)
+        if let font = fonts[key] { return font }
+        let font = makeFont(style, size: size)
+        fonts[key] = font
+        return font
+    }
+
+    /// A font of the cache: band sizes are whole points (`CrannyTextStyle.pointSize`), so it stays small.
+    private struct FontKey: Hashable {
+        let style: CrannyTextStyle
+        let size: CGFloat
+    }
+
+    private static var fonts: [FontKey: NSFont] = [:]
+
+    private static func makeFont(_ style: CrannyTextStyle, size: CGFloat) -> NSFont {
         let spec = style.spec
         let base = NSFont.systemFont(ofSize: size, weight: weight(spec.weight))
         var descriptor = base.fontDescriptor

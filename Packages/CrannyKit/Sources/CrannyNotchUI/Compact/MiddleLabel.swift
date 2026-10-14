@@ -1,7 +1,8 @@
 // CrannyNotchUI/Compact/MiddleLabel.swift — the compact middle on displays without a notch: a 12-pt gap, or
 // the primary activity's `middleLabel` (`compactLabel`, ≤ 160 pt, e.g. the track title; DESIGN.md §3.5).
 // The scene's owner measures the label with `MiddleLabelMetrics` and writes `NotchSceneModel.middleLabelWidth`,
-// so the shape (`geometry`) and the wings (`CompactSlots(label:)`) agree on the width (open issue 3).
+// so the shape (`geometry`) and the wings (`CompactSlots(label:)`) agree on the width (open issue 3). The owner asks
+// again on every media snapshot, mostly for the same title: the last measure is kept.
 import CrannyCore
 import SwiftUI
 
@@ -15,9 +16,16 @@ public enum MiddleLabelMetrics {
     public static func width(of label: String?, layout: NotchLayout) -> CGFloat {
         guard !layout.metrics.hasNotch, layout.noNotchStyle != .off,
               let label = label?.trimmingCharacters(in: .whitespacesAndNewlines), !label.isEmpty else { return 0 }
+        let unit = layout.u
+        if let last, last.label == label, last.unit == unit { return last.width }
         // `BandFont` has monospaced digits like `compactLabel`, so "Track 11" is wider than a proportional measure.
-        return min(WingTextMetrics.width(of: label, style: .compactLabel, notchUnit: layout.u), maximumWidth)
+        let width = min(WingTextMetrics.width(of: label, style: .compactLabel, notchUnit: unit), maximumWidth)
+        last = (label, unit, width)
+        return width
     }
+
+    /// The last label measured, at which notch unit, and its width.
+    private static var last: (label: String, unit: CGFloat, width: CGFloat)?
 }
 
 /// The label itself: one line, secondary, tail-truncated, exactly `width` wide.

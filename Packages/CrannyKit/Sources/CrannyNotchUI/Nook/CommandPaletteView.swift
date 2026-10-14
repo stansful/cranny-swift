@@ -1,7 +1,8 @@
 // CrannyNotchUI/Nook/CommandPaletteView.swift — ⌘K (DESIGN.md §6.4). It replaces the grid area at the same
 // height, so the shape does not move: a 28-pt search field in a `well` (r 8), then up to 4 rows of 22 pt —
 // icon 16 · title (`body`) · kind (`caption`, tertiary) · shortcut as a `KeyCap`. ↑ ↓ choose, ↩ runs the
-// command and returns to the grid, Esc returns to the grid. Commands come from `registry.commandProviders`.
+// command and returns to the grid, Esc returns to the grid. Commands come from `registry.commandProviders`, searched
+// once per evaluation (a keystroke evaluates it once; the selection is written only when it changes).
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -33,7 +34,7 @@ struct CommandPaletteView: View {
                     ForEach(window, id: \.element.id) { index, command in
                         PaletteRow(command: command, isSelected: index == selection.index)
                             .onTapGesture { run(command) }
-                            .onHover { if $0 { selection.index = index } }
+                            .onHover { if $0, selection.index != index { selection.index = index } }
                     }
                 }
                 .accessibilityElement(children: .contain)
@@ -41,9 +42,10 @@ struct CommandPaletteView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .onChange(of: query) { _, _ in
-            selection = PaletteSelection()
-            selection.clamp(count: self.results.count, visible: visible)
+        .onChange(of: PaletteQuery(text: query, results: results.count)) { _, new in
+            var next = PaletteSelection()
+            next.clamp(count: new.results, visible: visible)
+            if next != selection { selection = next }
         }
         .onAppear {
             // Typing goes to the panel: make it key first (without activating the app), then focus the field on the
@@ -86,6 +88,16 @@ struct CommandPaletteView: View {
         setMode(.grid)
         command.perform()
     }
+}
+
+/// The query with the number of results the evaluation that saw it found. Equal when the text is, so the palette
+/// resets its selection when the query changes (not when a provider's list does), and clamps it to the count that
+/// came with the new text, without searching again.
+private nonisolated struct PaletteQuery: Equatable, Sendable {
+    let text: String
+    let results: Int
+
+    static func == (a: PaletteQuery, b: PaletteQuery) -> Bool { a.text == b.text }
 }
 
 /// One 22-pt result row.
