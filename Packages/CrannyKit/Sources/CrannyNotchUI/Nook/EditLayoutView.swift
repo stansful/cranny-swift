@@ -177,7 +177,7 @@ struct EditLayoutView: View {
                                                                           cell: theme.grid.cell, gutter: theme.grid.gutter)
                 if target != current.cells, let editing = editing(),
                    let index = editing.items.firstIndex(where: { $0.widget == widget }),
-                   let next = editing.resizing(at: index, to: target, sizes: registry.widget(widget)?.sizes) {
+                   let next = editing.resizing(at: index, to: target) {
                     current.cells = next.items[index].cells
                     actions.commitLayout(next.pages)                         // the shape follows live (`resize`)
                     registry.services.haptics.play(.alignment)
@@ -220,9 +220,7 @@ struct EditLayoutView: View {
 
     private func resize(_ widget: WidgetID, by step: Int) {
         guard let editing = editing(), let index = editing.items.firstIndex(where: { $0.widget == widget }) else { return }
-        let sizes = registry.widget(widget)?.sizes
-        let current = sizes?.clamp(editing.items[index].cells) ?? editing.items[index].cells
-        guard let next = editing.resizing(at: index, to: current + step, sizes: sizes) else { return }
+        guard let next = editing.resizing(at: index, to: editing.cells(of: editing.items[index]) + step) else { return }
         registry.services.haptics.play(.alignment)
         commit(next, announce: cellsAnnouncement(widget, cells: next.items[index].cells))
     }
@@ -254,7 +252,7 @@ struct EditLayoutView: View {
         c.remove = { remove($0) }
         c.resize = { widget, cells in
             guard let editing = editing(), let index = editing.items.firstIndex(where: { $0.widget == widget }),
-                  let next = editing.resizing(at: index, to: cells, sizes: registry.widget(widget)?.sizes) else { return }
+                  let next = editing.resizing(at: index, to: cells) else { return }
             commit(next, announce: cellsAnnouncement(widget, cells: cells))
         }
         c.editLayout = {}
@@ -262,7 +260,8 @@ struct EditLayoutView: View {
     }
 
     private func editing() -> LayoutEditing? {
-        LayoutEditing(pages: registry.services.settings[CoreSettings.pages], pageID: page.id, maxColumns: model.layout.maxColumns)
+        LayoutEditing(pages: registry.services.settings[CoreSettings.pages], pageID: page.id,
+                      maxColumns: model.layout.maxColumns, registry: registry)
     }
 
     private func width(of item: NookItem) -> CGFloat {

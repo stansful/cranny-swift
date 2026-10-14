@@ -85,23 +85,19 @@ enum GridCommands {
     @MainActor static func make(page: NookPage, model: NotchSceneModel, registry: ModuleRegistry,
                                 actions: NotchUIActions) -> CardCommands {
         func editing() -> LayoutEditing {
-            LayoutEditing(pages: registry.services.settings[CoreSettings.pages], pageID: page.id, maxColumns: model.layout.maxColumns)
+            LayoutEditing(pages: registry.services.settings[CoreSettings.pages], pageID: page.id,
+                          maxColumns: model.layout.maxColumns, registry: registry)
         }
         var c = CardCommands()
         c.remove = { widget in if let next = editing().removing(widget) { actions.commitLayout(next.pages) } }
         c.resize = { widget, cells in
             let e = editing()
             guard let index = e.items.firstIndex(where: { $0.widget == widget }),
-                  let next = e.resizing(at: index, to: cells, sizes: registry.widget(widget)?.sizes) else { return }
+                  let next = e.resizing(at: index, to: cells) else { return }
             actions.commitLayout(next.pages)
         }
         c.editLayout = { actions.setMode(.editLayout) }
-        c.allowedSizes = { widget in
-            let e = editing()
-            guard let sizes = registry.widget(widget)?.sizes, let item = e.items.first(where: { $0.widget == widget }) else { return [] }
-            let room = e.cellsLeft + max(item.cells, 1)
-            return Array(sizes.minimum...max(sizes.minimum, min(sizes.maximum, room)))
-        }
+        c.allowedSizes = { widget in editing().allowedSizes(for: widget) }
         return c
     }
 }

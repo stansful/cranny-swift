@@ -12,12 +12,26 @@ nonisolated struct LayoutEditing: Equatable, Sendable {
     var pageID: PageID
     /// `NotchLayout.maxColumns` of the display: a page never grows beyond it (the Nook never scrolls).
     var maxColumns: Int
+    /// The registered widgets' sizes. An item counts at its stored width clamped to them, exactly as the grid
+    /// draws it and the owner's `openColumns` counts it (a stored width can be out of range: old settings, or
+    /// a module that changed its sizes). Widgets without sizes (not registered) count at their stored width.
+    var sizes: [WidgetID: WidgetSizes] = [:]
 
     var items: [NookItem] { pages.first { $0.id == pageID }?.items ?? [] }
-    /// Cells in use (each item counted at its stored width; the owner clamps them to the widget's sizes).
-    var usedColumns: Int { items.reduce(0) { $0 + max($1.cells, 1) } }
+    /// The width `item` is drawn at, in cells.
+    func cells(of item: NookItem) -> Int { sizes[item.widget]?.clamp(item.cells) ?? max(item.cells, 1) }
+    /// Cells in use, as drawn.
+    var usedColumns: Int { items.reduce(0) { $0 + cells(of: $1) } }
     /// "N cells left" (negative = over the limit).
     var cellsLeft: Int { maxColumns - usedColumns }
+
+    /// The widths `widget` may take on this page: its sizes, limited by the room left (the ⋯ menu's Resize
+    /// and the Wider / Narrower VoiceOver actions). Empty for a widget without sizes or not on the page.
+    func allowedSizes(for widget: WidgetID) -> [Int] {
+        guard let s = sizes[widget], let item = items.first(where: { $0.widget == widget }) else { return [] }
+        let room = cellsLeft + cells(of: item)
+        return Array(s.minimum...max(s.minimum, min(s.maximum, room)))
+    }
 
     // MARK: Changes (each returns nil when refused or a no-op)
 
@@ -35,16 +49,18 @@ nonisolated struct LayoutEditing: Equatable, Sendable {
         return copy
     }
 
-    /// Resizes the item at `index` to `cells`, clamped to `sizes` and to the room left on the page.
-    func resizing(at index: Int, to cells: Int, sizes: WidgetSizes?) -> LayoutEditing? {
+    /// Resizes the item at `index` to `cells`, clamped to its widget's sizes and to the room left on the page.
+    /// Nil when that is the width already drawn.
+    func resizing(at index: Int, to cells: Int) -> LayoutEditing? {
         var copy = self
         guard copy.updateItems({ items in
             guard items.indices.contains(index) else { return false }
-            let current = max(items[index].cells, 1)
-            let others = items.enumerated().reduce(0) { $0 + ($1.offset == index ? 0 : max($1.element.cells, 1)) }
+            let widgetSizes = sizes[items[index].widget]
+            let current = self.cells(of: items[index])
+            let others = items.enumerated().reduce(0) { $0 + ($1.offset == index ? 0 : self.cells(of: $1.element)) }
             let room = maxColumns - others
-            let allowed = sizes.map { $0.clamp(cells) } ?? max(cells, 1)
-            let next = min(allowed, max(room, sizes?.minimum ?? 1))
+            let allowed = widgetSizes.map { $0.clamp(cells) } ?? max(cells, 1)
+            let next = min(allowed, max(room, widgetSizes?.minimum ?? 1))
             guard next != current, next >= 1 else { return false }
             items[index].cells = next
             return true
@@ -104,5 +120,13 @@ nonisolated struct LayoutEditing: Equatable, Sendable {
         guard change(&items) else { return false }
         pages[p].items = items
         return true
+    }
+}
+
+extension LayoutEditing {
+    /// The editing rules for `pageID`, with the sizes of every widget in `registry`.
+    @MainActor init(pages: [NookPage], pageID: PageID, maxColumns: Int, registry: ModuleRegistry) {
+        self.init(pages: pages, pageID: pageID, maxColumns: maxColumns,
+                  sizes: Dictionary(registry.widgets.map { ($0.id, $0.sizes) }, uniquingKeysWith: { first, _ in first }))
     }
 }

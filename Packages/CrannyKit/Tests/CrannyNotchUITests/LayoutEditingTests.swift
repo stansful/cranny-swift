@@ -8,9 +8,10 @@ import Testing
 private let home = NookPage(id: .nook, symbol: "square.grid.2x2.fill",
                             items: [NookItem(.media, cells: 5), NookItem(.calendar, cells: 3), NookItem(.quickApps, cells: 2)])
 private let focus = NookPage(id: "page.focus", title: "Focus", symbol: "note.text", items: [NookItem(.notes, cells: 4)])
-private let editing = LayoutEditing(pages: [home, focus], pageID: .nook, maxColumns: 12)
 private let media = WidgetSizes(minimum: 4, preferred: 5, maximum: 6)
 private let calendar = WidgetSizes(minimum: 2, preferred: 3, maximum: 5)
+private let editing = LayoutEditing(pages: [home, focus], pageID: .nook, maxColumns: 12,
+                                    sizes: [.media: media, .calendar: calendar])
 
 @Suite("Layout editing (DESIGN.md §6.6)") struct LayoutEditingTests {
     @Test func countsCellsLeft() {
@@ -27,14 +28,31 @@ private let calendar = WidgetSizes(minimum: 2, preferred: 3, maximum: 5)
     }
 
     @Test func resizesInWholeCellsWithinSizesAndRoom() throws {
-        #expect(try #require(editing.resizing(at: 0, to: 6, sizes: media)).items[0].cells == 6)
-        #expect(try #require(editing.resizing(at: 0, to: 9, sizes: media)).items[0].cells == 6)   // widget maximum
-        #expect(try #require(editing.resizing(at: 1, to: 5, sizes: calendar)).items[1].cells == 5)  // 12 used: the room
-        let full = try #require(editing.resizing(at: 1, to: 5, sizes: calendar))
+        #expect(try #require(editing.resizing(at: 0, to: 6)).items[0].cells == 6)
+        #expect(try #require(editing.resizing(at: 0, to: 9)).items[0].cells == 6)   // widget maximum
+        #expect(try #require(editing.resizing(at: 1, to: 5)).items[1].cells == 5)  // 12 used: the room
+        let full = try #require(editing.resizing(at: 1, to: 5))
         #expect(full.cellsLeft == 0)
-        #expect(full.resizing(at: 0, to: 6, sizes: media) == nil)                 // no room left: refused
-        #expect(try #require(editing.resizing(at: 0, to: 1, sizes: media)).items[0].cells == 4)   // widget minimum
-        #expect(editing.resizing(at: 0, to: 5, sizes: media) == nil)              // no change
+        #expect(full.resizing(at: 0, to: 6) == nil)                 // no room left: refused
+        #expect(try #require(editing.resizing(at: 0, to: 1)).items[0].cells == 4)   // widget minimum
+        #expect(editing.resizing(at: 0, to: 5) == nil)              // no change
+    }
+
+    /// A stored width outside the widget's sizes (old settings, a module that changed its sizes) counts as it is
+    /// drawn: clamped. Before, "N cells left", the Add menu's overflow and the ⋯ Resize choices used the stored
+    /// width and disagreed with the grid and the owner's `openColumns`.
+    @Test func countsWidthsAsDrawn() throws {
+        let stale = NookPage(id: .nook, symbol: "square.grid.2x2.fill",
+                             items: [NookItem(.media, cells: 9), NookItem(.calendar, cells: 1), NookItem(.quickApps, cells: 2)])
+        let e = LayoutEditing(pages: [stale], pageID: .nook, maxColumns: 12, sizes: [.media: media, .calendar: calendar])
+        #expect(e.cells(of: stale.items[0]) == 6 && e.cells(of: stale.items[1]) == 2)
+        #expect(e.usedColumns == 10 && e.cellsLeft == 2)                          // 6 + 2 + 2, not 9 + 1 + 2
+        #expect(e.allowedSizes(for: .calendar) == [2, 3, 4])                        // 2 drawn + 2 left
+        #expect(e.allowedSizes(for: .media) == [4, 5, 6])
+        #expect(e.allowedSizes(for: .quickApps) == [])                              // no sizes: no choices
+        #expect(e.resizing(at: 0, to: 6) == nil)                                    // already drawn at 6
+        #expect(try #require(e.resizing(at: 1, to: 4)).items[1].cells == 4)        // others count 6 + 2
+        #expect(e.overflow(adding: WidgetSizes(minimum: 3, preferred: 3, maximum: 3)) == 1)
     }
 
     @Test func addsAtThePreferredWidthOrRefuses() throws {
@@ -90,5 +108,7 @@ private let calendar = WidgetSizes(minimum: 2, preferred: 3, maximum: 5)
         #expect(modes == [.editLayout])
         #expect(services.settings[CoreSettings.pages] == [home])                 // NotchUI never writes settings
         #expect(commands.allowedSizes(.media) == [])                              // unregistered widget: no sizes
+        registry.add(widget: ProbeWidget(.calendar, sizes: calendar, probe: NotchLifecycleProbe()))
+        #expect(commands.allowedSizes(.calendar) == [2, 3, 4, 5])                 // 3 drawn + 2 left, max 5
     }
 }

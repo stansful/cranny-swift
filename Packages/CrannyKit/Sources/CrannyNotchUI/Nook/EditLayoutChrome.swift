@@ -78,7 +78,7 @@ struct EditLayoutBar: View {
 
     var body: some View {
         let editing = LayoutEditing(pages: registry.services.settings[CoreSettings.pages], pageID: page.id,
-                                    maxColumns: model.layout.maxColumns)
+                                    maxColumns: model.layout.maxColumns, registry: registry)
         let addable = registry.widgets.filter { w in !editing.items.contains { $0.widget == w.id } }
         HStack(spacing: Space.s) {
             Text("\(max(editing.cellsLeft, 0)) cells left", bundle: .module,
