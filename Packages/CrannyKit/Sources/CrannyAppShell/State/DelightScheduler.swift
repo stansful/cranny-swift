@@ -1,6 +1,7 @@
 // CrannyAppShell/State/DelightScheduler.swift — the caps on one-shot delight moments (ARCHITECTURE.md §4.6
-// step 7, DESIGN.md §5.5): one at a time, none while paused or with a full-screen app in front, none under
-// Calm, Instant or Reduce Motion. Pure; the coordinator writes the winner into the pointer display's scene.
+// step 7, DESIGN.md §5.5): one at a time, none while paused or with a full-screen app in front, none on a hidden
+// panel (locked, asleep, hidden by policy: nobody would see it, §9.2), none under Calm, Instant or Reduce Motion.
+// Pure; the coordinator writes the winner into the pointer display's scene.
 import CrannyCore
 import Foundation
 
@@ -9,11 +10,13 @@ nonisolated struct DelightScheduler: Equatable, Sendable {
     struct Gate: Equatable, Sendable {
         var paused = false
         var fullScreenInFront = false
+        /// The target panel is hidden (content alpha 0): a moment there would be invisible work.
+        var hidden = false
         var motion: MotionPersonality = .standard
         var reduceMotion = false
 
         var allowsDelight: Bool {
-            !paused && !fullScreenInFront && !reduceMotion && motion != .calm && motion != .instant
+            !paused && !fullScreenInFront && !hidden && !reduceMotion && motion != .calm && motion != .instant
         }
     }
 

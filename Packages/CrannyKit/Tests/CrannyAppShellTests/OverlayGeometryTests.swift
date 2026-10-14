@@ -151,6 +151,22 @@ private func front(_ windows: [FullScreenDetector.Window], frontmost: pid_t? = 5
     #expect(!front([menuBar, appWindow(CGRect(x: 100, y: 100, width: 600, height: 400))], excluded: false).excludedApp)
 }
 
+/// Two identical displays side by side with aligned tops: the left one's menu bar says nothing about the right
+/// one, which shows a full-screen app that is not frontmost (a video while the user works on the left).
+@Test func theMenuBarOfAnotherDisplayDoesNotCount() {
+    let left = FullScreenDetector.Display(id: 1, bounds: CGRect(x: 0, y: 0, width: 1920, height: 1080), notchBand: 0)
+    let right = FullScreenDetector.Display(id: 2, bounds: CGRect(x: 1920, y: 0, width: 1920, height: 1080), notchBand: 0)
+    let leftMenuBar = FullScreenDetector.Window(layer: 24, bounds: CGRect(x: 0, y: 0, width: 1920, height: 24), ownerPID: 90,
+                                                ownerName: "Window Server")
+    let video = appWindow(right.bounds, pid: 700)
+    let editor = appWindow(CGRect(x: 100, y: 100, width: 800, height: 600), pid: 500)
+    let result = FullScreenDetector.evaluate(windows: [leftMenuBar, editor, video], displays: [left, right], frontmostPID: 500,
+                                             frontmostIsExcluded: false, ignoredPIDs: [1])
+    #expect(result[2]?.fullScreen == true && result[1]?.fullScreen == false)
+    #expect(FullScreenDetector.menuBarHeight(on: right.bounds, windows: [leftMenuBar]) == nil)
+    #expect(FullScreenDetector.menuBarHeight(on: left.bounds, windows: [leftMenuBar]) == 24)
+}
+
 @Test func theMenuBarHeightComesFromTheWindowServer() {
     #expect(FullScreenDetector.menuBarHeight(on: display.bounds, windows: [menuBar]) == 32)
     #expect(FullScreenDetector.menuBarHeight(on: display.bounds, windows: []) == nil)

@@ -183,11 +183,14 @@ private func filter(_ key: DisplayKey = here, pointer: Bool = true, restricted: 
     let early = scheduler.request(.gulp, now: 10.5, gate: open)                // the ember still plays (0.9 s)
     let later = scheduler.request(.gulp, now: 11, gate: open)
     #expect(ember && !early && later)
-    for gate in [DelightScheduler.Gate(paused: true), .init(fullScreenInFront: true), .init(motion: .calm),
+    // A hidden panel (locked, asleep, hidden by policy) plays nothing and keeps the stage free.
+    for gate in [DelightScheduler.Gate(paused: true), .init(fullScreenInFront: true), .init(hidden: true), .init(motion: .calm),
                  .init(motion: .instant), .init(reduceMotion: true)] {
         let allowed = scheduler.request(.songRipple, now: 100, gate: gate)
         #expect(!allowed)
     }
+    let afterVetoes = scheduler.request(.songRipple, now: 100, gate: open)
+    #expect(afterVetoes)
     let firstOpen = scheduler.firstOpen(), secondOpen = scheduler.firstOpen()
     #expect(firstOpen && !secondOpen)                                          // First light: once per session
 }

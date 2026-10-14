@@ -160,12 +160,14 @@ extension OverlayCoordinator {
         AccessibilityNotification.Announcement(activity.accessibilityLabel).post()
     }
 
-    /// The caps of §4.6 step 7 (one at a time, not paused, not behind full screen, not Calm/Instant/Reduce Motion).
+    /// The caps of §4.6 step 7 (one at a time, not paused, not behind full screen, not on a hidden panel, not
+    /// Calm/Instant/Reduce Motion).
     func playDelight(_ moment: DelightMoment, on key: DisplayKey) {
         guard let controller = controllers[key] else { return }
         let front = screens.first { $0.key == key }.map { environment.front(of: $0.id) } ?? FullScreenDetector.Front()
         let gate = DelightScheduler.Gate(paused: environment.areLiveActivitiesPaused,
                                          fullScreenInFront: front.fullScreen || front.excludedApp,
+                                         hidden: controller.viewModel.state.hidden != nil,
                                          motion: registry.services.settings[CoreSettings.motion],
                                          reduceMotion: environment.reduceMotion)
         guard delights.request(moment, now: ProcessInfo.processInfo.systemUptime, gate: gate) else { return }

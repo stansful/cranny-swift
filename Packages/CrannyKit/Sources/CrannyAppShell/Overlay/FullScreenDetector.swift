@@ -39,10 +39,7 @@ nonisolated enum FullScreenDetector {
                          ignoredPIDs: Set<pid_t>) -> [CGDirectDisplayID: Front] {
         var result: [CGDirectDisplayID: Front] = [:]
         for display in displays {
-            let menuBarPresent = windows.contains { window in
-                window.layer == menuBarLayer && window.ownerName == "Window Server"
-                    && abs(window.bounds.minY - display.bounds.minY) < 1 && abs(window.bounds.width - display.bounds.width) < 1
-            }
+            let menuBarPresent = windows.contains { isMenuBar($0, of: display.bounds) }
             let fullScreen = windows.contains { window in
                 guard window.layer == 0, !ignoredPIDs.contains(window.ownerPID) else { return false }
                 switch coverage(window.bounds, display) {
@@ -95,9 +92,14 @@ nonisolated enum FullScreenDetector {
 
     /// Height of the Window Server's menu-bar window on a display (CG bounds), for auto-hidden menu bars (§5.4).
     static func menuBarHeight(on displayBounds: CGRect, windows: [Window]) -> CGFloat? {
-        windows.first { window in
-            window.layer == menuBarLayer && window.ownerName == "Window Server"
-                && abs(window.bounds.minX - displayBounds.minX) < 1 && abs(window.bounds.width - displayBounds.width) < 1
-        }.map(\.bounds.height).flatMap { $0 > 0 ? $0 : nil }
+        windows.first { isMenuBar($0, of: displayBounds) }.map(\.bounds.height).flatMap { $0 > 0 ? $0 : nil }
+    }
+
+    /// The Window Server's layer-24 menu-bar window of THIS display: same top-left corner and width. Two displays
+    /// side by side with aligned tops and equal widths differ only in x, so both coordinates are compared.
+    static func isMenuBar(_ window: Window, of displayBounds: CGRect) -> Bool {
+        window.layer == menuBarLayer && window.ownerName == "Window Server"
+            && abs(window.bounds.minX - displayBounds.minX) < 1 && abs(window.bounds.minY - displayBounds.minY) < 1
+            && abs(window.bounds.width - displayBounds.width) < 1
     }
 }
