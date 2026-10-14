@@ -297,25 +297,25 @@
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld элемента"
+                  "value" : "%lld объекта"
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld элементов"
+                  "value" : "%lld объектов"
                 }
               },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld элемент"
+                  "value" : "%lld объект"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "%lld элемента"
+                  "value" : "%lld объекта"
                 }
               }
             }

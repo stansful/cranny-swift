@@ -381,7 +381,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Переместить ниже"
+            "value" : "Переместить вниз"
           }
         }
       }
@@ -392,7 +392,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Переместить выше"
+            "value" : "Переместить вверх"
           }
         }
       }
@@ -491,7 +491,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Открыть %@"
+            "value" : "Открыть «%@»"
           }
         }
       }
@@ -623,7 +623,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Восстановить по умолчанию"
+            "value" : "Вернуть значение по умолчанию"
           }
         }
       }
@@ -722,7 +722,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Подписи под плитками"
+            "value" : "Показывать подписи под плитками"
           }
         }
       }

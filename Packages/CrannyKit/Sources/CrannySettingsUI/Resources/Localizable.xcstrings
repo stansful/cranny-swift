@@ -63,7 +63,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%@ · Комната 4"
+            "value" : "%@ · Переговорная 4"
           }
         }
       }
@@ -165,25 +165,25 @@
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Свободно %lld ячейки"
+                  "value" : "Осталось %lld ячейки"
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Свободно %lld ячеек"
+                  "value" : "Осталось %lld ячеек"
                 }
               },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Свободна %lld ячейка"
+                  "value" : "Осталась %lld ячейка"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Свободно %lld ячейки"
+                  "value" : "Осталось %lld ячейки"
                 }
               }
             }
@@ -1048,7 +1048,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Отказано"
+            "value" : "Запрещено"
           }
         }
       }
@@ -2082,7 +2082,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ниже"
+            "value" : "Переместить вниз"
           }
         }
       }
@@ -2093,7 +2093,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Влево"
+            "value" : "Переместить влево"
           }
         }
       }
@@ -2104,7 +2104,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вправо"
+            "value" : "Переместить вправо"
           }
         }
       }
@@ -2115,7 +2115,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Выше"
+            "value" : "Переместить вверх"
           }
         }
       }
@@ -2153,13 +2153,13 @@
         }
       }
     },
-    "New text in notes and to-dos appears with a short reveal." : {
+    "New characters in notes appear in the accent colour, then settle." : {
       "comment" : "Settings ▸ Appearance: footnote of Typing effect",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Новый текст в заметках и задачах появляется с коротким проявлением."
+            "value" : "Новые символы в заметках появляются акцентным цветом, а затем принимают обычный."
           }
         }
       }
@@ -2902,7 +2902,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вернуть по умолчанию"
+            "value" : "Вернуть значение по умолчанию"
           }
         }
       }
@@ -3078,7 +3078,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Значок в строке меню"
+            "value" : "Показывать значок в строке меню"
           }
         }
       }
@@ -3353,7 +3353,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Значок"
+            "value" : "Символ"
           }
         }
       }
@@ -4102,7 +4102,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "запуск"
+            "value" : "панель запуска"
           }
         }
       }

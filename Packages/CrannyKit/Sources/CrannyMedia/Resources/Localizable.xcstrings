@@ -669,7 +669,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Обложка в вырезе"
+            "value" : "Показывать обложку в вырезе"
           }
         }
       }
@@ -680,7 +680,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Медиа из браузеров"
+            "value" : "Показывать медиа из браузеров"
           }
         }
       }
