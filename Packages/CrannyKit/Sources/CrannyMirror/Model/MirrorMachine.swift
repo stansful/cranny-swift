@@ -4,13 +4,20 @@
 // Privacy contract (DESIGN.md §7.4, ARCHITECTURE.md §7.5): the camera never starts by itself — only a tap
 // starts it, and only while the widget is visible in the open panel; `halt` (close, page change, lock, sleep,
 // disappear, layout editing) always returns to `.off`, and a later tap is needed to start again.
+//
+// Panel hold ("mirror.permission", ARCHITECTURE.md §4.5): on from the tap that shows the system camera prompt
+// until the user is back at the widget after answering it. Answering takes the pointer to the system alert,
+// outside the panel; releasing the hold with the answer would start the shell's close grace at once, and the
+// close would stop the camera the user just allowed. So the answer only arms the release (`.awaitReturn`), and
+// `.returned` (pointer over the card, keyboard focus, or the model's fallback timeout) or a halt ends it.
 import CrannyCore
 
 /// Where the Mirror is.
 nonisolated enum MirrorPhase: Equatable, Sendable {
     /// Not running. The widget shows "Preview camera" (or why it cannot run).
     case off
-    /// The system's camera prompt is up; the panel is held open meanwhile (ARCHITECTURE.md §4.5).
+    /// The system's camera prompt is up; the panel is held open meanwhile, and until the user is back after
+    /// answering (ARCHITECTURE.md §4.5).
     case requestingAccess
     /// The session is starting with this camera.
     case starting(deviceID: String)
@@ -51,6 +58,9 @@ nonisolated enum MirrorEvent: Equatable, Sendable {
     case devicesChanged
     /// The widget may not show the camera any more (panel closed, page changed, lock, sleep, hidden, editing).
     case halt
+    /// The user is back at the widget after answering the camera prompt: the pointer is over the card or the
+    /// widget has keyboard focus. The model also sends it when `MirrorModel.returnTimeout` passes without that.
+    case returned
 }
 
 /// What the model must do.
@@ -60,6 +70,8 @@ nonisolated enum MirrorEffect: Equatable, Sendable {
     case stop
     /// Keep the panel open while the permission prompt is up ("mirror.permission").
     case holdOpen(Bool)
+    /// The prompt was answered: keep the hold until `.returned` (the model arms the fallback timeout).
+    case awaitReturn
     case openSystemSettings
 }
 
@@ -74,12 +86,15 @@ nonisolated struct MirrorInputs: Equatable, Sendable {
     var devices: [CameraDevice]
     /// The widget is on screen in the open panel, the screen is unlocked and the displays are awake.
     var isEligible: Bool
+    /// The model holds the panel open for the camera prompt ("mirror.permission").
+    var isHoldingOpen: Bool
 
     /// `devices` defaults to just `camera`.
-    init(authorization: PermissionStatus, camera: CameraDevice?, devices: [CameraDevice]? = nil, isEligible: Bool) {
+    init(authorization: PermissionStatus, camera: CameraDevice?, devices: [CameraDevice]? = nil, isEligible: Bool,
+         isHoldingOpen: Bool = false) {
         self.authorization = authorization; self.camera = camera
         self.devices = devices ?? (camera.map { [$0] } ?? [])
-        self.isEligible = isEligible
+        self.isEligible = isEligible; self.isHoldingOpen = isHoldingOpen
     }
 
     /// A connected camera by `CameraDevice.id`.
@@ -97,9 +112,17 @@ nonisolated enum MirrorMachine {
 
         case .accessResult(let status):
             guard phase == .requestingAccess else { return (phase, []) }      // halted meanwhile: hold already released
-            guard status == .granted, inputs.isEligible else { return (.off, [.holdOpen(false)]) }
+            guard inputs.isEligible else { return (.off, [.holdOpen(false)]) }
+            // The pointer is on the system alert: keep the panel until the user is back (see the file header),
+            // so a grant shows the camera and a refusal shows "Camera access is off".
+            guard status == .granted else { return (.off, [.awaitReturn]) }
             let (next, effects) = start(inputs)
-            return (next, [.holdOpen(false)] + effects)
+            return (next, effects + [.awaitReturn])
+
+        case .returned:
+            // While the prompt is up the hold stays whatever the pointer does; after the answer the user is back.
+            guard inputs.isHoldingOpen, phase != .requestingAccess else { return (phase, []) }
+            return (phase, [.holdOpen(false)])
 
         case .camera(let cameraEvent):
             return camera(phase, cameraEvent, inputs)
@@ -108,12 +131,9 @@ nonisolated enum MirrorMachine {
             return devicesChanged(phase, inputs)
 
         case .halt:
-            switch phase {
-            case .off: return (.off, [])
-            case .requestingAccess: return (.off, [.holdOpen(false)])
-            case .starting, .running: return (.off, [.stop])
-            case .problem: return (.off, [])
-            }
+            var effects: [MirrorEffect] = phase.usesCamera ? [.stop] : []
+            if phase == .requestingAccess || inputs.isHoldingOpen { effects.append(.holdOpen(false)) }
+            return (.off, effects)
         }
     }
 

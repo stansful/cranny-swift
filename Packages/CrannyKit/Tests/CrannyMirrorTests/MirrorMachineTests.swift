@@ -6,8 +6,8 @@ import Testing
 @MainActor struct MirrorMachineTests {
     private let camera = Cameras.builtIn
     private func inputs(_ auth: PermissionStatus = .granted, camera: CameraDevice? = Cameras.builtIn,
-                        devices: [CameraDevice]? = nil, eligible: Bool = true) -> MirrorInputs {
-        MirrorInputs(authorization: auth, camera: camera, devices: devices, isEligible: eligible)
+                        devices: [CameraDevice]? = nil, eligible: Bool = true, holding: Bool = false) -> MirrorInputs {
+        MirrorInputs(authorization: auth, camera: camera, devices: devices, isEligible: eligible, isHoldingOpen: holding)
     }
 
     // MARK: Tap
@@ -67,16 +67,33 @@ import Testing
         #expect(effects == [.start(deviceID: camera.id)])
     }
 
-    // MARK: Permission answer
+    // MARK: Permission answer and the panel hold
 
-    @Test func grantedAnswerReleasesTheHoldAndStarts() {
-        let (phase, effects) = MirrorMachine.reduce(.requestingAccess, .accessResult(.granted), inputs())
+    @Test func grantedAnswerStartsAndKeepsTheHoldUntilTheUserIsBack() {
+        // The pointer is on the system alert, outside the panel: releasing now would close the panel.
+        let (phase, effects) = MirrorMachine.reduce(.requestingAccess, .accessResult(.granted), inputs(holding: true))
         #expect(phase == .starting(deviceID: camera.id))
-        #expect(effects == [.holdOpen(false), .start(deviceID: camera.id)])
+        #expect(effects == [.start(deviceID: camera.id), .awaitReturn])
+        #expect(!effects.contains(.holdOpen(false)))
     }
 
-    @Test func deniedAnswerReleasesTheHold() {
-        #expect(MirrorMachine.reduce(.requestingAccess, .accessResult(.denied), inputs(.denied)) == (.off, [.holdOpen(false)]))
+    @Test func deniedAnswerKeepsTheHoldSoTheCardCanExplain() {
+        #expect(MirrorMachine.reduce(.requestingAccess, .accessResult(.denied), inputs(.denied, holding: true))
+                == (.off, [.awaitReturn]))
+    }
+
+    @Test func theUserComingBackReleasesTheHold() {
+        for phase in [MirrorPhase.starting(deviceID: camera.id), .running(deviceID: camera.id), .off, .problem(.sessionFailed)] {
+            #expect(MirrorMachine.reduce(phase, .returned, inputs(holding: true)) == (phase, [.holdOpen(false)]), "\(phase)")
+            #expect(MirrorMachine.reduce(phase, .returned, inputs(holding: false)) == (phase, []), "\(phase)")
+        }
+        // While the prompt is up, the pointer passing over the card changes nothing.
+        #expect(MirrorMachine.reduce(.requestingAccess, .returned, inputs(.notDetermined, holding: true)) == (.requestingAccess, []))
+    }
+
+    @Test func aHaltAfterTheAnswerReleasesTheHoldToo() {
+        #expect(MirrorMachine.reduce(.running(deviceID: camera.id), .halt, inputs(holding: true)) == (.off, [.stop, .holdOpen(false)]))
+        #expect(MirrorMachine.reduce(.off, .halt, inputs(holding: true)) == (.off, [.holdOpen(false)]))
     }
 
     @Test func grantedAnswerAfterThePanelClosedNeverStarts() {
@@ -127,7 +144,7 @@ import Testing
 
     @Test func becomingVisibleAgainNeverStartsByItself() {
         // No event other than a tap (or a granted prompt the tap opened) ever produces `.start`.
-        let quiet: [MirrorEvent] = [.devicesChanged, .halt, .accessResult(.granted), .camera(.failed(.sessionFailed)),
+        let quiet: [MirrorEvent] = [.devicesChanged, .halt, .returned, .accessResult(.granted), .camera(.failed(.sessionFailed)),
                                     .camera(.failed(.suspended)), .camera(.stoppedBySystem)]
         for event in quiet {
             for phase in [MirrorPhase.off, .problem(.noCamera), .problem(.suspended), .problem(.sessionFailed)] {

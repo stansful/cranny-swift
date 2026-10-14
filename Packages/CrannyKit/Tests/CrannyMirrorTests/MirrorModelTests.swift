@@ -1,6 +1,7 @@
 // The model on fakes, driven through the Core doubles (PreviewNotchControl, PreviewSystemEnvironment):
 // ARCHITECTURE.md §10.5 acceptance — never starts without a click; stops ≤ 1 s after close, page change, lock,
-// sleep; never runs in previews; the panel is held open only while the permission prompt is up.
+// sleep; never runs in previews; the panel is held open while the permission prompt is up and until the user is
+// back after answering it.
 import CrannyCore
 import Foundation
 import Testing
@@ -157,32 +158,93 @@ import Testing
 
     // MARK: Permission
 
-    @Test func askingForAccessHoldsThePanelOpenUntilAnswered() async {
+    private static let holdOn = "hold(true,mirror.permission)"
+    private static let holdOff = "hold(false,mirror.permission)"
+
+    @Test func askingForAccessHoldsThePanelOpenUntilTheUserIsBack() async {
         let h = MirrorHarness(.notDetermined)
         await h.show()
         await h.model.tap()
         #expect(h.model.phase == .requestingAccess)
         #expect(await eventually { h.authorization.isPromptShowing })
-        #expect(h.holds == ["hold(true,mirror.permission)"])
+        #expect(h.holds == [Self.holdOn])
         #expect(h.controller.starts.isEmpty)
+        h.model.userReturned()                        // the pointer crosses the card on its way to the alert
+        #expect(h.holds == [Self.holdOn])
 
+        // "Allow" is clicked with the pointer on the system alert, outside the panel. Releasing the hold now would
+        // let the shell's close grace close the panel and stop the camera the user just allowed.
         h.authorization.answer(.granted)
         #expect(await eventually { h.model.phase == .starting(deviceID: Cameras.builtIn.id) })
-        #expect(h.holds == ["hold(true,mirror.permission)", "hold(false,mirror.permission)"])
         #expect(h.controller.starts == [Cameras.builtIn.id])
+        h.controller.send(.started(deviceID: Cameras.builtIn.id))
+        try? await Task.sleep(for: .milliseconds(30))
+        #expect(h.holds == [Self.holdOn])             // no hold(false) before the pointer is back
+        #expect(h.model.phase == .running(deviceID: Cameras.builtIn.id))
+
+        h.model.userReturned()                        // the pointer is over the card again
+        #expect(h.holds == [Self.holdOn, Self.holdOff])
+        h.model.userReturned()
+        #expect(h.holds.count == 2)                   // every true got exactly one false
+        #expect(h.model.phase == .running(deviceID: Cameras.builtIn.id))
     }
 
-    @Test func refusingAccessReleasesTheHoldAndOffersSettings() async {
+    @Test func theHoldEndsAnywayIfTheUserNeverComesBack() async {
+        let h = MirrorHarness(.notDetermined)
+        h.model.returnTimeout = .milliseconds(40)
+        await h.show()
+        await h.model.tap()
+        #expect(await eventually { h.authorization.isPromptShowing })
+        h.authorization.answer(.granted)
+        #expect(await eventually { h.holds == [Self.holdOn, Self.holdOff] })
+        // The shell then closes the panel as usual if the pointer is elsewhere, which stops the camera.
+        h.notch.emit(.closed)
+        #expect(h.controller.stops == 1)
+        #expect(h.holds.count == 2)
+        #expect(MirrorModel.returnTimeout == .seconds(10))
+    }
+
+    @Test func closingAfterTheAnswerReleasesTheHoldOnce() async {
+        let h = MirrorHarness(.notDetermined)
+        h.model.returnTimeout = .milliseconds(40)
+        await h.show()
+        await h.model.tap()
+        #expect(await eventually { h.authorization.isPromptShowing })
+        h.authorization.answer(.granted)
+        #expect(await eventually { h.controller.starts.count == 1 })
+        h.notch.emit(.closed)                         // Esc, the hot key, another page...
+        #expect(h.controller.stops == 1)
+        #expect(h.holds == [Self.holdOn, Self.holdOff])
+        try? await Task.sleep(for: .milliseconds(80)) // the fallback was cancelled with the release
+        #expect(h.holds.count == 2)
+    }
+
+    @Test func keyboardFocusOrAClickCountsAsBeingBack() async {
+        let h = MirrorHarness(.notDetermined)
+        await h.show()
+        await h.model.tap()
+        #expect(await eventually { h.authorization.isPromptShowing })
+        h.authorization.answer(.granted)
+        #expect(await eventually { h.controller.starts.count == 1 })
+        h.controller.send(.started(deviceID: Cameras.builtIn.id))
+        await h.model.tap()                           // a click on the running card: back, and off
+        #expect(h.holds == [Self.holdOn, Self.holdOff])
+        #expect(h.model.phase == .off)
+    }
+
+    @Test func refusingAccessKeepsThePanelUntilTheUserIsBackAndOffersSettings() async {
         let h = MirrorHarness(.notDetermined)
         await h.show()
         await h.model.tap()
         #expect(await eventually { h.authorization.isPromptShowing })
         h.authorization.answer(.denied)
-        #expect(await eventually { h.holds.count == 2 })
-        #expect(h.model.phase == .off)
+        #expect(await eventually { h.model.phase == .off && h.authorization.status == .denied })
+        #expect(h.holds == [Self.holdOn])             // the card can still say "Camera access is off"
         let shown = h.model.presentation(isLive: true)
         #expect(shown.message == MirrorCopy.accessOff)
         #expect(shown.action == .openSettings)
+        h.model.userReturned()
+        #expect(h.holds == [Self.holdOn, Self.holdOff])
         await h.model.tap()
         #expect(h.authorization.settingsOpened == 1)
         #expect(h.controller.starts.isEmpty)

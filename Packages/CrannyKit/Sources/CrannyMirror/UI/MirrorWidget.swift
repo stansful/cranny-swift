@@ -58,13 +58,19 @@ struct MirrorWidgetView: View {
             }
         }
         .overlay { edge }
-        .onHover { isHovered = $0 }
+        .onHover { hovering in
+            isHovered = hovering
+            if hovering { model.userReturned() }           // back from the camera prompt: the hold may end
+        }
         .animation(theme.animation(presentation.showsFeed ? .contentIn : .contentOut), value: presentation.showsFeed)
         .animation(theme.animation(.hover), value: showsToolbar)
         // The model decides what counts as visible (only a live context, `MirrorModel.viewAppeared`).
         .onAppear { model.viewAppeared(viewID, context: context) }
         .onDisappear { model.viewDisappeared(viewID) }
         .onChange(of: isLive) { model.viewAppeared(viewID, context: context) }
+        .onChange(of: focus != nil || context.isFocused) { _, focused in
+            if focused { model.userReturned() }
+        }
     }
 
     /// The whole card is one button (Fitts: the largest possible target), and one VoiceOver element:

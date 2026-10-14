@@ -12,8 +12,12 @@ private let log = Log.logger(.mirror)
     /// Why the camera was stopped without a click (logged; the result is always `.off`).
     enum HaltReason: String { case closed, pageChanged, locked, systemSleep, hidden, terminating }
 
-    /// The reason passed to `NotchControl.setHoldOpen` while the system camera prompt is up (§4.5).
+    /// The reason passed to `NotchControl.setHoldOpen` while the system camera prompt is up and until the user is
+    /// back after answering it (§4.5, MirrorMachine.swift).
     static let permissionHold = "mirror.permission"
+    /// After answering the camera prompt the user has this long to come back to the widget before the hold ends
+    /// anyway, so the panel closes as usual if they went elsewhere (a pointer inside the panel keeps it open).
+    static let returnTimeout: Duration = .seconds(10)
     /// After "Open Settings", appearances re-read the camera permission for this long (the user may allow the
     /// camera in System Settings and come back by hovering, which never activates the app).
     static let settingsRecheckWindow: Duration = .seconds(600)
@@ -33,6 +37,9 @@ private let log = Log.logger(.mirror)
     /// Live widget views on screen (each has its own token: two panels or a re-created view never confuse it).
     @ObservationIgnored private var visibleViews: Set<UUID> = []
     @ObservationIgnored private var isHoldingOpen = false
+    /// Ends the permission hold if the user does not come back (`returnTimeout`; tests shorten it).
+    @ObservationIgnored var returnTimeout = MirrorModel.returnTimeout
+    @ObservationIgnored private var returnTask: Task<Void, Never>?
     /// When "Open Settings" last sent the user to System Settings (see `settingsRecheckWindow`).
     @ObservationIgnored private var settingsOpenedAt: ContinuousClock.Instant?
     @ObservationIgnored private var observations: [ObservationToken] = []
@@ -139,9 +146,17 @@ private let log = Log.logger(.mirror)
         if visibleViews.isEmpty { halt(.hidden) }
     }
 
+    /// The pointer is over the card, or keyboard focus is in the widget. After the camera prompt was answered
+    /// this means the user is back, which ends the permission hold.
+    func userReturned() {
+        guard isHoldingOpen else { return }
+        dispatch(.returned)
+    }
+
     /// The card was clicked (or its VoiceOver/keyboard action used): start, stop, or open System Settings.
     func tap() async {
         guard isEligible else { return }
+        userReturned()
         switch phase {
         case .off, .problem:
             await catalog.ensureLoaded()
@@ -183,7 +198,7 @@ private let log = Log.logger(.mirror)
 
     private func dispatch(_ event: MirrorEvent) {
         let inputs = MirrorInputs(authorization: authorization.status, camera: camera, devices: catalog.devices,
-                                  isEligible: isEligible)
+                                  isEligible: isEligible, isHoldingOpen: isHoldingOpen)
         let (next, effects) = MirrorMachine.reduce(phase, event, inputs)
         if next != phase {
             log.info("mirror: \(self.phase.logName, privacy: .public) → \(next.logName, privacy: .public)")
@@ -205,9 +220,19 @@ private let log = Log.logger(.mirror)
             controller.stop()
             feed = nil
         case .holdOpen(let hold):
+            returnTask?.cancel()
+            returnTask = nil
             guard hold != isHoldingOpen else { return }
             isHoldingOpen = hold
             notch.setHoldOpen(hold, reason: Self.permissionHold)
+        case .awaitReturn:
+            guard isHoldingOpen else { return }
+            returnTask?.cancel()
+            returnTask = Task { [weak self, returnTimeout] in
+                try? await Task.sleep(for: returnTimeout)
+                guard !Task.isCancelled else { return }
+                self?.dispatch(.returned)
+            }
         case .openSystemSettings:
             settingsOpenedAt = .now
             authorization.openSystemSettings()
