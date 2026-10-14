@@ -1,8 +1,11 @@
 // CrannyCore/DesignSystem/Notch.swift
 // One shape, six animatable numbers, every state. The canvas window never resizes;
-// only `NotchShape.animatableData` animates.
-import SwiftUI
+// only `NotchShape.animatableData` animates. Every frame of a morph draws the same outline several
+// times (the surface's fill, clip and keyline, the progress rim), so the merged outline with ears is
+// computed once per geometry and size and shared (`NotchOutlineMemo`).
 import AppKit
+import os
+import SwiftUI
 
 // MARK: - Measured hardware
 
@@ -94,7 +97,9 @@ public nonisolated struct NotchGeometry: VectorArithmetic, Sendable {
 /// Centred horizontally in its rect and top-aligned. Host it in the FIXED canvas.
 /// Bottom (and floating top) corners use Apple's continuous curve via `UnevenRoundedRectangle`;
 /// the ears are quarter-circle cubics unioned into ONE outline (macOS 14 `Path.union`), so a
-/// stroke (the keyline) never shows an internal seam.
+/// stroke (the keyline) never shows an internal seam. The union costs about ten times the rest of the
+/// path, and every instance drawn in one frame asks for it at the same interpolated geometry, so the
+/// last few outlines are kept (`NotchOutlineMemo`): the same inputs return the same path.
 public nonisolated struct NotchShape: Shape {
     public var geometry: NotchGeometry
     public init(_ geometry: NotchGeometry) { self.geometry = geometry }
@@ -110,13 +115,23 @@ public nonisolated struct NotchShape: Shape {
         guard w > 0.5, h > 0.5 else { return Path() }
         let body = CGRect(x: rect.midX - w / 2, y: rect.minY + max(g.topInset, 0), width: w, height: h)
         let rb = min(max(g.bottomRadius, 0), h / 2, w / 2)
-        let rt = min(max(g.topRadius, 0), h - rb, w / 2)
-        let base = UnevenRoundedRectangle(topLeadingRadius: rt, bottomLeadingRadius: rb,
-                                          bottomTrailingRadius: rb, topTrailingRadius: rt,
-                                          style: .continuous).path(in: body)
         let e = min(max(g.earRadius, 0) * g.attachment, h - rb, body.minX - rect.minX)
-        guard e > 0.25 else { return base }
+        guard e > 0.25 else { return Self.base(body, bottomRadius: rb, geometry: g) }
+        return NotchOutlineMemo.shared.outline(for: g, in: rect) {
+            Self.base(body, bottomRadius: rb, geometry: g).union(Self.ears(body, radius: e))
+        }
+    }
 
+    /// The body: continuous bottom corners (and top corners while floating).
+    private static func base(_ body: CGRect, bottomRadius rb: CGFloat, geometry g: NotchGeometry) -> Path {
+        let rt = min(max(g.topRadius, 0), body.height - rb, body.width / 2)
+        return UnevenRoundedRectangle(topLeadingRadius: rt, bottomLeadingRadius: rb,
+                                      bottomTrailingRadius: rb, topTrailingRadius: rt,
+                                      style: .continuous).path(in: body)
+    }
+
+    /// The two concave ears of radius `e` flaring from the body's top corners into the screen's top edge.
+    private static func ears(_ body: CGRect, radius e: CGFloat) -> Path {
         let k: CGFloat = 0.4477                              // 1 − 0.5523: cubic ≈ quarter circle
         var ears = Path()
         for side in [-1.0, 1.0] as [CGFloat] {
@@ -132,7 +147,42 @@ public nonisolated struct NotchShape: Shape {
                           control2: CGPoint(x: xo - side * e * (1 - k), y: body.minY))
             ears.closeSubpath()
         }
-        return base.union(ears)
+        return ears
+    }
+}
+
+/// The last few merged outlines (`NotchShape` with ears), keyed by the exact geometry and rect. In one frame of a
+/// morph every instance (fill, clip, keyline, rim) carries the same interpolated geometry, so they share one
+/// `Path.union`; another display's panel or a stage just misses and computes its own. Locked, because SwiftUI may
+/// ask a shape for its path off the main thread; the union itself runs outside the lock.
+nonisolated final class NotchOutlineMemo: Sendable {
+    private struct Entry: Sendable {
+        let geometry: NotchGeometry
+        let rect: CGRect
+        let outline: Path
+    }
+
+    /// The memo every `NotchShape` uses.
+    static let shared = NotchOutlineMemo()
+
+    /// Outlines kept: the surface's and the rim's of the current frame, plus a cross-fading old outline.
+    let capacity: Int
+    private let entries = OSAllocatedUnfairLock<[Entry]>(initialState: [])
+
+    init(capacity: Int = 4) { self.capacity = max(capacity, 1) }
+
+    /// The kept outline for exactly `geometry` in `rect`, else `make()`'s, kept in place of the oldest.
+    func outline(for geometry: NotchGeometry, in rect: CGRect, make: () -> Path) -> Path {
+        if let hit = entries.withLock({ $0.first { $0.geometry == geometry && $0.rect == rect }?.outline }) {
+            return hit
+        }
+        let outline = make()
+        let capacity = capacity
+        entries.withLock { entries in
+            entries.insert(Entry(geometry: geometry, rect: rect, outline: outline), at: 0)
+            if entries.count > capacity { entries.removeLast(entries.count - capacity) }
+        }
+        return outline
     }
 }
 
