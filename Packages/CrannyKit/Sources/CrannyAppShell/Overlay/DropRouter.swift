@@ -59,13 +59,14 @@ private let log = Log.logger(.overlay)
     }
 
     /// AppKit ends the session (dropped here, elsewhere or cancelled). A drag whose drag state this router started
-    /// and that was not dropped here leaves it now; the detector's own drags end through the detector.
+    /// and that was not dropped here leaves it now, also when the panel closed meanwhile (the machine dropped its
+    /// drag state then, the armed zones did not); the detector's own drags end through the detector. A drop here
+    /// cleared `startedDragState` already (`performDrop`).
     func dragEnded() {
         guard startedDragState else { return }
         startedDragState = false
-        guard viewModel.state.fileDrag != nil else { return }                  // dropped here: `.filesDropped` ended it
         scene.zones.dragEnded()
-        viewModel.send(.fileDragEnded)
+        viewModel.send(.fileDragEnded)                                          // a no-op once the drag state is gone
     }
 
     /// Only drags from other apps are file drags for the notch. `source` is non-nil for a drag that started in Cranny;

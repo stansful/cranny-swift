@@ -226,6 +226,10 @@ nonisolated struct NotchReduction {
             fx += [.relinquishKey, .emit(.closed)]
             if unpinning, s.pinned { s.pinned = false; fx.append(.emit(.pinned(false))) }
         }
+        // A drag still under way belongs to no closed panel: no drag state, no `drag` hold, so no enlarged drop zone
+        // blocks the menu bar. Coming back within the drag zone opens the catch state again (`fileDragEntered`).
+        s.fileDrag = nil
+        s.holds.remove(NotchMachineState.dragHold)
         for timer in [NotchTimer.dwell, .grace, .peekEnd, .catchEnd] { cancel(timer) }
         // A pointer still over the shape must leave and come back before it opens again.
         if s.hover != .outside { s.hover = .inside }
