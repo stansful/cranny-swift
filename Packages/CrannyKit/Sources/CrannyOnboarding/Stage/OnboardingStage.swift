@@ -1,7 +1,8 @@
 // CrannyOnboarding/Stage/OnboardingStage.swift — the top half of the Welcome window (DESIGN.md §12.1): a dark
 // desktop with the brand aurora, a miniature menu bar, and the REAL notch views (`NotchCanvasView`) rendering
 // the stage's own scene. Closed and compact draw at 1:1; the open panel is scaled to fit, and the scale moves
-// with the same spring as the shape. One `crannyThemeRoot` for the surface (DESIGN.md §2.0 rule 3).
+// with the same spring as the shape. One `crannyThemeRoot` for the surface (DESIGN.md §2.0 rule 3). One light at a
+// time: the desktop's aurora gives way to the open panel's own light layer (DESIGN.md §4.7).
 import CrannyCore
 import CrannyNotchUI
 import Foundation
@@ -10,13 +11,11 @@ import SwiftUI
 struct OnboardingStage: View {
     let stage: StageScene
     let registry: ModuleRegistry
-    /// The window is on screen and not occluded: effects run only then.
-    let isVisible: Bool
     /// Step 3 feeds two-finger scrolls over the stage to the practice notch.
     var onScroll: (@MainActor (ScrollSample) -> Void)?
 
     var body: some View {
-        StageContent(stage: stage, registry: registry, isVisible: isVisible, onScroll: onScroll)
+        StageContent(stage: stage, registry: registry, onScroll: onScroll)
             .frame(width: stage.size.width, height: stage.size.height, alignment: .top)
             .clipped()
             .crannyThemeRoot(stage.model.theme)
@@ -28,7 +27,6 @@ private struct StageContent: View {
     @Environment(\.cranny) private var theme
     let stage: StageScene
     let registry: ModuleRegistry
-    let isVisible: Bool
     let onScroll: (@MainActor (ScrollSample) -> Void)?
 
     var body: some View {
@@ -36,8 +34,10 @@ private struct StageContent: View {
         let scale = stage.scale
         let logical = CGSize(width: size.width / scale, height: size.height / scale)
         ZStack(alignment: .top) {
-            StageBackdrop(budget: registry.services.environment.effectBudget(
-                isOpen: true, isOnScreen: isVisible, reduceMotion: theme.reduceMotion || theme.motion == .instant))
+            StageBackdrop(level: StageBackdrop.level(theme: theme, panelDrawsLight: stage.phase == .open),
+                          budget: registry.services.environment.effectBudget(
+                            isOpen: true, isOnScreen: stage.isVisibleOnScreen,
+                            reduceMotion: theme.reduceMotion || theme.motion == .instant))
             ZStack(alignment: .top) {
                 StageMenuBar(band: stage.model.layout.band)
                 NotchCanvasView(model: stage.model, registry: registry)
@@ -75,7 +75,7 @@ private struct StageContent: View {
     let stage = StageScene(registry: registry, layout: NotchLayout(metrics: .reference), theme: CrannyTheme(),
                            ambient: .afterglow, greeting: "Hi")
     stage.show(.open, reduceMotion: true)
-    return OnboardingStage(stage: stage, registry: registry, isVisible: true)
+    return OnboardingStage(stage: stage, registry: registry)
 }
 
 #Preview("Stage · greeting, floating island") {
@@ -84,5 +84,5 @@ private struct StageContent: View {
     let stage = StageScene(registry: registry, layout: NotchLayout(metrics: metrics), theme: CrannyTheme(),
                            ambient: .afterglow, greeting: "Hi")
     stage.show(.greeting, reduceMotion: true)
-    return OnboardingStage(stage: stage, registry: registry, isVisible: true)
+    return OnboardingStage(stage: stage, registry: registry)
 }

@@ -44,6 +44,8 @@ private let log = Log.logger(.onboarding)
     private var requested: Set<PermissionGroup> = []
     /// The notch is open (mirrored on the stage, hides the coach mark).
     private var isNotchOpen = false
+    /// The Welcome window is on screen and not occluded: the stage runs only then.
+    private(set) var isWindowVisible = true
 
     init(registry: ModuleRegistry, permissions: any PermissionGateway, coach: any TipPresenter, stage: StageScene,
          initialStep: WelcomeStep = .hello, version: String = AppInfo.current().version,
@@ -80,6 +82,12 @@ private let log = Log.logger(.onboarding)
         stopWatchingActivation()
         coach.hide()
         stage.stop()
+    }
+
+    /// The window became visible or hidden (occluded, minimised, on another Space): the stage holds still.
+    func setWindowVisible(_ visible: Bool) {
+        isWindowVisible = visible
+        stage.setVisibleOnScreen(visible)
     }
 
     // MARK: Navigation

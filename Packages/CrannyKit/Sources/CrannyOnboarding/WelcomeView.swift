@@ -46,7 +46,7 @@ public struct WelcomeView: View {
 
     public var body: some View {
         VStack(spacing: 0) {
-            OnboardingStage(stage: flow.stage, registry: flow.registry, isVisible: isVisible, onScroll: scrollHandler)
+            OnboardingStage(stage: flow.stage, registry: flow.registry, onScroll: scrollHandler)
             Divider()
             WelcomeLowerHalf(flow: flow)
         }
@@ -57,6 +57,7 @@ public struct WelcomeView: View {
         .background { EscapeKey(flow: flow) }
         .ignoresSafeArea()
         .modifier(SkipConfirmation(flow: flow))
+        .onChange(of: isVisible, initial: true) { _, visible in flow.setWindowVisible(visible) }
         .onAppear { flow.start(reduceMotion: reduceMotion) }
         .onDisappear { flow.stop() }
     }

@@ -1,20 +1,35 @@
 // CrannyOnboarding/Stage/StageBackdrop.swift — the stage's "desktop": a dark brand gradient with the brand
 // aurora at Subtle rising from the bottom (DESIGN.md §12.1), and a quiet wireframe menu bar the notch sits in.
-// The aurora takes its time from `EffectClock` through `EffectBudget`: it pauses while the window is hidden
-// and freezes a resting frame under Reduce Motion (DESIGN.md §4.7).
+// The aurora follows the theme's light (off under Reduce Transparency or with Ambient light off, capped at Subtle)
+// and gives way, with the ambient fades, to the open panel's own light, so one light runs at a time. It takes its
+// time from `EffectClock` through `EffectBudget`: it pauses while the window is hidden and freezes a resting frame
+// under Reduce Motion (DESIGN.md §4.7).
 import CrannyCore
 import CrannyEffects
 import SwiftUI
 
 struct StageBackdrop: View {
+    @Environment(\.cranny) private var theme
+    /// `.off` draws the desktop alone.
+    let level: AmbienceLevel
     let budget: EffectBudget
 
     var body: some View {
         ZStack {
             LinearGradient(colors: [BrandColor.night.color, BrandColor.graphite.color], startPoint: .top, endPoint: .bottom)
-            AuroraField(palette: .afterglow, level: .subtle, energy: 0, budget: budget)
+            if level != .off {
+                AuroraField(palette: .afterglow, level: level, energy: 0, budget: budget)
+                    .transition(.opacity)
+            }
         }
+        .animation(theme.animation(level == .off ? .ambientOut : .ambientIn), value: level)
         .accessibilityHidden(true)
+    }
+
+    /// The desktop's light: the brand aurora at Subtle at most, off when the theme's light is off and while the
+    /// stage's open panel draws its own light layer.
+    static func level(theme: CrannyTheme, panelDrawsLight: Bool) -> AmbienceLevel {
+        panelDrawsLight ? .off : min(.subtle, theme.effectiveAmbience)
     }
 }
 
@@ -54,8 +69,8 @@ struct StageMenuBar: View {
 
 #Preview("Stage backdrop") {
     ZStack(alignment: .top) {
-        StageBackdrop(budget: EffectBudget(isOpen: true, onScreen: true, lowPower: false, fullScreenFront: false,
-                                           reduceMotion: true, onBattery: false))
+        StageBackdrop(level: .subtle, budget: EffectBudget(isOpen: true, onScreen: true, lowPower: false,
+                                                           fullScreenFront: false, reduceMotion: true, onBattery: false))
         StageMenuBar(band: 32)
     }
     .frame(width: WelcomeMetrics.stageSize.width, height: WelcomeMetrics.stageSize.height)

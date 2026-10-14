@@ -107,6 +107,19 @@ import Testing
         #expect(flow.detected.isEmpty)
     }
 
+    @Test func aHiddenWindowHoldsTheStageStill() {
+        let (flow, _, _, _) = makeFlow(step: .preset)
+        flow.start(reduceMotion: false)
+        #expect(flow.stage.isVisibleOnScreen)
+        #expect(flow.stage.theme.motion == .standard)
+        flow.setWindowVisible(false)
+        #expect(!flow.stage.isVisibleOnScreen)
+        #expect(flow.stage.theme.motion == .instant)             // every effect's budget holds a resting frame
+        flow.setWindowVisible(true)
+        #expect(flow.stage.theme.motion == .standard)
+        flow.stop()
+    }
+
     @Test func choosingAWayInWritesTheSetting() {
         let (flow, registry, coach, _) = makeFlow(step: .openIt)
         flow.start(reduceMotion: true)
@@ -274,6 +287,32 @@ import Testing
         #expect(stage.gestureTranslation.height == 4)
         stage.show(.idle, reduceMotion: true)
         #expect(stage.gestureTranslation == .zero)
+    }
+
+    @Test func hidingTheWindowHoldsTheStageStill() {
+        let stage = makeStage(makeRegistry())
+        stage.show(.open, reduceMotion: false)
+        stage.setVisibleOnScreen(false)
+        #expect(stage.theme.motion == .instant)
+        // Tripwire for the WP12 merge: once NotchSceneModel has `isVisibleOnScreen` (its canvas budget reads it),
+        // the stage must clear it as well.
+        let visibility = Mirror(reflecting: stage.model).children.first { $0.label == "_isVisibleOnScreen" }?.value
+        if let visibility = visibility as? Bool { #expect(visibility == false) }
+        stage.setVisibleOnScreen(true)
+        #expect(stage.theme == CrannyTheme())
+    }
+
+    @Test func oneLightAtATime() {
+        var theme = CrannyTheme()
+        #expect(StageBackdrop.level(theme: theme, panelDrawsLight: false) == .subtle)
+        #expect(StageBackdrop.level(theme: theme, panelDrawsLight: true) == .off)      // the open panel's light only
+        theme.ambience = .vivid
+        #expect(StageBackdrop.level(theme: theme, panelDrawsLight: false) == .subtle)  // the brand aurora stays Subtle
+        theme.reduceTransparency = true
+        #expect(StageBackdrop.level(theme: theme, panelDrawsLight: false) == .off)     // Reduce Transparency: no light
+        theme = CrannyTheme()
+        theme.ambience = .off
+        #expect(StageBackdrop.level(theme: theme, panelDrawsLight: false) == .off)     // Ambient light off
     }
 
     @Test func firstLightPlaysOnceAndNeverUnderReduceMotion() {

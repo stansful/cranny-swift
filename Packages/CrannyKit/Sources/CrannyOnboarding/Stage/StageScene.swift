@@ -1,6 +1,7 @@
 // CrannyOnboarding/Stage/StageScene.swift — the owner of the onboarding stage's `NotchSceneModel`
 // (ARCHITECTURE.md §4.12: only the owner writes it). Theme and layout come from `ThemeResolver`, exactly as for
-// the real panel and the Settings stage; sample activities go in `sampleActivities` (D21).
+// the real panel and the Settings stage; sample activities go in `sampleActivities` (D21). While the Welcome
+// window cannot be seen, the stage holds still (`setVisibleOnScreen`), so no effect on it runs (DESIGN.md §4.7).
 import AppKit
 import CrannyCore
 import CrannyNotchUI
@@ -34,9 +35,14 @@ import Observation
     var isPreview: Bool { model.context.isPreview }
     var delight: DelightMoment? { model.delight }
     var delightSerial: Int { model.delightSerial }
+    var theme: CrannyTheme { model.theme }
+    /// The Welcome window is on screen and not occluded (`WindowObserver`); effects run only then.
+    private(set) var isVisibleOnScreen = true
 
-    @ObservationIgnored private let registry: ModuleRegistry
-    @ObservationIgnored private let greeting: StageGreeting
+    private let registry: ModuleRegistry
+    private let greeting: StageGreeting
+    /// The theme `ThemeResolver` gave the stage; the model's theme is this one, held still while hidden.
+    private let baseTheme: CrannyTheme
     @ObservationIgnored private var sequence: Task<Void, Never>?
     /// The media module's sample Now Playing (never the real one), when it provides a sample.
     @ObservationIgnored private var trackSample: (any LiveActivity)?
@@ -47,6 +53,7 @@ import Observation
     init(registry: ModuleRegistry, layout: NotchLayout, theme: CrannyTheme, ambient: AmbientPalette, greeting: String) {
         self.registry = registry
         self.greeting = StageGreeting(label: greeting)
+        baseTheme = theme
         model = NotchSceneModel(layout: layout, theme: theme)
         model.ambient = ambient
         model.context.isPreview = true                      // no hardware, no prompts, no writes (WidgetContext)
@@ -155,6 +162,23 @@ import Observation
     func stop() {
         sequence?.cancel()
         sequence = nil
+    }
+
+    // MARK: Visibility
+
+    /// While nobody can see the stage, it holds still: its theme takes the Instant motion personality, which every
+    /// effect's `EffectBudget` reads as "hold a resting frame" (the open panel's light layer, visualizers), so the
+    /// stage costs nothing behind other windows, on another Space or minimised (DESIGN.md §4.7). The stage's own
+    /// backdrop reads `isVisibleOnScreen` directly.
+    func setVisibleOnScreen(_ visible: Bool) {
+        guard isVisibleOnScreen != visible else { return }
+        isVisibleOnScreen = visible
+        var theme = baseTheme
+        if !visible { theme.motion = .instant }
+        model.theme = theme
+        // Integration with WP12: NotchSceneModel gains `isVisibleOnScreen`, which its canvas budget (compact
+        // effects) reads instead of the motion personality. When wp/12 merges, also set
+        // `model.isVisibleOnScreen = visible` here; `hidingTheWindowHoldsTheStageStill` fails until it is set.
     }
 
     // MARK: Scale
