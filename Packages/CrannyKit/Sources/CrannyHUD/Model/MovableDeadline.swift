@@ -6,6 +6,7 @@ import Foundation
 @MainActor final class MovableDeadline {
     private let now: @MainActor () -> Date
     private var deadline: Date?
+    private var action: (@MainActor () -> Void)?
     private var task: Task<Void, Never>?
 
     /// `now` is the clock the deadline is measured against (sleeps use real time).
@@ -13,9 +14,10 @@ import Foundation
 
     var isPending: Bool { task != nil }
 
-    /// Runs `action` once at `deadline`, or at the latest date a later call moved it to.
+    /// Runs the latest `action` once, at the latest `deadline` (a later call moves both).
     func schedule(at deadline: Date, _ action: @escaping @MainActor () -> Void) {
         self.deadline = deadline
+        self.action = action
         guard task == nil else { return }
         task = Task { [weak self] in
             while let wait = self?.secondsLeft(), wait > 0 {
@@ -23,9 +25,11 @@ import Foundation
                 if Task.isCancelled { return }
             }
             guard let self, !Task.isCancelled else { return }
+            let action = self.action
             self.task = nil
             self.deadline = nil
-            action()
+            self.action = nil
+            action?()
         }
     }
 
@@ -33,6 +37,7 @@ import Foundation
         task?.cancel()
         task = nil
         deadline = nil
+        action = nil
     }
 
     private func secondsLeft() -> TimeInterval? { deadline.map { $0.timeIntervalSince(now()) } }

@@ -6,13 +6,15 @@ import Testing
 @MainActor @Suite struct MovableDeadlineTests {
     @Test func firesOnceAtTheLatestDeadline() async throws {
         let timer = MovableDeadline(now: { Date() })
-        var fired: [Date] = []
+        var fired: [(String, Date)] = []
         let start = Date()
-        timer.schedule(at: start.addingTimeInterval(0.05)) { fired.append(Date()) }
-        timer.schedule(at: start.addingTimeInterval(0.2)) { fired.append(Date()) }       // a press moves it
+        timer.schedule(at: start.addingTimeInterval(0.05)) { fired.append(("first", Date())) }
+        timer.schedule(at: start.addingTimeInterval(0.2)) { fired.append(("moved", Date())) }   // a press moves it
         #expect(timer.isPending)
-        #expect(await eventually { fired.count == 1 })
-        #expect(fired[0].timeIntervalSince(start) >= 0.19)
+        #expect(await eventually(timeout: .seconds(10)) { fired.count == 1 })
+        let first = try #require(fired.first)
+        #expect(first.0 == "moved")
+        #expect(first.1.timeIntervalSince(start) >= 0.19)
         try await Task.sleep(for: .milliseconds(100))
         #expect(fired.count == 1)
         #expect(!timer.isPending)
