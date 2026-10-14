@@ -84,6 +84,15 @@ import Foundation
         while !inbox.isEmpty { reduce(inbox.removeFirst()) }
     }
 
+    /// Moves the open panel's focus to `widget` (type-to-capture), first showing the grid page that holds it when
+    /// it is not on the current one, so the captured text is visible.
+    func focus(_ widget: WidgetID?) {
+        if let widget, let open = state.openState, !page(open.page, holds: widget), let page = page(containing: widget) {
+            send(.selectPage(page))
+        }
+        send(.setFocus(widget))
+    }
+
     /// The arbiter's lineup for this display. A new primary counts as a new activity (§4.4: it brings back
     /// the idle handle and collapsed wings).
     func setLineup(_ next: Lineup) {

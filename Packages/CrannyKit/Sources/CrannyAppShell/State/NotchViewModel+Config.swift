@@ -22,6 +22,11 @@ extension NotchViewModel {
         registry.services.settings[CoreSettings.pages].first { $0.items.contains { $0.widget == widget } }?.id
     }
 
+    /// Whether the grid page `page` shows `widget`.
+    func page(_ page: PageID, holds widget: WidgetID) -> Bool {
+        registry.services.settings[CoreSettings.pages].contains { $0.id == page && $0.items.contains { $0.widget == widget } }
+    }
+
     func currentConfig() -> NotchMachineConfig {
         let settings = registry.services.settings
         let preferences = scene.context.display.flatMap { settings[CoreSettings.perDisplay][$0] } ?? DisplayPreferences()

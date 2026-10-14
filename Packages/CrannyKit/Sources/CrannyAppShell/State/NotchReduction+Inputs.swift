@@ -105,11 +105,14 @@ nonisolated extension NotchReduction {
 
     mutating func setEnvironment(_ environment: NotchEnvironment) {
         let wasDemo = s.environment.demoMode
+        let wasHidden = s.environment.hardHidden != nil
         s.environment = environment
         if environment.hardHidden != nil {
-            close()
+            close(unpinning: false)                                              // hiding is not the user closing
             cancel(.dwell)
             if case .dwelling = s.hover { s.hover = .inside }
+        } else if wasHidden, s.pinned, s.isClosed {
+            open(page: nil, focus: nil, reason: .programmatic)                   // "Keep Cranny Open" survives a lock
         }
         if wasDemo && !environment.demoMode { scheduleGraceIfLeft() }
     }

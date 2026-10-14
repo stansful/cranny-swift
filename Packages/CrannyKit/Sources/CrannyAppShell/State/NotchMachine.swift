@@ -201,7 +201,10 @@ nonisolated struct NotchReduction {
         }
     }
 
-    mutating func close() {
+    /// Closes the surface. Every close the user (or a module) asks for ends the pin, so the next hover-open does
+    /// not come back pinned; hiding (lock, display sleep, full screen under `.hideAll`) passes `unpinning: false`:
+    /// it is not a close, and a pinned panel opens again when the condition clears.
+    mutating func close(unpinning: Bool = true) {
         switch s.surface {
         case .closed:
             return
@@ -210,8 +213,7 @@ nonisolated struct NotchReduction {
         case .open:
             s.surface = .closed
             fx += [.relinquishKey, .emit(.closed)]
-            // An explicit close ends the pin: the next hover-open must not come back pinned.
-            if s.pinned { s.pinned = false; fx.append(.emit(.pinned(false))) }
+            if unpinning, s.pinned { s.pinned = false; fx.append(.emit(.pinned(false))) }
         }
         for timer in [NotchTimer.dwell, .grace, .peekEnd, .catchEnd] { cancel(timer) }
         // A pointer still over the shape must leave and come back before it opens again.

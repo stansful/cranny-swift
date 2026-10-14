@@ -440,6 +440,25 @@ private let pdf: [UTType] = [.pdf]
     }
 }
 
+/// Locking or a full-screen hide is not the user closing: "Keep Cranny Open" survives it and the panel opens
+/// again when the condition clears. A close the user asks for still ends the pin.
+@Test func hidingKeepsThePinAndAPinnedPanelComesBack() {
+    let (pinned, _) = run([.setPinned(true)], from: opened())
+    var locked = NotchEnvironment()
+    locked.isLocked = true
+    let (hidden, fx) = run([.environment(locked)], from: pinned)
+    #expect(hidden.isClosed && hidden.pinned && fx.contains(.emit(.closed)) && !fx.contains(.emit(.pinned(false))))
+    let (back, fx2) = run([.environment(NotchEnvironment())], from: hidden)
+    #expect(back.isOpen && back.pinned && fx2.contains(.emit(.opened(.programmatic))))
+    var hideAll = NotchEnvironment()
+    hideAll.policy = .hideAll
+    hideAll.fullScreen = true
+    #expect(run([.environment(hideAll)], from: pinned).0.pinned)
+    let (unpinnedHidden, _) = run([.environment(locked)], from: opened())
+    #expect(run([.environment(NotchEnvironment())], from: unpinnedHidden).0.isClosed)   // nothing to restore
+    #expect(!run([.close], from: pinned).0.pinned)                                       // an explicit close
+}
+
 @Test func fullScreenFollowsThePolicy() {
     var hideAll = NotchEnvironment()
     hideAll.policy = .hideAll

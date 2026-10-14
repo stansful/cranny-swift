@@ -224,6 +224,23 @@ func quickPeekOnHoverWorksForEveryHoverDelay(_ delay: HoverIntent.Delay) async t
     #expect(speedReads < 40, "\(speedReads) speed reads in 0.25 s")
 }
 
+/// Type-to-capture: the widget that took the text is shown, on the page that holds it.
+@Test func focusingACapturedWidgetShowsItsPage() {
+    let f = Fixture()
+    f.settings[CoreSettings.pages] = [NookPreset.listener.page,
+                                      NookPage(id: "page.notes", symbol: "note.text", items: [.init("notes.editor", cells: 2)])]
+    f.viewModel.send(.hotKey)
+    let home = f.scene.open?.page
+    #expect(home != "page.notes")
+    f.viewModel.focus("notes.editor")
+    #expect(f.scene.open?.page == "page.notes" && f.scene.context.focusedWidget == "notes.editor")
+    f.viewModel.focus(nil)
+    f.viewModel.focus("notes.editor")                                           // already on its page: stays
+    #expect(f.scene.open?.page == "page.notes")
+    f.viewModel.focus("widget.nowhere")                                         // on no page: focus moves, page stays
+    #expect(f.scene.open?.page == "page.notes" && f.scene.context.focusedWidget == "widget.nowhere")
+}
+
 /// The satellite is in the scene exactly while it shows (§4.7): it stays when the compact timeout collapses the
 /// wings (beside the closed shape then), and goes with the wings for the menu bar.
 @Test func theSatelliteStaysInTheSceneAfterTheCompactTimeout() {

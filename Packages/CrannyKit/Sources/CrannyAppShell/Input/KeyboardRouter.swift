@@ -69,8 +69,7 @@ import Foundation
         if Self.isNavigationKey(event.keyCode) { viewModel.setKeyboardNavigation(true) }
         if let characters = captureCharacters(event), let target = captureTarget() {
             capturedThisOpen = true
-            let widget = target.capture(characters)
-            viewModel.send(.setFocus(widget))
+            viewModel.focus(target.capture(characters))
             viewModel.setKeyboardNavigation(true)
             return nil
         }
