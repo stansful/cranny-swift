@@ -175,18 +175,64 @@ import Testing
     }
 }
 
+/// Stands in for `LiveSpectrum`: records what the engine asks for and never touches Core Audio.
+@MainActor final class FakeLiveSource: LiveLevelSource {
+    private(set) var starts = 0
+    private(set) var stops = 0
+    /// Seconds per frame the loop would run at now (nil = never started).
+    private(set) var interval: Double?
+    private(set) var isRunning = false
+    var failure: SystemAudioTapError?
+    let onFrame: @MainActor (LiveFrame) -> Void
+
+    init(onFrame: @escaping @MainActor (LiveFrame) -> Void) { self.onFrame = onFrame }
+
+    func start(interval: Double) throws(SystemAudioTapError) {
+        if let failure { throw failure }
+        starts += 1
+        isRunning = true
+        self.interval = interval
+    }
+    func retune(interval: Double) { self.interval = interval }
+    func stop() {
+        if isRunning { stops += 1 }
+        isRunning = false
+    }
+}
+
+@MainActor final class RecordingSink: LevelSink {
+    private(set) var levels: [[Double]] = []
+    func receive(levels: [Double]) { self.levels.append(levels) }
+}
+
 @Suite("Visualizer engine") @MainActor struct VisualizerEngineTests {
+    /// Every engine here gets fake Live sources (`sources`): tests never start the system audio tap.
+    private final class Sources {
+        var made: [FakeLiveSource] = []
+        var failure: SystemAudioTapError?
+    }
+
+    private final class Player {
+        var isPlaying = true
+    }
+
     private func engine(_ mode: MediaVisualizerMode, environment: PreviewSystemEnvironment = PreviewSystemEnvironment(),
-                        allowsLive: Bool = true) -> (VisualizerEngine, SettingsStore) {
+                        allowsLive: Bool = true) -> (VisualizerEngine, SettingsStore, Sources) {
         let services = CrannyServices.preview(environment: environment)
         services.settings[MediaSettings.visualizer] = mode
+        let sources = Sources()
         let engine = VisualizerEngine(settings: services.settings, environment: services.environment,
-                                      permissions: services.permissions, clock: ManualClock(), allowsLive: allowsLive)
-        return (engine, services.settings)
+                                      permissions: services.permissions, clock: ManualClock(), allowsLive: allowsLive) { onFrame in
+            let source = FakeLiveSource(onFrame: onFrame)
+            source.failure = sources.failure
+            sources.made.append(source)
+            return source
+        }
+        return (engine, services.settings, sources)
     }
 
     @Test func whatEachModeDraws() {
-        let (e, settings) = engine(.ambient)
+        let (e, settings, _) = engine(.ambient)
         #expect(e.render(isPlaying: true, trackKey: "k", reduceMotion: false) == .ambient(SyntheticSpectrum(trackKey: "k")))
         #expect(e.render(isPlaying: false, trackKey: "k", reduceMotion: false) == .dots)       // paused → static
         #expect(e.render(isPlaying: true, trackKey: "k", reduceMotion: true) == .dots)         // Reduce Motion → static
@@ -203,7 +249,7 @@ import Testing
 
     @Test func frameRateFollowsPower() {
         let environment = PreviewSystemEnvironment()
-        let (e, _) = engine(.ambient, environment: environment)
+        let (e, _, _) = engine(.ambient, environment: environment)
         #expect(e.frameRateCap == 30)
         environment.isOnBattery = true
         #expect(e.frameRateCap == 20)
@@ -229,21 +275,126 @@ import Testing
     }
 
     @Test func enginesThatMayNotTapNeverRenderLive() async {
-        let (e, _) = engine(.live, allowsLive: false)
+        let (e, _, sources) = engine(.live, allowsLive: false)
         e.bind(isPlaying: { true })
         await settle()
         #expect(e.render(isPlaying: true, trackKey: "k", reduceMotion: false) == .ambient(SyntheticSpectrum(trackKey: "k")))
         e.requestLiveAccess()
         await settle()
         #expect(e.liveStatus == .off)
+        #expect(sources.made.isEmpty)
     }
 
     @Test func liveNeverStartsWithoutAVisibleVisualizer() async {
         // Mode Live and playing, but no visualizer on screen: the tap (and its permission prompt) never starts.
-        let (e, _) = engine(.live)
+        let (e, _, sources) = engine(.live)
         e.bind(isPlaying: { true })
         await settle()
         #expect(e.liveStatus == .off)
         #expect(e.visibleCount == 0)
+        #expect(sources.made.isEmpty)
+    }
+
+    @Test func liveRunsWhileAVisualizerIsOnScreenAndPushesLevels() async throws {
+        let (e, _, sources) = engine(.live)
+        e.bind(isPlaying: { true })
+        let sink = RecordingSink()
+        e.attach(sink)
+        await settle()
+        let live = try #require(sources.made.first)
+        #expect(live.starts == 1)
+        #expect(live.interval == 1.0 / 30)
+        #expect(e.liveStatus == .waiting)
+
+        live.onFrame(LiveFrame(bars: [0.1, 0.2, 0.3, 0.4, 0.5], energy: 0.403, hasAudio: true))
+        #expect(e.liveStatus == .receiving)
+        #expect(e.energy == 0.4)                                          // quantized to 1/50
+        #expect(sink.levels == [[0.1, 0.2, 0.3, 0.4, 0.5]])
+        #expect(e.render(isPlaying: true, trackKey: "k", reduceMotion: false) == .live)
+
+        e.detach(sink)
+        await settle()
+        #expect(!live.isRunning)                                          // nothing on screen: the tap stops
+        #expect(e.liveStatus == .off)
+        #expect(e.energy == 0)
+    }
+
+    @Test func runningLiveLoopFollowsThePowerSource() async throws {
+        // Opted in on AC (30 fps), then the charger is unplugged: ≤ 20 fps on battery (DESIGN.md §4.7). The loop is
+        // retuned in place: one tap, no restart (no second aggregate device, no privacy-indicator flicker).
+        let environment = PreviewSystemEnvironment()
+        let (e, _, sources) = engine(.live, environment: environment)
+        let player = Player()
+        e.bind(isPlaying: { player.isPlaying })
+        let sink = RecordingSink()
+        e.attach(sink)
+        await settle()
+        let live = try #require(sources.made.first)
+        #expect(live.interval == 1.0 / 30)
+
+        environment.isOnBattery = true
+        await settle()
+        #expect(live.interval == 1.0 / 20)
+        #expect(live.isRunning)
+        #expect(live.starts == 1)
+        #expect(live.stops == 0)
+
+        environment.isOnBattery = false
+        await settle()
+        #expect(live.interval == 1.0 / 30)
+
+        // Kept through a pause (10 s), the loop still follows the power source.
+        player.isPlaying = false                                          // not observed: the battery change re-evaluates
+        environment.isOnBattery = true
+        await settle()
+        #expect(live.isRunning)
+        #expect(live.interval == 1.0 / 20)
+        #expect(live.starts == 1)
+        #expect(sources.made.count == 1)
+        withExtendedLifetime(sink) {}
+    }
+
+    @Test func lowPowerModeStopsALiveTap() async throws {
+        let environment = PreviewSystemEnvironment()
+        let (e, _, sources) = engine(.live, environment: environment)
+        e.bind(isPlaying: { true })
+        let sink = RecordingSink()
+        e.attach(sink)
+        await settle()
+        let live = try #require(sources.made.first)
+        #expect(live.isRunning)
+        environment.isLowPowerMode = true
+        await settle()
+        #expect(!live.isRunning)
+        #expect(live.stops == 1)
+        #expect(e.liveStatus == .off)
+        environment.isLowPowerMode = false
+        await settle()
+        #expect(live.isRunning)
+        #expect(live.starts == 2)
+        #expect(live.interval == 1.0 / 30)
+        withExtendedLifetime(sink) {}
+    }
+
+    @Test func deniedTapIsReported() async throws {
+        let (e, _, sources) = engine(.live)
+        sources.failure = .permissionDenied
+        e.bind(isPlaying: { true })
+        let sink = RecordingSink()
+        e.attach(sink)
+        await settle()
+        #expect(e.liveStatus == .denied)
+        #expect(sources.made.count == 1)
+        withExtendedLifetime(sink) {}
+    }
+
+    @Test func noLiveSourceMeansUnsupported() async {
+        let services = CrannyServices.preview()
+        services.settings[MediaSettings.visualizer] = .live
+        let e = VisualizerEngine(settings: services.settings, environment: services.environment,
+                                 permissions: services.permissions, clock: ManualClock(), allowsLive: true) { _ in nil }
+        e.requestLiveAccess()
+        await settle()
+        #expect(e.liveStatus == .unsupported)
     }
 }

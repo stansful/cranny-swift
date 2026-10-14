@@ -1,7 +1,9 @@
 // CrannyMedia/Visualizer/VisualizerEngine.swift — decides what every visualizer draws (ARCHITECTURE.md §6.6) and
 // runs the Live tap only while it is useful: the app's real service (never a sample, preview or QA service),
 // mode Live, something plays (or paused < 10 s), a visualizer is on screen, and the Mac is not in Low Power Mode,
-// locked or asleep. Ambient bars cost nothing here: they loop in the render server (`VisualizerLayerView`).
+// locked or asleep. A running tap follows the frame-rate cap: plugging or unplugging the charger retunes its
+// analysis loop (30 ↔ 20 fps) without restarting the tap. Ambient bars cost nothing here: they loop in the render
+// server (`VisualizerLayerView`).
 import CrannyCore
 import Foundation
 import Observation
@@ -20,6 +22,25 @@ nonisolated enum VisualizerRender: Equatable, Sendable {
 /// A visualizer view on screen. The engine pushes Live levels to it, outside SwiftUI (no 30-Hz invalidations).
 @MainActor protocol LevelSink: AnyObject {
     func receive(levels: [Double])
+}
+
+/// What one Live analysis frame produced.
+nonisolated struct LiveFrame: Equatable, Sendable {
+    var bars: [Double]
+    var energy: Double
+    /// False while the tap delivers digital silence (denied permission, muted output, a quiet passage).
+    var hasAudio: Bool
+}
+
+/// The Live tap and its analysis loop, as the engine drives them: `LiveSpectrum` in the app, a recording fake in
+/// tests (tests never start the system audio tap or its permission prompt).
+@MainActor protocol LiveLevelSource: AnyObject {
+    var isRunning: Bool { get }
+    /// Starts the tap (prompting the first time) and the analysis loop at `interval` seconds per frame.
+    func start(interval: Double) throws(SystemAudioTapError)
+    /// Changes the running loop's frame interval from its next frame on. The tap keeps running.
+    func retune(interval: Double)
+    func stop()
 }
 
 @MainActor @Observable final class VisualizerEngine {
@@ -46,18 +67,29 @@ nonisolated enum VisualizerRender: Equatable, Sendable {
     @ObservationIgnored private var sinks: [ObjectIdentifier: WeakSink] = [:]
     @ObservationIgnored private var token: ObservationToken?
     @ObservationIgnored private var pausedStop: Task<Void, Never>?
-    @ObservationIgnored private var live: AnyObject?          // LiveSpectrum on macOS 14.2+
+    @ObservationIgnored private let makeLiveSource: LiveSourceFactory
+    @ObservationIgnored private var live: (any LiveLevelSource)?    // created on the first start
     @ObservationIgnored private var lastAudio: Date?
 
+    /// Makes the Live source that calls back with every frame; nil = the system cannot tap (before macOS 14.2).
+    typealias LiveSourceFactory = @MainActor (_ onFrame: @escaping @MainActor (LiveFrame) -> Void) -> (any LiveLevelSource)?
+
     init(settings: SettingsStore, environment: any SystemEnvironment, permissions: PermissionsCenter, clock: any MediaClock,
-         allowsLive: Bool) {
+         allowsLive: Bool, makeLiveSource: @escaping LiveSourceFactory = VisualizerEngine.systemLiveSource) {
         self.settings = settings; self.environment = environment; self.permissions = permissions; self.clock = clock
         self.allowsLive = allowsLive
+        self.makeLiveSource = makeLiveSource
+    }
+
+    /// The system audio tap + FFT loop (macOS 14.2+).
+    static func systemLiveSource(onFrame: @escaping @MainActor (LiveFrame) -> Void) -> (any LiveLevelSource)? {
+        guard #available(macOS 14.2, *) else { return nil }
+        return LiveSpectrum(onFrame: onFrame)
     }
 
     var mode: MediaVisualizerMode { settings[MediaSettings.visualizer] }
 
-    /// ≤ 30 fps on AC, ≤ 20 on battery or in Low Power Mode (DESIGN.md §4.7).
+    /// ≤ 30 fps on AC, ≤ 20 on battery or in Low Power Mode (DESIGN.md §4.7). Ambient bars and the Live loop alike.
     var frameRateCap: Double { environment.isOnBattery || environment.isLowPowerMode ? 20 : 30 }
 
     /// Wires the playback state and starts reacting to settings and the environment.
@@ -101,10 +133,9 @@ nonisolated enum VisualizerRender: Equatable, Sendable {
     /// After the why-sheet: runs the tap briefly so macOS asks for System Audio Recording now, in context.
     func requestLiveAccess() {
         guard allowsLive else { return }
-        guard #available(macOS 14.2, *) else { liveStatus = .unsupported; return }
-        let wasRunning = (live as? LiveSpectrum)?.isRunning ?? false
+        let wasRunning = isLiveRunning
         startLive()
-        guard !wasRunning else { return }
+        guard !wasRunning, liveStatus != .unsupported else { return }
         Task { [weak self] in
             try? await self?.clock.sleep(for: .milliseconds(1500))
             self?.reevaluate()
@@ -116,6 +147,9 @@ nonisolated enum VisualizerRender: Equatable, Sendable {
         var playing = false
         var lowPower = false
         var locked = false
+        /// `frameRateCap`: not part of the decision, but a change (charger plugged or unplugged) re-evaluates, and the
+        /// re-evaluation retunes a running loop.
+        var frameRate: Double = 30
     }
 
     nonisolated enum LiveDecision: Equatable, Sendable {
@@ -135,7 +169,7 @@ nonisolated enum VisualizerRender: Equatable, Sendable {
 
     private var conditions: Conditions {
         Conditions(mode: mode, playing: isPlaying(), lowPower: environment.isLowPowerMode,
-                   locked: environment.isScreenLocked || environment.areDisplaysAsleep)
+                   locked: environment.isScreenLocked || environment.areDisplaysAsleep, frameRate: frameRateCap)
     }
 
     private func reevaluate() {
@@ -145,6 +179,7 @@ nonisolated enum VisualizerRender: Equatable, Sendable {
             pausedStop?.cancel(); pausedStop = nil
             startLive()
         case .keepThroughPause:
+            retuneLive()
             guard pausedStop == nil else { return }
             pausedStop = Task { [weak self] in                       // keep the tap 10 s through a pause
                 do { try await self?.clock.sleep(for: Self.pausedGrace) } catch { return }
@@ -158,19 +193,19 @@ nonisolated enum VisualizerRender: Equatable, Sendable {
         }
     }
 
-    private var isLiveRunning: Bool {
-        guard #available(macOS 14.2, *) else { return false }
-        return (live as? LiveSpectrum)?.isRunning ?? false
-    }
+    private var isLiveRunning: Bool { live?.isRunning ?? false }
 
+    /// Starts the tap at the current frame-rate cap, or retunes a running one to it.
     private func startLive() {
         guard allowsLive else { return }                              // belt and braces: samples never tap
-        guard #available(macOS 14.2, *) else { liveStatus = .unsupported; return }
-        let spectrum = (live as? LiveSpectrum) ?? LiveSpectrum { [weak self] frame in self?.deliver(frame) }
-        live = spectrum
-        guard !spectrum.isRunning else { return }
+        guard let source = live ?? makeLiveSource({ [weak self] frame in self?.deliver(frame) }) else {
+            liveStatus = .unsupported
+            return
+        }
+        live = source
+        guard !source.isRunning else { source.retune(interval: 1 / frameRateCap); return }
         do {
-            try spectrum.start(interval: 1 / frameRateCap)
+            try source.start(interval: 1 / frameRateCap)
             liveStatus = .waiting
             lastAudio = clock.now
         } catch .permissionDenied {
@@ -181,14 +216,19 @@ nonisolated enum VisualizerRender: Equatable, Sendable {
         }
     }
 
+    /// A running tap follows the frame-rate cap (≤ 20 fps on battery) while it is kept through a pause, too.
+    private func retuneLive() {
+        guard let live, live.isRunning else { return }
+        live.retune(interval: 1 / frameRateCap)
+    }
+
     private func stopLive() {
-        if #available(macOS 14.2, *) { (live as? LiveSpectrum)?.stop() }
+        live?.stop()
         if energy != 0 { energy = 0 }
         if [.receiving, .waiting, .silent].contains(liveStatus) { liveStatus = .off }
     }
 
-    @available(macOS 14.2, *)
-    private func deliver(_ frame: LiveSpectrum.Frame) {
+    private func deliver(_ frame: LiveFrame) {
         if frame.hasAudio {
             lastAudio = clock.now
             if liveStatus != .receiving {
