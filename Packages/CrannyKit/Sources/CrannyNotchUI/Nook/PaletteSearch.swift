@@ -56,8 +56,23 @@ nonisolated struct PaletteSelection: Equatable, Sendable {
         firstVisible = min(max(firstVisible, 0), max(count - rows, 0))
     }
 
-    /// Rows that fit a grid area of `height`: a 28-pt field, a 4-pt gap, then 22-pt rows (DESIGN.md §6.4: up to 4).
+    /// Rows that fit a grid area of `height`: the field, a gap, then rows (DESIGN.md §6.4: up to 4).
     static func visibleRows(height: CGFloat) -> Int {
-        min(max(Int((height - 28 - 4) / 22), 1), 4)
+        let m = PaletteMetrics.self
+        return min(max(Int((height - m.fieldHeight - m.gap) / m.rowHeight), 1), m.maximumRows)
     }
+}
+
+/// The ⌘K palette's measures (DESIGN.md §6.4).
+nonisolated enum PaletteMetrics {
+    /// The search field (in a `well`, r 8).
+    static let fieldHeight: CGFloat = 28
+    /// Between the field and the first row.
+    static let gap: CGFloat = Space.xs
+    /// One result row.
+    static let rowHeight: CGFloat = 22
+    /// A row's icon box.
+    static let iconSize: CGFloat = 16
+    /// Rows shown at most.
+    static let maximumRows = 4
 }

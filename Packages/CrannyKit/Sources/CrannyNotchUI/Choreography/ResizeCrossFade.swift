@@ -33,10 +33,10 @@ struct ResizeCrossFade: ViewModifier {
         if isEnabled {
             content
                 .mask(alignment: .top) {
-                    // The new surface: fully visible where the old shape was, fading in everywhere else.
+                    // The new surface: fully visible where the old shape was, fading in everywhere else (alpha only).
                     ZStack(alignment: .top) {
-                        Color.white.opacity(fade?.progress ?? 1)
-                        if let fade { NotchShape(fade.from).fill(Color.white) }
+                        Rectangle().opacity(fade?.progress ?? 1)
+                        if let fade { NotchShape(fade.from) }
                     }
                 }
                 .background(alignment: .top) {

@@ -76,12 +76,15 @@ private struct FlatDivider: View {
             let width = StrokeWidth.hairline(displayScale)
             Rectangle().fill(theme.palette.hairline)
                 .frame(width: width)
-                .padding(.vertical, 10)
+                .padding(.vertical, FlatDivider.inset)
                 .offset(x: (theme.grid.gutter + width) / 2)
                 .allowsHitTesting(false)
                 .accessibilityHidden(true)
         }
     }
+
+    /// Inset at the top and bottom of the card row (DESIGN.md §6.3).
+    static let inset: CGFloat = 10
 }
 
 /// Notes focus (DESIGN.md §7.5): one widget at all columns × 3 rows; the other widgets left with `contentOut`.

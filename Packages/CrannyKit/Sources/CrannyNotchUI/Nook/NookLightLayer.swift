@@ -38,10 +38,10 @@ struct NookLightLayer: View {
         case .songRipple:
             // The fallback's energy pulse: energy + 0.5 · (1 − t/0.6)² (DESIGN.md §5.6 `songRipple`).
             ripple = 0.5
-            withAnimation(.timingCurve(0.33, 0.67, 0.67, 1, duration: playback.lifetime)) { ripple = 0 }
+            withAnimation(DelightMotion.ripple(lifetime: playback.lifetime)) { ripple = 0 }
         case .firstLight:
             firstLight = 0
-            withAnimation(.easeOut(duration: playback.lifetime)) { firstLight = 1 }
+            withAnimation(DelightMotion.firstLight(lifetime: playback.lifetime)) { firstLight = 1 }
         default:
             break
         }

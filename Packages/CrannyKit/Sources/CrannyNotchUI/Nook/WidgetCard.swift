@@ -89,7 +89,7 @@ struct WidgetCard: View {
         } else {
             let placeholder = WidgetPlaceholder(item.widget)
             VStack(spacing: Space.s) {
-                Image(systemName: placeholder.symbol).font(.system(size: 20, weight: .medium))
+                Image(systemName: placeholder.symbol).notchGlyph(.placeholder)
                 Text(verbatim: placeholder.title).crannyFont(.caption).lineLimit(2).multilineTextAlignment(.center)
             }
             .foregroundStyle(theme.palette.tertiaryLabel)
@@ -151,8 +151,11 @@ private struct WidgetOptionsPopover: View {
     var body: some View {
         widget.makeOptions()
             .padding(Space.l)
-            .frame(minWidth: 220)
+            .frame(minWidth: Self.minimumWidth)
     }
+
+    /// A popover never narrower than a short form row.
+    static let minimumWidth: CGFloat = 220
 }
 
 // MARK: - Placeholder

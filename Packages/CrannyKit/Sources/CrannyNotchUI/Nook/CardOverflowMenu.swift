@@ -35,7 +35,7 @@ struct CardOverflowMenu: View {
             Button(action: commands.editLayout) { CardStrings.editLayout }
         } label: {
             Image(systemName: "ellipsis")
-                .font(.system(size: 11, weight: .semibold))
+                .notchGlyph(.overflow)
                 .foregroundStyle(theme.palette.tertiaryLabel)
                 .frame(width: CardOverflowMenu.size, height: CardOverflowMenu.size)
                 .background(Circle().fill(theme.palette.control))
@@ -81,8 +81,11 @@ struct CardActionsList: View {
         }
         .buttonStyle(.borderless)
         .padding(Space.m)
-        .frame(minWidth: 180, alignment: .leading)
+        .frame(minWidth: Self.minimumWidth, alignment: .leading)
     }
+
+    /// Wide enough for "Edit Layout…" in Russian without wrapping.
+    static let minimumWidth: CGFloat = 180
 }
 
 /// VoiceOver actions of a card (DESIGN.md §6.8: the menu is also a VoiceOver action): Options…, Wider and

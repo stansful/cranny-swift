@@ -47,7 +47,7 @@ private struct PeekRow: View {
             .padding(.horizontal, Space.l)
             .background {
                 RoundedRectangle(cornerRadius: Radius.concentric(Radius.peek, inset: Space.xs), style: .continuous)
-                    .fill(hovered ? theme.palette.control.opacity(0.5) : .clear)
+                    .fill(hovered ? theme.palette.control : .clear)
                     .padding(.horizontal, Space.xs)
             }
             .contentShape(Rectangle())

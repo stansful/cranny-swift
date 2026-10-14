@@ -102,13 +102,14 @@ struct EditLayoutView: View {
     /// The 8 × 24 handle on the trailing edge, with the "4 cells" tooltip while it is dragged.
     private func handle(for item: NookItem, cells: Int) -> some View {
         let active = activeResize?.widget == item.widget
+        let h = ResizeHandleMetrics.self
         return Capsule(style: .continuous)
             .fill(active ? theme.accentColor : theme.palette.secondaryLabel)
-            .frame(width: 4, height: 18)
-            .frame(width: 8, height: 24)
-            .background(Capsule(style: .continuous).fill(theme.palette.surface.opacity(0.6)))
-            .contentShape(Rectangle().inset(by: -6))
-            .offset(x: 4)
+            .frame(width: h.grip.width, height: h.grip.height)
+            .frame(width: h.size.width, height: h.size.height)
+            .background(Capsule(style: .continuous).fill(theme.palette.scrim))   // legible over any card or light
+            .contentShape(Rectangle().inset(by: -h.hitOutset))
+            .offset(x: h.size.width / 2)                                            // straddles the card's edge
             .overlay(alignment: .top) {
                 if active {
                     CardStrings.cells(activeResize?.cells ?? cells)
@@ -117,7 +118,7 @@ struct EditLayoutView: View {
                         .padding(.horizontal, Space.s).padding(.vertical, Space.xxs)
                         .background(Capsule(style: .continuous).fill(theme.palette.controlPressed))
                         .fixedSize()
-                        .offset(y: -22)
+                        .offset(y: -h.tooltipLift)
                         .transition(.opacity)
                 }
             }
@@ -263,6 +264,17 @@ struct EditLayoutView: View {
     private func title(of widget: WidgetID) -> String {
         registry.widget(widget)?.title ?? WidgetPlaceholder(widget).title
     }
+}
+
+/// The resize handle (DESIGN.md §6.6: 8 × 24 on the trailing edge).
+private enum ResizeHandleMetrics {
+    static let size = CGSize(width: 8, height: 24)
+    /// The visible grip inside it.
+    static let grip = CGSize(width: 4, height: 18)
+    /// How far the drag target reaches beyond it (≥ 20 × 36: easy to grab without covering the card).
+    static let hitOutset: CGFloat = 6
+    /// The "4 cells" tooltip sits this far above the handle's top.
+    static let tooltipLift: CGFloat = 22
 }
 
 /// The column-resize pointer over the handle. macOS 15+: `pointerStyle`, which SwiftUI resets by itself.

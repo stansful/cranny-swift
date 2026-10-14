@@ -67,7 +67,7 @@ struct HeaderTabsView: View {
                 }
             } label: {
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 11, weight: .semibold))
+                    .notchGlyph(.band)
                     .foregroundStyle(theme.palette.secondaryLabel)
                     .frame(minWidth: HitTarget.band.width, minHeight: TabSegmentStyle.height)
                     .contentShape(Rectangle().inset(by: -TabSegmentStyle.hitOutset))
@@ -113,14 +113,18 @@ private struct TrackChrome: ViewModifier {
 }
 
 private struct TabSegmentLabel: View {
+    @Environment(\.cranny) private var theme
     let tab: HeaderTab
     let shortcut: NookShortcut?
     let showsTitle: Bool
 
+    /// The count badge's smallest size (a `micro` number in a capsule).
+    static let badgeSize: CGFloat = 14
+
     var body: some View {
-        HStack(spacing: Space.xs + 1) {
+        HStack(spacing: Space.xs) {
             HintSwap(shortcut: shortcut) {
-                Image(systemName: tab.symbol).font(.system(size: 11, weight: .semibold))
+                Image(systemName: tab.symbol).notchGlyph(.band)
             }
             if showsTitle {
                 Text(verbatim: tab.title).crannyFont(.headline).lineLimit(1).fixedSize()
@@ -129,8 +133,8 @@ private struct TabSegmentLabel: View {
                 Text(badge, format: .number)
                     .crannyFont(.micro)
                     .padding(.horizontal, Space.xs)
-                    .frame(minWidth: 14, minHeight: 14)
-                    .background(Capsule(style: .continuous).fill(Color.white.opacity(0.14)))
+                    .frame(minWidth: Self.badgeSize, minHeight: Self.badgeSize)
+                    .background(Capsule(style: .continuous).fill(theme.palette.controlHover))
             }
         }
     }

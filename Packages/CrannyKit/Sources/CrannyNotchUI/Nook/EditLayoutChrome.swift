@@ -40,9 +40,9 @@ struct RemoveBadge: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: "minus")
-                .font(.system(size: 10, weight: .bold))
+                .notchGlyph(.removeBadge)
                 .foregroundStyle(theme.palette.label)
-                .frame(width: 18, height: 18)
+                .frame(width: RemoveBadge.diameter, height: RemoveBadge.diameter)
                 .background(Circle().fill(theme.palette.controlPressed))
                 .frame(width: HitTarget.nook.width, height: HitTarget.nook.height)
                 .contentShape(Rectangle())
@@ -51,6 +51,9 @@ struct RemoveBadge: View {
         .offset(x: -Space.s, y: -Space.s)
         .accessibilityLabel(CardStrings.remove)
     }
+
+    /// The visible circle; the hit area is the Nook's 28 × 24.
+    static let diameter: CGFloat = 18
 }
 
 /// The edit-mode wiggle: ±1° at about 1.8 Hz, out of phase per card; Reduce Motion never wiggles (the "–" badge
@@ -141,7 +144,7 @@ struct EditLayoutBar: View {
                     .disabled(over > 0)
                 }
             } label: {
-                Image(systemName: "plus").font(.system(size: 13, weight: .semibold))
+                Image(systemName: "plus").notchGlyph(.band)
                     .frame(width: HitTarget.preferred, height: HitTarget.preferred)
                     .background(CrannyButtonShape(theme.buttonShape).fill(theme.palette.control))
             }

@@ -106,7 +106,7 @@ private struct FadeOut: ViewModifier {
     @State private var visible = true
     func body(content: Content) -> some View {
         content.opacity(visible ? 1 : 0)
-            .onAppear { withAnimation(.easeIn(duration: duration)) { visible = false } }
+            .onAppear { withAnimation(DelightMotion.fade(lifetime: duration)) { visible = false } }
     }
 }
 

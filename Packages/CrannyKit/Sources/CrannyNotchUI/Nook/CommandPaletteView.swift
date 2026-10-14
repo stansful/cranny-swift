@@ -19,7 +19,7 @@ struct CommandPaletteView: View {
     var body: some View {
         let results = self.results
         let visible = PaletteSelection.visibleRows(height: height)
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: PaletteMetrics.gap) {
             field(results: results, visible: visible)
             if results.isEmpty {
                 Text("No matching commands", bundle: .module, comment: "Command palette: empty result list")
@@ -56,7 +56,7 @@ struct CommandPaletteView: View {
     private func field(results: [PaletteCommand], visible: Int) -> some View {
         HStack(spacing: Space.s) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 13, weight: .medium))
+                .notchGlyph(.field)
                 .foregroundStyle(theme.palette.tertiaryLabel)
                 .accessibilityHidden(true)
             TextField(text: $query) {
@@ -72,7 +72,7 @@ struct CommandPaletteView: View {
             KeyCap("esc")
         }
         .padding(.horizontal, Space.m)
-        .frame(height: 28)
+        .frame(height: PaletteMetrics.fieldHeight)
         .background(RoundedRectangle(cornerRadius: Radius.control, style: .continuous).fill(theme.palette.well))
     }
 
@@ -94,14 +94,14 @@ private struct PaletteRow: View {
     let command: PaletteCommand
     let isSelected: Bool
 
-    static let height: CGFloat = 22
+    static let height = PaletteMetrics.rowHeight
 
     var body: some View {
         let p = theme.palette
         HStack(spacing: Space.m) {
             Image(systemName: command.symbol)
-                .font(.system(size: 12, weight: .medium))
-                .frame(width: 16, height: 16)
+                .notchGlyph(.paletteRow)
+                .frame(width: PaletteMetrics.iconSize, height: PaletteMetrics.iconSize)
                 .foregroundStyle(p.secondaryLabel)
                 .accessibilityHidden(true)
             Text(verbatim: command.title).crannyFont(.body).foregroundStyle(p.label).lineLimit(1)

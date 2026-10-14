@@ -100,8 +100,8 @@ struct GulpModifier: ViewModifier {
     func body(content: Content) -> some View {
         content.onChange(of: delight?.serial) { _, _ in
             guard let delight, delight.moment == .gulp, !theme.reduceMotion, theme.motion != .instant else { return }
-            withAnimation(.easeIn(duration: Gulp.swallow)) { depth = -Gulp.depth } completion: {
-                withAnimation(.spring(duration: Gulp.recover, bounce: 0)) { depth = 0 }
+            withAnimation(DelightMotion.gulpSwallow) { depth = -Gulp.depth } completion: {
+                withAnimation(DelightMotion.gulpRecover) { depth = 0 }
             }
         }
     }
