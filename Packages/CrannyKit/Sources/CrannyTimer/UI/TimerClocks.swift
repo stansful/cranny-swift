@@ -34,7 +34,8 @@ struct CountdownClock<Content: View>: View {
 nonisolated enum CountdownTick {
     /// Wake slightly after the boundary, so the first read already shows the new second.
     static let margin: TimeInterval = 0.02
-    /// How late a wake-up may come. The ring uses the same, so its wake-ups and the digits' fire together.
+    /// How late a wake-up may come. The ring allows at least as much (`RingCadence.tolerance`), so a ring frame on one
+    /// of these boundaries fires with the digits.
     static let tolerance: Duration = .milliseconds(40)
 
     /// The next instant the rounded-up seconds left change (`deadline − (⌈left⌉ − 1)`), or nil once the deadline
@@ -113,13 +114,22 @@ nonisolated enum RingCadence {
         let boundary = (left / period).rounded(.up) - 1
         return deadline.addingTimeInterval(-boundary * period + CountdownTick.margin)
     }
+
+    /// How late a frame at `period` may come: an eighth of the period (as Core's `EffectClock`), never less than the
+    /// digits' `CountdownTick.tolerance`. A frame on a digits' boundary still fires with the digits (both have the
+    /// same target, and the digits' tighter window wakes them both); a ring shown without digits (the band's glyph
+    /// form) keeps a wide window, so its rare wake-ups can coalesce with the system's.
+    static func tolerance(period: Double) -> Duration {
+        max(CountdownTick.tolerance, .seconds(period / 8))
+    }
 }
 
 /// Calls `content` with the current date at every `deadline − k × period` (plus `CountdownTick.margin`) until the
-/// deadline (`RingCadence.nextFrame`). The digits' clock wakes at `deadline − n` seconds with the same margin and
-/// tolerance, so with a whole-second (or ½, ⅓, ¼ s) period every ring frame shares a wake-up and a render with the
-/// digits. `period == nil` (or no deadline) = frozen: no wake-ups. A new deadline or period redraws at once with the
-/// current date ("+1 min" or a resume never waits for a 30-s tick). Stops when its view leaves the screen.
+/// deadline (`RingCadence.nextFrame`). The digits' clock wakes at `deadline − n` seconds with the same margin, so with
+/// a whole-second (or ½, ⅓, ¼ s) period every ring frame shares a wake-up and a render with the digits
+/// (`RingCadence.tolerance`). `period == nil` (or no deadline) = frozen: no wake-ups. A new deadline or period redraws
+/// at once with the current date ("+1 min" or a resume never waits for a 30-s tick). Stops when its view leaves the
+/// screen.
 struct RingClock<Content: View>: View {
     let deadline: Date?
     let period: Double?
@@ -136,9 +146,10 @@ struct RingClock<Content: View>: View {
             .task(id: Schedule(deadline: deadline, period: period)) {
                 now = Date()
                 guard let deadline, let period, period > 0 else { return }
+                let tolerance = RingCadence.tolerance(period: period)
                 while let wake = RingCadence.nextFrame(after: Date(), deadline: deadline, period: period) {
                     do {
-                        try await Task.sleep(for: .seconds(max(wake.timeIntervalSinceNow, 0)), tolerance: CountdownTick.tolerance)
+                        try await Task.sleep(for: .seconds(max(wake.timeIntervalSinceNow, 0)), tolerance: tolerance)
                     } catch {
                         return                                                   // paused, changed or off screen
                     }

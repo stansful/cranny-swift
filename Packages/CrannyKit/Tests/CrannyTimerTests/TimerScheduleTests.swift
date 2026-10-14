@@ -108,6 +108,12 @@ import Testing
         #expect(RingCadence.nextFrame(after: deadline, deadline: deadline, period: 1) == nil)
     }
 
+    @Test func ringFramesMayComeAnEighthOfAPeriodLateButNeverLessThanTheDigits() {
+        #expect(RingCadence.tolerance(period: RingCadence.fastest) == CountdownTick.tolerance)
+        #expect(RingCadence.tolerance(period: 1) == .milliseconds(125))
+        #expect(RingCadence.tolerance(period: RingCadence.slowest) == .milliseconds(3750))
+    }
+
     @Test func pulseTriggerChangesOnlyInsideTheWindowAndNotAtZero() {
         let triggers = (0...12).reversed().map { seconds in
             TimerDigits.pulseTrigger(seconds: seconds, pulsing: seconds <= 10 && seconds > 0)
