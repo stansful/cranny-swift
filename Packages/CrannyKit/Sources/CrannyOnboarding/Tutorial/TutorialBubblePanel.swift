@@ -127,7 +127,8 @@ import SwiftUI
     }
 
     /// The tour bubble is in another app's world (Cranny is not active), so VoiceOver does not find it on its own:
-    /// a layout change naming the bubble lets VoiceOver users reach "Skip tutorial". Best effort, only while VoiceOver runs.
+    /// a layout change naming the bubble lets VoiceOver users reach "Skip tutorial". Best effort, only while
+    /// VoiceOver runs.
     private func offerToVoiceOver(_ panel: NSPanel, _ hosting: NSView) {
         guard NSWorkspace.shared.isVoiceOverEnabled else { return }
         NSAccessibility.post(element: panel, notification: .layoutChanged, userInfo: [.uiElements: [hosting]])

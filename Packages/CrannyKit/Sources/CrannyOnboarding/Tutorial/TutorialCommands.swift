@@ -1,7 +1,7 @@
 // CrannyOnboarding/Tutorial/TutorialCommands.swift — the tour's keyboard way out (DESIGN.md §16: every action has
-// a key path). The bubble's "Skip tutorial" lives in a panel that never becomes key, and Esc belongs to the notch (it
-// is also step 5's action), so while a tour runs ⌘K offers "Skip tutorial": ⌃⌥N, ⌘K, type "skip", ↩. In-memory
-// filtering only (the palette asks on every keystroke).
+// a key path). The bubble's "Skip tutorial" lives in a panel that never becomes key, and Esc belongs to the notch
+// (it is also step 5's action), so while a tour runs ⌘K offers "Skip tutorial": ⌃⌥N, ⌘K, type "skip", ↩.
+// In-memory filtering only (the palette asks on every keystroke).
 import CrannyCore
 import Foundation
 

@@ -56,7 +56,8 @@ nonisolated enum PermissionPlan {
 
     /// One row per group, in DESIGN.md's order, for the uses of `modules` that a grant makes work: `isOn` reads
     /// the opt-in switch of a use that has one (`PermissionUse.optIn`).
-    static func rows(uses: [PermissionUse], modules: Set<ModuleID>, isOn: (SettingKey<Bool>) -> Bool) -> [PermissionRow] {
+    static func rows(uses: [PermissionUse], modules: Set<ModuleID>,
+                     isOn: (SettingKey<Bool>) -> Bool) -> [PermissionRow] {
         var kinds: [PermissionGroup: [PermissionKind]] = [:]
         var reasons: [PermissionGroup: [String]] = [:]
         for use in uses where modules.contains(use.module) && use.optIn.map(isOn) != false {
