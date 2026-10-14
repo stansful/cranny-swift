@@ -1,7 +1,7 @@
 // CrannyNotchUI/Nook/NookHeader.swift — the header row in the band (DESIGN.md §6.2): page tabs left of the
-// camera, the empty camera zone (time and date on displays without a notch), actions on the right.
-// WP0 skeleton; WP12 adds badges, collapsing titles, matched-geometry selection, hold-⌘ hints and the
-// ⌕ Command palette button (⌘K), which ships with the palette itself (DESIGN.md §6.2, §6.4).
+// camera, the camera zone (N + 16) kept empty — time and date on displays without a notch — and the actions
+// on the right: ⌕ palette (⌘K), 📌 pin (⌘P), ⚙︎ Settings (⌘,). While a HUD is the primary activity, its views
+// take the row instead, around the camera (§10 "While the panel is open", ARCHITECTURE.md §4.11).
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -11,99 +11,166 @@ struct NookHeader: View {
     let model: NotchSceneModel
     let registry: ModuleRegistry
     let actions: NotchUIActions
+    /// Tab clicks (NookView sets the slide direction first).
+    let select: @MainActor (PageID) -> Void
+    let perform: @MainActor (NookCommand) -> Void
 
     var body: some View {
-        let layout = model.layout
-        HStack(spacing: 0) {
-            tabs.frame(maxWidth: .infinity, alignment: .leading)
-            if layout.metrics.hasNotch {
-                Color.clear.frame(width: layout.middle() + 16)                 // never draw over the camera
+        let hud = hudActivity
+        ZStack {
+            if let hud {
+                HUDHeaderOverlay(id: hud.id, activity: hud.activity, layout: model.layout, actions: actions)
+                    .transition(swap)
             } else {
-                clock.fixedSize().padding(.horizontal, Space.m)
-            }
-            buttons.frame(maxWidth: .infinity, alignment: .trailing)
-        }
-    }
-
-    // MARK: Tabs
-
-    private struct Tab: Identifiable {
-        let id: PageID
-        let title: String
-        let symbol: String
-    }
-
-    private var tabItems: [Tab] {
-        let gridPages = registry.services.settings[CoreSettings.pages].map { page in
-            Tab(id: page.id, title: page.title ?? String(localized: "Home", bundle: .module, comment: "Open panel: the built-in widget page (tab)"),
-                symbol: page.symbol)
-        }
-        let modulePages = registry.pages.sorted { $0.order < $1.order }.map { Tab(id: $0.id, title: $0.title, symbol: $0.symbol) }
-        return gridPages + modulePages
-    }
-
-    /// Visual height of a tab segment (DESIGN.md §6.2).
-    static let segmentHeight: CGFloat = 22
-    /// How far the tap area reaches beyond the segment so it is ≥ 24 pt tall (DESIGN.md §16).
-    static let hitOutset = max(0, (HitTarget.band.height - segmentHeight) / 2)
-
-    private var tabs: some View {
-        let p = theme.palette
-        let selected = model.open?.page ?? .nook
-        return HStack(spacing: Space.xxs) {
-            ForEach(tabItems) { tab in
-                Button { actions.selectPage(tab.id) } label: {
-                    Label { Text(verbatim: tab.title) } icon: { Image(systemName: tab.symbol) }
-                        .labelStyle(.titleAndIcon)
-                        .crannyFont(.headline)
-                        .lineLimit(1)
-                        .foregroundStyle(tab.id == selected ? p.label : p.secondaryLabel)
-                        .padding(.horizontal, Space.m + 2)
-                        .frame(minWidth: HitTarget.band.width)
-                        .frame(height: Self.segmentHeight)
-                        .background { if tab.id == selected { Capsule(style: .continuous).fill(p.controlPressed) } }
-                        // The segment is 22 pt (DESIGN.md §6.2); the hit target reaches 24 pt (§16, band) into the
-                        // track's inset without changing the layout.
-                        .contentShape(Rectangle().inset(by: -Self.hitOutset))
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(tab.id == selected ? .isSelected : [])
+                row.transition(swap)
             }
         }
-        .padding(Space.xxs)
-        .background(Capsule(style: .continuous).fill(p.control))
+        .animation(theme.animation(.contentSwap), value: hud?.id)
     }
 
-    // MARK: Centre (displays without a notch)
+    /// `contentSwap` with `.blurReplace` (opacity only under Reduce Motion).
+    private var swap: AnyTransition {
+        (theme.reduceMotion ? AnyTransition.opacity : AnyTransition(.blurReplace)).animation(theme.animation(.contentSwap))
+    }
 
-    private var clock: some View {
-        TimelineView(.everyMinute) { context in
-            Text(context.date.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute()))
-                .crannyFont(.eyebrow)
-                .foregroundStyle(theme.palette.secondaryLabel)
+    private var row: some View {
+        let layout = model.layout
+        return HStack(spacing: 0) {
+            HeaderTabsView(tabs: tabs, selected: model.open?.page ?? .nook, select: select)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if layout.metrics.hasNotch {
+                Color.clear.frame(width: NookHeader.cameraZone(layout))         // never draw over the camera
+            } else {
+                MinuteClock().fixedSize().padding(.horizontal, Space.m)
+            }
+            trailing.frame(maxWidth: .infinity, alignment: .trailing)
         }
+    }
+
+    /// The actions, or the layout editor's bar while editing a grid page.
+    @ViewBuilder private var trailing: some View {
+        let page = registry.services.settings[CoreSettings.pages].first { $0.id == model.open?.page }
+        if model.open?.mode == .editLayout, let page {
+            EditLayoutBar(page: page, model: model, registry: registry, actions: actions)
+                .transition(swap)
+        } else {
+            buttons.transition(swap)
+        }
+    }
+
+    /// The camera housing plus 8 pt each side (DESIGN.md §6.2).
+    static func cameraZone(_ layout: NotchLayout) -> CGFloat { layout.middle() + 2 * Space.m }
+
+    private var tabs: [HeaderTab] {
+        HeaderTabItems.make(pages: registry.services.settings[CoreSettings.pages], modulePages: registry.pages)
+    }
+
+    /// The primary activity, when it is a HUD (P0).
+    private var hudActivity: (id: ActivityID, activity: any LiveActivity)? {
+        guard let id = model.primary, let activity = model.activity(id, in: registry), activity.priority == .hud else { return nil }
+        return (id, activity)
     }
 
     // MARK: Actions
 
     private var buttons: some View {
-        HStack(spacing: Space.xs) {
-            Button(action: actions.togglePin) { Image(systemName: model.pinned ? "pin.fill" : "pin") }
-                .buttonStyle(CrannyIconButtonStyle(model.pinned ? .filled : .plain))
-                .accessibilityLabel(Text("Keep Cranny open", bundle: .module, comment: "Open panel: pin button (⌘P)"))
-                .accessibilityAddTraits(model.pinned ? .isSelected : [])
-                .help(String(localized: "Keep Cranny open", bundle: .module, comment: "Open panel: pin button (⌘P)"))
-            Button(action: actions.openSettings) { Image(systemName: "gearshape.fill") }
-                .buttonStyle(CrannyIconButtonStyle(.plain))
-                .accessibilityLabel(Text("Settings", bundle: .module, comment: "Open panel: header button (⌘,)"))
-                .help(String(localized: "Settings", bundle: .module, comment: "Open panel: header button (⌘,)"))
+        let mode = model.open?.mode ?? .grid
+        return HStack(spacing: 0) {
+            HeaderButton(symbol: "magnifyingglass", isOn: mode == .palette, shortcut: NookKeyMap.palette,
+                         label: String(localized: "Command palette", bundle: .module, comment: "Open panel: header button (⌘K)")) {
+                perform(.togglePalette)
+            }
+            HeaderButton(symbol: model.pinned ? "pin.fill" : "pin", isOn: model.pinned, shortcut: NookKeyMap.pin,
+                         label: String(localized: "Keep Cranny open", bundle: .module, comment: "Open panel: pin button (⌘P)")) {
+                perform(.togglePin)
+            }
+            HeaderButton(symbol: "gearshape.fill", isOn: false, shortcut: NookKeyMap.settings,
+                         label: String(localized: "Settings", bundle: .module, comment: "Open panel: header button (⌘,)")) {
+                perform(.openSettings)
+            }
         }
+    }
+}
+
+/// A 28-pt icon button (`CrannyIconButtonStyle`, shape from Appearance ▸ Buttons) with a 32 × 28 hit area:
+/// the design owner's decision for open issue 4 (band controls need ≥ 32 × 24, the glyph stays 28).
+private struct HeaderButton: View {
+    let symbol: String
+    let isOn: Bool
+    let shortcut: NookShortcut
+    let label: String
+    let action: @MainActor () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HintSwap(shortcut: shortcut) {
+                Image(systemName: symbol).contentTransition(.symbolEffect(.replace))
+            }
+        }
+        .buttonStyle(HeaderIconButtonStyle(role: isOn ? .filled : .plain))
+        .nookShortcut(shortcut)
+        .help(label)
+        .accessibilityLabel(Text(verbatim: label))
+        .accessibilityAddTraits(isOn ? .isSelected : [])
+        .shortcutHint(shortcut)
+    }
+}
+
+/// `CrannyIconButtonStyle` drawn at 28 pt inside a 32 × 28 tap area.
+struct HeaderIconButtonStyle: ButtonStyle {
+    let role: CrannyIconButtonStyle.Role
+
+    /// The visual size (DESIGN.md §6.2) and the tap area (§2.3 band targets).
+    static let visual: CGFloat = HitTarget.preferred
+    static let hitArea = CGSize(width: max(HitTarget.band.width, visual), height: max(HitTarget.band.height, visual))
+
+    func makeBody(configuration: Configuration) -> some View {
+        CrannyIconButtonStyle(role, size: Self.visual).makeBody(configuration: configuration)
+            .frame(width: Self.hitArea.width, height: Self.hitArea.height)
+            .contentShape(Rectangle())
+    }
+}
+
+/// Time and date in the empty camera zone of displays without a notch. Redraws once a minute, on the minute
+/// (one sleep per minute, only while the panel is open; no `TimelineView`).
+struct MinuteClock: View {
+    @Environment(\.cranny) private var theme
+    @State private var now = Date()
+
+    var body: some View {
+        Text(now.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute()))
+            .crannyFont(.eyebrow)
+            .foregroundStyle(theme.palette.secondaryLabel)
+            .lineLimit(1)
+            .task {
+                while !Task.isCancelled {
+                    now = Date()
+                    let next = MinuteClock.nextMinute(after: now)
+                    do { try await Task.sleep(for: .seconds(max(next.timeIntervalSince(Date()), 0.2))) } catch { return }
+                }
+            }
+    }
+
+    /// The start of the next minute (pure).
+    nonisolated static func nextMinute(after date: Date, calendar: Calendar = .current) -> Date {
+        calendar.nextDate(after: date, matching: DateComponents(second: 0), matchingPolicy: .nextTime)
+            ?? date.addingTimeInterval(60)
     }
 }
 
 #Preview("Header · Home selected") {
     let (model, registry) = previewScene(.open)
-    NookHeader(model: model, registry: registry, actions: NotchUIActions())
+    NookHeader(model: model, registry: registry, actions: NotchUIActions(), select: { _ in }, perform: { _ in })
+        .frame(width: model.layout.open(columns: model.openColumns).bodyWidth - 2 * Space.l, height: model.layout.headerHeight)
+        .padding(.horizontal, Space.l)
+        .background(.black)
+        .crannyThemeRoot(CrannyTheme())
+}
+
+#Preview("Header · floating island, pinned") {
+    let (model, registry) = previewScene(.open, metrics: PreviewDisplays.external)
+    model.pinned = true
+    return NookHeader(model: model, registry: registry, actions: NotchUIActions(), select: { _ in }, perform: { _ in })
         .frame(width: model.layout.open(columns: model.openColumns).bodyWidth - 2 * Space.l, height: model.layout.headerHeight)
         .padding(.horizontal, Space.l)
         .background(.black)

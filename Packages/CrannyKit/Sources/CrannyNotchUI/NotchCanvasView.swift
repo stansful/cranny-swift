@@ -1,16 +1,17 @@
 // CrannyNotchUI/NotchCanvasView.swift — the root SwiftUI view of a notch panel or a preview stage.
-// WP0 skeleton (ARCHITECTURE.md §10.1): idle/breath, compact via `CompactSlots` + `view(for:)`, peek rows and
-// the open panel (header + grid of cards from `CoreSettings.pages`). WP12 grows every presentation.
 //
 // The view fills the FIXED canvas; the shape is top-centred and every state lays its content out at its
-// final size, revealed by the animated clip (DESIGN.md §3, R1 §7.2). Only the scene's owner writes the model.
+// final size, revealed by the animated clip (DESIGN.md §3, R1 §7.2). One spring moves the shape per change of
+// presentation (`ShapeMotion`: grows with bounce, lands without); under Reduce Motion, open/close/resize
+// cross-fade at their final sizes instead of travelling. Only the scene's owner writes the model; taps, keys
+// and VoiceOver actions go back through `NotchUIActions`.
 import CrannyCore
 import CrannyEffects
 import Foundation
 import SwiftUI
 
-/// Renders one `NotchSceneModel`: the notch shape and the presentation of its phase (idle, compact, peek,
-/// open). Used by the shell's panels and by the Settings and onboarding stages.
+/// Renders one `NotchSceneModel`: the notch shape and the presentation of its phase (idle, breath, compact,
+/// peek, open). Used by the shell's panels and by the Settings and onboarding stages.
 public struct NotchCanvasView: View {
     @Namespace private var namespace
     private let model: NotchSceneModel
@@ -24,37 +25,85 @@ public struct NotchCanvasView: View {
 
     public var body: some View {
         CanvasBody(model: model, registry: registry, actions: actions)
+            .delightPlayer(moment: model.delight, serial: model.delightSerial)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .coordinateSpace(.named(NotchCoordinateSpace.name))
-            .environment(\.notchContext, model.context)
+            .environment(\.notchContext, context)
             .environment(\.notchNamespace, namespace)
             .environment(\.notchZones, model.zones)
             .crannyThemeRoot(model.theme)
+    }
+
+    /// The owner's context with `phase` and `layout` always in step with what is drawn.
+    private var context: NotchContext {
+        var c = model.context
+        c.phase = model.phase
+        c.layout = model.layout
+        if NotchUIQAHooks.showsHints { c.showsCommandHints = true }       // DEBUG-only visual QA
+        return c
     }
 }
 
 /// Inside the theme root, so the resolved theme (Reduce Motion, Increase Contrast …) drives the motion.
 private struct CanvasBody: View {
     @Environment(\.cranny) private var theme
+    @Environment(\.notchDelight) private var delight
+    @State private var previous: ShapeMotionState?
+    @State private var gulp: CGFloat = 0
     let model: NotchSceneModel
     let registry: ModuleRegistry
     let actions: NotchUIActions
 
     var body: some View {
-        let geometry = model.geometry
-        let isOpen = model.phase == .open
-        NotchSurface(geometry: geometry, band: model.layout.band,
-                     openness: isOpen || model.phase == .peek ? 1 : 0,
-                     elevation: model.phase == .peek ? Elevation.peek : Elevation.open,
-                     underglow: isOpen && registry.services.settings[CoreSettings.underglow] ? model.ambient.glow1.color : nil) {
-            content(geometry)
+        let current = ShapeMotionState(phase: model.phase, isHUD: primaryIsHUD)
+        let kind = ShapeMotion.kind(from: previous ?? current, to: current)
+        let base = CanvasGeometry.base(model)
+        let shown = CanvasGeometry.adjusted(base, phase: model.phase, gesture: model.gestureTranslation, gulp: gulp)
+        let key = ShapeMotion.crossFadeKey(phase: model.phase, openColumns: model.openColumns,
+                                           isFocusMode: isFocusMode, reduceMotion: theme.reduceMotion)
+        ZStack(alignment: .top) {
+            surface(shown)
+                .id(key)
+                .transition(.opacity)
+            if model.phase == .compact, let id = model.satellite, let activity = model.activity(id, in: registry) {
+                SatelliteView(id: id, activity: activity, layout: model.layout, compact: shown, actions: actions)
+                    .id(id)
+                    .transition(.opacity.animation(theme.animation(.contentOut)))
+            }
+            if let delight, delight.moment == .emberBurst {
+                EmberBurstView(playback: delight, frameInterval: frameInterval)
+                    .offset(y: shown.bottom)
+            }
         }
+        .animation(ShapeMotion.animation(kind, theme: theme), value: base)
+        .animation(model.gestureTranslation == .zero ? theme.animation(.snapBack) : nil, value: model.gestureTranslation)
         .opacity(surfaceOpacity)
-        .animation(theme.animation(motion), value: model.phase)
-        .animation(theme.animation(.resize), value: model.openColumns)
-        .accessibilityAction(named: Text("Open", bundle: .module, comment: "Closed notch: VoiceOver action that opens the panel")) {
-            actions.open()
+        .animation(theme.animation(.contentSwap), value: surfaceOpacity)
+        .modifier(GulpModifier(depth: $gulp))
+        .onChange(of: current) { _, new in previous = new }
+    }
+
+    // MARK: Surface
+
+    private func surface(_ geometry: NotchGeometry) -> some View {
+        let isOpen = model.phase == .open
+        let expanded = isOpen || model.phase == .peek
+        let underglow = isOpen && registry.services.settings[CoreSettings.underglow] && theme.allowsUnderglow
+        return NotchSurface(geometry: geometry, band: model.layout.band, openness: expanded ? 1 : 0,
+                            elevation: model.phase == .peek ? Elevation.peek : Elevation.open,
+                            keylineTint: keylineTint, underglow: underglow ? model.ambient.glow1.color : nil) {
+            ZStack(alignment: .top) {
+                if isOpen && theme.effectiveAmbience != .off {
+                    NookLightLayer(model: model, registry: registry, geometry: geometry)
+                        .transition(.asymmetric(insertion: .opacity.animation(theme.animation(.ambientIn)),
+                                                removal: .opacity.animation(theme.animation(.ambientOut))))
+                }
+                content(geometry)
+                rim(geometry)
+            }
         }
+        // NotchSurface is the VoiceOver container "Cranny"; collapsed it reads "Cranny, collapsed" + Open.
+        .modifier(CollapsedAccessibility(isCollapsed: model.phase == .idle || model.phase == .breath, open: actions.open))
     }
 
     @ViewBuilder private func content(_ geometry: NotchGeometry) -> some View {
@@ -64,36 +113,86 @@ private struct CanvasBody: View {
         case .idle, .breath:
             // Click target = the shape itself (the root view's hitTest limits AppKit to the same bounds).
             Color.clear
+                .frame(width: geometry.outerWidth, height: geometry.bottom)
                 .contentShape(NotchShape(geometry))
                 .onTapGesture { actions.open() }
-        case .compact:
-            CompactView(model: model, registry: registry, actions: actions)
-        case .peek:
-            PeekView(model: model, registry: registry, actions: actions)
-                .transition(.crannyContent(reduceMotion: theme.reduceMotion).animation(theme.animation(.contentIn)))
+        case .compact, .peek:
+            ActivityStack(model: model, registry: registry, actions: actions)
         case .open:
             NookView(model: model, registry: registry, actions: actions)
-                .transition(.crannyContent(reduceMotion: theme.reduceMotion).animation(theme.animation(.contentIn)))
+                .transition(.crannyLeaving(theme))
         }
     }
 
-    /// The handle on displays without a notch can be "Hidden until hover" (alpha 0 = click-through).
+    /// The progress rim (Appearance ▸ Progress rim, Now Playing in compact) and the charge sweep.
+    @ViewBuilder private func rim(_ geometry: NotchGeometry) -> some View {
+        if let delight, delight.moment == .chargeSweep, model.phase == .compact || model.phase == .peek {
+            ChargeSweepRim(geometry: geometry, playback: delight, frameInterval: frameInterval)
+        } else if model.phase == .compact, model.primary == .nowPlaying, registry.services.settings[CoreSettings.progressRim],
+                  let source = registry.services.nowPlaying {
+            PlaybackRim(geometry: geometry, source: source)
+                .transition(.opacity.animation(theme.animation(.contentSwap)))
+        }
+    }
+
+    // MARK: Derived
+
+    private var primaryIsHUD: Bool {
+        model.primary.flatMap { model.activity($0, in: registry) }?.priority == .hud
+    }
+
+    private var isFocusMode: Bool {
+        if case .focus? = model.open?.mode { true } else { false }
+    }
+
+    /// While music plays, the keyline takes the album accent (DESIGN.md §5.1).
+    private var keylineTint: Color? {
+        guard let source = registry.services.nowPlaying, source.nowPlaying?.isPlaying == true,
+              let accent = source.palette?.accent else { return nil }
+        return accent.legible(on: theme.palette.spec.cardOverBlack, ratio: theme.accentContrast).color
+    }
+
+    /// One-shot moments run at the effect budget's rate: 30 fps on AC, 20 on battery (DESIGN.md §5.6 rule 6).
+    private var frameInterval: Double { registry.services.environment.isOnBattery ? 1.0 / 20 : 1.0 / 30 }
+
+    /// Hidden = alpha 0 (click-through). The handle on displays without a notch may be "Hidden until hover".
     private var surfaceOpacity: Double {
         if model.phase == .hidden { return 0 }
         let hiddenHandle = !model.layout.metrics.hasNotch && model.phase == .idle
             && registry.services.settings[CoreSettings.handleVisibility] == .hiddenUntilHover
         return hiddenHandle ? 0 : 1
     }
+}
 
-    /// Geometry grows with bounce and lands without it (DESIGN.md §4.1).
-    private var motion: CrannyMotion.Kind {
-        switch model.phase {
-        case .open: .open
-        case .peek: .peekIn
-        case .compact: .activityIn
-        case .breath: .hoverIn
-        case .idle, .hidden: .close
+/// The closed notch for VoiceOver: "Cranny, collapsed" with the action Open (DESIGN.md §16).
+private struct CollapsedAccessibility: ViewModifier {
+    let isCollapsed: Bool
+    let open: @MainActor () -> Void
+    func body(content: Content) -> some View {
+        if isCollapsed {
+            content
+                .accessibilityValue(Text("Collapsed", bundle: .module, comment: "Closed notch: VoiceOver value (\"Cranny, collapsed\")"))
+                .accessibilityAction(named: Text("Open", bundle: .module, comment: "Notch: VoiceOver action that opens the panel")) { open() }
+        } else {
+            content
         }
+    }
+}
+
+/// The shape as drawn: the scene's geometry plus live direct manipulation (pure, unit-tested).
+nonisolated enum CanvasGeometry {
+    /// `NotchSceneModel.geometry`, except that a hidden notch keeps the closed shape (it fades to alpha 0
+    /// rather than shrinking to nothing).
+    @MainActor static func base(_ model: NotchSceneModel) -> NotchGeometry {
+        model.phase == .hidden ? model.layout.closed : model.geometry
+    }
+
+    /// Adds the gesture's rubber band (swipe down grows closed/compact; the open shape follows a swipe up) and
+    /// the gulp (height −3 pt).
+    static func adjusted(_ base: NotchGeometry, phase: NotchPhase, gesture: CGSize, gulp: CGFloat) -> NotchGeometry {
+        var g = base
+        g.height = max(g.height + GestureFollow.heightChange(gesture, phase: phase) + gulp, 0)
+        return g
     }
 }
 
@@ -103,22 +202,19 @@ private struct CanvasBody: View {
     let (model, registry) = previewScene(.open)
     NotchCanvasView(model: model, registry: registry)
         .frame(width: model.layout.canvasSize.width, height: model.layout.canvasSize.height)
-        .background(.black)
-        .crannyThemeRoot(CrannyTheme())
+        .background(Color(white: 0.25))
 }
 
 #Preview("Compact · 14″ notch") {
     let (model, registry) = previewScene(.compact)
     NotchCanvasView(model: model, registry: registry)
-        .frame(width: model.layout.canvasSize.width, height: 80)
-        .background(.black)
-        .crannyThemeRoot(CrannyTheme())
+        .frame(width: 480, height: 80)
+        .background(Color(white: 0.25))
 }
 
 #Preview("Closed · floating island") {
-    let (model, registry) = previewScene(.idle, metrics: NotchMetrics(hasNotch: false, notchWidth: 0, bandHeight: 30, screenWidth: 1920))
+    let (model, registry) = previewScene(.idle, metrics: PreviewDisplays.external)
     NotchCanvasView(model: model, registry: registry)
-        .frame(width: model.layout.canvasSize.width, height: 80)
-        .background(.black)
-        .crannyThemeRoot(CrannyTheme())
+        .frame(width: 480, height: 60)
+        .background(Color(white: 0.25))
 }
