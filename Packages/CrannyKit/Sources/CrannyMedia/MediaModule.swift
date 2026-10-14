@@ -34,7 +34,7 @@ public enum MediaModule: FeatureModule {
         registry.add(commands: MediaCommands(service: service))
         for player in ScriptablePlayer.all {
             registry.declare(.automation(bundleID: player.bundleID), reason: String(
-                localized: "Read and control Music or Spotify when the media helper can't. Only if you turn on the Apple Events fallback.",
+                localized: "Read and control Music or Spotify when the media helper can’t. Only if you turn on the Apple Events fallback.",
                 bundle: .module, comment: "Permissions pane: why Media may ask for Automation"))
         }
         registry.declare(.systemAudioRecording, reason: String(

@@ -12,7 +12,7 @@ enum MediaError: Error, LocalizedError, Equatable, Sendable {
     nonisolated var errorDescription: String? {
         switch self {
         case .noProvider:
-            String(localized: "Cranny can't read what's playing right now.", bundle: .module,
+            String(localized: "Cranny can’t read what’s playing right now.", bundle: .module,
                    comment: "Media: error line when no media source works (widget and Settings ▸ Media)")
         case .provider(_, .launchFailed):
             String(localized: "The media helper could not start.", bundle: .module,
@@ -24,7 +24,7 @@ enum MediaError: Error, LocalizedError, Equatable, Sendable {
             String(localized: "The media helper stopped unexpectedly.", bundle: .module,
                    comment: "Settings ▸ Media: last error, the helper process ended")
         case .provider(_, .notPermitted):
-            String(localized: "Cranny isn't allowed to control this player.", bundle: .module,
+            String(localized: "Cranny isn’t allowed to control this player.", bundle: .module,
                    comment: "Settings ▸ Media: last error, Automation permission denied")
         }
     }

@@ -20,7 +20,7 @@ final class MediaWidget: NookWidget {
 
     var title: String { MediaStrings.moduleName }
     var summary: String {
-        String(localized: "What's playing, with controls", bundle: .module, comment: "Widget library: Media description")
+        String(localized: "What’s playing, with controls", bundle: .module, comment: "Widget library: Media description")
     }
 
     func makeBody(context: WidgetContext) -> some View {

@@ -34,7 +34,7 @@ private nonisolated let log = Log.logger(.media)
     /// The elected now-playing app as the bridge last reported it, before filters (nil = unknown: not a bridge
     /// provider, or no state yet). 0 = none, which is also what a blocked helper reports (`BridgeHealthMonitor`).
     private(set) var reportedPlayerPID: Int?
-    /// Bundle id of `reportedPlayerPID`'s app ("Test media detection" names it even when a filter hides it).
+    /// Bundle id of `reportedPlayerPID`'s app ("Test Media Detection" names it even when a filter hides it).
     private(set) var reportedPlayerBundleID: String?
 
     @ObservationIgnored let settings: SettingsStore
@@ -142,7 +142,7 @@ private nonisolated let log = Log.logger(.media)
         return delivered
     }
 
-    /// "Test media detection": the helper's round trip, nil = no answer.
+    /// "Test Media Detection": the helper's round trip, nil = no answer.
     func ping() async -> Duration? { await provider?.ping() }
 
     /// The kind of the provider in use (nil when none).

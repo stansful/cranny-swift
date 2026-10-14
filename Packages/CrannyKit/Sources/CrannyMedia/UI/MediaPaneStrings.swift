@@ -21,7 +21,7 @@ enum MediaPaneStrings {
     }
     static var add: String { String(localized: "Add", bundle: .module,
                comment: "Settings ▸ Media ▸ Ignore apps: menu button") }
-    static var chooseApp: String { String(localized: "Choose an app…", bundle: .module,
+    static var chooseApp: String { String(localized: "Choose App…", bundle: .module,
                comment: "Settings ▸ Media ▸ Ignore apps: menu item that opens a file picker") }
     static var stopIgnoring: String { String(localized: "Stop ignoring", bundle: .module,
                comment: "Settings ▸ Media ▸ Ignore apps: remove button (tooltip, VoiceOver)") }
@@ -32,10 +32,10 @@ enum MediaPaneStrings {
     static var appleEvents: String { String(localized: "Apple Events fallback for Music and Spotify", bundle: .module,
                comment: "Settings ▸ Media: toggle") }
     static var appleEventsFootnote: String {
-        String(localized: "Used only when the media helper can't run. macOS asks once per app whether Cranny may control it.", bundle: .module,
+        String(localized: "Used only when the media helper can’t run. macOS asks once per app whether Cranny may control it.", bundle: .module,
                comment: "Settings ▸ Media: footnote under the Apple Events fallback")
     }
-    static var testDetection: String { String(localized: "Test media detection", bundle: .module,
+    static var testDetection: String { String(localized: "Test Media Detection", bundle: .module,
                comment: "Settings ▸ Media: button") }
     static var resetToDefault: String { String(localized: "Reset to Default", bundle: .module,
                comment: "Settings ▸ Media: row context menu item") }
@@ -47,7 +47,7 @@ enum MediaPaneStrings {
                comment: "Settings ▸ Media: source status") }
     static var statusWorking: String { String(localized: "Working", bundle: .module,
                comment: "Settings ▸ Media: source status") }
-    static var statusDegraded: String { String(localized: "Can't see the player", bundle: .module,
+    static var statusDegraded: String { String(localized: "Can’t see the player", bundle: .module,
                comment: "Settings ▸ Media: source status when sound plays but nothing is detected") }
     static var statusRestarting: String { String(localized: "Restarting", bundle: .module,
                comment: "Settings ▸ Media: source status") }
@@ -61,9 +61,9 @@ enum MediaPaneStrings {
     // Test media detection
     static var testSample: String { String(localized: "Previews use a sample track.", bundle: .module,
                comment: "Settings ▸ Media: test result in a preview") }
-    static var testNoHelper: String { String(localized: "The media helper isn't running.", bundle: .module,
+    static var testNoHelper: String { String(localized: "The media helper isn’t running.", bundle: .module,
                comment: "Settings ▸ Media: test result") }
-    static var testNoAnswer: String { String(localized: "The media helper didn't answer.", bundle: .module,
+    static var testNoAnswer: String { String(localized: "The media helper didn’t answer.", bundle: .module,
                comment: "Settings ▸ Media: test result") }
     static func testSeesPlayer(_ app: String, _ milliseconds: Int) -> String {
         String(localized: "Working: the helper answered in \(milliseconds) ms and sees \(app).", bundle: .module,
@@ -90,7 +90,7 @@ enum MediaPaneStrings {
                comment: "Settings ▸ Media: System Audio Recording status for the Live visualizer") }
     static var liveDenied: String { String(localized: "Not allowed", bundle: .module,
                comment: "Settings ▸ Media: System Audio Recording status for the Live visualizer") }
-    static var liveFailed: String { String(localized: "Can't start", bundle: .module,
+    static var liveFailed: String { String(localized: "Can’t start", bundle: .module,
                comment: "Settings ▸ Media: System Audio Recording status for the Live visualizer") }
     static var liveUnsupported: String { String(localized: "Needs macOS 14.2 or later", bundle: .module,
                comment: "Settings ▸ Media: System Audio Recording status for the Live visualizer") }

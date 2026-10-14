@@ -67,7 +67,7 @@ nonisolated protocol MediaProvider: AnyObject, Sendable {
     /// Asks for the current state again, even when it did not change (the service's check after a command
     /// that no state confirmed). The answer, if any, arrives as an ordinary `.nowPlaying` event.
     func refresh()
-    /// Round trip to the helper for "Test media detection"; nil = no answer within the timeout.
+    /// Round trip to the helper for "Test Media Detection"; nil = no answer within the timeout.
     func ping() async -> Duration?
     /// Stops the provider and its helper. Safe to call more than once.
     func stop()
