@@ -241,9 +241,12 @@ import SwiftUI
         return scene.layout.satelliteFrame(beside: scene.layout.compact(scene.primarySlot), in: CGRect(origin: .zero, size: root.bounds.size))
     }
 
-    /// The enlarged drop zone while a file drag is in progress: the drag zone clipped to the canvas.
+    /// The enlarged drop zone while a file drag is in progress: the drag zone clipped to the canvas. Only where a drop
+    /// can land (an open panel's widget zones, or a Tray to keep it), so menu-bar clicks are never blocked for nothing.
     private func dropZoneInCanvas() -> CGRect? {
-        guard viewModel.state.fileDrag != nil || viewModel.state.isCatching, let zones = hoverZones else { return nil }
+        let state = viewModel.state
+        let canTake = state.isOpen || registry.services.tray != nil
+        guard (state.fileDrag != nil && canTake) || state.isCatching, let zones = hoverZones else { return nil }
         let frame = panel.frame
         let zone = zones.dragZone.intersection(frame)
         guard !zone.isNull, !zone.isEmpty else { return nil }
