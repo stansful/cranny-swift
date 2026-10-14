@@ -31,6 +31,10 @@ private let log = Log.logger(.timer)
     @ObservationIgnored private var writeSequence = 0
     /// Set by the first user change; a slow launch restore never overwrites it.
     @ObservationIgnored private var changedSinceLaunch = false
+    /// Set when the launch restore finished. Until then (or a user change) quitting writes nothing: launch hooks run
+    /// concurrently and a quit may come before this one finished (`ModuleRegistry.onTerminate`), and an idle model
+    /// written then would replace the timer saved on disk.
+    @ObservationIgnored private var restoreFinished = false
     @ObservationIgnored private var systemObservers: [(NotificationCenter, any NSObjectProtocol)] = []
 
     init(settings: SettingsStore, dependencies: TimerDependencies) {
@@ -225,6 +229,7 @@ private let log = Log.logger(.timer)
     /// Launch hook: loads the saved timer (off the main actor) and applies what it means now — still running, done
     /// within the last minute, or idle. A change the user made while it loaded wins.
     func restore() async {
+        defer { restoreFinished = true }
         guard let file = dependencies.file, let saved = await file.loadInBackground(), !changedSinceLaunch else {
             reschedule()
             return
@@ -240,9 +245,10 @@ private let log = Log.logger(.timer)
         reschedule()
     }
 
-    /// Terminate hook: a synchronous final write (the process exits right after).
+    /// Terminate hook: a synchronous final write (the process exits right after). Nothing to write before the launch
+    /// restore finished unless the user changed the timer meanwhile: the file still holds the saved timer.
     func persistNow() {
-        guard let file = dependencies.file else { return }
+        guard let file = dependencies.file, restoreFinished || changedSinceLaunch else { return }
         writeSequence += 1
         do { try file.write(snapshot, sequence: writeSequence) } catch {
             log.error("could not save state.json on quit: \(error.localizedDescription, privacy: .public)")

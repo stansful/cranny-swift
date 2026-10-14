@@ -211,6 +211,18 @@ import Testing
         #expect(h.scheduler.date == t0.addingTimeInterval(40))                  // done expires a minute after the end
     }
 
+    @Test func aQuitBeforeTheRestoreFinishedKeepsTheSavedTimer() async throws {
+        let url = temporaryFile()
+        let saved = TimerSnapshot(state: TimerState(phase: .running(endDate: t0.addingTimeInterval(300)), total: 600),
+                                  lastDuration: 600)
+        try TimerStateFile(url: url).write(saved, sequence: 1)
+        let h = TimerHarness(file: TimerStateFile(url: url))
+        h.model.persistNow()                                    // the terminate hook, before the launch hook restored
+        #expect(TimerStateFile(url: url).load() == saved)
+        await h.model.restore()
+        #expect(h.model.state.endDate == t0.addingTimeInterval(300))
+    }
+
     @Test func aChangeMadeBeforeTheRestoreFinishesWins() async throws {
         let url = temporaryFile()
         try TimerStateFile(url: url).write(TimerSnapshot(state: TimerState(phase: .paused(remaining: 50), total: 60),
