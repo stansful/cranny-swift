@@ -2831,7 +2831,7 @@ Scripts target `/bin/bash` 3.2, source `scripts/lib.sh`, find Xcode even when `x
 | widget | виджет | |
 | Mirror | Зеркало | |
 | Notes · To-dos · Timer · Calendar | Заметки · Задачи · Таймер · Календарь | |
-| Quick Apps · Shortcuts (app) | Быстрые приложения · Быстрые команды | Apple's Russian name for Shortcuts |
+| Quick Apps · Shortcuts (app) · a shortcut | Быстрые приложения · «Команды» · быстрая команда | «Команды» is the Shortcuts app's display name on macOS 27 (Finder, Launchpad); its bundle name «Быстрые команды» is not shown to users. An item inside it stays «быстрая команда» |
 | Pin / Keep open | Закрепить | |
 | Demo mode | Демо-режим | |
 | Settings | Настройки | |
@@ -2871,7 +2871,7 @@ Scripts target `/bin/bash` 3.2, source `scripts/lib.sh`, find Xcode even when `x
 | App not installed (a listed app the lookup did not find) | Приложение не установлено | Excluded apps, Media's Ignore apps, Settings ▸ Shortcuts; never the bundle ID |
 | player (a media app: Media, Automation) | плеер | the onboarding Automation reason says «…воспроизведением в плеерах…»; not «медиаприложение» |
 | Timer alert sounds | the names of System Settings ▸ Sound (Glass → Crystal / «Кристалл», Basso → Mezzo / «Меццо»…) | the stored value stays the file name (C-TIMER-1) |
-| System settings named in copy | Apple's names in « »: «Уменьшить движение», «Понизить прозрачность», «Увеличить контраст», «Дифференцировать без цвета» | never paraphrased |
+| System settings named in copy | Apple's names in « »: «Уменьшить движение», «Понизить прозрачность», «Увеличить контрастность», «Дифференцировать без цвета» | never paraphrased |
 | Music (Apple's app) | «Музыка» | always quoted |
 | macOS (grammatical gender) | feminine: «macOS не добавила» | |
 

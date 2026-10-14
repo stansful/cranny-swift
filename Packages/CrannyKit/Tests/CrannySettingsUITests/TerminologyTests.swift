@@ -112,7 +112,7 @@ private enum Terms {
         "open settings": "Mirror's chip opens System Settings («Настройки»); the Keyboard row opens Cranny's",
         "paused": "Media's spoken state «На паузе» vs the Timer's ring label «Пауза»",
         "resize": "a widget's width (NotchUI, search) vs the Tray's image step «Уменьшить»",
-        "shortcuts": "Apple's Shortcuts app («Быстрые команды») vs keyboard shortcuts («Сочетания клавиш»)",
+        "shortcuts": "Apple's Shortcuts app («Команды», its macOS 27 display name) vs keyboard shortcuts («Сочетания клавиш»)",
         "show": "a row label («Показывать») vs a VoiceOver action («Показать»)",
         "stop": "the Timer's short peek button «Стоп» vs «Остановить» in menus",
     ]
