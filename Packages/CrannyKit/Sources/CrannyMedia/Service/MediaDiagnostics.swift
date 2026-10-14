@@ -11,7 +11,7 @@ extension MediaService: NowPlayingDiagnostics {
             "media.status": Self.name(of: status),
             "media.lastError": lastError.map(Self.name(of:)) ?? "none",
             "media.degraded": String(health?.isDegraded ?? false),
-            "media.outputActive": String(health?.isOutputActive ?? false),
+            "media.outputActive": String(health?.reportsOutputActive ?? false),
             // What the helper reports before filters: "none" (pid 0) with sound playing is the blocked signature.
             "media.electedPlayer": reportedPlayerPID.map { $0 > 0 ? "some" : "none" } ?? "unknown",
             "media.session": nowPlaying == nil ? "none" : (nowPlaying?.isPlaying == true ? "playing" : "paused"),

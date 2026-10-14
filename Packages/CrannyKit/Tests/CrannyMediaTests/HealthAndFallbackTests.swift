@@ -81,6 +81,62 @@ import Testing
         await clock.advance(by: .seconds(60))
         #expect(!monitor.isDegraded)
     }
+
+    /// Stands in for `AudioOutputMonitor`: never touches Core Audio; `report` plays what its listeners would say.
+    private nonisolated final class FakeOutputMonitor: OutputMonitoring, @unchecked Sendable {   // test-only, main actor
+        let onChange: @Sendable (Bool) -> Void
+        private(set) var isStarted = false
+        init(onChange: @escaping @Sendable (Bool) -> Void) { self.onChange = onChange }
+        func start() { isStarted = true }
+        func stop() { isStarted = false }
+        func report(_ active: Bool) { onChange(active) }
+    }
+
+    private final class Made { var monitors: [FakeOutputMonitor] = [] }
+
+    @Test func coreAudioIsHeardOnlyWhileItCanMatter() async throws {
+        // While a player is elected (or another provider runs) other apps' sounds cannot make the helper suspicious,
+        // so nothing listens; a helper that reports no player arms the listeners, and the 10-s rule works as before.
+        let clock = ManualClock(), perl = ScriptedProvider(kind: .perl)
+        let service = Fixtures.service([perl], clock: clock)
+        let monitor = BridgeHealthMonitor(service: service)
+        let made = Made()
+        service.start()
+        monitor.start { onChange in
+            let fake = FakeOutputMonitor(onChange: onChange)
+            made.monitors.append(fake)
+            return fake
+        }
+        await settle()
+        #expect(!monitor.isListening)                                     // nothing reported yet
+
+        await report(perl, pid: 812, bundleID: "com.apple.Music", Fixtures.track("A"))
+        #expect(!monitor.isListening)                                     // Music is elected: no listeners
+        await report(perl, pid: 0, nil)
+        #expect(monitor.isListening)
+        let armed = try #require(made.monitors.last)
+        #expect(armed.isStarted)
+        armed.report(true)                                                // the current answer, right after start
+        await settle()
+        #expect(monitor.isOutputActive)
+        await clock.advance(by: .seconds(10))
+        #expect(monitor.isDegraded)
+
+        await report(perl, pid: 812, bundleID: "com.apple.Music", Fixtures.track("A"))
+        #expect(!monitor.isDegraded)
+        #expect(!monitor.isListening)
+        #expect(!armed.isStarted)
+        #expect(!monitor.isOutputActive)                                  // unknown while nobody listens
+        armed.report(true)                                                // a late report of the disarmed monitor
+        await settle()
+        #expect(!monitor.isOutputActive)
+
+        await report(perl, pid: 0, nil)                                   // armed again: a fresh monitor
+        #expect(made.monitors.count == 2)
+        monitor.stop()
+        #expect(!monitor.isListening)
+        #expect(made.monitors.allSatisfy { !$0.isStarted })
+    }
 }
 
 @Suite("Apple Events fallback payloads") struct ScriptablePlayerTests {
