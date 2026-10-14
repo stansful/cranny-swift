@@ -31,9 +31,9 @@ import Testing
 }
 
 /// `requiredFunctions` lists exactly what ships: nothing missing, nothing unlisted.
-@Test(.enabled(if: MTLCreateSystemDefaultDevice() != nil)) func requiredFunctionsMatchTheLibrary() throws {
+@Test(.enabled(if: AmbientGPU.device() != nil)) func requiredFunctionsMatchTheLibrary() throws {
     let url = try #require(ShaderEffects.libraryURL)
-    let device = try #require(MTLCreateSystemDefaultDevice())
+    let device = try #require(AmbientGPU.device())
     let library = try device.makeLibrary(URL: url)
     #expect(Set(library.functionNames) == ShaderEffects.requiredFunctions)
 }

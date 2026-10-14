@@ -140,10 +140,11 @@ func ambientLightNeverPassesTheCap(_ effect: AmbientEffect) throws {
 }
 
 /// GPU ≤ 1.5 ms per frame at the largest open size (DESIGN.md §5.6 rule 6): a 16″ open panel is ≈ 1000 × 300 pt on a
-/// 2× display, drawn at the layer's render scale for each effect.
+/// 2× display, drawn at the layer's render scale for each effect. The limit depends on the GPU, so it is asserted only
+/// in integration runs (`CRANNY_INTEGRATION=1`, ARCHITECTURE.md §9.6); the frame is measured on every run.
 @Test(.enabled(if: shadersRun), arguments: AmbientEffect.allCases)
 func ambientFrameFitsTheGPUBudget(_ effect: AmbientEffect) throws {
-    let renderer = try #require(AmbientRenderer.shared)
+    let renderer = try #require(AmbientRenderer.renderer(forDisplay: nil))
     let size = CGSize(width: 1000, height: 300)
     let scale = AmbientRenderer.renderScale(for: effect, displayScale: 2)
     let (w, h) = (Int(size.width * scale), Int(size.height * scale))
@@ -152,7 +153,10 @@ func ambientFrameFitsTheGPUBudget(_ effect: AmbientEffect) throws {
     _ = renderer.gpuTime(effect, uniforms: uniforms, width: w, height: h)                       // warm-up
     let times = (0..<8).compactMap { _ in renderer.gpuTime(effect, uniforms: uniforms, width: w, height: h) }
     let median = try #require(times.sorted().dropFirst(times.count / 2).first)
-    #expect(median <= 0.0015, "\(effect): \(median * 1000) ms per frame")
+    #expect(median > 0, "\(effect): no GPU time measured")
+    if integrationTests {
+        #expect(median <= 0.0015, "\(effect): \(median * 1000) ms per frame")
+    }
 }
 
 @Test func softLightRendersAtOnePixelPerPoint() {

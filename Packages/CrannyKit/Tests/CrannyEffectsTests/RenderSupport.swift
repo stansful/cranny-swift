@@ -145,7 +145,7 @@ struct Raster {
 /// Renders one frame of the ambient Metal layer's pipeline offscreen.
 @MainActor func rasterizeLayer(_ state: AmbientLayerState, size: CGSize, scale: CGFloat = 1, time: Double,
                                date: Date = Date()) throws -> Raster {
-    let renderer = try #require(AmbientRenderer.shared)
+    let renderer = try #require(AmbientRenderer.renderer(forDisplay: nil))
     let uniforms = AmbientUniforms(state: state, size: size, scale: scale, time: time, date: date)
     let w = Int(size.width * scale), h = Int(size.height * scale)
     let bgra = try #require(renderer.image(state.effect, uniforms: uniforms, width: w, height: h))
@@ -156,6 +156,9 @@ struct Raster {
 
 /// Shaders can run here (a Metal device and the complete library).
 nonisolated let shadersRun = ShaderEffects.isAvailable
+
+/// Hardware-dependent checks (GPU time) run only with `CRANNY_INTEGRATION=1` (ARCHITECTURE.md §9.6), never in CI.
+nonisolated let integrationTests = ProcessInfo.processInfo.environment["CRANNY_INTEGRATION"] == "1"
 
 /// An open, running budget on AC.
 nonisolated let runningBudget = EffectBudget(isOpen: true, onScreen: true, lowPower: false, fullScreenFront: false,

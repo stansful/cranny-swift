@@ -31,12 +31,12 @@ struct AmbientFieldView: View, Animatable {
 
     var body: some View {
         let budget = EffectsQA.adjusted(budget)
-        let renderer = rendering == .automatic && ShaderEffects.allowsLayer ? AmbientRenderer.shared : nil
+        let layerAllowed = rendering == .automatic && ShaderEffects.allowsLayer && AmbientLayerSupport.shared.isUsable
         let path = AmbientPath.resolve(budget: budget, shadersAvailable: ShaderEffects.isAvailable,
-                                       layerAllowed: renderer != nil)
+                                       layerAllowed: layerAllowed)
         Group {
-            if path == .layer, let renderer {
-                AmbientMetalLayer(state: layerState(budget), renderer: renderer)
+            if path == .layer {
+                AmbientMetalLayer(state: layerState(budget))
             } else if path == .staticHalo {
                 HaloFallback(glow: palette.glow1, level: level, placement: halo)
                     .modifier(AmbientMasks(fill: fill, reveal: reveal, reduceMotion: budget.reduceMotion))

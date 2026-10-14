@@ -45,7 +45,8 @@ enum ShaderEffects {
     nonisolated static func unavailabilityReason(defaults: UserDefaults = .standard) -> String? {
         if defaults.bool(forKey: disableKey) { return "\(disableKey) is set" }
         guard let url = libraryURL else { return "default.metallib is not in the bundle" }
-        guard let device = MTLCreateSystemDefaultDevice() else { return "no Metal device" }
+        // Never MTLCreateSystemDefaultDevice(): it would switch a dual-GPU Mac to its discrete GPU (AmbientGPU.swift).
+        guard let device = AmbientGPU.device() else { return "no Metal device" }
         guard let metalLibrary = try? device.makeLibrary(URL: url) else { return "default.metallib does not load" }
         let missing = requiredFunctions.subtracting(metalLibrary.functionNames)
         return missing.isEmpty ? nil : "missing " + missing.sorted().joined(separator: ", ")
