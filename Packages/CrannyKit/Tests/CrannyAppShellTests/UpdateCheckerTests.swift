@@ -62,7 +62,50 @@ actor FakeUpdateTransport: UpdateTransport {
     }
 }
 
-private func makeChecker(_ transport: FakeUpdateTransport, repository: String? = repository, version: String = "0.1.0",
+/// Holds every request until `open()`, so two checks can overlap.
+actor GatedUpdateTransport: UpdateTransport {
+    private let answer: Data
+    private var isOpen = false
+    private(set) var requests: [URLRequest] = []
+
+    init(answer: Data) { self.answer = answer }
+
+    func open() { isOpen = true }
+
+    func fetch(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
+        requests.append(request)
+        while !isOpen { try await Task.sleep(for: .milliseconds(5)) }
+        guard let url = request.url, let response = HTTPURLResponse(url: url, statusCode: 200, httpVersion: "HTTP/1.1", headerFields: [:])
+        else { throw URLError(.badURL) }
+        return (answer, response)
+    }
+}
+
+/// A sleep the test ends by hand: records every wait; `release()` ends the waits so far. A cancelled wait throws,
+/// as `Task.sleep` does.
+@MainActor final class ManualSleeper {
+    private(set) var waits: [TimeInterval] = []
+    private var released = 0
+
+    func sleep(_ wait: TimeInterval) async throws {
+        waits.append(wait)
+        let index = waits.count
+        while released < index { try await Task.sleep(for: .milliseconds(5)) }
+    }
+
+    func release() { released = waits.count }
+}
+
+/// Polls `condition` for up to two seconds.
+@MainActor func eventually(_ condition: @MainActor () async -> Bool) async -> Bool {
+    for _ in 0..<200 {
+        if await condition() { return true }
+        try? await Task.sleep(for: .milliseconds(10))
+    }
+    return await condition()
+}
+
+private func makeChecker(_ transport: any UpdateTransport, repository: String? = repository, version: String = "0.1.0",
                          settings: SettingsStore = CrannyServices.preview().settings,
                          sleep: @escaping @MainActor (TimeInterval) async throws -> Void = { _ in throw CancellationError() }) -> UpdateChecker {
     UpdateChecker(settings: settings, configuration: UpdateConfiguration(repository: repository, currentVersion: version),
@@ -141,6 +184,20 @@ private func page(_ tag: String) throws -> URL { try #require(URL(string: "https
     #expect(UpdateChecker.delayUntilNextCheck(lastCheck: now.addingTimeInterval(3600), now: now) == UpdateChecker.interval)   // clock moved back
 }
 
+@Test func aPrereleaseSwitchKeepsWhatIsStillTrue() throws {
+    let stable = UpdateState.available(version: "0.2.0", notesURL: try page("v0.2.0"))
+    let beta = UpdateState.available(version: "0.3.0-beta.1", notesURL: try page("v0.3.0-beta.1"))
+    func after(_ state: UpdateState, includesPrereleases: Bool) -> UpdateState {
+        UpdateChecker.state(state, afterPrereleasesChangedTo: includesPrereleases)
+    }
+    #expect(after(stable, includesPrereleases: true) == stable && after(stable, includesPrereleases: false) == stable)
+    #expect(after(beta, includesPrereleases: false) == .idle)                      // pre-releases off: it no longer counts
+    #expect(after(.upToDate, includesPrereleases: false) == .upToDate)              // still true on the stable channel
+    #expect(after(.upToDate, includesPrereleases: true) == .idle)                   // a newer pre-release may exist
+    #expect(after(.failed("x"), includesPrereleases: true) == .idle)
+    #expect(after(.checking, includesPrereleases: false) == .checking && after(.idle, includesPrereleases: true) == .idle)
+}
+
 // MARK: - The checker
 
 @Test func theSecondCheckRevalidatesWithTheETag() async throws {
@@ -186,6 +243,29 @@ private func page(_ tag: String) throws -> URL { try #require(URL(string: "https
     #expect(await checker.check() == .failed(UpdateFailure.unreadable.message))
 }
 
+@Test func anAnswerThatCannotBeUsedFailsOnlyWhenTheUserAsked() async throws {
+    let transport = FakeUpdateTransport([.ok(latestFixture, etag: nil), .ok(latestFixture, etag: nil)])
+    let settings = CrannyServices.preview().settings
+    let checker = makeChecker(transport, version: "dev", settings: settings)       // the running version is not semver
+    #expect(await checker.check(userInitiated: false) == .idle)                    // automatic: nothing changes
+    #expect(settings[CoreSettings.lastUpdateCheck] != nil)                          // GitHub answered: next check in a day
+    #expect(await checker.check() == .failed(UpdateFailure.badVersion.message))
+}
+
+@Test func checksAtTheSameTimeShareOneRequest() async throws {
+    let transport = GatedUpdateTransport(answer: latestFixture)
+    let checker = makeChecker(transport)
+    let first = Task { await checker.check() }
+    #expect(await eventually { await transport.requests.count == 1 })
+    let second = Task { await checker.check(userInitiated: false) }
+    try await Task.sleep(for: .milliseconds(50))                                    // the second check waits as well
+    await transport.open()
+    let expected = UpdateState.available(version: "0.2.0", notesURL: try page("v0.2.0"))
+    let (one, two) = (await first.value, await second.value)
+    #expect(one == expected && two == expected)
+    #expect(await transport.requests.count == 1)
+}
+
 @Test func withoutARepositoryNothingIsRequested() async throws {
     let transport = FakeUpdateTransport([.ok(latestFixture, etag: nil)])
     var slept = false
@@ -196,26 +276,86 @@ private func page(_ tag: String) throws -> URL { try #require(URL(string: "https
     #expect(await transport.requests.isEmpty && !slept)
 }
 
+// MARK: - The schedule
+
 @Test func theDailyCheckRunsAfterOneSleepAndFollowsTheSetting() async throws {
-    final class Sleeper { var waits: [TimeInterval] = [] }
-    let sleeper = Sleeper()
+    let sleeper = ManualSleeper()
     let transport = FakeUpdateTransport([.ok(latestFixture, etag: nil)])
     let settings = CrannyServices.preview().settings
-    let checker = makeChecker(transport, settings: settings, sleep: { wait in
-        sleeper.waits.append(wait)
-        if sleeper.waits.count > 1 { throw CancellationError() }                  // stop after the first round
-    })
+    let checker = makeChecker(transport, settings: settings, sleep: { try await sleeper.sleep($0) })
     checker.start()
     defer { checker.stop() }
-    for _ in 0..<80 where checker.state == .idle { try await Task.sleep(for: .milliseconds(25)) }
-    #expect(checker.state == .available(version: "0.2.0", notesURL: try page("v0.2.0")))
-    #expect(sleeper.waits.first == UpdateChecker.launchDelay)                       // never checked before
-    for _ in 0..<40 where sleeper.waits.count < 2 { try await Task.sleep(for: .milliseconds(25)) }
-    #expect(sleeper.waits.count == 2 && (sleeper.waits.last ?? 0) > UpdateChecker.interval - 60)    // then a day later
+    #expect(await eventually { sleeper.waits == [UpdateChecker.launchDelay] })     // never checked: a minute after launch
 
-    settings[CoreSettings.checksForUpdates] = false                                 // Settings ▸ General ▸ Updates off
+    settings[CoreSettings.checksForUpdates] = false                                 // turned off before the sleep ends
     try await Task.sleep(for: .milliseconds(100))
-    #expect(await transport.requests.count == 1 && sleeper.waits.count == 2)
+    sleeper.release()
+    try await Task.sleep(for: .milliseconds(100))
+    #expect(await transport.requests.isEmpty && sleeper.waits.count == 1)
+
+    settings[CoreSettings.checksForUpdates] = true                                  // on again: a new schedule
+    #expect(await eventually { sleeper.waits.count == 2 })
+    #expect(sleeper.waits.last == UpdateChecker.launchDelay)
+    sleeper.release()
+    let available = UpdateState.available(version: "0.2.0", notesURL: try page("v0.2.0"))
+    #expect(await eventually { checker.state == available })
+    #expect(await eventually { sleeper.waits.count == 3 })
+    #expect((sleeper.waits.last ?? 0) > UpdateChecker.interval - 60)               // then a day later, one sleep
+    #expect(await transport.requests.count == 1)
+}
+
+@Test func aFailedAutomaticCheckRetriesInAnHour() async throws {
+    let sleeper = ManualSleeper()
+    let transport = FakeUpdateTransport([.failure(.notConnectedToInternet)])
+    let checker = makeChecker(transport, sleep: { try await sleeper.sleep($0) })
+    checker.start()
+    defer { checker.stop() }
+    #expect(await eventually { sleeper.waits == [UpdateChecker.launchDelay] })
+    sleeper.release()
+    #expect(await eventually { sleeper.waits.count == 2 })
+    #expect(sleeper.waits.last == UpdateChecker.retryDelay)
+    #expect(await transport.requests.count == 1 && checker.state == .idle)         // nobody asked: no failure shown
+}
+
+@Test func turningPrereleasesOnAsksTheListTwoSecondsLater() async throws {
+    let sleeper = ManualSleeper()
+    let transport = FakeUpdateTransport([.ok(listFixture, etag: nil)])
+    let settings = CrannyServices.preview().settings
+    settings[CoreSettings.lastUpdateCheck] = Date()                                 // checked just now: next one in a day
+    let checker = makeChecker(transport, settings: settings, sleep: { try await sleeper.sleep($0) })
+    checker.start()
+    defer { checker.stop() }
+    #expect(await eventually { sleeper.waits.count == 1 })
+    #expect((sleeper.waits.first ?? 0) > UpdateChecker.interval - 60)
+
+    settings[CoreSettings.includesPrereleases] = true
+    #expect(await eventually { sleeper.waits.count == 2 })
+    #expect(sleeper.waits.last == 2)
+    sleeper.release()
+    let beta = UpdateState.available(version: "0.3.0-beta.1", notesURL: try page("v0.3.0-beta.1"))
+    #expect(await eventually { checker.state == beta })
+    let requests = await transport.requests
+    #expect(requests.count == 1 && requests.first?.url?.absoluteString.hasSuffix("/releases?per_page=20") == true)
+}
+
+@Test func withAutomaticChecksOffThePrereleaseSwitchAsksNothing() async throws {
+    let sleeper = ManualSleeper()
+    let transport = FakeUpdateTransport([.ok(latestFixture, etag: nil), .ok(listFixture, etag: nil)])
+    let settings = CrannyServices.preview().settings
+    settings[CoreSettings.checksForUpdates] = false
+    let checker = makeChecker(transport, settings: settings, sleep: { try await sleeper.sleep($0) })
+    checker.start()
+    defer { checker.stop() }
+    let stable = await checker.check()                                              // checked by hand: 0.2.0
+    settings[CoreSettings.includesPrereleases] = true
+    try await Task.sleep(for: .milliseconds(100))
+    #expect(checker.state == stable)                                                // still an update on either channel
+
+    let beta = await checker.check()                                                // by hand again: the list
+    #expect(beta == .available(version: "0.3.0-beta.1", notesURL: try page("v0.3.0-beta.1")))
+    settings[CoreSettings.includesPrereleases] = false
+    #expect(await eventually { checker.state == .idle })                           // the pre-release no longer counts
+    #expect(await transport.requests.count == 2 && sleeper.waits.isEmpty)          // and nothing was asked by itself
 }
 
 // MARK: - The menu's result alert

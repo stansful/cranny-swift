@@ -48,11 +48,8 @@ private let log = Log.logger(.updates)
         guard isConfigured else { log.info("update check off: no repository in this build"); return }
         tokens = [
             observe({ [settings] in settings[CoreSettings.checksForUpdates] }) { [weak self] _ in self?.scheduleAutomatic() },
-            observe({ [settings] in settings[CoreSettings.includesPrereleases] }) { [weak self] _ in
-                // The last answer came from the other endpoint: forget it and ask again shortly.
-                guard let self else { return }
-                if case .checking = self.state {} else { self.state = .idle }
-                self.scheduleAutomatic(after: 2)
+            observe({ [settings] in settings[CoreSettings.includesPrereleases] }) { [weak self] includes in
+                self?.prereleasesChanged(to: includes)
             },
         ]
         scheduleAutomatic()
@@ -80,19 +77,53 @@ private let log = Log.logger(.updates)
         let result = await task.value
         if inFlight == task { inFlight = nil }
 
+        let outcome: UpdateState
         switch result {
         case .success(let releases):
-            let evaluated = UpdateEvaluator.evaluate(releases, currentVersion: configuration.currentVersion,
-                                                     includesPrereleases: includesPrereleases, repository: repository)
-            state = evaluated
+            outcome = UpdateEvaluator.evaluate(releases, currentVersion: configuration.currentVersion,
+                                               includesPrereleases: includesPrereleases, repository: repository)
+            // GitHub answered: the next automatic check is a day away even if the answer can't be used.
             settings[CoreSettings.lastUpdateCheck] = now()
-            log.info("update check: \(String(describing: evaluated), privacy: .public)")
-            scheduleAutomatic()
         case .failure(let failure):
             log.error("update check failed: \(String(describing: failure), privacy: .public)")
-            if userInitiated || state == .checking { state = .failed(failure.message) }
+            outcome = .failed(failure.message)
         }
+        if case .failed(let reason) = outcome, !userInitiated, state != .checking {
+            // Nobody asked: keep what the user sees (an "Update available" survives a bad network or a bad answer).
+            log.error("automatic update check failed, keeping the last state: \(reason, privacy: .public)")
+        } else {
+            state = outcome
+            log.info("update check: \(String(describing: outcome), privacy: .public)")
+        }
+        if case .success = result { scheduleAutomatic() }
         return state
+    }
+
+    /// Settings ▸ General ▸ include pre-releases changed: the last answer came from the other endpoint.
+    /// Keeps what is still true without asking GitHub, and asks again shortly when checks are automatic
+    /// (with automatic checks off, nothing is requested until the user checks).
+    private func prereleasesChanged(to includesPrereleases: Bool) {
+        state = Self.state(state, afterPrereleasesChangedTo: includesPrereleases)
+        scheduleAutomatic(after: 2)
+    }
+
+    /// What survives a change of the pre-release setting:
+    /// - an available stable release is still newer than the running version on either channel;
+    /// - an available pre-release no longer counts once pre-releases are off;
+    /// - "up to date" stays true when pre-releases are turned off (the newest stable release is never newer than
+    ///   the newest release), but a newer pre-release may exist once they are on;
+    /// - a failure belonged to the other request. A running check finishes and reports as usual.
+    nonisolated static func state(_ state: UpdateState, afterPrereleasesChangedTo includesPrereleases: Bool) -> UpdateState {
+        switch state {
+        case .idle, .checking:
+            state
+        case .available(let version, _):
+            !includesPrereleases && SemanticVersion(version)?.prerelease != nil ? .idle : state
+        case .upToDate:
+            includesPrereleases ? .idle : state
+        case .failed:
+            .idle
+        }
     }
 
     /// Fire-and-forget form for buttons (`AppControl.checkForUpdates`).
