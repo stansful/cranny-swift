@@ -4,6 +4,8 @@
 // Stopping: cancelling the calling task sends SIGINT, the CLI's own Ctrl-C path. On macOS 27.0.1 `shortcuts`
 // handles SIGINT itself (a dispatch signal source; "Running was cancelled") and stops the run, while SIGTERM would
 // kill only the CLI process; SIGTERM follows if it has not exited after `interruptGrace`.
+// Time limit: `list` answers in ≈ 20 ms, so it is stopped after `listTimeout` (a stuck backend must not leave the
+// list loading until Cranny quits). `run` has none: a shortcut may legitimately run for minutes.
 // The CLI needs no permission of its own (R3 §6); a shortcut's actions may ask on behalf of Shortcuts. Shortcuts
 // run by identifier so a rename in Shortcuts.app keeps working.
 import CrannyCore
@@ -30,12 +32,17 @@ nonisolated struct ShortcutsCLI: Sendable {
 
     static let defaultExecutable = "/usr/bin/shortcuts"
 
+    /// How long `list` may take before it is stopped and reported as `listFailed`.
+    static let defaultListTimeout: Duration = .seconds(10)
+
     let executable: String
+    let listTimeout: Duration
     private let runner: Runner
 
-    init(executable: String = Self.defaultExecutable,
+    init(executable: String = Self.defaultExecutable, listTimeout: Duration = Self.defaultListTimeout,
          runner: @escaping Runner = Self.processRunner) {
         self.executable = executable
+        self.listTimeout = listTimeout
         self.runner = runner
     }
 
@@ -48,9 +55,10 @@ nonisolated struct ShortcutsCLI: Sendable {
         return CLIOutput(status: output.status, stdout: output.stdout, stderr: output.stderr)
     }
 
-    /// Every shortcut in Shortcuts.app, in its order (≈ 20 ms on macOS 27).
+    /// Every shortcut in Shortcuts.app, in its order (≈ 20 ms on macOS 27). Throws `listFailed` when the CLI has
+    /// not answered within `listTimeout`; it is then stopped like a cancelled run, without waiting for it to exit.
     func list() async throws -> [ShortcutInfo] {
-        let output = try await execute(["list", "--show-identifiers"], failure: .listFailed)
+        let output = try await execute(["list", "--show-identifiers"], failure: .listFailed, timeout: listTimeout)
         return ShortcutListParser.parse(output.stdout)
     }
 
@@ -60,13 +68,20 @@ nonisolated struct ShortcutsCLI: Sendable {
         _ = try await execute(["run", id], failure: .shortcutFailed)
     }
 
-    private func execute(_ arguments: [String], failure: QuickAppsError) async throws -> CLIOutput {
+    private func execute(_ arguments: [String], failure: QuickAppsError, timeout: Duration? = nil) async throws -> CLIOutput {
         try Task.checkCancellation()
         let output: CLIOutput
         do {
-            output = try await runner(executable, arguments)
+            if let timeout {
+                output = try await withDeadline(timeout) { [runner, executable] in try await runner(executable, arguments) }
+            } else {
+                output = try await runner(executable, arguments)
+            }
         } catch is CancellationError {
             throw CancellationError()
+        } catch is DeadlineExceeded {
+            log.error("shortcuts \(arguments.first ?? "", privacy: .public) did not answer within \(timeout ?? .zero, privacy: .public); stopped")
+            throw failure
         } catch {
             log.error("shortcuts \(arguments.first ?? "", privacy: .public) could not start: \(error.localizedDescription, privacy: .public)")
             throw QuickAppsError.shortcutsUnavailable

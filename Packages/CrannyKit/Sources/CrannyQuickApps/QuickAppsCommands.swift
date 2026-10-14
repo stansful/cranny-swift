@@ -38,6 +38,8 @@ final class QuickAppsCommands: PaletteCommandProvider {
             PaletteCommand(id: CommandID("quickapps.open.\(app.bundleID)"),
                            title: String(localized: "Open \(app.name)", bundle: .module, comment: "Command palette: open a quick app (app name)"),
                            kind: String(localized: "App", bundle: .module, comment: "Quick Apps: an app (⌘K result kind, Settings row subtitle)"),
+                           // ⌘K draws SF Symbols only: §14.1's placeholder stands in for the app's icon. The widget's
+                           // own glyph is `QuickAppsModule.symbol`.
                            symbol: "app.dashed", keywords: [app.bundleID],
                            shortcut: CommandMatcher.optionDigit(index)) { [model] in model.activate(tile) }
         case .shortcut(let entry):

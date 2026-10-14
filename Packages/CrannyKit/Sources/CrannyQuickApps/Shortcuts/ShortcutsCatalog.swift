@@ -2,6 +2,8 @@
 //
 // Energy: nothing is read at launch. The list is refreshed when someone needs it — the Settings pane appears,
 // the add menu opens, the ⌘K palette opens — and only if the last read is older than the caller's limit.
+// A read is bounded by the CLI's `listTimeout`: a stuck `shortcuts list` ends as `.failed`, and the next caller
+// reads again instead of waiting behind it.
 import CrannyCore
 import Foundation
 import Observation
@@ -31,22 +33,31 @@ import Observation
     /// Name of a shortcut in the last list, nil if it is not there (or the list was never read).
     func info(for id: String) -> ShortcutInfo? { shortcuts.first { $0.id == id } }
 
-    /// Reads the list unless it is younger than `maximumAge` seconds. Concurrent callers share one read.
+    /// Reads the list unless the last read succeeded less than `maximumAge` seconds ago (after a failure it always
+    /// reads again). Concurrent callers share one read.
     func refresh(maximumAge: TimeInterval = 0) async {
         if let inFlight { return await inFlight.value }
-        if let loadedAt, now().timeIntervalSince(loadedAt) < maximumAge { return }
+        if state == .loaded, let loadedAt, now().timeIntervalSince(loadedAt) < maximumAge { return }
         let task = Task { await load() }
         inFlight = task
         await task.value
         inFlight = nil
     }
 
+    /// Stops a read in progress (the module stops): the CLI is interrupted, the state and the last list are kept.
+    func cancel() {
+        inFlight?.cancel()
+    }
+
     private func load() async {
+        let previous = state
         state = .loading
         do {
             shortcuts = try await cli.list()
             loadedAt = now()
             state = .loaded
+        } catch is CancellationError {
+            state = previous
         } catch let error as QuickAppsError {
             state = .failed(error)
         } catch {

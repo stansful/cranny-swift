@@ -49,12 +49,67 @@ nonisolated final class FakeCLI: @unchecked Sendable {   // `calls` is guarded b
 
     var calls: [[String]] { lock.withLock { recorded } }
 
-    var cli: ShortcutsCLI {
-        ShortcutsCLI(executable: "/fake/shortcuts") { [self] _, arguments in
+    var cli: ShortcutsCLI { cli(listTimeout: ShortcutsCLI.defaultListTimeout) }
+
+    func cli(listTimeout: Duration) -> ShortcutsCLI {
+        ShortcutsCLI(executable: "/fake/shortcuts", listTimeout: listTimeout) { [self] _, arguments in
             lock.withLock { recorded.append(arguments) }
             return try await answer(arguments)
         }
     }
+}
+
+/// A wait that ignores cancellation until `open()`: a CLI that hangs and does not react to its signals. Tests open
+/// it when they finish, and it opens by itself after `failSafe`, so a regression fails a test instead of hanging it.
+nonisolated final class Gate: @unchecked Sendable {   // `waiters`, `opened` and `cancelled` are guarded by `lock`
+    static let failSafe: Duration = .seconds(15)
+    private let lock = NSLock()
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+    private var opened = false
+    private var cancelled = false
+
+    init() {
+        Task { [weak self] in
+            try? await Task.sleep(for: Gate.failSafe)
+            self?.open()
+        }
+    }
+
+    func wait() async {
+        await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                let now = lock.withLock { () -> Bool in
+                    if !opened { waiters.append(continuation) }
+                    return opened
+                }
+                if now { continuation.resume() }
+            }
+        } onCancel: {
+            lock.withLock { cancelled = true }
+        }
+    }
+
+    /// Whether a waiting task was cancelled (for the live runner: the CLI was interrupted).
+    var sawCancellation: Bool { lock.withLock { cancelled } }
+    /// Still closed: whoever returned did not wait for the stuck operation.
+    var isOpen: Bool { lock.withLock { opened } }
+
+    func open() {
+        let pending = lock.withLock { () -> [CheckedContinuation<Void, Never>] in
+            opened = true
+            defer { waiters = [] }
+            return waiters
+        }
+        for waiter in pending { waiter.resume() }
+    }
+}
+
+/// A thread-safe counter: `next()` returns 1, 2, 3, …
+nonisolated final class Counter: @unchecked Sendable {   // `value` is guarded by `lock`
+    private let lock = NSLock()
+    private var value = 0
+    func next() -> Int { lock.withLock { value += 1; return value } }
+    var count: Int { lock.withLock { value } }
 }
 
 /// Launches nothing; remembers what it was asked to do.
