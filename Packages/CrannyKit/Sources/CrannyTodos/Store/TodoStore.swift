@@ -1,5 +1,6 @@
 // CrannyTodos/Store/TodoStore.swift — the list in memory plus its persistence: loaded once on launch,
-// saved 0.5 s after the last edit (debounced, off the main actor) and flushed synchronously on quit.
+// saved 0.5 s after the last edit (debounced, off the main actor, at utility priority: nobody waits for it) and
+// flushed synchronously on quit.
 import CrannyCore
 import Foundation
 import Observation
@@ -77,7 +78,14 @@ private let log = Log.logger(.todos)
 
     private func markDirty() {
         revision += 1
-        saveDebouncer.schedule { [weak self] in await self?.save() }
+        saveDebouncer.schedule { [weak self] in self?.saveInBackground() }
+    }
+
+    /// The debounced save: `save()` at utility priority, so encoding and writing the file need no performance cores.
+    /// Started, not awaited (awaiting it from the main actor would raise it back to the main thread's priority); the
+    /// revision check keeps a late write from replacing a newer one.
+    private func saveInBackground() {
+        Task(priority: .utility) { [weak self] in await self?.save() }
     }
 
     // MARK: Saving

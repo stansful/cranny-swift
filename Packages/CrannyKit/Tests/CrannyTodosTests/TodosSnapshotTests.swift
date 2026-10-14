@@ -98,11 +98,14 @@ struct TodosSnapshotTests {
         let metrics = TodoMetrics(textSize: .standard)
         let rows = VStack(alignment: .leading, spacing: 0) {
             TodoRow(todo: model.items[0], model: model, metrics: metrics, checkStyle: .draw, isReadOnly: false,
-                    redacts: false, showsFocusRing: true, onDelete: { _ in })
+                    redacts: false, showsFocusRing: true,
+                    canMoveUp: true, canMoveDown: true)
             TodoRow(todo: model.items[2], model: model, metrics: metrics, checkStyle: .draw, isReadOnly: false,
-                    redacts: false, showsFocusRing: false, onDelete: { _ in })
+                    redacts: false, showsFocusRing: false,
+                    canMoveUp: true, canMoveDown: true)
             TodoRow(todo: model.items[1], model: model, metrics: metrics, checkStyle: .draw, isReadOnly: false,
-                    redacts: true, showsFocusRing: false, onDelete: { _ in })
+                    redacts: true, showsFocusRing: false,
+                    canMoveUp: true, canMoveDown: true)
             NewTodoRow(metrics: metrics, showsFocusRing: true) {}
         }
         try await write(rows.padding(.horizontal, Space.s).crannyCard(cells: 3).padding(Space.l).background(Color.black)
@@ -139,9 +142,11 @@ struct TodosSnapshotTests {
         model.beginEditing(id)
         let content = VStack(alignment: .leading, spacing: 0) {
             TodoRow(todo: model.items[1], model: model, metrics: metrics, checkStyle: .draw, isReadOnly: false,
-                    redacts: false, showsFocusRing: false, onDelete: { _ in })
+                    redacts: false, showsFocusRing: false,
+                    canMoveUp: true, canMoveDown: true)
             TodoRow(todo: resting.items[0], model: resting, metrics: metrics, checkStyle: .draw, isReadOnly: false,
-                    redacts: false, showsFocusRing: false, onDelete: { _ in })
+                    redacts: false, showsFocusRing: false,
+                    canMoveUp: true, canMoveDown: true)
         }
         .frame(width: 160)
         .padding(Space.l)

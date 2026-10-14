@@ -164,7 +164,7 @@ struct TodoStoreTests {
         await store.load()
         store.update { $0.insert(Todo(title: "a"), after: nil) }
         store.update { $0.insert(Todo(title: "b"), after: nil) }
-        for _ in 0..<100 {
+        for _ in 0..<500 {                                      // up to 10 s: the save runs at utility priority
             if case .loaded(let document) = try storage.loadNow(), document.items.count == 2 { return }
             try await Task.sleep(for: .milliseconds(20))
         }

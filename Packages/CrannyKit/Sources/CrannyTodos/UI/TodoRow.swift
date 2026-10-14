@@ -1,11 +1,14 @@
 // CrannyTodos/UI/TodoRow.swift — one 22-pt row: the circle + the title in `body` (DESIGN.md §7.6). Checked:
 // struck through and tertiary until it collapses. Click the circle to check, the title to edit; the context
 // menu and VoiceOver actions cover the rest. For VoiceOver the row is one toggle named by its text (§10.7).
+// Every input is a value (no closures) and the menu reads no list state, so a keystroke in one row re-renders that
+// row only: SwiftUI skips the rows whose inputs did not change.
 import CrannyCore
 import SwiftUI
 
 struct TodoRow: View {
     @Environment(\.cranny) private var theme
+    @Environment(\.undoManager) private var undoManager
     let todo: Todo
     let model: TodosModel
     let metrics: TodoMetrics
@@ -15,7 +18,9 @@ struct TodoRow: View {
     let redacts: Bool
     /// Keyboard selection inside a focused list: draws the focus ring.
     let showsFocusRing: Bool
-    let onDelete: (Todo.ID) -> Void
+    /// Whether Move up / Move down can move it (it is not the first / last visible row).
+    let canMoveUp: Bool
+    let canMoveDown: Bool
 
     private var isEditing: Bool { model.editingID == todo.id && !isReadOnly }
 
@@ -33,7 +38,7 @@ struct TodoRow: View {
             } else {
                 // The toggle semantics sit on the title, not the row: wrapping the row would swap its subtree
                 // when editing starts and re-create the editor mid-focus.
-                title.modifier(TodoRowAccessibility(todo: todo, model: model, isActive: !isReadOnly, onDelete: onDelete))
+                title.modifier(TodoRowAccessibility(todo: todo, model: model, isActive: !isReadOnly, onDelete: delete))
             }
         }
         .frame(height: metrics.rowHeight)
@@ -72,10 +77,16 @@ struct TodoRow: View {
         Button(todo.isDone ? TodosStrings.markNotDone : TodosStrings.markDone) { model.toggle(todo.id) }
             .disabled(todo.title.isBlank)
         Divider()
-        Button(TodosStrings.moveUp) { model.move(todo.id, .up) }.disabled(!model.canMove(todo.id, .up))
-        Button(TodosStrings.moveDown) { model.move(todo.id, .down) }.disabled(!model.canMove(todo.id, .down))
+        Button(TodosStrings.moveUp) { model.move(todo.id, .up) }.disabled(!canMoveUp)
+        Button(TodosStrings.moveDown) { model.move(todo.id, .down) }.disabled(!canMoveDown)
         Divider()
-        Button(TodosStrings.delete, role: .destructive) { onDelete(todo.id) }
+        Button(TodosStrings.delete, role: .destructive) { delete() }
+    }
+
+    /// Delete from the menu or VoiceOver, with Undo on the window's undo manager (as ⌘⌫ in the list).
+    private func delete() {
+        guard let removal = model.delete(todo.id) else { return }
+        TodoUndo.registerRestore([removal], model: model, undoManager: undoManager, actionName: TodosStrings.delete)
     }
 }
 
@@ -97,7 +108,7 @@ private struct TodoRowAccessibility: ViewModifier {
     let todo: Todo
     let model: TodosModel
     let isActive: Bool
-    let onDelete: (Todo.ID) -> Void
+    let onDelete: () -> Void
 
     func body(content: Content) -> some View {
         if isActive {
@@ -111,7 +122,7 @@ private struct TodoRowAccessibility: ViewModifier {
                 .accessibilityAction(named: Text(verbatim: TodosStrings.edit)) { model.beginEditing(todo.id) }
                 .accessibilityAction(named: Text(verbatim: TodosStrings.moveUp)) { model.move(todo.id, .up) }
                 .accessibilityAction(named: Text(verbatim: TodosStrings.moveDown)) { model.move(todo.id, .down) }
-                .accessibilityAction(named: Text(verbatim: TodosStrings.delete)) { onDelete(todo.id) }
+                .accessibilityAction(named: Text(verbatim: TodosStrings.delete)) { onDelete() }
         } else {
             content
         }
@@ -124,7 +135,8 @@ private struct TodoRowAccessibility: ViewModifier {
     VStack(spacing: 0) {
         ForEach(model.items) { todo in
             TodoRow(todo: todo, model: model, metrics: metrics, checkStyle: .draw, isReadOnly: false, redacts: false,
-                    showsFocusRing: todo.id == model.items.first?.id, onDelete: { _ in })
+                    showsFocusRing: todo.id == model.items.first?.id,
+                    canMoveUp: todo.id != model.items.first?.id, canMoveDown: todo.id != model.items.last?.id)
         }
     }
     .frame(width: 160)

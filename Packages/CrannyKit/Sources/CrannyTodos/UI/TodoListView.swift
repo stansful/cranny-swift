@@ -72,6 +72,9 @@ struct TodoListView<Header: View>: View {
 
     private var rows: some View {
         let overflows = contentHeight > viewportHeight + 0.5
+        // The rows' Move up / Move down state, from the shown rows once (live, `items` are the visible ones, so this is
+        // `TodosModel.canMove`); values, not closures, so unchanged rows are not rendered again.
+        let first = items.first?.id, last = items.last?.id
         return ScrollViewReader { proxy in
             ScrollView(.vertical) {
                 LazyVStack(alignment: .leading, spacing: 0) {
@@ -79,7 +82,7 @@ struct TodoListView<Header: View>: View {
                         TodoRow(todo: todo, model: model, metrics: metrics, checkStyle: checkStyle,
                                 isReadOnly: isReadOnly, redacts: redacts,
                                 showsFocusRing: isListFocused && selection == .item(todo.id),
-                                onDelete: delete)
+                                canMoveUp: todo.id != first, canMoveDown: todo.id != last)
                             .id(TodoSelection.item(todo.id))
                             .transition(.opacity)
                     }
