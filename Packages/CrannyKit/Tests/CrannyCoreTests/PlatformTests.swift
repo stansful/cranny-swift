@@ -41,6 +41,30 @@ private struct Document: Codable, Equatable, Sendable {
     await #expect(throws: ProcessRunError.self) { try await ProcessRunner.run("/nonexistent/tool", []) }
 }
 
+/// A tool started at a lower quality of service (the Tray's Zip and Unzip) runs and reports as usual.
+@Test func processRunnerRunsAToolAtTheGivenQualityOfService() async throws {
+    let out = try await ProcessRunner.run("/bin/echo", ["utility"], qualityOfService: .utility)
+    #expect(out.succeeded && String(decoding: out.stdout, as: UTF8.self) == "utility\n")
+    let interruptible = try await ProcessRunner.run("/bin/echo", ["background"], interruptGrace: .seconds(1),
+                                                    qualityOfService: .background)
+    #expect(interruptible.succeeded && String(decoding: interruptible.stdout, as: UTF8.self) == "background\n")
+}
+
+// MARK: - Debounce
+
+/// What a debounced action saw (written on the main actor).
+@MainActor private final class DebounceProbe { var priority: TaskPriority? }
+
+/// A debouncer given a priority runs its action at it (background saves at utility, so the `@concurrent` work they
+/// await does too).
+@MainActor @Test func aDebouncedActionRunsAtItsDebouncersPriority() async {
+    let probe = DebounceProbe()
+    let debouncer = Debouncer(delay: .milliseconds(1), priority: .utility)
+    debouncer.schedule { probe.priority = Task.currentPriority }
+    for _ in 0..<3000 where probe.priority == nil { try? await Task.sleep(for: .milliseconds(10)) }
+    #expect(probe.priority == .utility)
+}
+
 @Test func processRunnerTerminatesOnCancellation() async throws {
     let start = Date()
     let task = Task { try await ProcessRunner.run("/bin/sleep", ["30"]) }

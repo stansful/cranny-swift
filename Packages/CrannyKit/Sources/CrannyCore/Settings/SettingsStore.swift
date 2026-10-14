@@ -14,12 +14,13 @@ public nonisolated struct SettingKey<Value: Codable & Sendable & Equatable>: Sen
     public let name: String
     /// The value until the user changes it.
     public let defaultValue: Value
+    /// "timer.presets". Built once here: every settings read, hash and `==` uses it, and keys are `static let`s.
+    public let id: String
     /// A key `"<module>.<name>"` with its default.
     public init(_ module: ModuleID, _ name: String, default defaultValue: Value) {
         self.module = module; self.name = name; self.defaultValue = defaultValue
+        id = "\(module.rawValue).\(name)"
     }
-    /// "timer.presets"
-    public var id: String { "\(module.rawValue).\(name)" }
     /// Keys are equal when their ids are.
     public static func == (a: Self, b: Self) -> Bool { a.id == b.id }
     /// Hashes the id.

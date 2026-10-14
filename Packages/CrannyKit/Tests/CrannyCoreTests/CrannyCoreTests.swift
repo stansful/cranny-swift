@@ -21,6 +21,16 @@ import Testing
     #expect(a[CoreSettings.activityPreferences].isEmpty)
 }
 
+/// A key's id is built once from its namespace and name (it is stored, not recomputed per read); keys are equal and
+/// hash alike exactly when their ids are, whatever their defaults.
+@Test func settingKeysAreIdentifiedByTheirID() {
+    let key = SettingKey<Int>(.timer, "presets", default: 1)
+    #expect(key.id == "timer.presets")
+    #expect(key == SettingKey<Int>(.timer, "presets", default: 2))
+    #expect(key != SettingKey<Int>(.timer, "preset", default: 1))
+    #expect(Set([key, SettingKey<Int>(.timer, "presets", default: 3)]).count == 1)
+}
+
 @Test func swipeCommitsOncePerSequence() {
     var t = SwipeTracker(axis: .horizontal)
     func s(_ p: SwipePhase, _ dx: CGFloat, _ ts: TimeInterval) -> ScrollSample {

@@ -61,15 +61,23 @@ public extension Duration {
 // MARK: - Debounce
 
 /// Trailing debounce on the main actor (note autosave, settings-driven rebuilds).
+///
+/// Energy: the action's task runs at `priority`; nil inherits the caller's (on the main actor: user-initiated). Pass
+/// `.utility` for work nobody waits on, such as background saves and notification-driven reloads: the `@concurrent`
+/// work the action awaits then runs at utility QoS (efficiency cores, throttled I/O).
 @MainActor public final class Debouncer {
     private let delay: Duration
+    private let priority: TaskPriority?
     private var task: Task<Void, Never>?
-    /// A debouncer that waits `delay` after the last `schedule(_:)`.
-    public init(delay: Duration) { self.delay = delay }
+    /// A debouncer that waits `delay` after the last `schedule(_:)`; its actions run at `priority` (nil: inherited).
+    public init(delay: Duration, priority: TaskPriority? = nil) {
+        self.delay = delay
+        self.priority = priority
+    }
     /// Runs `action` after the delay unless another `schedule` or `cancel` comes first.
     public func schedule(_ action: @escaping @MainActor () async -> Void) {
         task?.cancel()
-        task = Task { [delay] in
+        task = Task(priority: priority) { [delay] in
             try? await Task.sleep(for: delay)
             guard !Task.isCancelled else { return }
             await action()
@@ -99,35 +107,41 @@ public nonisolated enum ProcessRunError: Error, Sendable { case launchFailed(Str
 /// Runs a command-line tool off the main actor (`/usr/bin/shortcuts`, `/usr/bin/ditto`).
 /// Both pipes are drained while the process runs (no pipe-buffer deadlock). Cancelling the calling task
 /// terminates the process. Environment is minimal and explicit (never inherits PERL5LIB, DYLD_*).
+/// Energy: `qualityOfService` sets the tool's own QoS (`Process.qualityOfService`); nil leaves `Process`'s default.
+/// Pass `.utility` for batch work with a progress indicator that nobody waits on (the Tray's Zip and Unzip).
 public nonisolated enum ProcessRunner {
     /// Runs `executable` with `arguments` to completion; cancelling the task terminates it (SIGTERM).
     @concurrent
     public static func run(_ executable: String, _ arguments: [String],
                            environment: [String: String] = ["PATH": "/usr/bin:/bin", "LANG": "en_US.UTF-8"],
-                           currentDirectory: URL? = nil) async throws -> ProcessOutput {
+                           currentDirectory: URL? = nil,
+                           qualityOfService: QualityOfService? = nil) async throws -> ProcessOutput {
         try await launch(executable, arguments, environment: environment, currentDirectory: currentDirectory,
-                         interruptGrace: nil)
+                         interruptGrace: nil, qualityOfService: qualityOfService)
     }
 
-    /// Like `run(_:_:environment:currentDirectory:)`, but cancelling the task first sends SIGINT — the tool's own
-    /// Ctrl-C path, e.g. `shortcuts run` stops the shortcut it started — and SIGTERM only if the tool is still
-    /// running `interruptGrace` later.
+    /// Like `run(_:_:environment:currentDirectory:qualityOfService:)`, but cancelling the task first sends SIGINT —
+    /// the tool's own Ctrl-C path, e.g. `shortcuts run` stops the shortcut it started — and SIGTERM only if the tool
+    /// is still running `interruptGrace` later.
     @concurrent
     public static func run(_ executable: String, _ arguments: [String],
                            environment: [String: String] = ["PATH": "/usr/bin:/bin", "LANG": "en_US.UTF-8"],
-                           currentDirectory: URL? = nil, interruptGrace: Duration) async throws -> ProcessOutput {
+                           currentDirectory: URL? = nil, interruptGrace: Duration,
+                           qualityOfService: QualityOfService? = nil) async throws -> ProcessOutput {
         try await launch(executable, arguments, environment: environment, currentDirectory: currentDirectory,
-                         interruptGrace: interruptGrace)
+                         interruptGrace: interruptGrace, qualityOfService: qualityOfService)
     }
 
     @concurrent
     private static func launch(_ executable: String, _ arguments: [String], environment: [String: String],
-                               currentDirectory: URL?, interruptGrace: Duration?) async throws -> ProcessOutput {
+                               currentDirectory: URL?, interruptGrace: Duration?,
+                               qualityOfService: QualityOfService?) async throws -> ProcessOutput {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = arguments
         process.environment = environment
         if let currentDirectory { process.currentDirectoryURL = currentDirectory }
+        if let qualityOfService { process.qualityOfService = qualityOfService }
         let out = Pipe(), err = Pipe()
         process.standardOutput = out
         process.standardError = err

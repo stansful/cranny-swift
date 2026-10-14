@@ -8,6 +8,10 @@
 // caller's thread (the terminate hook, tests); the `…InBackground` variants are `@concurrent` (never on the main actor,
 // ARCHITECTURE.md §9.1). Writes are serialized by a lock that is held only for the compare-and-rename that publishes
 // a staged file, never for encoding or disk writes.
+//
+// Energy: the `…InBackground` variants run at the calling task's priority, and a task started on the main actor is
+// user-initiated. Start a save nobody waits on from a `.utility` task (`Task(priority: .utility)`, or
+// `Debouncer(delay:priority:)`), so encoding and the write run on efficiency cores with throttled I/O.
 import Darwin
 import Foundation
 import os
@@ -108,7 +112,7 @@ public nonisolated final class JSONDocumentFile<Value: Codable & Sendable>: Send
         return published
     }
 
-    /// `write(_:revision:)` off the main actor.
+    /// `write(_:revision:)` off the main actor, at the calling task's priority (see the file header).
     @discardableResult
     @concurrent public func writeInBackground(_ value: Value, revision: Int) async throws -> Bool {
         try write(value, revision: revision)
