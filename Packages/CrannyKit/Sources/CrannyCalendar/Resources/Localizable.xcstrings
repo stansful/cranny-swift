@@ -18157,7 +18157,7 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Είσοδος"
+            "value" : "Κλήση"
           }
         },
         "en" : {
@@ -18205,7 +18205,7 @@
         "hu" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Belépés"
+            "value" : "Csatl."
           }
         },
         "id" : {
@@ -18313,7 +18313,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Увійти"
+            "value" : "Зайти"
           }
         },
         "vi" : {
