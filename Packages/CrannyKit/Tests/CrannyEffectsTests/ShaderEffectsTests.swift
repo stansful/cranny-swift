@@ -7,7 +7,7 @@ import Testing
     #expect(Bundle.module.url(forResource: "default", withExtension: "metallib") != nil)
 }
 
-@Test(.enabled(if: MTLCreateSystemDefaultDevice() != nil)) func everyRequiredShaderLoads() {
+@Test(.enabled(if: AmbientGPU.device() != nil)) func everyRequiredShaderLoads() {
     #expect(ShaderEffects.unavailabilityReason() == nil)
     #expect(ShaderEffects.isAvailable)
 }

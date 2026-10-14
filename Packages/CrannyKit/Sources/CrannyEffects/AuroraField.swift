@@ -1,52 +1,69 @@
-// CrannyEffects/AuroraField.swift — the signature effect. The SwiftUI path below is DESIGN.md Appendix B.1
-// verbatim (the fallback specification); the Metal path is App. B.2's shader branch, placed in front of it
-// (ARCHITECTURE.md D13, DESIGN.md §5.6): `auroraField` in Shaders/Aurora.metal, chosen by
-// `ShaderEffects.usesShader(budget)`. Reduce Motion, Low Power / thermal and an unavailable library keep the
-// SwiftUI path; pausing (closed, occluded, full screen) only stops time and never switches paths.
-// One deviation from App. B.1: time comes from `EffectClock` instead of `TimelineView(.animation(…))`, whose
-// display-rate updates cost 11 % CPU on a 240 Hz display at any frame rate (see EffectClock, DESIGN.md §4.7).
-import SwiftUI
+// CrannyEffects/AuroraField.swift — the signature effect (DESIGN.md §5.3, §5.6, App. B).
+//
+// Paths (AmbientPath): the dedicated Metal layer runs `auroraFragment` (Aurora.metal) at the budget's frame rate
+// without invalidating SwiftUI; the SwiftUI stitchable `auroraField` is the in-SwiftUI shader path; the fallback
+// below is DESIGN.md Appendix B.1 (MeshGradient on macOS 15+, Canvas curtains on 14) and runs under Reduce Motion
+// (frozen on its resting frame), when shaders are unavailable, and as the static halo under Low Power / thermal.
+// Time comes from `EffectClock` or the layer's own clock, never from `TimelineView` (DESIGN.md §4.7).
 import CrannyCore
+import SwiftUI
 
 // MARK: - Aurora (signature effect)
 
-/// Curtains of content colour rising from the bottom edge of the open Nook. The top 40 % stays
-/// black so the band merges with the hardware. Alpha is clamped to `Glow.ambientAlphaCap`.
+/// Curtains of content colour rising from the bottom edge of the open panel. The top 40 % stays black so the
+/// band merges with the hardware. Alpha is clamped to `Glow.ambientAlphaCap(level)` on every path.
+/// - Rendering: a dedicated Metal layer whenever shaders run, which `ImageRenderer`, `cacheDisplay`,
+///   `drawingGroup()` and shader effects over the light cannot see; `ambientLightRendering(.inline)` keeps it in SwiftUI.
 public struct AuroraField: View, Animatable {
+    /// The light's colours (`glow1…3`); a change cross-fades when animated (`CrannyMotion.Kind.colorShift`).
     public var palette: AmbientPalette
+    /// Settings ▸ Appearance ▸ Ambient light; sets the alpha cap and the intensity.
     public var level: AmbienceLevel
-    public var energy: Double            // 0…1 (real RMS with permission, else 0)
+    /// 0…1: real audio RMS with permission, else 0. Louder audio lifts the light by up to 6 %.
+    public var energy: Double
+    /// Frame rate, pause and path (Reduce Motion, Low Power): DESIGN.md §4.7.
     public var budget: EffectBudget
+    /// The frame Reduce Motion freezes on.
     public var restingTime: Double = 7.3
-    @Environment(\.displayScale) private var displayScale
 
+    /// The aurora for `palette` at `level`, timed by `budget`.
     public init(palette: AmbientPalette, level: AmbienceLevel, energy: Double, budget: EffectBudget) {
         self.palette = palette; self.level = level; self.energy = energy; self.budget = budget
     }
 
+    /// Palette and energy, so a track change cross-fades the light.
     public nonisolated var animatableData: AnimatablePair<AmbientPalette.Vector, Double> {
         get { .init(palette.vector, energy) }
         set { palette.vector = newValue.first; energy = newValue.second }
     }
 
     public var body: some View {
-        let interval = budget.minimumInterval
-        EffectClock(minimumInterval: interval) { date in
-            let t = interval == nil ? restingTime : date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3600)
-            Group {
-                if budget.effective(.aurora) == .halo {
-                    RadialGradient(colors: [palette.glow1.color(cap * 0.6), .clear], center: .bottom, startRadius: 0, endRadius: 260)
-                } else if ShaderEffects.usesShader(budget) {
-                    auroraShader(palette: palette, level: level, energy: energy, time: t, displayScale: displayScale)
-                } else if #available(macOS 15.0, *) {
-                    mesh(t)
-                } else {
-                    curtains(t)
-                }
+        let budget = EffectsQA.adjusted(budget)
+        AmbientFieldView(effect: budget.effective(.aurora), palette: palette, level: level, energy: energy, fill: 1,
+                         budget: budget, restingTime: restingTime)
+    }
+}
+
+// MARK: - SwiftUI fallback (DESIGN.md App. B.1)
+
+/// MeshGradient 4 × 4 on macOS 15+, three blurred sine curtains on macOS 14. Two guards on top of App. B.1, so
+/// both paths keep the same promises: the band mask keeps the top 40 % at alpha 0 (the mesh's second row and the
+/// curtains' blur reach a little above it), and alpha never passes the cap (energy pulses, overlapping curtains).
+struct AuroraFallback: View {
+    var palette: AmbientPalette
+    var level: AmbienceLevel
+    var energy: Double
+    var time: Double
+
+    var body: some View {
+        Group {
+            if #available(macOS 15.0, *) {
+                mesh(time)
+            } else {
+                AuroraCurtains(palette: palette, level: level, energy: energy, time: time)
             }
         }
-        .allowsHitTesting(false)
-        .accessibilityHidden(true)
+        .mask { BandMask() }
     }
 
     private var cap: Double { Glow.ambientAlphaCap(level) }
@@ -63,7 +80,7 @@ public struct AuroraField: View, Animatable {
             [0.70 + drift(7, 0.08), 0.68 - swell + drift(8, 0.06)], [1, 0.74 - swell],
             [0, 1], [0.33 + drift(9, 0.04), 1], [0.67 + drift(10, 0.04), 1], [1, 1],
         ]
-        let a = cap * (0.8 + 0.2 * energy)
+        let a = cap * min(0.8 + 0.2 * energy, 1)
         let g = palette.glows, clear = Color.black.opacity(0)
         let colors: [Color] = [
             clear, clear, clear, clear,
@@ -74,17 +91,27 @@ public struct AuroraField: View, Animatable {
         return MeshGradient(width: 4, height: 4, points: points, colors: colors,
                             background: .clear, smoothsColors: true, colorSpace: .perceptual)
     }
+}
 
-    /// macOS 14: three blurred sine curtains, normal blending (keeps the audited alpha cap).
-    private func curtains(_ time: Double) -> some View {
-        let palette = palette, cap = cap, energy = energy
-        return Canvas(opaque: false, colorMode: .linear, rendersAsynchronously: true) { ctx, size in
+/// macOS 14: three blurred sine curtains, normal blending (App. B.1). They are drawn at alpha / cap and the layer at
+/// opacity cap, so overlapping curtains can never pass the audited alpha cap. Tuned against the shader like the mesh
+/// (ParityTests): the curtains start at 54 % of the height and stay lit down to the bottom edge, so peak (≈ 0.8 · cap)
+/// and the mean of each horizontal third match the shader.
+struct AuroraCurtains: View {
+    var palette: AmbientPalette
+    var level: AmbienceLevel
+    var energy: Double
+    var time: Double
+
+    var body: some View {
+        let palette = palette, energy = energy, time = time
+        Canvas(opaque: false, colorMode: .linear, rendersAsynchronously: true) { ctx, size in
             ctx.addFilter(.blur(radius: max(10, size.height * 0.10)))
             let w = Double(size.width), hgt = Double(size.height)
             for (i, c) in palette.glows.enumerated() {
                 let fi = Double(i)
                 let phase = time * (0.09 + 0.035 * fi) * 2 * .pi
-                let base = hgt * (0.62 + 0.10 * fi)
+                let base = hgt * (0.54 + 0.10 * fi)
                 let amp = hgt * (0.09 + 0.06 * energy) * (1 - 0.2 * fi)
                 var path = Path()
                 path.move(to: CGPoint(x: -40, y: hgt + 40))
@@ -96,32 +123,50 @@ public struct AuroraField: View, Animatable {
                     x += 10
                 }
                 path.addLine(to: CGPoint(x: w + 40, y: hgt + 40)); path.closeSubpath()
-                let a = cap * 0.6 * (0.8 + 0.2 * energy)
+                let a = 0.55 * min(0.8 + 0.2 * energy, 1)
                 let grad = Gradient(stops: [.init(color: c.color(0), location: 0), .init(color: c.color(a), location: 0.35),
-                                            .init(color: c.color(a * 0.25), location: 0.75), .init(color: c.color(0), location: 1)])
+                                            .init(color: c.color(a * 0.9), location: 0.75), .init(color: c.color(a * 0.8), location: 1)])
                 ctx.fill(path, with: .linearGradient(grad, startPoint: CGPoint(x: 0, y: base - amp * 1.6), endPoint: CGPoint(x: 0, y: hgt)))
             }
         }
+        .opacity(Glow.ambientAlphaCap(level))
     }
 }
 
-// MARK: - Shader branch (DESIGN.md App. B.2)
-
-/// The aurora through `auroraField` (Aurora.metal). Same inputs as the SwiftUI path; `time` comes from the
-/// effect's clock (`EffectClock`), so `EffectBudget` still decides the frame rate.
-@MainActor func auroraShader(palette: AmbientPalette, level: AmbienceLevel, energy: Double, time: Double,
-                  displayScale: CGFloat) -> some View {
-    Rectangle()
-        .colorEffect(ShaderEffects.library.auroraField(
-            .boundingRect, .float(time), .colorArray(palette.glows.map { $0.color(1) }),
-            .float(energy), .float(level.intensity), .float(Glow.ambientAlphaCap(level))))
-        .crannyDithered(scale: displayScale)
+/// Clear over the top 40 % (the band), opaque from 48 % down.
+struct BandMask: View {
+    var body: some View {
+        LinearGradient(stops: [.init(color: .clear, location: 0.40), .init(color: .white, location: 0.48)],
+                       startPoint: .top, endPoint: .bottom)
+    }
 }
 
+// MARK: - Previews
+
 #Preview("Aurora · subtle") {
-    AuroraField(palette: .afterglow, level: .subtle, energy: 0.3,
-                budget: EffectBudget(isOpen: true, onScreen: true, lowPower: false, fullScreenFront: false,
-                                     reduceMotion: false, onBattery: false))
+    AuroraField(palette: .afterglow, level: .subtle, energy: 0.3, budget: .previewRunning)
+        .frame(width: 656, height: 170)
+        .background(.black)
+        .crannyThemeRoot(CrannyTheme())
+}
+
+#Preview("Aurora · vivid, timer palette") {
+    AuroraField(palette: .timer, level: .vivid, energy: 0, budget: .previewRunning)
+        .frame(width: 656, height: 170)
+        .background(.black)
+        .crannyThemeRoot(CrannyTheme())
+}
+
+#Preview("Aurora · macOS 14 curtains") {
+    AuroraCurtains(palette: .afterglow, level: .subtle, energy: 0, time: 7.3)
+        .mask { BandMask() }
+        .frame(width: 656, height: 170)
+        .background(.black)
+        .crannyThemeRoot(CrannyTheme())
+}
+
+#Preview("Aurora · Reduce Motion (resting frame)") {
+    AuroraField(palette: .afterglow, level: .subtle, energy: 0, budget: .previewReduceMotion)
         .frame(width: 656, height: 170)
         .background(.black)
         .crannyThemeRoot(CrannyTheme())
