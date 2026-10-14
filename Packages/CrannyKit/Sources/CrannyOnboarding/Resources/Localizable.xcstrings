@@ -349,7 +349,7 @@
       }
     },
     "Hold ⌘ to see every shortcut" : {
-      "comment" : "Tutorial step 4; ⌘ is the Command key",
+      "comment" : "Tutorial step 4 while Cranny is open; ⌘ is the Command key",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -557,6 +557,28 @@
         }
       }
     },
+    "Open Cranny, pin it with the pin button, then press Esc" : {
+      "comment" : "Tutorial step 5 while Cranny is closed; followed by the Esc key cap",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откройте Cranny, закрепите его кнопкой с булавкой, затем нажмите Esc"
+          }
+        }
+      }
+    },
+    "Open Cranny, then hold ⌘ to see every shortcut" : {
+      "comment" : "Tutorial step 4 while Cranny is closed; ⌘ is the Command key; followed by the ⌘ key cap",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откройте Cranny и удерживайте ⌘, чтобы увидеть все сочетания клавиш"
+          }
+        }
+      }
+    },
     "Open at login" : {
       "comment" : "Welcome step 6: launch at login switch",
       "localizations" : {
@@ -657,7 +679,7 @@
       }
     },
     "Pin it with the pin button, then press Esc" : {
-      "comment" : "Tutorial step 5; followed by the Esc key cap",
+      "comment" : "Tutorial step 5 while Cranny is open; followed by the Esc key cap",
       "localizations" : {
         "ru" : {
           "stringUnit" : {

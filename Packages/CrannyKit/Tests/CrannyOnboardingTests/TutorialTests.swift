@@ -104,6 +104,23 @@ import Testing
         #expect(run.number == 3)
     }
 
+    @Test func theRunFollowsWhetherThePanelIsOpen() {
+        var run = TutorialRun(includesTrackSwipe: false)
+        #expect(!run.isOpen)                                  // a tour starts with the panel closed
+        _ = run.handle(.opened(.hover))
+        #expect(run.isOpen)
+        _ = run.handle(.pageChanged(.nook))
+        #expect(run.isOpen)
+        _ = run.handle(.closed)
+        #expect(!run.isOpen)
+        _ = run.handle(.opened(.programmatic))                // not the person's opening, but the panel is open
+        #expect(run.isOpen)
+    }
+
+    @Test func onlyTheKeyStepsNeedKeyboardFocus() {
+        #expect(TutorialStep.allCases.filter(\.needsKeyboardFocus) == [.holdCommand, .pinAndClose])
+    }
+
     @Test func jumpsClamp() {
         var run = TutorialRun(includesTrackSwipe: false)
         run.jump(to: 99)
@@ -318,6 +335,103 @@ import Testing
         #expect(!tutorial.isRunning)
         #expect(!presenter.isVisible)
         #expect(commands("").isEmpty)
+    }
+
+    // MARK: Keyboard focus for "Hold ⌘" and "Pin, then Esc"
+
+    private func keyRequests(_ registry: ModuleRegistry) -> Int {
+        registry.testNotch?.calls.filter { $0 == "key" }.count ?? 0
+    }
+
+    @Test func aHoverOpeningMakesThePanelKeyWhileHoldCommandWaits() async throws {
+        let registry = makeRegistry()
+        let notch = try #require(registry.testNotch)
+        let presenter = RecordingTipPresenter()
+        let tutorial = TutorialController(registry: registry, presenter: presenter)
+        tutorial.startForVisualQA(atStep: 3)                  // nothing plays: step 3 is "Hold ⌘"
+        #expect(presenter.shown.last?.text == TutorialController.holdCommandText(isOpen: false))   // "Open Cranny, then…"
+        #expect(keyRequests(registry) == 0)                   // closed: nothing to focus
+
+        notch.emit(.opened(.hover))                           // the default way in never makes the panel key
+        await settle { keyRequests(registry) == 1 }
+        #expect(keyRequests(registry) == 1)
+        #expect(presenter.shown.last?.text == TutorialController.holdCommandText(isOpen: true))
+        #expect(presenter.shown.last?.keys == "⌘")
+
+        notch.emit(.closed)
+        notch.emit(.opened(.click))                           // nor does a click: asked again on every opening
+        await settle { keyRequests(registry) == 2 }
+        #expect(keyRequests(registry) == 2)
+        notch.emit(.commandHintsShown)
+        #expect(presenter.shown.last?.mark == .done)
+        tutorial.stop()
+    }
+
+    @Test func pinningMakesThePanelKeySoEscReachesIt() async throws {
+        let registry = makeRegistry()
+        let notch = try #require(registry.testNotch)
+        let presenter = RecordingTipPresenter()
+        let tutorial = TutorialController(registry: registry, presenter: presenter, celebration: .milliseconds(1),
+                                          farewell: .seconds(60))
+        tutorial.startForVisualQA(atStep: 4)                  // "Pin, then Esc"
+        #expect(presenter.shown.last?.text == TutorialController.pinAndCloseText(isOpen: false))
+        notch.emit(.opened(.hover))
+        await settle { keyRequests(registry) == 1 }
+        #expect(presenter.shown.last?.text == TutorialController.pinAndCloseText(isOpen: true))
+        notch.emit(.pinned(true))                             // the pin button does not make the panel key
+        await settle { keyRequests(registry) == 2 }
+        #expect(keyRequests(registry) == 2)
+        notch.emit(.pinned(false))                            // unpinning asks nothing
+        await settle()
+        #expect(keyRequests(registry) == 2)
+        notch.emit(.pinned(true))
+        await settle { keyRequests(registry) == 3 }
+        notch.emit(.closed)                                   // Esc while pinned
+        await settle { registry.services.settings[CoreSettings.tutorialCompleted] }
+        #expect(registry.services.settings[CoreSettings.tutorialCompleted])
+        tutorial.stop()
+    }
+
+    @Test func otherStepsNeverTakeKeyboardFocus() async throws {
+        let registry = makeRegistry()
+        let notch = try #require(registry.testNotch)
+        let presenter = RecordingTipPresenter()
+        let tutorial = TutorialController(registry: registry, presenter: presenter, celebration: .seconds(60))
+        tutorial.start()                                      // "Rest the pointer on the notch"
+        notch.emit(.opened(.hover))                           // done: the ✓ shows for a minute
+        notch.emit(.pinned(true))
+        await settle()
+        #expect(keyRequests(registry) == 0)
+        tutorial.stop()
+
+        tutorial.startForVisualQA(atStep: 2)                  // "Drag any file onto the notch"
+        notch.emit(.opened(.drag))
+        notch.emit(.pinned(true))
+        await settle()
+        #expect(keyRequests(registry) == 0)
+        tutorial.stop()
+        notch.emit(.opened(.hover))                           // no tour: nothing asked
+        await settle()
+        #expect(keyRequests(registry) == 0)
+    }
+
+    @Test func holdCommandTakesFocusWhenItComesUpOnAnOpenPanel() async throws {
+        let registry = makeRegistry()
+        let notch = try #require(registry.testNotch)
+        let presenter = RecordingTipPresenter()
+        let tutorial = TutorialController(registry: registry, presenter: presenter, celebration: .milliseconds(1))
+        tutorial.startForVisualQA(atStep: 2)                  // "Drag any file onto the notch"
+        notch.emit(.opened(.drag))
+        notch.emit(.filesCaught(count: 1))                    // the panel stays open (e.g. pinned) into "Hold ⌘"
+        await settle { keyRequests(registry) == 1 }
+        #expect(keyRequests(registry) == 1)
+        #expect(presenter.shown.last?.text == TutorialController.holdCommandText(isOpen: true))
+        tutorial.stop()
+    }
+
+    @Test func theKeyStepsAskToOpenCrannyFirst() {
+        #expect(TutorialController.holdCommandText(isOpen: false) != TutorialController.holdCommandText(isOpen: true))
+        #expect(TutorialController.pinAndCloseText(isOpen: false) != TutorialController.pinAndCloseText(isOpen: true))
     }
 }
 
