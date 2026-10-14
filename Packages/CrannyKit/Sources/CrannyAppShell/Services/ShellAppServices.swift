@@ -31,7 +31,7 @@ import Foundation
         loginItems = LoginItemController(service: loginItemService)
         updates = UpdateChecker(settings: settings, configuration: updateConfiguration, paths: registry.services.paths,
                                 transport: updateTransport)
-        pause = PauseController(settings: settings)
+        pause = PauseController(settings: settings, confirm: { [weak overlay] in overlay?.confirmPause($0) })
         demo = DemoMode(settings: settings)
         displays = DisplayList(settings: settings)
         tutorial = TutorialController(registry: registry)

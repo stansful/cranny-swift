@@ -197,6 +197,9 @@ private func policy(_ selection: DisplaySelection, _ perDisplay: [DisplayKey: Di
     #expect(o.snapshotDirectory == "/tmp/shots" && o.snapshotTimes == [1, 3.5])
     #expect(MenuBarQA.Options(arguments: ["Cranny", "--qa-demo", "off"]).demo == false)
     #expect(MenuBarQA.Options(arguments: ["Cranny", "--qa-open-cranny", "2.5"]).openCranny == 2.5)
+    let pause = MenuBarQA.Options(arguments: ["Cranny", "--qa-pause", "untilTomorrow", "--qa-show-tutorial"])
+    #expect(pause.pause == .untilTomorrow && pause.showTutorial && !pause.isEmpty)
+    #expect(MenuBarQA.Options(arguments: ["Cranny", "--qa-pause", "forever"]).isEmpty)
     #expect(MenuBarQA.Options(arguments: ["Cranny", "--qa-menu", "sideways", "--qa-demo", "maybe"]).isEmpty)
     #expect(MenuBarQA.Options(arguments: ["Cranny", "--qa-state", "open"]).isEmpty)                // the shell's own flags
 }

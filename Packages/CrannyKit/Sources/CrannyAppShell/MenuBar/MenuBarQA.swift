@@ -1,5 +1,6 @@
 // CrannyAppShell/MenuBar/MenuBarQA.swift — DEBUG-only visual QA of the menu bar extra (launch arguments listed in
-// QAHooks.swift: --qa-menu, --qa-demo, --qa-update-check, --qa-snapshot). Opens the app's OWN status item menu with
+// QAHooks.swift: --qa-menu, --qa-demo, --qa-update-check, --qa-open-cranny, --qa-pause, --qa-show-tutorial,
+// --qa-snapshot). Opens the app's OWN status item menu with
 // `performClick` (an in-process action, no synthesized input), so the native menu can be captured by window id or
 // rendered in-process with --qa-snapshot (which also works while the displays sleep). A submenu cannot be opened
 // by code: its rows (title, ✓, disabled) are written to qa-trace.txt next to the snapshots instead.
@@ -16,6 +17,8 @@ private let log = Log.logger(.app)
 
 @MainActor enum MenuBarQA {
     nonisolated enum Target: String, CaseIterable, Sendable { case main, pause, showOn }
+    /// `--qa-pause`: a menu choice of Pause Live Activities ▸, or Resume (after a silent one-hour pause).
+    nonisolated enum PauseAction: String, CaseIterable, Sendable { case oneHour, untilTomorrow, untilResumed, resume }
 
     /// The menu bar's QA launch arguments (listed in QAHooks.swift).
     struct Options: Equatable {
@@ -24,12 +27,18 @@ private let log = Log.logger(.app)
         var updateCheck = false
         /// Seconds after launch at which the menu's "Open Cranny" action runs.
         var openCranny: Double?
+        /// The menu's Pause Live Activities choice (or Resume) to run after 1.5 s: its confirmation shows.
+        var pause: PauseAction?
+        /// Runs the menu's "Show Tutorial" after 1 s (the menu then offers Skip Tutorial).
+        var showTutorial = false
         var snapshotDirectory: String?
         var snapshotTimes: [Double] = [3]
 
         init(menu: Target? = nil, demo: Bool? = nil, updateCheck: Bool = false, openCranny: Double? = nil,
-             snapshotDirectory: String? = nil, snapshotTimes: [Double] = [3]) {
+             pause: PauseAction? = nil, showTutorial: Bool = false, snapshotDirectory: String? = nil,
+             snapshotTimes: [Double] = [3]) {
             self.menu = menu; self.demo = demo; self.updateCheck = updateCheck; self.openCranny = openCranny
+            self.pause = pause; self.showTutorial = showTutorial
             self.snapshotDirectory = snapshotDirectory; self.snapshotTimes = snapshotTimes
         }
 
@@ -40,12 +49,17 @@ private let log = Log.logger(.app)
                       demo: value("--qa-demo").flatMap { ["on": true, "off": false][$0] },
                       updateCheck: arguments.contains("--qa-update-check"),
                       openCranny: value("--qa-open-cranny").flatMap(Double.init),
+                      pause: value("--qa-pause").flatMap(PauseAction.init(rawValue:)),
+                      showTutorial: arguments.contains("--qa-show-tutorial"),
                       // A `.png` path is NotchUI's panel snapshot; only a directory is ours (`LaunchArguments`).
                       snapshotDirectory: parsed.qaSnapshotDirectory,
                       snapshotTimes: value("--qa-snapshot-at").map { $0.split(separator: ",").compactMap { Double($0) } } ?? [3])
         }
 
-        var isEmpty: Bool { menu == nil && demo == nil && !updateCheck && openCranny == nil && snapshotDirectory == nil }
+        var isEmpty: Bool {
+            menu == nil && demo == nil && !updateCheck && openCranny == nil && pause == nil && !showTutorial
+                && snapshotDirectory == nil
+        }
     }
 
     static func apply(_ options: Options, to appControl: any AppControl) {
@@ -74,6 +88,27 @@ private let log = Log.logger(.app)
                 let before = appControl.isPanelOpen
                 appControl.openPanel()                              // what the menu item does
                 trace("open cranny: panel open before \(before), request \(appControl.openRequest)")
+            }
+        }
+        if let action = options.pause, let pause = appControl.pause {
+            Task {
+                try? await Task.sleep(for: .seconds(1.5))
+                switch action {
+                case .oneHour: pause.pause(.oneHour)                // what the menu items do: each confirms itself
+                case .untilTomorrow: pause.pause(.untilTomorrow)
+                case .untilResumed: pause.pause(.untilResumed)
+                case .resume:
+                    pause.pause(.oneHour)
+                    pause.resume()
+                }
+                trace("pause \(action.rawValue): paused \(pause.isPaused)")
+            }
+        }
+        if options.showTutorial {
+            Task {
+                try? await Task.sleep(for: .seconds(1))
+                appControl.startTutorial()                          // what "Show Tutorial" does
+                trace("show tutorial: running \(appControl.isTutorialRunning)")
             }
         }
         if let menu = options.menu {

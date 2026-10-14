@@ -1,6 +1,8 @@
 // CrannyAppShell/Services/FlashActivity.swift — the shell-owned transient activity behind
 // `NotchControl.flash(symbol:label:)` (ARCHITECTURE.md §3.6, `ActivityID.flash`): a glyph and a short,
-// already-localized label (≤ 12 characters) in the wings for 2.6 s — onboarding "Hi", "Path copied".
+// already-localized label (≤ 12 characters) in the wings for 2.6 s — onboarding "Hi", "Path copied". The shell's
+// own confirmations (Pause Live Activities, Resume) add a `detail` sentence, drawn in the flash's peek row and read
+// by VoiceOver, and outlast the pause they confirm (`outlastsPause`).
 import CrannyCore
 import Foundation
 import Observation
@@ -19,16 +21,25 @@ import SwiftUI
     private(set) var expiresAt: Date?
     private(set) var symbol = "hand.wave.fill"
     private(set) var label = ""
+    /// The whole sentence of a shell confirmation ("Live Activities paused for 1 hour"): the peek row and VoiceOver
+    /// say it, the wings keep the short `label`. Nil for `NotchControl.flash`.
+    private(set) var detail: String?
+    /// A Pause Live Activities or Resume confirmation: shown (and peeked) although activities are paused, and not
+    /// hidden when the pause it confirms begins.
+    private(set) var outlastsPause = false
     @ObservationIgnored private var expiry: Task<Void, Never>?
 
     var slot: SlotWidth { label.count <= 4 ? .medium : .wide }
-    var accessibilityLabel: String { label }
+    var accessibilityLabel: String { detail ?? label }
 
     /// Shows (or refreshes) the flash; it hides itself after `duration` (one sleep, no polling).
-    /// Call through `OverlayCoordinator.showFlash`, which picks the display and drops it while paused.
-    func show(symbol: String, label: String, duration: TimeInterval) {
+    /// Call through `OverlayCoordinator.showFlash` (it picks the display and drops the flash while paused) or
+    /// `OverlayCoordinator.confirmPause`.
+    func show(symbol: String, label: String, detail: String? = nil, duration: TimeInterval, outlastsPause: Bool = false) {
         self.symbol = symbol
         self.label = label
+        self.detail = detail
+        self.outlastsPause = outlastsPause
         expiresAt = Date().addingTimeInterval(duration)
         revision += 1
         isActive = true
@@ -36,8 +47,7 @@ import SwiftUI
         expiry = Task { [weak self] in
             try? await Task.sleep(for: .seconds(duration))
             guard !Task.isCancelled else { return }
-            self?.isActive = false
-            self?.expiresAt = nil
+            self?.end()
         }
     }
 
@@ -45,18 +55,24 @@ import SwiftUI
     func hide() {
         expiry?.cancel()
         expiry = nil
+        end()
+    }
+
+    private func end() {
         isActive = false
         expiresAt = nil
+        outlastsPause = false
     }
 
     func compactLeading() -> some View { FlashGlyph(symbol: symbol) }
     func compactTrailing() -> some View { FlashLabel(label: label, style: .compact) }
     func minimal() -> some View { FlashGlyph(symbol: symbol) }
-    /// Peek anatomy (DESIGN.md §9.3): [visual 40] [title] — no controls.
+    /// Peek anatomy (DESIGN.md §9.3): [visual 40] [title] — no controls. A confirmation's sentence may wrap to a second
+    /// line (two `title` lines fit the 52-pt row, also at the larger text sizes).
     func peekRow() -> some View {
         HStack(spacing: Space.l) {
             FlashGlyph(symbol: symbol, inPeek: true)
-            FlashLabel(label: label, style: .title)
+            FlashLabel(label: detail ?? label, style: .title, lines: detail == nil ? 1 : 2)
             Spacer(minLength: 0)
         }
     }
@@ -82,8 +98,9 @@ private struct FlashLabel: View {
     @Environment(\.cranny) private var theme
     let label: String
     let style: CrannyTextStyle
+    var lines = 1
     var body: some View {
-        Text(verbatim: label).crannyFont(style).lineLimit(1).foregroundStyle(theme.palette.label)
+        Text(verbatim: label).crannyFont(style).lineLimit(lines).foregroundStyle(theme.palette.label)
     }
 }
 
@@ -93,6 +110,20 @@ private struct FlashLabel: View {
     return VStack(spacing: 16) {
         HStack(spacing: 12) { flash.compactLeading(); flash.compactTrailing() }
         flash.peekRow().frame(width: 360)
+    }
+    .padding()
+    .background(.black)
+    .crannyThemeRoot(CrannyTheme())
+}
+
+#Preview("Flash · pause confirmation") {
+    let flash = FlashActivity()
+    let confirmation = PauseConfirmation.paused(.untilTomorrow)
+    flash.show(symbol: confirmation.symbol, label: confirmation.label, detail: confirmation.message, duration: 3600,
+               outlastsPause: true)
+    return VStack(spacing: 16) {
+        HStack(spacing: 12) { flash.compactLeading(); flash.compactTrailing() }
+        flash.peekRow().frame(width: 356)
     }
     .padding()
     .background(.black)

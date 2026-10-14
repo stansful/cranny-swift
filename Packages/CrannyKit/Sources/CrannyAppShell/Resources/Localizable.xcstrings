@@ -255,12 +255,23 @@
       }
     },
     "Live Activities paused" : {
-      "comment" : "Menu bar: status line of a pause without an end",
+      "comment" : "Menu bar status line, notch and VoiceOver confirmation: a pause of Live Activities without an end",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Активности приостановлены"
+          }
+        }
+      }
+    },
+    "Live Activities paused for 1 hour" : {
+      "comment" : "Notch and VoiceOver: confirms Pause Live Activities for one hour (menu bar, shortcut or ⌘K)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Активности приостановлены на 1 час"
           }
         }
       }
@@ -288,12 +299,23 @@
       }
     },
     "Live Activities paused until tomorrow" : {
-      "comment" : "Menu bar: status line of a pause that ends at midnight",
+      "comment" : "Menu bar status line, notch and VoiceOver confirmation: a pause of Live Activities that ends at midnight",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Активности приостановлены до завтра"
+          }
+        }
+      }
+    },
+    "Live Activities resumed" : {
+      "comment" : "Notch and VoiceOver: confirms Resume Live Activities (menu bar, shortcut or ⌘K)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Активности возобновлены"
           }
         }
       }
@@ -342,6 +364,17 @@
         }
       }
     },
+    "Paused" : {
+      "comment" : "Notch: short word in the wings confirming that Live Activities were paused",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пауза"
+          }
+        }
+      }
+    },
     "Permissions" : {
       "comment" : "⌘K: Settings pane name (as in the Settings sidebar)",
       "localizations" : {
@@ -371,6 +404,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Возобновить активности"
+          }
+        }
+      }
+    },
+    "Resumed" : {
+      "comment" : "Notch: short word in the wings confirming that Live Activities were resumed",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Включены"
           }
         }
       }

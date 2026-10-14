@@ -45,12 +45,12 @@ struct PauseMenu: View {
             String(localized: "Live Activities paused until \(time(until))", bundle: .module,
                    comment: "Menu bar: status line of a pause that ends later today; the argument is a time, e.g. 15:42")
         case .untilTomorrow:
-            String(localized: "Live Activities paused until tomorrow", bundle: .module, comment: "Menu bar: status line of a pause that ends at midnight")
+            PauseConfirmation.paused(.untilTomorrow).message                   // the same sentence confirms the pause
         case .untilDate(let until):
             String(localized: "Live Activities paused until \(weekday(until)) at \(time(until))", bundle: .module,
                    comment: "Menu bar: status line of a pause that ends on another day; the arguments are a weekday and a time, e.g. Thu and 00:30")
         case .untilResumed:
-            String(localized: "Live Activities paused", bundle: .module, comment: "Menu bar: status line of a pause without an end")
+            PauseConfirmation.paused(.untilResumed).message
         }
     }
 
