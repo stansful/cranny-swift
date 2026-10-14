@@ -46,7 +46,7 @@ extension EnvironmentValues {
 }
 
 #Preview("Step header") {
-    StepHeader(title: "Look up. That's Cranny.",
+    StepHeader(title: "Look up. That’s Cranny.",
                message: "Your music, calendar, files and shortcuts live in the notch, one glance away.")
         .padding(WelcomeMetrics.inset)
         .frame(width: WelcomeMetrics.window.width)

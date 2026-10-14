@@ -24,7 +24,7 @@ struct ShortcutsSettingsPane: View {
                 .onMove { model.move(fromOffsets: $0, toOffset: $1) }
                 HStack(spacing: 12) {
                     Button { model.chooseApps() } label: {
-                        Text("Add App…", bundle: .module, comment: "Quick Apps: add an app with the open panel")
+                        Text("Add App…", bundle: .module, comment: "Settings ▸ Shortcuts: button that adds an app with the open panel")
                     }
                     Button { isPickingShortcuts = true } label: {
                         Text("Add Shortcut…", bundle: .module, comment: "Settings ▸ Shortcuts: opens the shortcut picker")

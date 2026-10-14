@@ -1,5 +1,5 @@
 // CrannyMedia/UI/MediaSettingsSections.swift — the larger rows of Settings ▸ Media: source status with
-// "Test media detection", the Live visualizer's permission row and why-sheet, and the Apple Events fallback with
+// "Test Media Detection", the Live visualizer's permission row and why-sheet, and the Apple Events fallback with
 // its per-player Automation rows. Permission prompts happen only on a click here (ARCHITECTURE.md §3.12).
 import CrannyCore
 import Foundation

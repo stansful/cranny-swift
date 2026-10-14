@@ -1,5 +1,5 @@
 // CrannyMedia/Health/AudioOutputMonitor.swift — "is any other app playing sound?" from Core Audio's process
-// objects (macOS 14+, no permission, R2 §5.4), for the blocked-bridge heuristic and "Test media detection".
+// objects (macOS 14+, no permission, R2 §5.4), for the blocked-bridge heuristic and "Test Media Detection".
 // Event-driven: listeners on the process list and on each process's `IsRunningOutput`; no polling.
 //
 // Threading: listener blocks run on `queue`, where the listener table lives; `onChange` is called there too.

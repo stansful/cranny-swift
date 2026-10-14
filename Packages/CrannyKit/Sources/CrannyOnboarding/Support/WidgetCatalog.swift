@@ -32,7 +32,7 @@ extension NookPreset {
     /// One short line under the name.
     var summary: String {
         switch self {
-        case .listener: String(localized: "Music, your day and favourite apps", bundle: .module, comment: "Welcome, layouts: Listener preset description")
+        case .listener: String(localized: "Music, your day and favorite apps", bundle: .module, comment: "Welcome, layouts: Listener preset description")
         case .maker: String(localized: "Notes, to-dos and a timer", bundle: .module, comment: "Welcome, layouts: Maker preset description")
         case .meetings: String(localized: "Your calendar, a camera check and a timer", bundle: .module, comment: "Welcome, layouts: Meetings preset description")
         case .minimal: String(localized: "Just music and the volume HUD", bundle: .module, comment: "Welcome, layouts: Minimal preset description")

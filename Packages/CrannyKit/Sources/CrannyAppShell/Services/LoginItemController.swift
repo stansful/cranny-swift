@@ -125,7 +125,7 @@ final class MainAppLoginItem: LoginItemService {
     }
 
     nonisolated static var refusedMessage: String {
-        String(localized: "macOS didn't add Cranny to your login items. Open Login Items in System Settings to add it.",
+        String(localized: "macOS didn’t add Cranny to your login items. Open Login Items in System Settings to add it.",
                bundle: .module, comment: "Settings ▸ General ▸ Launch at login: footnote when registration failed")
     }
 }

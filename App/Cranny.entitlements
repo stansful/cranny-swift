@@ -4,11 +4,12 @@
 <dict>
 	<!-- Not sandboxed: Accessibility event taps, MediaRemote bridge, global hotkeys need it. -->
 	<!-- Hardened-runtime resource access (required for TCC prompts under ENABLE_HARDENED_RUNTIME). -->
+	<!-- No device.audio-input: nothing records the microphone. The Live visualizer's Core Audio process tap is -->
+	<!-- System Audio Recording (TCC AudioCapture), which needs only NSAudioCaptureUsageDescription in Info.plist. -->
+	<!-- scripts/smoke.sh fails on any entitlement outside this list. -->
 	<key>com.apple.security.automation.apple-events</key>
 	<true/>
 	<key>com.apple.security.device.camera</key>
-	<true/>
-	<key>com.apple.security.device.audio-input</key>
 	<true/>
 	<key>com.apple.security.personal-information.calendars</key>
 	<true/>

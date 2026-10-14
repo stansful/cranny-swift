@@ -181,24 +181,6 @@
         }
       }
     },
-    "NSMicrophoneUsageDescription" : {
-      "comment" : "Privacy - Microphone Usage Description",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Cranny analyzes audio levels to animate the music visualizer. Audio is never recorded or stored."
-          }
-        },
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cranny анализирует уровень звука, чтобы анимировать визуализатор музыки. Звук никогда не записывается и не сохраняется."
-          }
-        }
-      }
-    },
     "NSNetworkVolumesUsageDescription" : {
       "comment" : "Privacy - Network Volumes Usage Description",
       "extractionState" : "extracted_with_value",

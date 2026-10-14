@@ -10,7 +10,7 @@ struct DoneStep: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.l) {
-            StepHeader(title: String(localized: "You're set", bundle: .module, comment: "Welcome step 6: headline"),
+            StepHeader(title: String(localized: "You’re set", bundle: .module, comment: "Welcome step 6: headline"),
                        message: String(localized: "Cranny waits at the top of your screen. A few keys worth knowing:",
                                        bundle: .module, comment: "Welcome step 6: sentence under the headline, before the cheat sheet"))
             CheatSheet(entries: flow.cheatSheet)
@@ -37,7 +37,7 @@ struct DoneStep: View {
     private var footnote: String {
         switch flow.loginItem {
         case .requiresApproval:
-            String(localized: "To open at login, allow Cranny in System Settings ▸ General ▸ Login Items.", bundle: .module,
+            String(localized: "To open at login, allow Cranny under Login Items in System Settings.", bundle: .module,
                    comment: "Welcome step 6: footnote when macOS waits for the login item to be approved")
         case .unavailable(let reason):
             reason

@@ -1,5 +1,5 @@
 // CrannyQuickApps/UI/ShortcutAppearanceEditor.swift — a shortcut's colour and glyph (Settings ▸ Shortcuts ▸
-// "Customise…"). Shortcuts.app exposes neither (R3 §6), so the user picks: Automatic (a hue hashed from the name)
+// "Customize…"). Shortcuts.app exposes neither (R3 §6), so the user picks: Automatic (a hue hashed from the name)
 // or one of twelve colours; the first letter or one of the curated symbols. Changes apply instantly (D14).
 import CrannyCore
 import SwiftUI
@@ -15,7 +15,7 @@ struct ShortcutAppearanceEditor: View {
                     ShortcutGlyph(entry: entry, size: 44)
                     Text(verbatim: entry.displayName).font(.headline).lineLimit(2)
                 }
-                Text("Colour", bundle: .module, comment: "Settings ▸ Shortcuts: colour (popover section, search keyword)")
+                Text("Color", bundle: .module, comment: "Settings ▸ Shortcuts: colour (popover section, search keyword)")
                     .font(.subheadline.weight(.semibold))
                 LazyVGrid(columns: Array(repeating: GridItem(.fixed(26), spacing: 8), count: 7), alignment: .leading, spacing: 8) {
                     swatch(nil, entry: entry)

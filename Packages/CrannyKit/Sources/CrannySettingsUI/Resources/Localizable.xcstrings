@@ -283,7 +283,7 @@
         }
       }
     },
-    "A soft halo in the album's colour behind the artwork." : {
+    "A soft halo in the album’s color behind the artwork." : {
       "comment" : "Settings ▸ Appearance: footnote of Album glow",
       "localizations" : {
         "ru" : {
@@ -327,7 +327,7 @@
         }
       }
     },
-    "Acknowledgements" : {
+    "Acknowledgments" : {
       "comment" : "Settings ▸ About: section header",
       "localizations" : {
         "ru" : {
@@ -525,17 +525,6 @@
         }
       }
     },
-    "Allow Cranny in System Settings ▸ Login Items to finish." : {
-      "comment" : "Settings ▸ General: footnote while the login item waits for approval",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Чтобы закончить, разрешите Cranny в Системных настройках ▸ Объекты входа."
-          }
-        }
-      }
-    },
     "Also set in Live Activities." : {
       "comment" : "Settings ▸ Gestures: footnote of Swipe up to dismiss",
       "localizations" : {
@@ -646,7 +635,7 @@
         }
       }
     },
-    "Behaviour" : {
+    "Behavior" : {
       "comment" : "Settings ▸ Live Activities: section header of the global rows",
       "localizations" : {
         "ru" : {
@@ -1823,7 +1812,7 @@
         }
       }
     },
-    "Light in the colour of what is playing or happening, only while Cranny is open." : {
+    "Light in the color of what is playing or happening, only while Cranny is open." : {
       "comment" : "Settings ▸ Appearance: footnote of Ambient light",
       "localizations" : {
         "ru" : {
@@ -1973,6 +1962,50 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Движение"
+          }
+        }
+      }
+    },
+    "Move Down" : {
+      "comment" : "Settings ▸ Live Activities: context menu item and VoiceOver action that lowers an activity",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ниже"
+          }
+        }
+      }
+    },
+    "Move Left" : {
+      "comment" : "Settings ▸ Layout & Widgets: move a widget or a page one place left",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Влево"
+          }
+        }
+      }
+    },
+    "Move Right" : {
+      "comment" : "Settings ▸ Layout & Widgets: move a widget or a page one place right",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вправо"
+          }
+        }
+      }
+    },
+    "Move Up" : {
+      "comment" : "Settings ▸ Live Activities: context menu item and VoiceOver action that raises an activity",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выше"
           }
         }
       }
@@ -3017,7 +3050,7 @@
         }
       }
     },
-    "Showed that Now Playing can still be read from a helper hosted in the system's Perl." : {
+    "Showed that Now Playing can still be read from a helper hosted in the system’s Perl." : {
       "comment" : "Settings ▸ About ▸ Acknowledgements: what Cranny learned from mediaremote-adapter",
       "localizations" : {
         "ru" : {
@@ -3270,7 +3303,7 @@
         }
       }
     },
-    "The accent colour chosen in System Settings." : {
+    "The accent color chosen in System Settings." : {
       "comment" : "Settings ▸ Appearance ▸ Accent: footnote for System",
       "localizations" : {
         "ru" : {
@@ -3281,7 +3314,7 @@
         }
       }
     },
-    "The album's colour while music plays, otherwise the system accent." : {
+    "The album’s color while music plays, otherwise the system accent." : {
       "comment" : "Settings ▸ Appearance ▸ Accent: footnote for Automatic",
       "localizations" : {
         "ru" : {
@@ -3360,6 +3393,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Таймер «%1$@»: осталось %2$@"
+          }
+        }
+      }
+    },
+    "To finish, allow Cranny under Login Items in System Settings." : {
+      "comment" : "Settings ▸ General: footnote while the login item waits for approval",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы закончить, разрешите Cranny в разделе «Объекты входа» в Системных настройках."
           }
         }
       }
@@ -3485,7 +3529,7 @@
         }
       }
     },
-    "Used for progress, rings and toggles. Alerts keep their own colours." : {
+    "Used for progress, rings and toggles. Alerts keep their own colors." : {
       "comment" : "Settings ▸ Appearance ▸ Accent: footnote for a swatch",
       "localizations" : {
         "ru" : {
@@ -3612,7 +3656,7 @@
         }
       }
     },
-    "White only. Alerts keep their own colours." : {
+    "White only. Alerts keep their own colors." : {
       "comment" : "Settings ▸ Appearance ▸ Accent: footnote for Monochrome",
       "localizations" : {
         "ru" : {
@@ -3788,7 +3832,7 @@
         }
       }
     },
-    "colour" : {
+    "color" : {
       "comment" : "Settings search: keyword for Accent",
       "localizations" : {
         "ru" : {
@@ -3964,7 +4008,7 @@
         }
       }
     },
-    "licence" : {
+    "license" : {
       "comment" : "Settings search: keyword for the licence and acknowledgements",
       "localizations" : {
         "ru" : {

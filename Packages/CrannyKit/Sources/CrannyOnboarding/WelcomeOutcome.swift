@@ -5,7 +5,7 @@ import Foundation
 /// The six steps of the Welcome window, in order (DESIGN.md §12.1). The gesture step is shown only when a
 /// trackpad is present.
 public nonisolated enum WelcomeStep: String, CaseIterable, Sendable {
-    /// 1 · "Look up. That's Cranny." The real notch says hi.
+    /// 1 · "Look up. That’s Cranny." The real notch says hi.
     case hello
     /// 2 · Hover, click or shortcut, detected on the real notch.
     case openIt

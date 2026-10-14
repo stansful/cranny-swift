@@ -144,7 +144,7 @@
         }
       }
     },
-    "GitHub couldn't be reached. Check your internet connection and try again." : {
+    "GitHub couldn’t be reached. Check your internet connection and try again." : {
       "comment" : "Update check: failure reason, network error",
       "localizations" : {
         "ru" : {
@@ -155,7 +155,7 @@
         }
       }
     },
-    "GitHub couldn't find Cranny's releases. Try again later." : {
+    "GitHub couldn’t find Cranny’s releases. Try again later." : {
       "comment" : "Update check: failure reason, HTTP 404 (the configured repository does not exist)",
       "localizations" : {
         "ru" : {
@@ -430,7 +430,7 @@
         }
       }
     },
-    "The release information couldn't be read." : {
+    "The release information couldn’t be read." : {
       "comment" : "Update check: failure reason, unexpected response",
       "localizations" : {
         "ru" : {
@@ -529,7 +529,7 @@
         }
       }
     },
-    "accent, colour, text size, motion, ambient light, notch fit, density" : {
+    "accent, color, text size, motion, ambient light, notch fit, density" : {
       "comment" : "⌘K: search words for Settings ▸ Appearance, comma-separated",
       "localizations" : {
         "ru" : {
@@ -569,6 +569,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "macOS не добавила Cranny в объекты входа. Добавьте его в разделе «Объекты входа» в Системных настройках."
+          }
+        }
+      }
+    },
+    "macOS didn’t add Cranny to your login items. Open Login Items in System Settings to add it." : {
+      "comment" : "Settings ▸ General ▸ Launch at login: footnote when registration failed",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS не добавил Cranny в объекты входа. Добавьте его в разделе «Объекты входа» в Системных настройках."
           }
         }
       }
@@ -650,7 +661,7 @@
         }
       }
     },
-    "version, updates, licence, acknowledgements" : {
+    "version, updates, license, acknowledgments" : {
       "comment" : "⌘K: search words for Settings ▸ About, comma-separated",
       "localizations" : {
         "ru" : {

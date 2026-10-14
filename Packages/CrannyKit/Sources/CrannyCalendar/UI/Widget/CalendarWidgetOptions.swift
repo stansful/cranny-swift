@@ -12,7 +12,7 @@ struct CalendarWidgetOptions: View {
         Form {
             DayRangeRows(settings: settings)
             Toggle(isOn: settings.binding(CalendarSettings.showsPastEventsToday)) {
-                Text("Show today's past events", bundle: .module, comment: "Calendar options: keep ended events in today's list")
+                Text("Show today’s past events", bundle: .module, comment: "Calendar options: keep ended events in today's list")
             }
             .toggleStyle(.switch)
             .controlSize(.small)

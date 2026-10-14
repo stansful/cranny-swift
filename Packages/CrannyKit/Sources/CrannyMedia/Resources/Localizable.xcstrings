@@ -100,28 +100,6 @@
         }
       }
     },
-    "Can't see the player" : {
-      "comment" : "Settings ▸ Media: source status when sound plays but nothing is detected",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Не видит плеер"
-          }
-        }
-      }
-    },
-    "Can't start" : {
-      "comment" : "Settings ▸ Media: System Audio Recording status for the Live visualizer",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Не запускается"
-          }
-        }
-      }
-    },
     "Cancel" : {
       "comment" : "Settings ▸ Media: why-sheet button",
       "localizations" : {
@@ -133,7 +111,29 @@
         }
       }
     },
-    "Choose an app…" : {
+    "Can’t see the player" : {
+      "comment" : "Settings ▸ Media: source status when sound plays but nothing is detected",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не видит плеер"
+          }
+        }
+      }
+    },
+    "Can’t start" : {
+      "comment" : "Settings ▸ Media: System Audio Recording status for the Live visualizer",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не запускается"
+          }
+        }
+      }
+    },
+    "Choose App…" : {
       "comment" : "Settings ▸ Media ▸ Ignore apps: menu item that opens a file picker",
       "localizations" : {
         "ru" : {
@@ -155,7 +155,7 @@
         }
       }
     },
-    "Cranny can't read what's playing right now." : {
+    "Cranny can’t read what’s playing right now." : {
       "comment" : "Media: error line when no media source works (widget and Settings ▸ Media)",
       "localizations" : {
         "ru" : {
@@ -166,7 +166,7 @@
         }
       }
     },
-    "Cranny isn't allowed to control this player." : {
+    "Cranny isn’t allowed to control this player." : {
       "comment" : "Settings ▸ Media: last error, Automation permission denied",
       "localizations" : {
         "ru" : {
@@ -575,7 +575,7 @@
         }
       }
     },
-    "Read and control Music or Spotify when the media helper can't. Only if you turn on the Apple Events fallback." : {
+    "Read and control Music or Spotify when the media helper can’t. Only if you turn on the Apple Events fallback." : {
       "comment" : "Permissions pane: why Media may ask for Automation",
       "localizations" : {
         "ru" : {
@@ -806,7 +806,7 @@
         }
       }
     },
-    "Test media detection" : {
+    "Test Media Detection" : {
       "comment" : "Settings ▸ Media: button",
       "localizations" : {
         "ru" : {
@@ -861,7 +861,7 @@
         }
       }
     },
-    "The media helper didn't answer." : {
+    "The media helper didn’t answer." : {
       "comment" : "Settings ▸ Media: test result",
       "localizations" : {
         "ru" : {
@@ -872,7 +872,7 @@
         }
       }
     },
-    "The media helper isn't running." : {
+    "The media helper isn’t running." : {
       "comment" : "Settings ▸ Media: test result",
       "localizations" : {
         "ru" : {
@@ -916,7 +916,7 @@
         }
       }
     },
-    "Used only when the media helper can't run. macOS asks once per app whether Cranny may control it." : {
+    "Used only when the media helper can’t run. macOS asks once per app whether Cranny may control it." : {
       "comment" : "Settings ▸ Media: footnote under the Apple Events fallback",
       "localizations" : {
         "ru" : {
@@ -938,7 +938,7 @@
         }
       }
     },
-    "What's playing, with controls" : {
+    "What’s playing, with controls" : {
       "comment" : "Widget library: Media description",
       "localizations" : {
         "ru" : {

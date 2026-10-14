@@ -9,7 +9,7 @@ nonisolated enum CalendarError: Error, LocalizedError, Equatable, Sendable {
     var errorDescription: String? {
         switch self {
         case .unavailable:
-            String(localized: "Couldn't read your calendars", bundle: .module, comment: "Calendar widget: error state, one line")
+            String(localized: "Couldn’t read your calendars", bundle: .module, comment: "Calendar widget: error state, one line")
         }
     }
 }

@@ -2,7 +2,7 @@
 # Command Line Tools: the scripts locate /Applications/Xcode*.app themselves.
 SHELL := /bin/bash
 
-.PHONY: help build debug run smoke dist check test strings strings-check probe probe-check icon list clean distclean
+.PHONY: help build debug run smoke dist check test strings strings-check copy-check probe probe-check icon list clean distclean
 
 help:            ## Show this help
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -31,8 +31,12 @@ test:            ## swift test for CrannyKit
 strings:         ## Sync String Catalogs with keys used in code
 	@scripts/sync-strings.sh
 
-strings-check:   ## Fail if String Catalogs are out of date (CI)
+strings-check:   ## Fail if String Catalogs are out of date or break the copy rules (CI)
 	@CHECK=1 scripts/sync-strings.sh
+	@/usr/bin/python3 -I scripts/lint-copy.py
+
+copy-check:      ## Copy rules of every String Catalog only (no build; part of strings-check)
+	@/usr/bin/python3 -I scripts/lint-copy.py
 
 probe:           ## Regenerate the SDK name-collision probe after adding public CrannyCore types
 	@scripts/name-probe.sh

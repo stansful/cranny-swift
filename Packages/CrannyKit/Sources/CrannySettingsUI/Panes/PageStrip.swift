@@ -130,10 +130,10 @@ struct PageStrip: View {
     }
 
     private static var moveLeftTitle: Text {
-        Text("Move left", bundle: .module, comment: "Settings ▸ Layout & Widgets: move a widget or a page one place left")
+        Text("Move Left", bundle: .module, comment: "Settings ▸ Layout & Widgets: move a widget or a page one place left")
     }
     private static var moveRightTitle: Text {
-        Text("Move right", bundle: .module, comment: "Settings ▸ Layout & Widgets: move a widget or a page one place right")
+        Text("Move Right", bundle: .module, comment: "Settings ▸ Layout & Widgets: move a widget or a page one place right")
     }
     private static var removeTitle: Text {
         Text("Remove Page", bundle: .module, comment: "Settings ▸ Layout & Widgets: removes a user page (its widgets stay available)")

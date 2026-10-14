@@ -57,23 +57,12 @@
       }
     },
     "Add App…" : {
-      "comment" : "Quick Apps: add an app with the open panel",
+      "comment" : "Settings ▸ Shortcuts: button that adds an app with the open panel",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Добавить приложение…"
-          }
-        }
-      }
-    },
-    "Add Shortcut" : {
-      "comment" : "Quick Apps: submenu listing Shortcuts.app shortcuts",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Добавить быструю команду"
           }
         }
       }
@@ -85,6 +74,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Добавить быструю команду…"
+          }
+        }
+      }
+    },
+    "Add app…" : {
+      "comment" : "Quick Apps: add an app with the open panel",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить приложение…"
+          }
+        }
+      }
+    },
+    "Add shortcut" : {
+      "comment" : "Quick Apps: submenu listing Shortcuts.app shortcuts",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить быструю команду"
           }
         }
       }
@@ -177,7 +188,7 @@
         }
       }
     },
-    "Colour" : {
+    "Color" : {
       "comment" : "Settings ▸ Shortcuts: colour (popover section, search keyword)",
       "localizations" : {
         "ru" : {
@@ -199,7 +210,7 @@
         }
       }
     },
-    "Customise…" : {
+    "Customize…" : {
       "comment" : "Settings ▸ Shortcuts: opens a shortcut's symbol and colour",
       "localizations" : {
         "ru" : {
@@ -232,7 +243,7 @@
         }
       }
     },
-    "Done Editing" : {
+    "Done editing" : {
       "comment" : "Quick Apps: menu item, leave edit mode",
       "localizations" : {
         "ru" : {
@@ -265,7 +276,7 @@
         }
       }
     },
-    "Edit Tiles" : {
+    "Edit tiles" : {
       "comment" : "Quick Apps: menu item, enter edit mode (remove, reorder, add)",
       "localizations" : {
         "ru" : {
@@ -309,6 +320,17 @@
         }
       }
     },
+    "Gray" : {
+      "comment" : "Settings ▸ Shortcuts: tile colour name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Серый"
+          }
+        }
+      }
+    },
     "Green" : {
       "comment" : "Settings ▸ Shortcuts: tile colour name",
       "localizations" : {
@@ -316,17 +338,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Зелёный"
-          }
-        }
-      }
-    },
-    "Grey" : {
-      "comment" : "Settings ▸ Shortcuts: tile colour name",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Серый"
           }
         }
       }
@@ -749,7 +760,7 @@
         }
       }
     },
-    "Symbol and colour" : {
+    "Symbol and color" : {
       "comment" : "Settings ▸ Shortcuts: tooltip of a shortcut's squircle",
       "localizations" : {
         "ru" : {
@@ -888,7 +899,7 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Add App…"
+            "value" : "Add app…"
           }
         },
         "ru" : {

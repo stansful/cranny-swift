@@ -170,16 +170,16 @@ struct TileMenu: View {
     }
 }
 
-/// "Edit Tiles"/"Done", "Add App…", "Quick Apps Settings…": shared by the tile and card menus.
+/// "Edit tiles"/"Done", "Add app…", "Quick Apps Settings…": shared by the tile and card menus.
 struct LauncherEditMenuItems: View {
     let model: QuickAppsModel
     var body: some View {
         if model.isEditing {
-            Button { model.isEditing = false } label: { Text("Done Editing", bundle: .module, comment: "Quick Apps: menu item, leave edit mode") }
+            Button { model.isEditing = false } label: { Text("Done editing", bundle: .module, comment: "Quick Apps: menu item, leave edit mode") }
         } else {
-            Button { model.isEditing = true } label: { Text("Edit Tiles", bundle: .module, comment: "Quick Apps: menu item, enter edit mode (remove, reorder, add)") }
+            Button { model.isEditing = true } label: { Text("Edit tiles", bundle: .module, comment: "Quick Apps: menu item, enter edit mode (remove, reorder, add)") }
         }
-        Button { model.chooseApps() } label: { Text("Add App…", bundle: .module, comment: "Quick Apps: add an app with the open panel") }
+        Button { model.chooseApps() } label: { Text("Add app…", bundle: .module, comment: "Quick Apps: add an app with the open panel") }
         Button { model.openSettings() } label: { Text("Quick Apps Settings…", bundle: .module, comment: "Quick Apps: opens Settings ▸ Shortcuts") }
     }
 }

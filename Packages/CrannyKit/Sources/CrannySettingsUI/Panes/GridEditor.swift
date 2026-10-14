@@ -154,8 +154,8 @@ private struct EditorCard: View {
         .accessibilityAdjustableAction { direction in
             resize(by: direction == .increment ? 1 : -1)
         }
-        .accessibilityAction(named: Text("Move left", bundle: .module, comment: "Settings ▸ Layout & Widgets: move a widget or a page one place left")) { shift(by: -1) }
-        .accessibilityAction(named: Text("Move right", bundle: .module, comment: "Settings ▸ Layout & Widgets: move a widget or a page one place right")) { shift(by: 1) }
+        .accessibilityAction(named: Text("Move Left", bundle: .module, comment: "Settings ▸ Layout & Widgets: move a widget or a page one place left")) { shift(by: -1) }
+        .accessibilityAction(named: Text("Move Right", bundle: .module, comment: "Settings ▸ Layout & Widgets: move a widget or a page one place right")) { shift(by: 1) }
         .accessibilityAction(named: Text("Remove", bundle: .module, comment: "Settings ▸ Layout & Widgets: remove a widget from the page")) { remove() }
     }
 
@@ -191,8 +191,8 @@ private struct EditorCard: View {
         Button { resize(by: -1) } label: { Text("Narrower", bundle: .module, comment: "Settings ▸ Layout & Widgets: make a widget one cell narrower") }
             .disabled(cells <= info.sizes.minimum)
         Divider()
-        Button { shift(by: -1) } label: { Text("Move left", bundle: .module, comment: "Settings ▸ Layout & Widgets: move a widget or a page one place left") }
-        Button { shift(by: 1) } label: { Text("Move right", bundle: .module, comment: "Settings ▸ Layout & Widgets: move a widget or a page one place right") }
+        Button { shift(by: -1) } label: { Text("Move Left", bundle: .module, comment: "Settings ▸ Layout & Widgets: move a widget or a page one place left") }
+        Button { shift(by: 1) } label: { Text("Move Right", bundle: .module, comment: "Settings ▸ Layout & Widgets: move a widget or a page one place right") }
         Divider()
         Button(role: .destructive) { remove() } label: { Text("Remove", bundle: .module, comment: "Settings ▸ Layout & Widgets: remove a widget from the page") }
     }

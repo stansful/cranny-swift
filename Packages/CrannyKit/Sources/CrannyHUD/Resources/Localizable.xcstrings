@@ -1,7 +1,7 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "%@ can also take the volume and brightness keys. If Cranny's HUD doesn't appear, turn off the HUD in that app." : {
+    "%@ can also take the volume and brightness keys. If Cranny’s HUD doesn’t appear, turn off the HUD in that app." : {
       "comment" : "Settings ▸ HUD: warning while ONE known app with its own HUD runs; argument is its name, such as MonitorControl",
       "localizations" : {
         "ru" : {
@@ -12,7 +12,7 @@
         }
       }
     },
-    "%@ can also take the volume and brightness keys. If Cranny's HUD doesn't appear, turn off the HUD in these apps." : {
+    "%@ can also take the volume and brightness keys. If Cranny’s HUD doesn’t appear, turn off the HUD in these apps." : {
       "comment" : "Settings ▸ HUD: warning while SEVERAL known apps with their own HUD run; argument is a list of names, such as “MonitorControl and SoundSource”",
       "localizations" : {
         "ru" : {

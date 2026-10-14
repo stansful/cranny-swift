@@ -14,7 +14,7 @@ import Testing
 @Test @MainActor func liveSubmenusFollowTheirContentWhileOpen() async throws {
     let items = Items()
     let menu = NSMenu()
-    PopUpMenu.fill(menu, with: [MenuEntry("Add Shortcut", liveSubmenu: { items.titles.map { MenuEntry(disabled: $0) } })])
+    PopUpMenu.fill(menu, with: [MenuEntry("Add shortcut", liveSubmenu: { items.titles.map { MenuEntry(disabled: $0) } })])
     let submenu = try #require(menu.items.first?.submenu)
     #expect(submenu.items.map(\.title) == ["Loading…"])
     items.titles = ["Morning routine", "Resize images"]                   // the list finished reading

@@ -36,8 +36,6 @@
 	<string>Cranny shows when Bluetooth devices such as headphones connect, and their battery level.</string>
 	<key>NSAudioCaptureUsageDescription</key>
 	<string>Cranny listens to system audio output to animate the music visualizer. Audio is never recorded or stored.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Cranny analyzes audio levels to animate the music visualizer. Audio is never recorded or stored.</string>
 	<key>NSDesktopFolderUsageDescription</key>
 	<string>Cranny keeps the files you drop on the notch in its Tray and saves pipeline results next to them or in Downloads.</string>
 	<key>NSDocumentsFolderUsageDescription</key>

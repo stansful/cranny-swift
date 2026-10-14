@@ -33,13 +33,13 @@ struct AccentPicker: View {
 
     static func footnote(_ source: AccentSource) -> String {
         switch source {
-        case .automatic: String(localized: "The album's colour while music plays, otherwise the system accent.", bundle: .module,
+        case .automatic: String(localized: "The album’s color while music plays, otherwise the system accent.", bundle: .module,
                                 comment: "Settings ▸ Appearance ▸ Accent: footnote for Automatic")
-        case .system: String(localized: "The accent colour chosen in System Settings.", bundle: .module,
+        case .system: String(localized: "The accent color chosen in System Settings.", bundle: .module,
                              comment: "Settings ▸ Appearance ▸ Accent: footnote for System")
-        case .swatch: String(localized: "Used for progress, rings and toggles. Alerts keep their own colours.", bundle: .module,
+        case .swatch: String(localized: "Used for progress, rings and toggles. Alerts keep their own colors.", bundle: .module,
                              comment: "Settings ▸ Appearance ▸ Accent: footnote for a swatch")
-        case .monochrome: String(localized: "White only. Alerts keep their own colours.", bundle: .module,
+        case .monochrome: String(localized: "White only. Alerts keep their own colors.", bundle: .module,
                                  comment: "Settings ▸ Appearance ▸ Accent: footnote for Monochrome")
         }
     }

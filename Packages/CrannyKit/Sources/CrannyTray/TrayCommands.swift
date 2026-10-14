@@ -1,4 +1,4 @@
-// CrannyTray/TrayCommands.swift — ⌘K commands (DESIGN.md §6.4: "Clear tray" among the actions) and the Tray's port
+// CrannyTray/TrayCommands.swift — ⌘K commands (DESIGN.md §6.4: "Clear Tray" among the actions) and the Tray's port
 // into the shell (`TrayIntake`, ARCHITECTURE.md §3.9): the header badge, the drag catch view and the fallback for
 // drops no zone took (§5.6), so a dropped file is never lost.
 import CrannyCore
@@ -21,7 +21,8 @@ final class TrayCommands: PaletteCommandProvider {
             },
         ]
         if !store.items.isEmpty {
-            list.append(PaletteCommand(id: "tray.clear", title: String(localized: "Clear tray", bundle: .module, comment: "Command palette: remove every item from the Tray"),
+            let title = String(localized: "Clear Tray", bundle: .module, comment: "Settings ▸ Tray and command palette: remove every item from the Tray (confirmation button, command)")
+            list.append(PaletteCommand(id: "tray.clear", title: title,
                                        kind: kind, symbol: "trash", keywords: [files]) { [store] in store.clear() })
         }
         guard !query.isEmpty else { return list }

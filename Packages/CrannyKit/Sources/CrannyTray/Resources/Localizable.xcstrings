@@ -299,7 +299,7 @@
       }
     },
     "Clear Tray" : {
-      "comment" : "Settings ▸ Tray: Clear confirmation button",
+      "comment" : "Settings ▸ Tray and command palette: remove every item from the Tray (confirmation button, command)",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -419,7 +419,7 @@
         }
       }
     },
-    "Copy Path" : {
+    "Copy path" : {
       "comment" : "Tray tile: context menu item and VoiceOver action",
       "localizations" : {
         "ru" : {

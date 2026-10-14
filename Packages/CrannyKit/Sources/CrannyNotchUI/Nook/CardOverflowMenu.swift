@@ -85,7 +85,7 @@ struct CardActionsList: View {
         .frame(minWidth: Self.minimumWidth, alignment: .leading)
     }
 
-    /// Wide enough for "Edit Layout…" in Russian without wrapping.
+    /// Wide enough for "Edit layout…" in Russian without wrapping.
     static let minimumWidth: CGFloat = 180
 }
 
@@ -128,7 +128,7 @@ enum CardStrings {
     static var options: Text { Text("Options…", bundle: .module, comment: "Widget card menu: the widget's options popover") }
     static var resize: Text { Text("Resize", bundle: .module, comment: "Widget card menu: submenu of widths in cells") }
     static var remove: Text { Text("Remove", bundle: .module, comment: "Widget card menu: removes the widget from the page") }
-    static var editLayout: Text { Text("Edit Layout…", bundle: .module, comment: "Widget card menu: enters the layout editor (⌘E)") }
+    static var editLayout: Text { Text("Edit layout…", bundle: .module, comment: "Widget card menu: enters the layout editor (⌘E)") }
     static var wider: Text { Text("Wider", bundle: .module, comment: "Widget card: VoiceOver action, one allowed width wider") }
     static var narrower: Text { Text("Narrower", bundle: .module, comment: "Widget card: VoiceOver action, one allowed width narrower") }
     static func cells(_ n: Int) -> Text {

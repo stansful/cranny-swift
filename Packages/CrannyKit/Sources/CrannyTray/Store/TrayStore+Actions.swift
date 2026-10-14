@@ -60,7 +60,7 @@ extension TrayStore {
         system.copy(files: list)
     }
 
-    /// "Copy Path" (context menu) and the Copy paths chip; confirmed in the band (`NotchControl.flash`).
+    /// "Copy path" (context menu) and the Copy paths chip; confirmed in the band (`NotchControl.flash`).
     func copyPaths(_ id: UUID? = nil) {
         let list = urls(of: targets(for: id))
         guard !list.isEmpty else { return }

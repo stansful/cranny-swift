@@ -184,10 +184,10 @@ struct HUDSettingsPane: View {
         return Label {
             Group {
                 if competingApps.count == 1 {
-                    Text("\(names) can also take the volume and brightness keys. If Cranny's HUD doesn't appear, turn off the HUD in that app.",
+                    Text("\(names) can also take the volume and brightness keys. If Cranny’s HUD doesn’t appear, turn off the HUD in that app.",
                          bundle: .module, comment: "Settings ▸ HUD: warning while ONE known app with its own HUD runs; argument is its name, such as MonitorControl")
                 } else {
-                    Text("\(names) can also take the volume and brightness keys. If Cranny's HUD doesn't appear, turn off the HUD in these apps.",
+                    Text("\(names) can also take the volume and brightness keys. If Cranny’s HUD doesn’t appear, turn off the HUD in these apps.",
                          bundle: .module, comment: "Settings ▸ HUD: warning while SEVERAL known apps with their own HUD run; argument is a list of names, such as “MonitorControl and SoundSource”")
                 }
             }

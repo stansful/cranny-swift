@@ -247,7 +247,7 @@
         }
       }
     },
-    "Couldn't read your calendars" : {
+    "Couldn’t read your calendars" : {
       "comment" : "Calendar widget: error state, one line",
       "localizations" : {
         "ru" : {
@@ -258,7 +258,7 @@
         }
       }
     },
-    "Cranny can't see your calendars yet." : {
+    "Cranny can’t see your calendars yet." : {
       "comment" : "Settings ▸ Calendar: access not granted yet",
       "localizations" : {
         "ru" : {
@@ -390,7 +390,7 @@
         }
       }
     },
-    "Join appears when an event's URL, location or notes link to one of these services. The app is used only when it is installed." : {
+    "Join appears when an event’s URL, location or notes link to one of these services. The app is used only when it is installed." : {
       "comment" : "Settings ▸ Calendar: footnote under the meeting services",
       "localizations" : {
         "ru" : {
@@ -748,7 +748,7 @@
         }
       }
     },
-    "Show today's events" : {
+    "Show today’s events" : {
       "comment" : "Command palette: Calendar command (opens the panel at the Calendar widget)",
       "localizations" : {
         "ru" : {
@@ -759,7 +759,7 @@
         }
       }
     },
-    "Show today's past events" : {
+    "Show today’s past events" : {
       "comment" : "Calendar options: keep ended events in today's list",
       "localizations" : {
         "ru" : {
@@ -853,7 +853,7 @@
         }
       }
     },
-    "Today's events, with Join for meetings" : {
+    "Today’s events, with Join for meetings" : {
       "comment" : "Widget library: Calendar description",
       "localizations" : {
         "ru" : {

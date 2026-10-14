@@ -42,7 +42,7 @@ public nonisolated enum ShortcutTint: String, Codable, CaseIterable, Sendable {
         case .purple: String(localized: "Purple", bundle: .module, comment: "Settings ▸ Shortcuts: tile colour name")
         case .pink: String(localized: "Pink", bundle: .module, comment: "Settings ▸ Shortcuts: tile colour name")
         case .brown: String(localized: "Brown", bundle: .module, comment: "Settings ▸ Shortcuts: tile colour name")
-        case .gray: String(localized: "Grey", bundle: .module, comment: "Settings ▸ Shortcuts: tile colour name")
+        case .gray: String(localized: "Gray", bundle: .module, comment: "Settings ▸ Shortcuts: tile colour name")
         }
     }
 }

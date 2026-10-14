@@ -123,7 +123,7 @@ nonisolated enum NotesStrings {
         String(localized: "Typing effect", bundle: .module, comment: "Widget options: Notes typing effect toggle")
     }
     static var typingEffectFootnote: String {
-        String(localized: "New characters appear in the accent colour, then settle.", bundle: .module, comment: "Widget options: footnote under the Notes typing effect toggle")
+        String(localized: "New characters appear in the accent color, then settle.", bundle: .module, comment: "Widget options: footnote under the Notes typing effect toggle")
     }
     static var newNotes: String {
         String(localized: "New notes", bundle: .module, comment: "Widget options: label of the picker for the mode of new notes")

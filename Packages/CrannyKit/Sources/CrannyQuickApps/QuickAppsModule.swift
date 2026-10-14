@@ -43,7 +43,7 @@ public enum QuickAppsModule: FeatureModule {
             String(localized: "Dock", bundle: .module, comment: "Settings search: keyword for the Shortcuts pane"),
             String(localized: "Launcher", bundle: .module, comment: "Settings search: keyword for the Shortcuts pane"),
             String(localized: "Symbol", bundle: .module, comment: "Settings ▸ Shortcuts: symbol (popover section, search keyword)"),
-            String(localized: "Colour", bundle: .module, comment: "Settings ▸ Shortcuts: colour (popover section, search keyword)"),
+            String(localized: "Color", bundle: .module, comment: "Settings ▸ Shortcuts: colour (popover section, search keyword)"),
             String(localized: "Show names under tiles", bundle: .module, comment: "Quick Apps: option toggle (widget options, Settings ▸ Shortcuts)"),
         ]
     }
