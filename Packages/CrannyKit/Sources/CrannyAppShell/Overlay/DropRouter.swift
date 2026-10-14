@@ -7,6 +7,11 @@
 // when it is called, so the zone's view must still be on screen then. File promises resolve asynchronously
 // (Photos exports first), so while they do, the `drop` hold keeps the panel in its state (catch or grid): the gulp
 // and the return wait until the payload has been handed to the zone.
+//
+// Drags that start in Cranny itself (a Tray tile dragged out across its own panel) are never taken: the Tray offers
+// no operation inside the app, and treating them as file drags would leave the machine in a drag that no detector
+// ever ends (`DragDetector` sees no events of our own drag session). A drag this router started the machine's drag
+// state for, and that ends without a drop here, ends it again (`draggingEnded`).
 import AppKit
 import CrannyCore
 import CrannyNotchUI
@@ -24,6 +29,8 @@ private let log = Log.logger(.overlay)
     var onDropFinished: () -> Void = {}
     /// How long to wait for a file promise (tests shorten it).
     var promiseTimeout: Duration = FilePromiseResolver.timeout
+    /// This router (not the coordinator's drag detector) put the machine into its drag state, so it ends it too.
+    private var startedDragState = false
 
     init(scene: NotchSceneModel, viewModel: NotchViewModel, registry: ModuleRegistry) {
         self.scene = scene; self.viewModel = viewModel; self.registry = registry
@@ -32,10 +39,14 @@ private let log = Log.logger(.overlay)
     // MARK: NotchDropTarget
 
     func dragUpdated(_ info: any NSDraggingInfo, in view: NSView) -> NSDragOperation {
+        guard Self.accepts(source: info.draggingSource, operations: info.draggingSourceOperationMask) else { return [] }
         let contents = DragDetector.contents(types: info.draggingPasteboard.types ?? [], pasteboard: info.draggingPasteboard)
         guard contents.hasFiles else { return [] }
         // The detector normally saw it first; a drag that started over the panel (or a missed event) starts here.
-        if viewModel.state.fileDrag == nil { viewModel.send(.fileDragEntered(contents.types)) }
+        if viewModel.state.fileDrag == nil {
+            startedDragState = true
+            viewModel.send(.fileDragEntered(contents.types))
+        }
         let armed = scene.zones.armedDropZone
         scene.zones.dragUpdated(at: Self.canvasPoint(info.draggingLocation, in: view), types: contents.types)
         // DESIGN.md §8.3, §14.2: a zone arming under the pointer is felt (its highlight is NotchUI's).
@@ -47,7 +58,25 @@ private let log = Log.logger(.overlay)
         scene.zones.dragEnded()
     }
 
+    /// AppKit ends the session (dropped here, elsewhere or cancelled). A drag whose drag state this router started
+    /// and that was not dropped here leaves it now; the detector's own drags end through the detector.
+    func dragEnded() {
+        guard startedDragState else { return }
+        startedDragState = false
+        guard viewModel.state.fileDrag != nil else { return }                  // dropped here: `.filesDropped` ended it
+        scene.zones.dragEnded()
+        viewModel.send(.fileDragEnded)
+    }
+
+    /// Only drags from other apps are file drags for the notch. `source` is non-nil for a drag that started in Cranny;
+    /// an empty mask means the source allows no operation here (the Tray offers none inside the app).
+    static func accepts(source: Any?, operations: NSDragOperation) -> Bool {
+        source == nil && !operations.isEmpty
+    }
+
     func performDrop(_ info: any NSDraggingInfo, in view: NSView) -> Bool {
+        guard Self.accepts(source: info.draggingSource, operations: info.draggingSourceOperationMask) else { return false }
+        startedDragState = false
         let pasteboard = info.draggingPasteboard
         let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
         let promises = pasteboard.readObjects(forClasses: [NSFilePromiseReceiver.self]) as? [NSFilePromiseReceiver] ?? []
@@ -80,21 +109,30 @@ private let log = Log.logger(.overlay)
         let viewModel = viewModel
         Task {
             var files = urls
-            if waits, let directory = FilePromiseResolver.incomingDirectory(paths: paths) {
-                files += await FilePromiseResolver.resolve(promises, into: directory, timeout: timeout)
+            let incoming = waits ? FilePromiseResolver.incomingDirectory(paths: paths) : nil
+            if let incoming {
+                files += await FilePromiseResolver.resolve(promises, into: incoming, timeout: timeout)
             }
             if waits {
                 // Released on the main actor's next turn: `performDrop` below picks its zone synchronously, before
                 // its first suspension, so the zone is chosen while the panel is still held.
                 Task { viewModel.send(.hold(NotchMachineState.dropHold, false)) }
             }
-            guard !files.isEmpty else { zones.dragEnded(); return }
-            let payload = DropPayload(fileURLs: files, contentTypes: DragDetector.unique(files.map(DragDetector.contentType(of:))))
-            if await zones.performDrop(payload, fallback: .trayKeep) { return }
-            if let tray, await tray.accept(payload) { return }
-            log.error("drop of \(files.count, privacy: .public) file(s) was not taken")
+            await Self.deliver(files, zones: zones, tray: tray)
+            // Every taker copied or staged the files inside the awaited call (Tray keep, drop pipelines, AirDrop),
+            // and a drop nobody took is gone anyway: the promised copies must not outlive the drop.
+            if let incoming { await FilePromiseResolver.discard(incoming) }
         }
         return true
+    }
+
+    /// Hands `files` to the armed zone (else `.trayKeep`), else to the Tray.
+    private static func deliver(_ files: [URL], zones: NotchZones, tray: (any TrayIntake)?) async {
+        guard !files.isEmpty else { zones.dragEnded(); return }
+        let payload = DropPayload(fileURLs: files, contentTypes: DragDetector.unique(files.map(DragDetector.contentType(of:))))
+        if await zones.performDrop(payload, fallback: .trayKeep) { return }
+        if let tray, await tray.accept(payload) { return }
+        log.error("drop of \(files.count, privacy: .public) file(s) was not taken")
     }
 
     /// `draggingLocation` (window coordinates, bottom-left origin) → the canvas's top-left coordinates.

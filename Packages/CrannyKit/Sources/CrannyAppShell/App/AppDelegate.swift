@@ -51,6 +51,9 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         #if DEBUG
         QAHooks.apply(QAHooks.Options(arguments: CommandLine.arguments), to: overlay, appControl: appControl)
         #endif
+        // Drop folders of file promises a crash (or a quit mid-drop) left behind.
+        let paths = registry.services.paths
+        Task { await FilePromiseResolver.sweepIncoming(paths: paths) }
         launchGate.launch { await registry.runLaunchHooks() }
     }
 
@@ -61,10 +64,11 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Runs the modules' terminate hooks (stop helpers, flush stores) — only if they launched (never in
-    /// `--diagnostics`, whose quit must not touch the user's data).
+    /// `--diagnostics`, whose quit must not touch the user's data) — and deletes the drop folders still there.
     public func applicationWillTerminate(_ notification: Notification) {
         guard launchGate.runsTerminateHooks, let registry else { return }
         registry.runTerminateHooks()
+        FilePromiseResolver.sweepIncomingNow(paths: registry.services.paths)
     }
 
     /// Launching Cranny again (Finder, Spotlight) opens Settings, so a hidden menu bar icon never locks anyone out.

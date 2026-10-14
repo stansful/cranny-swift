@@ -1,7 +1,9 @@
 // CrannyAppShell/Overlay/FilePromiseResolver.swift — turns dropped file promises (Photos, Mail attachments,
 // Safari images) into files before any drop zone sees them (ARCHITECTURE.md §5.6, R1 §5.1 [UNVERIFIED there]).
 // Files land in `<caches>/tray/Incoming/<uuid>/`; the drop handler awaits the URLs. A source that never delivers
-// is given up after a minute.
+// is given up after a minute. Every taker copies or stages what it keeps inside its awaited drop call, so the drop
+// router deletes the folder once the drop is delivered (`discard`), and the whole `Incoming` folder is swept at
+// launch and at quit (a crash or a quit mid-drop): promised copies of private photos and attachments never pile up.
 //
 // Threading: AppKit calls each promise's reader block on `queue`, a background operation queue. The SDK does not
 // mark that block Sendable, so a closure written inside a main-actor type would be inferred main-actor isolated
@@ -25,18 +27,46 @@ nonisolated enum FilePromiseResolver {
         return queue
     }()
 
+    /// `<caches>/tray/Incoming/`: every drop's folder is inside it.
+    static func incomingRoot(paths: AppPaths) -> URL {
+        paths.caches.appending(path: ModuleID.tray.rawValue, directoryHint: .isDirectory)
+            .appending(path: "Incoming", directoryHint: .isDirectory)
+    }
+
     /// A fresh `Incoming/<uuid>/` directory in the tray's cache, or nil if it cannot be created.
     static func incomingDirectory(paths: AppPaths) -> URL? {
         do {
-            let url = try paths.cacheDirectory(for: .tray)
-                .appending(path: "Incoming", directoryHint: .isDirectory)
-                .appending(path: UUID().uuidString, directoryHint: .isDirectory)
+            let url = incomingRoot(paths: paths).appending(path: UUID().uuidString, directoryHint: .isDirectory)
             try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
             return url
         } catch {
             let code = (error as NSError).code, domain = (error as NSError).domain
             Log.logger(.overlay).error("file promises: no incoming directory: \(domain, privacy: .public) \(code, privacy: .public) \(error.localizedDescription, privacy: .private)")
             return nil
+        }
+    }
+
+    /// Deletes one drop's folder after delivery (off the main actor: a promised video can be large).
+    @concurrent static func discard(_ directory: URL) async {
+        remove(directory)
+    }
+
+    /// Deletes every drop folder left behind: at launch (off the main actor) …
+    @concurrent static func sweepIncoming(paths: AppPaths) async {
+        sweepIncomingNow(paths: paths)
+    }
+
+    /// … and at quit, synchronously (`applicationWillTerminate`).
+    static func sweepIncomingNow(paths: AppPaths) {
+        remove(incomingRoot(paths: paths))
+    }
+
+    private static func remove(_ url: URL) {
+        do { try FileManager.default.removeItem(at: url) } catch CocoaError.fileNoSuchFile {
+            // Nothing to delete.
+        } catch {
+            let code = (error as NSError).code, domain = (error as NSError).domain
+            Log.logger(.overlay).error("file promises: could not delete a drop folder: \(domain, privacy: .public) \(code, privacy: .public)")
         }
     }
 
