@@ -2,6 +2,7 @@
 import CrannyCore
 import Foundation
 import Testing
+import UniformTypeIdentifiers
 @testable import CrannyNotchUI
 
 @Suite("Keyboard map (DESIGN.md §16)") struct KeyboardMapTests {
@@ -78,5 +79,17 @@ import Testing
         #expect(PaletteSelection.visibleRows(height: 110) == 3)               // Compact density
         #expect(PaletteSelection.visibleRows(height: 200) == 4)               // never more than 4
         #expect(PaletteSelection.visibleRows(height: 20) == 1)
+    }
+}
+
+@Suite("Visual QA arguments (DEBUG)") struct QAHookTests {
+    @Test func parsesTheOpenPanelMode() {
+        #expect(NotchUIQAHooks.mode(in: ["Cranny", "--qa-state", "open", "--qa-mode", "palette"]) == .palette)
+        #expect(NotchUIQAHooks.mode(in: ["--qa-mode", "edit"]) == .editLayout)
+        #expect(NotchUIQAHooks.mode(in: ["--qa-mode", "focus"]) == .focus(.notes))
+        #expect(NotchUIQAHooks.mode(in: ["--qa-mode", "catch"]) == .catchFiles([.fileURL]))
+        #expect(NotchUIQAHooks.mode(in: ["--qa-mode", "nonsense"]) == nil)
+        #expect(NotchUIQAHooks.mode(in: ["--qa-mode"]) == nil)
+        #expect(NotchUIQAHooks.mode(in: []) == nil)
     }
 }

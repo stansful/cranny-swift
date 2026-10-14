@@ -187,3 +187,33 @@ nonisolated enum ChargeSweepProfile {
         }
     }
 }
+
+#Preview("Ember burst · 0.1 / 0.3 / 0.6 s") {
+    HStack(spacing: Space.l) {
+        ForEach([0.1, 0.3, 0.6], id: \.self) { t in
+            Canvas { context, size in
+                EmberField.draw(in: &context, size: size, time: t, stops: AmbientPalette.timer.glows, cap: 0.8)
+            }
+            .frame(width: EmberBurstView.size.width, height: EmberBurstView.size.height)
+            .background(.black)
+        }
+    }
+    .padding()
+    .background(Color(white: 0.2))
+}
+
+#Preview("First light · 40 %") {
+    AuroraPlaceholder()
+        .mask { FirstLightMask(progress: 0.4) }
+        .overlay { FirstLightCrest(progress: 0.4, glow: AmbientPalette.afterglow.glow1, cap: 0.45) }
+        .frame(width: 656, height: 170)
+        .background(.black)
+}
+
+/// A flat stand-in for the light layer in the first-light preview.
+private struct AuroraPlaceholder: View {
+    var body: some View {
+        LinearGradient(colors: [.clear, BrandColor.iris.color(0.45), BrandColor.lagoon.color(0.45)],
+                       startPoint: .top, endPoint: .bottom)
+    }
+}
