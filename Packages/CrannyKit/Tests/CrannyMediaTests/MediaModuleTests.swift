@@ -15,6 +15,32 @@ import Testing
         #expect(notch.calls.isEmpty)                                       // registering never opens, flashes or peeks
         let service = try #require(registry.services.nowPlaying as? MediaService)
         #expect(service.status == .idle)                                   // the helper starts in onLaunch
+        #expect(service.visualizer.allowsLive)                             // the only service that may tap audio
+    }
+
+    @Test func onlyTheLiveServiceMayRunTheAudioTap() throws {
+        // Samples (Settings stage, onboarding, widget previews) and Debug QA services show a fictional track:
+        // in Live mode their visualizers must draw Ambient, never start a second system audio tap.
+        let services = CrannyServices.preview()
+        services.settings[MediaSettings.visualizer] = .live
+        let sample = SampleMedia.service(settings: services.settings, environment: services.environment, permissions: services.permissions)
+        #expect(sample.visualizer.allowsLive == false)
+        #expect(sample.visualizer.render(isPlaying: true, trackKey: "k", reduceMotion: false) == .ambient(SyntheticSpectrum(trackKey: "k")))
+        sample.visualizer.requestLiveAccess()                              // a no-op: never prompts
+        #expect(sample.visualizer.liveStatus == .off)
+
+        let registry = ModuleRegistry(services: .preview())
+        registry.register(MediaModule.self)
+        let activitySample = try #require(registry.activity(.nowPlaying)?.makeSample?() as? NowPlayingActivity)
+        #expect(activitySample.service.visualizer.allowsLive == false)
+
+        #if DEBUG
+        defer { VisualizerNSView.qaIgnoresOcclusion = false }
+        for argument in ["playing", "paused", "none"] {
+            let qa = try #require(MediaQA.service(services, arguments: ["Cranny", "--qa-media", argument]))
+            #expect(qa.visualizer.allowsLive == false)
+        }
+        #endif
     }
 
     @Test func contributesWidgetActivityPaneCommandsAndPermissions() throws {

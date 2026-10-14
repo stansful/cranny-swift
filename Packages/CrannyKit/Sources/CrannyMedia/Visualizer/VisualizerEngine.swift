@@ -1,7 +1,7 @@
 // CrannyMedia/Visualizer/VisualizerEngine.swift — decides what every visualizer draws (ARCHITECTURE.md §6.6) and
-// runs the Live tap only while it is useful: mode Live, something plays (or paused < 10 s), a visualizer is on
-// screen, and the Mac is not in Low Power Mode, locked or asleep. Ambient bars cost nothing here: they loop in
-// the render server (`VisualizerLayerView`).
+// runs the Live tap only while it is useful: the app's real service (never a sample, preview or QA service),
+// mode Live, something plays (or paused < 10 s), a visualizer is on screen, and the Mac is not in Low Power Mode,
+// locked or asleep. Ambient bars cost nothing here: they loop in the render server (`VisualizerLayerView`).
 import CrannyCore
 import Foundation
 import Observation
@@ -34,6 +34,10 @@ nonisolated enum VisualizerRender: Equatable, Sendable {
     static let pausedGrace: Duration = .seconds(10)
     static let silenceTimeout: TimeInterval = 5
 
+    /// False for every engine except the live service's: samples show a fictional track, so their visualizers
+    /// must never start the system audio tap (or its permission prompt and privacy indicator).
+    let allowsLive: Bool
+
     @ObservationIgnored private let settings: SettingsStore
     @ObservationIgnored private let environment: any SystemEnvironment
     @ObservationIgnored private let permissions: PermissionsCenter
@@ -45,8 +49,10 @@ nonisolated enum VisualizerRender: Equatable, Sendable {
     @ObservationIgnored private var live: AnyObject?          // LiveSpectrum on macOS 14.2+
     @ObservationIgnored private var lastAudio: Date?
 
-    init(settings: SettingsStore, environment: any SystemEnvironment, permissions: PermissionsCenter, clock: any MediaClock) {
+    init(settings: SettingsStore, environment: any SystemEnvironment, permissions: PermissionsCenter, clock: any MediaClock,
+         allowsLive: Bool) {
         self.settings = settings; self.environment = environment; self.permissions = permissions; self.clock = clock
+        self.allowsLive = allowsLive
     }
 
     var mode: MediaVisualizerMode { settings[MediaSettings.visualizer] }
@@ -66,7 +72,7 @@ nonisolated enum VisualizerRender: Equatable, Sendable {
         case .static: return .dots
         case .ambient, .live:
             guard isPlaying, !reduceMotion else { return .dots }
-            if mode == .live, liveStatus == .receiving { return .live }
+            if mode == .live, allowsLive, liveStatus == .receiving { return .live }
             return .ambient(SyntheticSpectrum(trackKey: trackKey ?? ""))
         }
     }
@@ -94,6 +100,7 @@ nonisolated enum VisualizerRender: Equatable, Sendable {
 
     /// After the why-sheet: runs the tap briefly so macOS asks for System Audio Recording now, in context.
     func requestLiveAccess() {
+        guard allowsLive else { return }
         guard #available(macOS 14.2, *) else { liveStatus = .unsupported; return }
         let wasRunning = (live as? LiveSpectrum)?.isRunning ?? false
         startLive()
@@ -104,11 +111,26 @@ nonisolated enum VisualizerRender: Equatable, Sendable {
         }
     }
 
-    private struct Conditions: Equatable {
+    nonisolated struct Conditions: Equatable, Sendable {
         var mode = MediaVisualizerMode.ambient
         var playing = false
         var lowPower = false
         var locked = false
+    }
+
+    nonisolated enum LiveDecision: Equatable, Sendable {
+        /// Start the tap (or keep it running).
+        case run
+        /// Paused: keep a running tap for `pausedGrace`, then stop it.
+        case keepThroughPause
+        case stop
+    }
+
+    /// When the tap runs (pure; ARCHITECTURE.md §6.6).
+    nonisolated static func liveDecision(_ c: Conditions, allowsLive: Bool, visibleCount: Int, isRunning: Bool) -> LiveDecision {
+        guard allowsLive, c.mode == .live, !c.lowPower, !c.locked, visibleCount > 0 else { return .stop }
+        if c.playing { return .run }
+        return isRunning ? .keepThroughPause : .stop
     }
 
     private var conditions: Conditions {
@@ -118,18 +140,18 @@ nonisolated enum VisualizerRender: Equatable, Sendable {
 
     private func reevaluate() {
         let c = conditions
-        let eligible = c.mode == .live && !c.lowPower && !c.locked && visibleCount > 0
-        if eligible && c.playing {
+        switch Self.liveDecision(c, allowsLive: allowsLive, visibleCount: visibleCount, isRunning: isLiveRunning) {
+        case .run:
             pausedStop?.cancel(); pausedStop = nil
             startLive()
-        } else if eligible, isLiveRunning {
+        case .keepThroughPause:
             guard pausedStop == nil else { return }
             pausedStop = Task { [weak self] in                       // keep the tap 10 s through a pause
                 do { try await self?.clock.sleep(for: Self.pausedGrace) } catch { return }
                 self?.pausedStop = nil
                 self?.stopLive()
             }
-        } else {
+        case .stop:
             pausedStop?.cancel(); pausedStop = nil
             stopLive()
             if c.mode != .live, liveStatus != .off { liveStatus = .off }
@@ -142,6 +164,7 @@ nonisolated enum VisualizerRender: Equatable, Sendable {
     }
 
     private func startLive() {
+        guard allowsLive else { return }                              // belt and braces: samples never tap
         guard #available(macOS 14.2, *) else { liveStatus = .unsupported; return }
         let spectrum = (live as? LiveSpectrum) ?? LiveSpectrum { [weak self] frame in self?.deliver(frame) }
         live = spectrum

@@ -64,12 +64,15 @@ private nonisolated let log = Log.logger(.media)
     /// … and how long after that request before the optimistic change is undone (the player's last state).
     static let rollbackWindow: Duration = .milliseconds(700)
 
+    /// `allowsLiveVisualizer`: only the app's real service may run the system audio tap. Samples, previews and QA
+    /// services never do: they draw Ambient (or dots) even in Live mode.
     init(settings: SettingsStore, environment: any SystemEnvironment, permissions: PermissionsCenter,
-         providers: [MediaProviderFactory], clock: any MediaClock = SystemMediaClock()) {
+         providers: [MediaProviderFactory], clock: any MediaClock = SystemMediaClock(), allowsLiveVisualizer: Bool = false) {
         self.settings = settings
         self.clock = clock
         self.factories = providers
-        visualizer = VisualizerEngine(settings: settings, environment: environment, permissions: permissions, clock: clock)
+        visualizer = VisualizerEngine(settings: settings, environment: environment, permissions: permissions, clock: clock,
+                                      allowsLive: allowsLiveVisualizer)
         visualizer.bind { [weak self] in self?.nowPlaying?.isPlaying ?? false }
         tokens.append(observe({ [weak self] in self?.filter ?? MediaFilter() }) { [weak self] _ in self?.reapplyFilter() })
         tokens.append(observe({ settings[MediaSettings.allowAppleEvents] }) { [weak self] _ in self?.fallbackSettingChanged() })

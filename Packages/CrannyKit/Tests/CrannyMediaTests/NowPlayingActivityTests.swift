@@ -156,6 +156,7 @@ import Testing
         #expect(sample.palette != nil)                                     // album light from the generated artwork
         #expect(sample.accessibilityLabel.contains(SampleMedia.title))
         #expect(services.nowPlaying == nil)                                // never published as the live source
+        #expect(sample.service.visualizer.allowsLive == false)             // never runs the system audio tap
     }
 }
 

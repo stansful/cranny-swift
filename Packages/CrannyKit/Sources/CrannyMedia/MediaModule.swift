@@ -57,7 +57,8 @@ public enum MediaModule: FeatureModule {
         #endif
         return MediaService(settings: services.settings, environment: services.environment, permissions: services.permissions,
                             providers: MediaProviderFactory.standardChain(settings: services.settings, paths: services.paths,
-                                                                          permissions: services.permissions))
+                                                                          permissions: services.permissions),
+                            allowsLiveVisualizer: true)          // the only service that may run the audio tap
     }
 }
 

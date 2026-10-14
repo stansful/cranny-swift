@@ -176,12 +176,12 @@ import Testing
 }
 
 @Suite("Visualizer engine") @MainActor struct VisualizerEngineTests {
-    private func engine(_ mode: MediaVisualizerMode, environment: PreviewSystemEnvironment = PreviewSystemEnvironment())
-        -> (VisualizerEngine, SettingsStore) {
+    private func engine(_ mode: MediaVisualizerMode, environment: PreviewSystemEnvironment = PreviewSystemEnvironment(),
+                        allowsLive: Bool = true) -> (VisualizerEngine, SettingsStore) {
         let services = CrannyServices.preview(environment: environment)
         services.settings[MediaSettings.visualizer] = mode
         let engine = VisualizerEngine(settings: services.settings, environment: services.environment,
-                                      permissions: services.permissions, clock: ManualClock())
+                                      permissions: services.permissions, clock: ManualClock(), allowsLive: allowsLive)
         return (engine, services.settings)
     }
 
@@ -210,6 +210,32 @@ import Testing
         environment.isOnBattery = false
         environment.isLowPowerMode = true
         #expect(e.frameRateCap == 20)
+    }
+
+    @Test func whenTheTapRuns() {
+        typealias C = VisualizerEngine.Conditions
+        let decide = VisualizerEngine.liveDecision
+        let live = C(mode: .live, playing: true)
+        #expect(decide(live, true, 1, false) == .run)
+        #expect(decide(live, false, 1, false) == .stop)                   // samples, previews, QA: never
+        #expect(decide(live, true, 0, false) == .stop)                    // no visualizer on screen
+        #expect(decide(C(mode: .ambient, playing: true), true, 1, false) == .stop)
+        #expect(decide(C(mode: .live, playing: true, lowPower: true), true, 1, true) == .stop)
+        #expect(decide(C(mode: .live, playing: true, locked: true), true, 1, true) == .stop)
+        let paused = C(mode: .live, playing: false)
+        #expect(decide(paused, true, 1, true) == .keepThroughPause)       // 10 s through a pause …
+        #expect(decide(paused, true, 1, false) == .stop)                  // … but never started by a pause
+        #expect(decide(paused, false, 1, true) == .stop)
+    }
+
+    @Test func enginesThatMayNotTapNeverRenderLive() async {
+        let (e, _) = engine(.live, allowsLive: false)
+        e.bind(isPlaying: { true })
+        await settle()
+        #expect(e.render(isPlaying: true, trackKey: "k", reduceMotion: false) == .ambient(SyntheticSpectrum(trackKey: "k")))
+        e.requestLiveAccess()
+        await settle()
+        #expect(e.liveStatus == .off)
     }
 
     @Test func liveNeverStartsWithoutAVisibleVisualizer() async {
