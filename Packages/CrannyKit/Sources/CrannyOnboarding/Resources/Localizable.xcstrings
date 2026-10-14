@@ -2,7 +2,7 @@
   "sourceLanguage" : "en",
   "strings" : {
     "Continue" : {
-      "comment" : "Onboarding button",
+      "comment" : "Welcome: button that closes the window",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -13,7 +13,7 @@
       }
     },
     "Look up. That's Cranny." : {
-      "comment" : "Welcome headline",
+      "comment" : "Welcome: headline",
       "localizations" : {
         "ru" : {
           "stringUnit" : {

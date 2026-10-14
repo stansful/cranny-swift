@@ -2,7 +2,7 @@
   "sourceLanguage" : "en",
   "strings" : {
     "Calendar" : {
-      "comment" : "Widget placeholder name",
+      "comment" : "Open panel: placeholder card for a widget whose module is not built yet",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -13,7 +13,7 @@
       }
     },
     "Files" : {
-      "comment" : "Widget placeholder name",
+      "comment" : "Open panel: placeholder card for a widget whose module is not built yet",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -46,7 +46,7 @@
       }
     },
     "Media" : {
-      "comment" : "Widget placeholder name",
+      "comment" : "Open panel: placeholder card for a widget whose module is not built yet",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -57,7 +57,7 @@
       }
     },
     "Mirror" : {
-      "comment" : "Widget placeholder name",
+      "comment" : "Open panel: placeholder card for a widget whose module is not built yet",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -68,7 +68,7 @@
       }
     },
     "Notes" : {
-      "comment" : "Widget placeholder name",
+      "comment" : "Open panel: placeholder card for a widget whose module is not built yet",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -90,7 +90,7 @@
       }
     },
     "Open" : {
-      "comment" : "VoiceOver action on the collapsed notch",
+      "comment" : "Closed notch: VoiceOver action that opens the panel",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -101,7 +101,7 @@
       }
     },
     "Quick Apps" : {
-      "comment" : "Widget placeholder name",
+      "comment" : "Open panel: placeholder card for a widget whose module is not built yet",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -123,7 +123,7 @@
       }
     },
     "Timer" : {
-      "comment" : "Widget placeholder name",
+      "comment" : "Open panel: placeholder card for a widget whose module is not built yet",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -134,7 +134,7 @@
       }
     },
     "To-dos" : {
-      "comment" : "Widget placeholder name",
+      "comment" : "Open panel: placeholder card for a widget whose module is not built yet",
       "localizations" : {
         "ru" : {
           "stringUnit" : {

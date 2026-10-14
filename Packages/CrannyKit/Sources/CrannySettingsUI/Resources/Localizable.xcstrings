@@ -2,7 +2,7 @@
   "sourceLanguage" : "en",
   "strings" : {
     "About" : {
-      "comment" : "Settings pane",
+      "comment" : "Settings sidebar: pane name",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -13,7 +13,7 @@
       }
     },
     "Appearance" : {
-      "comment" : "Settings pane",
+      "comment" : "Settings sidebar: pane name",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -24,7 +24,7 @@
       }
     },
     "Close when the pointer leaves" : {
-      "comment" : "Settings ▸ General row",
+      "comment" : "Settings ▸ General: toggle",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -35,7 +35,7 @@
       }
     },
     "Free and open source under the MIT License." : {
-      "comment" : "Settings ▸ About",
+      "comment" : "Settings ▸ About: licence line",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -46,7 +46,7 @@
       }
     },
     "General" : {
-      "comment" : "Settings pane",
+      "comment" : "Settings sidebar: pane name",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -57,7 +57,7 @@
       }
     },
     "Gestures" : {
-      "comment" : "Settings pane",
+      "comment" : "Settings sidebar: pane name",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -68,7 +68,7 @@
       }
     },
     "Keyboard" : {
-      "comment" : "Settings pane",
+      "comment" : "Settings sidebar: pane name",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -79,7 +79,7 @@
       }
     },
     "Layout & Widgets" : {
-      "comment" : "Settings pane (code id `nook`)",
+      "comment" : "Settings sidebar: pane name (code id `nook`)",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -90,7 +90,7 @@
       }
     },
     "Live Activities" : {
-      "comment" : "Settings pane",
+      "comment" : "Settings sidebar: pane name",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -112,7 +112,7 @@
       }
     },
     "Permissions" : {
-      "comment" : "Settings pane",
+      "comment" : "Settings sidebar: pane name",
       "localizations" : {
         "ru" : {
           "stringUnit" : {

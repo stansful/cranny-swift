@@ -13,13 +13,13 @@ public enum TimerModule: FeatureModule {
         registry.add(widget: TimerWidget(model: model))
         registry.add(activity: TimerRunningActivity(model: model), kind: ActivityKind(
             id: .timerRunning, module: .timer,
-            title: String(localized: "Timer", bundle: .module, comment: "Live activity name"),
+            title: String(localized: "Timer", bundle: .module, comment: "Timer: module name (widget, live activity, ⌘K result kind)"),
             symbol: "timer", defaultPriority: .ongoing, canPeekOnChange: true, peeksOnChangeByDefault: true),
             options: { AnyView(Toggle(isOn: services.settings.binding(TimerSettings.peeksAtOneMinute)) {
                 Text("Peek at one minute left", bundle: .module, comment: "Live Activities pane: timer option") }) })
         registry.add(commands: TimerCommands(model: model))
         registry.add(shortcut: GlobalShortcut(
-            id: .startTimer, title: String(localized: "Start timer", bundle: .module, comment: "Global shortcut name")) {
+            id: .startTimer, title: String(localized: "Start timer", bundle: .module, comment: "Settings ▸ Keyboard: shortcut name")) {
                 model.start(seconds: services.settings[TimerSettings.presets].first ?? 300)
                 services.notch.open(page: .nook, focus: .timer, reason: .keyboard)
             })
@@ -73,9 +73,9 @@ final class TimerWidget: NookWidget {
     let model: TimerModel
     init(model: TimerModel) { self.model = model }
     let id: WidgetID = .timer
-    var title: String { String(localized: "Timer", bundle: .module, comment: "Widget name") }
+    var title: String { String(localized: "Timer", bundle: .module, comment: "Timer: module name (widget, live activity, ⌘K result kind)") }
     let symbol = "timer"
-    var summary: String { String(localized: "Countdowns with presets", bundle: .module, comment: "Widget library description") }
+    var summary: String { String(localized: "Countdowns with presets", bundle: .module, comment: "Widget library: Timer description") }
     let sizes = WidgetSizes(minimum: 2, preferred: 2, maximum: 3)
 
     func makeBody(context: WidgetContext) -> some View { TimerFace(model: model, context: context) }
@@ -112,9 +112,9 @@ struct TimerFace: View {
     var revision: Int { model.revision }
     var palette: AmbientPalette? { .timer }
     var opensWidget: WidgetID? { .timer }
-    var accessibilityLabel: String { String(localized: "Timer running", bundle: .module, comment: "VoiceOver label") }
+    var accessibilityLabel: String { String(localized: "Timer running", bundle: .module, comment: "Timer activity: VoiceOver label") }
     var actions: [ActivityAction] {
-        [ActivityAction(id: "stop", title: String(localized: "Stop timer", bundle: .module, comment: "VoiceOver action"),
+        [ActivityAction(id: "stop", title: String(localized: "Stop timer", bundle: .module, comment: "Timer activity: VoiceOver action"),
                         symbol: "stop.fill") { [model] in model.stop() }]
     }
 
@@ -153,8 +153,8 @@ final class TimerCommands: PaletteCommandProvider {
     let model: TimerModel
     init(model: TimerModel) { self.model = model }
     func commands(matching query: String) -> [PaletteCommand] {
-        [PaletteCommand(id: "timer.start25", title: String(localized: "Start 25-minute timer", bundle: .module, comment: "Command palette"),
-                        kind: String(localized: "Timer", bundle: .module, comment: "Command palette kind"),
+        [PaletteCommand(id: "timer.start25", title: String(localized: "Start 25-minute timer", bundle: .module, comment: "Command palette: Timer command"),
+                        kind: String(localized: "Timer", bundle: .module, comment: "Timer: module name (widget, live activity, ⌘K result kind)"),
                         symbol: "timer") { [model] in model.start(seconds: 1500) }]
             .filter { query.isEmpty || $0.title.localizedCaseInsensitiveContains(query) }
     }

@@ -43,7 +43,7 @@ enum QAHooks {
     }
 
     /// The label of the sample activity used for `compact` and `peek`.
-    static var sampleLabel: String { String(localized: "Hi", bundle: .module, comment: "Debug visual QA: sample activity label") }
+    static var sampleLabel: String { String(localized: "Hi", bundle: .module, comment: "Visual QA (Debug builds only): sample activity label") }
 
     @MainActor static func apply(_ options: Options, to overlay: OverlayCoordinator, appControl: any AppControl) {
         guard !options.isEmpty else { return }

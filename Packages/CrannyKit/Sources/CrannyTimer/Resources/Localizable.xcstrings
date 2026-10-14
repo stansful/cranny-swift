@@ -2,7 +2,7 @@
   "sourceLanguage" : "en",
   "strings" : {
     "Countdowns with presets" : {
-      "comment" : "Widget library description",
+      "comment" : "Widget library: Timer description",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -24,7 +24,7 @@
       }
     },
     "Start 25-minute timer" : {
-      "comment" : "Command palette",
+      "comment" : "Command palette: Timer command",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -35,7 +35,7 @@
       }
     },
     "Start timer" : {
-      "comment" : "Global shortcut name",
+      "comment" : "Settings ▸ Keyboard: shortcut name",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -46,7 +46,7 @@
       }
     },
     "Stop timer" : {
-      "comment" : "VoiceOver action",
+      "comment" : "Timer activity: VoiceOver action",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -57,7 +57,7 @@
       }
     },
     "Timer" : {
-      "comment" : "Command palette kind\nLive activity name\nWidget name",
+      "comment" : "Timer: module name (widget, live activity, ⌘K result kind)",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -68,7 +68,7 @@
       }
     },
     "Timer running" : {
-      "comment" : "VoiceOver label",
+      "comment" : "Timer activity: VoiceOver label",
       "localizations" : {
         "ru" : {
           "stringUnit" : {

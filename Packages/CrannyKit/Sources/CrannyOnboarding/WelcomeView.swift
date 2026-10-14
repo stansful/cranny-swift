@@ -26,14 +26,14 @@ public struct WelcomeView: View {
                 .frame(maxWidth: .infinity)
                 .background(Color.black)
             VStack(spacing: 12) {
-                Text("Look up. That's Cranny.", bundle: .module, comment: "Welcome headline")
+                Text("Look up. That's Cranny.", bundle: .module, comment: "Welcome: headline")
                     .font(.title.weight(.semibold))
                 Text("Your music, calendar, files and shortcuts live in the notch, one glance away.",
                      bundle: .module, comment: "Welcome: one sentence about what Cranny does")
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                 Spacer(minLength: 0)
-                Button { onFinish() } label: { Text("Continue", bundle: .module, comment: "Onboarding button") }
+                Button { onFinish() } label: { Text("Continue", bundle: .module, comment: "Welcome: button that closes the window") }
                     .keyboardShortcut(.defaultAction)
                     .controlSize(.large)
             }

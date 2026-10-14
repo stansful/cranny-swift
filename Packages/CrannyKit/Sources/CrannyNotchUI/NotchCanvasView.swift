@@ -52,7 +52,7 @@ private struct CanvasBody: View {
         .opacity(surfaceOpacity)
         .animation(theme.animation(motion), value: model.phase)
         .animation(theme.animation(.resize), value: model.openColumns)
-        .accessibilityAction(named: Text("Open", bundle: .module, comment: "VoiceOver action on the collapsed notch")) {
+        .accessibilityAction(named: Text("Open", bundle: .module, comment: "Closed notch: VoiceOver action that opens the panel")) {
             actions.open()
         }
     }

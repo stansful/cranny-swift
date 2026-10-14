@@ -17,21 +17,21 @@ enum ShellPanes {
                          namespaces: namespaces, previewState: preview, makeView: view)
         }
         return [
-            page(.general, String(localized: "General", bundle: .module, comment: "Settings pane"), "gearshape.fill", .gray, .top, 0,
+            page(.general, String(localized: "General", bundle: .module, comment: "Settings sidebar: pane name"), "gearshape.fill", .gray, .top, 0,
                  namespaces: [.general, .displays], preview: .closed) { AnyView(GeneralPane(settings: settings)) },
-            page(.appearance, String(localized: "Appearance", bundle: .module, comment: "Settings pane"), "paintbrush.fill", .purple, .top, 1,
+            page(.appearance, String(localized: "Appearance", bundle: .module, comment: "Settings sidebar: pane name"), "paintbrush.fill", .purple, .top, 1,
                  namespaces: [.appearance], preview: .open) { AnyView(PlaceholderPane()) },
-            page(.keyboard, String(localized: "Keyboard", bundle: .module, comment: "Settings pane"), "keyboard", .indigo, .top, 2,
+            page(.keyboard, String(localized: "Keyboard", bundle: .module, comment: "Settings sidebar: pane name"), "keyboard", .indigo, .top, 2,
                  namespaces: [.keyboard], preview: .open) { AnyView(PlaceholderPane()) },
-            page(.nookAndWidgets, String(localized: "Layout & Widgets", bundle: .module, comment: "Settings pane (code id `nook`)"),
+            page(.nookAndWidgets, String(localized: "Layout & Widgets", bundle: .module, comment: "Settings sidebar: pane name (code id `nook`)"),
                  "square.grid.2x2.fill", .blue, .notch, 0, namespaces: [.nook], preview: .open) { AnyView(PlaceholderPane()) },
-            page(.liveActivities, String(localized: "Live Activities", bundle: .module, comment: "Settings pane"),
+            page(.liveActivities, String(localized: "Live Activities", bundle: .module, comment: "Settings sidebar: pane name"),
                  "capsule.tophalf.filled", .pink, .notch, 1, namespaces: [.activities], preview: .activity) { AnyView(PlaceholderPane()) },
-            page(.gestures, String(localized: "Gestures", bundle: .module, comment: "Settings pane"), "hand.draw.fill", .orange, .notch, 3,
+            page(.gestures, String(localized: "Gestures", bundle: .module, comment: "Settings sidebar: pane name"), "hand.draw.fill", .orange, .notch, 3,
                  namespaces: [.gestures], preview: .closed) { AnyView(PlaceholderPane()) },
-            page(.permissions, String(localized: "Permissions", bundle: .module, comment: "Settings pane"), "hand.raised.fill", .blue, .bottom, 0,
+            page(.permissions, String(localized: "Permissions", bundle: .module, comment: "Settings sidebar: pane name"), "hand.raised.fill", .blue, .bottom, 0,
                  namespaces: [], preview: nil) { AnyView(PlaceholderPane()) },
-            page(.about, String(localized: "About", bundle: .module, comment: "Settings pane"), "info.circle.fill", .gray, .bottom, 1,
+            page(.about, String(localized: "About", bundle: .module, comment: "Settings sidebar: pane name"), "info.circle.fill", .gray, .bottom, 1,
                  namespaces: [], preview: nil) { AnyView(AboutPane()) },
         ]
     }
@@ -53,7 +53,7 @@ struct GeneralPane: View {
     var body: some View {
         Form {
             Toggle(isOn: settings.binding(CoreSettings.closeOnLeave)) {
-                Text("Close when the pointer leaves", bundle: .module, comment: "Settings ▸ General row")
+                Text("Close when the pointer leaves", bundle: .module, comment: "Settings ▸ General: toggle")
             }
             .toggleStyle(.switch)
             .controlSize(.small)
@@ -73,7 +73,7 @@ struct AboutPane: View {
             Text(verbatim: "Cranny").font(.title.weight(.semibold))
             Text("Version \(info.version) (\(info.build))", bundle: .module, comment: "Settings ▸ About: marketing version and build")
                 .foregroundStyle(.secondary)
-            Text("Free and open source under the MIT License.", bundle: .module, comment: "Settings ▸ About")
+            Text("Free and open source under the MIT License.", bundle: .module, comment: "Settings ▸ About: licence line")
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }

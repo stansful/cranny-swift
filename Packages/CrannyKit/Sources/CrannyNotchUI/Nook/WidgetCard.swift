@@ -48,15 +48,15 @@ struct WidgetPlaceholder {
 
     init(_ id: WidgetID) {
         switch id {
-        case .media: (title, symbol) = (String(localized: "Media", bundle: .module, comment: "Widget placeholder name"), "music.note")
-        case .calendar: (title, symbol) = (String(localized: "Calendar", bundle: .module, comment: "Widget placeholder name"), "calendar")
-        case .quickApps: (title, symbol) = (String(localized: "Quick Apps", bundle: .module, comment: "Widget placeholder name"), "app.dashed")
-        case .mirror: (title, symbol) = (String(localized: "Mirror", bundle: .module, comment: "Widget placeholder name"), "web.camera")
-        case .notes: (title, symbol) = (String(localized: "Notes", bundle: .module, comment: "Widget placeholder name"), "note.text")
-        case .todos: (title, symbol) = (String(localized: "To-dos", bundle: .module, comment: "Widget placeholder name"), "checklist")
-        case .timer: (title, symbol) = (String(localized: "Timer", bundle: .module, comment: "Widget placeholder name"), "timer")
+        case .media: (title, symbol) = (String(localized: "Media", bundle: .module, comment: "Open panel: placeholder card for a widget whose module is not built yet"), "music.note")
+        case .calendar: (title, symbol) = (String(localized: "Calendar", bundle: .module, comment: "Open panel: placeholder card for a widget whose module is not built yet"), "calendar")
+        case .quickApps: (title, symbol) = (String(localized: "Quick Apps", bundle: .module, comment: "Open panel: placeholder card for a widget whose module is not built yet"), "app.dashed")
+        case .mirror: (title, symbol) = (String(localized: "Mirror", bundle: .module, comment: "Open panel: placeholder card for a widget whose module is not built yet"), "web.camera")
+        case .notes: (title, symbol) = (String(localized: "Notes", bundle: .module, comment: "Open panel: placeholder card for a widget whose module is not built yet"), "note.text")
+        case .todos: (title, symbol) = (String(localized: "To-dos", bundle: .module, comment: "Open panel: placeholder card for a widget whose module is not built yet"), "checklist")
+        case .timer: (title, symbol) = (String(localized: "Timer", bundle: .module, comment: "Open panel: placeholder card for a widget whose module is not built yet"), "timer")
         case .airDrop: (title, symbol) = ("AirDrop", "dot.radiowaves.up.forward")
-        case .files: (title, symbol) = (String(localized: "Files", bundle: .module, comment: "Widget placeholder name"), "folder")
+        case .files: (title, symbol) = (String(localized: "Files", bundle: .module, comment: "Open panel: placeholder card for a widget whose module is not built yet"), "folder")
         default: (title, symbol) = (id.rawValue, "app.dashed")
         }
     }
