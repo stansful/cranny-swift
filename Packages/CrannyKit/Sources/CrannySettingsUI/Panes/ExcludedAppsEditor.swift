@@ -22,7 +22,7 @@ struct ExcludedAppsEditor: View {
         }
         .settingRow(GeneralRows.excludedApps, settings: settings, key: CoreSettings.excludedBundleIDs)
         ForEach(ids, id: \.self) { id in
-            let app = AppIdentities.shared.identity(of: id)
+            let app = AppIdentityResolver.shared.identity(of: id)
             HStack(spacing: 8) {
                 AppIconView(icon: app.icon)
                 Text(verbatim: app.name).lineLimit(1)

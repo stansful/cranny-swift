@@ -135,13 +135,6 @@ extension SliderRow {
     }
 }
 
-/// A section header in the system style, from an already-localized string.
-struct SectionTitle: View {
-    let text: String
-    init(_ text: String) { self.text = text }
-    var body: some View { Text(verbatim: text) }
-}
-
 #Preview("Controls") {
     let settings = ModuleRegistry(services: .preview()).services.settings
     Form {

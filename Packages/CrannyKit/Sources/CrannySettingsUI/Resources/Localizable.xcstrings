@@ -736,6 +736,7 @@
     },
     "Changed from the default." : {
       "comment" : "Settings: VoiceOver hint of a row whose value differs from its default",
+      "extractionState" : "stale",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -1033,6 +1034,7 @@
     },
     "Denied" : {
       "comment" : "Settings ▸ Permissions: status pill",
+      "extractionState" : "stale",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -1429,6 +1431,7 @@
     },
     "Granted" : {
       "comment" : "Settings ▸ Permissions: status pill",
+      "extractionState" : "stale",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -2232,6 +2235,7 @@
     },
     "Not yet" : {
       "comment" : "Settings ▸ Permissions: status pill (never asked)",
+      "extractionState" : "stale",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -2876,6 +2880,7 @@
     },
     "Reset to Default" : {
       "comment" : "Settings: row context menu and VoiceOver action",
+      "extractionState" : "stale",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -2898,6 +2903,7 @@
     },
     "Restricted" : {
       "comment" : "Settings ▸ Permissions: status pill (blocked by a profile)",
+      "extractionState" : "stale",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -3217,6 +3223,7 @@
     },
     "Status: %@" : {
       "comment" : "Settings ▸ Permissions: VoiceOver label of the status pill; the argument is the status",
+      "extractionState" : "stale",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -3597,6 +3604,7 @@
     },
     "Unknown" : {
       "comment" : "Settings ▸ Permissions: status pill (macOS cannot tell yet)",
+      "extractionState" : "stale",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
