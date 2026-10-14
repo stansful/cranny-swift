@@ -62,3 +62,8 @@ struct ActivityPreviewBoard: View {
         .frame(width: geometry.outerWidth, height: geometry.bottom)
     }
 }
+
+#Preview("Preview board · floating island") {
+    ActivityPreviewBoard(activity: BluetoothActivity.sample(.trackpad),
+                         metrics: NotchMetrics(hasNotch: false, notchWidth: 0, bandHeight: 30, screenWidth: 1920))
+}

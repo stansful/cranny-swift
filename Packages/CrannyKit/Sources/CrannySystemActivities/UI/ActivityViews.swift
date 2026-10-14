@@ -153,3 +153,26 @@ struct BatteryPartGauge: View {
         .accessibilityLabel(Text(verbatim: SystemCopy.part(part, SystemCopy.percent(level.percent))))
     }
 }
+
+// MARK: - Previews
+
+#Preview("Band levels, tiles and gauges") {
+    let theme = CrannyTheme()
+    VStack(alignment: .leading, spacing: Space.l) {
+        HStack(spacing: Space.l) {
+            BandSymbol(name: "bolt.fill", color: theme.palette.success)
+            BandLevel(percent: 82).frame(width: 32, alignment: .leading)
+            BandLevel(percent: 100).frame(width: 32, alignment: .leading)
+            BandLevel(percent: 18, showsRing: true).frame(width: 48, alignment: .leading)
+        }
+        HStack(spacing: Space.l) {
+            PeekTile(tint: theme.palette.success) { BatteryGlyph(percent: 82, fill: theme.palette.success, showsBolt: true) }
+            PeekTile { Image(systemName: "headphones").font(.system(size: 18, weight: .medium)) }
+            BatteryPartGauge(part: .left, level: BatteryLevel(percent: 84))
+            BatteryPartGauge(part: .chargingCase, level: BatteryLevel(percent: 12))
+        }
+    }
+    .padding(Space.xxl)
+    .background(.black)
+    .crannyThemeRoot(theme)
+}

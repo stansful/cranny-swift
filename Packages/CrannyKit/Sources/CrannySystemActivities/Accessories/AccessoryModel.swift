@@ -105,6 +105,7 @@ private let log = Log.logger(.bluetooth)
             guard let self else { return }
             reports = await hardware.batteryReports()
             let accessory = build(reports)
+            guard isConnected(accessory.id) else { return }        // gone while the levels were read
             log.info("accessory connected: \(accessory.kind.rawValue, privacy: .public), battery known: \(!accessory.batteries.isEmpty, privacy: .public)")
             activity.present(accessory, for: transientDuration)
             scheduleVisibleRefresh()
@@ -142,14 +143,17 @@ private let log = Log.logger(.bluetooth)
 
     /// The device on screen disconnected: no reason to keep announcing it.
     private func endIfGone() {
-        guard let shown = activity.accessory else { return }
-        let present = audio.contains { "audio:\($0.id)" == shown.id }
-            || hid.contains { "hid:\($0.id)" == shown.id }
-            || bluetooth.contains { "bluetooth:\($0.id)" == shown.id }
-        if !present && !shown.id.hasPrefix("sample:") {
-            activity.end()
-            refreshTask?.cancel()
-        }
+        guard let shown = activity.accessory, !isConnected(shown.id) else { return }
+        activity.end()
+        refreshTask?.cancel()
+    }
+
+    /// Whether a source still lists the accessory (samples, shown by the QA hook, always count as connected).
+    private func isConnected(_ id: String) -> Bool {
+        id.hasPrefix("sample:")
+            || audio.contains { "audio:\($0.id)" == id }
+            || hid.contains { "hid:\($0.id)" == id }
+            || bluetooth.contains { "bluetooth:\($0.id)" == id }
     }
 
     private func setBluetoothWatcher(running: Bool) {
