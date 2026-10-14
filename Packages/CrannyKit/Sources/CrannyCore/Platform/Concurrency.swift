@@ -100,7 +100,16 @@ public nonisolated enum ProcessRunner {
                     let (o, e) = collector.result
                     cont.resume(returning: ProcessOutput(status: p.terminationStatus, stdout: o, stderr: e))
                 }
-                do { try process.run() } catch {
+                do {
+                    // Cancelled before the launch: never start it; report it like a process killed by SIGTERM.
+                    guard try box.run() else {
+                        process.terminationHandler = nil
+                        out.fileHandleForReading.readabilityHandler = nil
+                        err.fileHandleForReading.readabilityHandler = nil
+                        cont.resume(returning: ProcessOutput(status: SIGTERM, stdout: Data(), stderr: Data()))
+                        return
+                    }
+                } catch {
                     process.terminationHandler = nil
                     cont.resume(throwing: ProcessRunError.launchFailed(error.localizedDescription))
                 }
@@ -111,10 +120,27 @@ public nonisolated enum ProcessRunner {
     }
 }
 
-private nonisolated final class ProcessBox: @unchecked Sendable {   // Process is thread-safe for terminate()
+/// Launch and cancellation of one process, serialized by `lock` so a cancellation that arrives before the launch
+/// is not lost (it used to find no running process, and the tool then ran to the end).
+private nonisolated final class ProcessBox: @unchecked Sendable {   // `cancelled` is guarded by `lock`
     private let process: Process
+    private let lock = NSLock()
+    private var cancelled = false
     init(_ p: Process) { process = p }
-    func terminate() { if process.isRunning { process.terminate() } }
+    /// Launches the process; false (not launched) when the task was cancelled first.
+    func run() throws -> Bool {
+        try lock.withLock {
+            guard !cancelled else { return false }
+            try process.run()
+            return true
+        }
+    }
+    func terminate() {
+        lock.withLock {
+            cancelled = true
+            if process.isRunning { process.terminate() }
+        }
+    }
 }
 
 private nonisolated final class OutputCollector: @unchecked Sendable {
