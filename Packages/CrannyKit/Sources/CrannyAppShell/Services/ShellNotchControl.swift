@@ -27,11 +27,9 @@ private let log = Log.logger(.overlay)
     func presentAirDrop(_ urls: [URL]) async -> Bool { log.debug("AirDrop — WP13 SharingPresenter"); return false }
     func presentSharePicker(_ urls: [URL]) { log.debug("share picker — WP13 SharingPresenter") }
 
-    func flash(symbol: String, label: String) { flash(symbol: symbol, label: label, duration: HoverIntent.peekAutoDismiss) }
-    /// `duration` > 2.6 s only for visual QA.
-    func flash(symbol: String, label: String, duration: TimeInterval) {
-        guard coordinator != nil else { return }
-        flashActivity.show(symbol: symbol, label: label, duration: duration)
+    /// On the pointer's display only; dropped while paused, locked or hidden (the coordinator decides).
+    func flash(symbol: String, label: String) {
+        coordinator?.showFlash(symbol: symbol, label: label, duration: HoverIntent.peekAutoDismiss)
     }
 
     @discardableResult func addEventObserver(_ handler: @escaping @MainActor (NotchEvent) -> Void) -> UUID {

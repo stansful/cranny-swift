@@ -191,6 +191,17 @@ private func run(_ inputs: [NotchInput], from start: NotchMachineState = NotchMa
     #expect(control.shortcutState(.togglePin) == .off)
 }
 
+/// `NotchControl.flash` shows on one display only (§4.9: peeks and alerts on the pointer's display).
+@Test func theFlashAppearsOnItsDisplayOnly() {
+    typealias Candidate = OverlayCoordinator.Arbitration.Candidate
+    let a = DisplayKey(rawValue: "display-a"), b = DisplayKey(rawValue: "display-b")
+    let result = OverlayCoordinator.Arbitration(
+        ranked: [Candidate(id: .flash, slot: .medium), Candidate(id: "media.nowPlaying", slot: .wide)], flashDisplay: a)
+    #expect(result.primary(on: a)?.id == .flash)
+    #expect(result.primary(on: b)?.id == "media.nowPlaying")
+    #expect(OverlayCoordinator.Arbitration(ranked: [Candidate(id: .flash, slot: .medium)], flashDisplay: nil).primary(on: a) == nil)
+}
+
 @Test func flashActivityShowsAndExpires() async throws {
     let flash = FlashActivity()
     flash.show(symbol: "hand.wave.fill", label: "Hi", duration: 0.05)
@@ -199,6 +210,8 @@ private func run(_ inputs: [NotchInput], from start: NotchMachineState = NotchMa
     #expect(!flash.isActive)
     flash.show(symbol: "doc.on.doc", label: "Path copied", duration: 5)
     #expect(flash.slot == .wide && flash.revision == 2)
+    flash.hide()                                                                       // pause began
+    #expect(!flash.isActive && flash.expiresAt == nil)
 }
 
 @Test func menuBarIconIsATemplateDrawnInCode() {

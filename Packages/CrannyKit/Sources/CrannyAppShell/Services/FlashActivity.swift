@@ -25,6 +25,7 @@ import SwiftUI
     var accessibilityLabel: String { label }
 
     /// Shows (or refreshes) the flash; it hides itself after `duration` (one sleep, no polling).
+    /// Call through `OverlayCoordinator.showFlash`, which picks the display and drops it while paused.
     func show(symbol: String, label: String, duration: TimeInterval) {
         self.symbol = symbol
         self.label = label
@@ -38,6 +39,14 @@ import SwiftUI
             self?.isActive = false
             self?.expiresAt = nil
         }
+    }
+
+    /// Ends the flash now (Pause Live Activities began: a paused flash never comes back stale).
+    func hide() {
+        expiry?.cancel()
+        expiry = nil
+        isActive = false
+        expiresAt = nil
     }
 
     func compactLeading() -> some View { FlashGlyph(symbol: symbol) }

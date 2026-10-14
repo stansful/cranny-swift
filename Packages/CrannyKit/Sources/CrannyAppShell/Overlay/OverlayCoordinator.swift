@@ -19,6 +19,8 @@ private let log = Log.logger(.overlay)
     @ObservationIgnored let hotKeys = HotKeyCenter()
     /// Mirrors the pin of the open panel (menu bar "Keep Cranny Open").
     private(set) var isPinned = false
+    /// The display the current `NotchControl.flash` belongs to (the pointer's when it was requested, §4.9).
+    private(set) var flashDisplay: DisplayKey?
 
     @ObservationIgnored private let registry: ModuleRegistry
     @ObservationIgnored private let environment: ShellEnvironment
@@ -49,6 +51,10 @@ private let log = Log.logger(.overlay)
         let settings = registry.services.settings
         tokens.append(observe({ Self.displayPolicy(settings) }) { [weak self] _ in self?.rebuildPanels() })
         tokens.append(observe({ [weak self] in self?.arbitrate() ?? Arbitration() }) { [weak self] result in self?.apply(result) })
+        // Pausing silences activities: a flash shown just before must not come back when the pause ends.
+        tokens.append(observe({ [environment] in environment.areLiveActivitiesPaused }) { [weak self] paused in
+            if paused { self?.notchControl.flashActivity.hide() }
+        })
         // §4.5: a tracking menu (a context menu in the panel, the menu bar extra's menu) holds the open panel.
         menuObservers = [NSMenu.didBeginTrackingNotification, NSMenu.didEndTrackingNotification].map { name in
             NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
@@ -68,7 +74,8 @@ private let log = Log.logger(.overlay)
         playTask?.cancel()
         switch state {
         case .open: controller.viewModel.send(.open(page: nil, focus: nil, reason: .programmatic))
-        case .peek, .activity, .hud: notchControl.flash(symbol: "sparkles", label: "Cranny")       // WP13: sample activities
+        case .peek, .activity, .hud:                                                             // WP13: sample activities
+            showFlash(symbol: "sparkles", label: "Cranny", duration: HoverIntent.peekAutoDismiss, on: controller.key)
         case .closed: controller.viewModel.send(.close)
         }
         controller.viewModel.send(.hold("preview", true))
@@ -119,6 +126,17 @@ private let log = Log.logger(.overlay)
     }
     func shapeFrameOnScreen() -> CGRect? { (pointerController ?? primaryController)?.shapeFrameOnScreen }
 
+    /// `NotchControl.flash` (Ports.swift): a transient P1 compact activity on ONE display — `display`, else the
+    /// pointer's. Dropped while Live Activities are paused, the screen is locked or asleep, or that display's
+    /// panel is hidden. `duration` > 2.6 s only for "Show on Notch" and visual QA.
+    func showFlash(symbol: String, label: String, duration: TimeInterval, on display: DisplayKey? = nil) {
+        guard !environment.areLiveActivitiesPaused, !environment.isScreenLocked, !environment.areDisplaysAsleep,
+              let target = display.flatMap({ controllers[$0] }) ?? pointerController ?? primaryController,
+              target.viewModel.state.hidden == nil else { return }
+        flashDisplay = target.key
+        notchControl.flashActivity.show(symbol: symbol, label: label, duration: duration)
+    }
+
     #if DEBUG
     /// Visual QA (`--qa-state`): force a state on the primary display, held open regardless of the pointer.
     func forceQAState(_ state: QAHooks.State, page: PageID?) {
@@ -128,9 +146,9 @@ private let log = Log.logger(.overlay)
         case .closed:
             controller.viewModel.send(.close)
         case .compact:
-            notchControl.flash(symbol: "hand.wave.fill", label: QAHooks.sampleLabel, duration: 3600)
+            showFlash(symbol: "hand.wave.fill", label: QAHooks.sampleLabel, duration: 3600, on: controller.key)
         case .peek:
-            notchControl.flash(symbol: "hand.wave.fill", label: QAHooks.sampleLabel, duration: 3600)
+            showFlash(symbol: "hand.wave.fill", label: QAHooks.sampleLabel, duration: 3600, on: controller.key)
             controller.viewModel.send(.autoPeek(.flash, until: .infinity))
         case .open:
             controller.viewModel.send(.open(page: page, focus: nil, reason: .programmatic))
@@ -239,8 +257,19 @@ private let log = Log.logger(.overlay)
     // MARK: Arbitration (WP0 minimum of §4.6: highest priority active, unexpired, enabled activity)
 
     struct Arbitration: Equatable {
-        var primary: ActivityID?
-        var slot: SlotWidth = .short
+        struct Candidate: Equatable {
+            var id: ActivityID
+            var slot: SlotWidth
+        }
+        /// Every candidate, best first.
+        var ranked: [Candidate] = []
+        /// The display that shows `.flash` (the flash is a per-display activity, §4.9).
+        var flashDisplay: DisplayKey?
+
+        /// The primary on one display: the best candidate that may appear there.
+        func primary(on display: DisplayKey) -> Candidate? {
+            ranked.first { $0.id != .flash || display == flashDisplay }
+        }
     }
 
     private func arbitrate() -> Arbitration {
@@ -256,17 +285,21 @@ private let log = Log.logger(.overlay)
                 && (!paused || a.priority == .hud)
         }
         let order = settings[CoreSettings.activityOrder]
-        let best = candidates.min { lhs, rhs in
+        let ranked = candidates.sorted { lhs, rhs in
             let l = (lhs.element.activity.priority.rawValue, order.firstIndex(of: lhs.element.id) ?? lhs.offset)
             let r = (rhs.element.activity.priority.rawValue, order.firstIndex(of: rhs.element.id) ?? rhs.offset)
             return l < r
         }
-        return Arbitration(primary: best?.element.id, slot: best?.element.activity.slot ?? .short)
+        return Arbitration(ranked: ranked.map { .init(id: $0.element.id, slot: $0.element.activity.slot) }, flashDisplay: flashDisplay)
     }
 
     private func apply(_ result: Arbitration) {
-        for controller in controllers.values where controller.scene.primary != result.primary || controller.scene.primarySlot != result.slot {
-            controller.viewModel.setPrimary(result.primary, slot: result.slot)
+        for controller in controllers.values {
+            let primary = result.primary(on: controller.key)
+            let slot = primary?.slot ?? .short
+            if controller.scene.primary != primary?.id || controller.scene.primarySlot != slot {
+                controller.viewModel.setPrimary(primary?.id, slot: slot)
+            }
         }
     }
 }
