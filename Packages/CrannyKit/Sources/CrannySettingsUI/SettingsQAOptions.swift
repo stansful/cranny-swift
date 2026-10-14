@@ -5,6 +5,7 @@
 //   -CrannyQASearch "<text>"                            the sidebar search field starts with this text
 //   -CrannyQAKeepStageLive YES                          keep the live stage while the window is occluded (the
 //                                                       screen is locked during scripted captures)
+//   -CrannyQASimulate songChange|timer|meeting|volume|dropFile   play this Simulate chip once when the stage appears
 //
 // No input is synthesized. Compiled out of Release builds (the options are always nil there).
 import CrannyCore
@@ -26,6 +27,15 @@ enum SettingsQAOptions {
         UserDefaults.standard.bool(forKey: "CrannyQAKeepStageLive")
         #else
         false
+        #endif
+    }
+
+    /// A Simulate chip to play when the stage appears (captures of a peek mid-script).
+    static var simulate: SimulateChip? {
+        #if DEBUG
+        UserDefaults.standard.string(forKey: "CrannyQASimulate").flatMap(SimulateChip.init(rawValue:))
+        #else
+        nil
         #endif
     }
 

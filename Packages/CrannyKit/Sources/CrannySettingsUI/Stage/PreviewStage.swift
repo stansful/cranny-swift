@@ -20,7 +20,10 @@ struct PreviewStage: View {
             Divider()
         }
         .background(WindowVisibilityReader { isWindowVisible = $0 || SettingsQAOptions.keepsStageLive })
-        .onAppear { controller.start() }
+        .onAppear {
+            controller.start()
+            if let chip = SettingsQAOptions.simulate { controller.simulate(chip) }     // Debug visual QA only
+        }
         .onDisappear { controller.stop() }
         .onChange(of: isWindowVisible) { _, visible in
             if visible { controller.start() } else { controller.stop() }
