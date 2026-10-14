@@ -56,10 +56,11 @@ enum CalendarFormat {
 
     // MARK: Phrases
 
-    /// Widget, next event: "In 4m".
-    static func startsIn(minutes: Int) -> String {
-        let d = duration(minutes: minutes)
-        return String(localized: "In \(d)", bundle: .module, comment: "Calendar widget: next event starts in a duration (\"In 4m\")")
+    /// Widget, next event: "In 4m". (`language`: tests measure the featured row in both languages.)
+    static func startsIn(minutes: Int, language: CalendarLanguage = .app) -> String {
+        let d = duration(minutes: minutes, language: language)
+        return String(localized: "In \(d)", bundle: language.bundle, locale: language.locale,
+                      comment: "Calendar widget: next event starts in a duration (\"In 4m\")")
     }
     /// The band, Meeting soon: "in 4m" (Russian: "4 мин" — no room for "через"). `compactLabel`, up to 30 minutes
     /// (the longest lead time): fits the 48u medium slot in both languages (tested).
@@ -96,9 +97,10 @@ enum CalendarFormat {
         return Duration.seconds(minutes * 60).formatted(.time(pattern: .hourMinute).locale(language.locale))
     }
     /// Widget, live event: "Now · 12m left".
-    static func nowWithTimeLeft(minutes: Int) -> String {
-        let d = duration(minutes: minutes)
-        return String(localized: "Now · \(d) left", bundle: .module, comment: "Calendar widget: the event in progress and the time left (\"Now · 12m left\")")
+    static func nowWithTimeLeft(minutes: Int, language: CalendarLanguage = .app) -> String {
+        let d = duration(minutes: minutes, language: language)
+        return String(localized: "Now · \(d) left", bundle: language.bundle, locale: language.locale,
+                      comment: "Calendar widget: the event in progress and the time left (\"Now · 12m left\")")
     }
     /// "12m left".
     static func timeLeft(minutes: Int) -> String { left(duration(minutes: minutes)) }

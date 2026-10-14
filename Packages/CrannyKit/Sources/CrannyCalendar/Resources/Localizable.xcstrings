@@ -947,6 +947,24 @@
         }
       }
     },
+    "calendar.join.short" : {
+      "comment" : "Calendar widget: the word on the Join capsule in an event row; as short as possible (\"Join\"), the peek says the full word",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Join"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Войти"
+          }
+        }
+      }
+    },
     "in %@" : {
       "comment" : "Meeting soon, in the notch band: starts in a duration (\"in 4m\"); keep it as short as possible",
       "localizations" : {

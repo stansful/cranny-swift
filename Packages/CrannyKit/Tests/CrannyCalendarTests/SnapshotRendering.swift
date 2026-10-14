@@ -42,10 +42,23 @@ import Testing
         }
         try await render("widget-error-3", CalendarErrorState(error: .unavailable, model: model).crannyCard(cells: 3))
         try await render("widget-hidden-3", AllCalendarsHiddenState(total: 3, model: model).crannyCard(cells: 3))
-        // Russian `Text` keys resolve from the environment locale (the longest Join word, "Подключиться").
+        // Russian `Text` keys resolve from the environment locale (the rows' Join word, «Войти»; `FeaturedRowTests`
+        // checks that it fits at every size).
         for cells in 3...5 {
             let context = WidgetContext(cells: cells, contentSize: CGSize(width: grid.width(cells: cells) - 24, height: 96))
             try await render("widget-\(cells)-ru", widget.makeBody(context: context).crannyCard(cells: cells), locale: Locale(identifier: "ru"))
+        }
+        // Each featured-row layout at the 3-cell width, in Russian: the widget shows the first that fits.
+        let ru = try #require(CalendarLanguage.named("ru"))
+        for (name, minutes) in [("now", 12), ("next", 4)] {
+            let status = name == "now" ? CalendarFormat.nowWithTimeLeft(minutes: minutes, language: ru) : CalendarFormat.startsIn(minutes: minutes, language: ru)
+            let rows = VStack(alignment: .leading, spacing: Space.m) {
+                ForEach(FeaturedRowLayout.allCases, id: \.self) { layout in
+                    FeaturedRowBody(layout: layout, title: "Планёрка команды", status: status, color: RGB(hex: 0x1BADF8), start: "10:30", join: {})
+                        .frame(width: 160)
+                }
+            }
+            try await render("featured-layouts-\(name)-ru", rows, locale: Locale(identifier: "ru"))
         }
         services.settings[CalendarSettings.daysBehind] = 2
         services.settings[CalendarSettings.daysAhead] = 4
