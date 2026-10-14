@@ -73,14 +73,16 @@ nonisolated enum VisualizerRender: Equatable, Sendable {
 
     // MARK: Sinks (views on screen)
 
+    /// Called from AppKit view callbacks that can run inside a SwiftUI update: the re-evaluation (which may
+    /// start the tap and publish `liveStatus`) runs right after it.
     func attach(_ sink: any LevelSink) {
         sinks[ObjectIdentifier(sink)] = WeakSink(sink)
-        reevaluate()
+        Task { [weak self] in self?.reevaluate() }
     }
 
     func detach(_ sink: any LevelSink) {
         sinks[ObjectIdentifier(sink)] = nil
-        reevaluate()
+        Task { [weak self] in self?.reevaluate() }
     }
 
     var visibleCount: Int {
@@ -130,7 +132,7 @@ nonisolated enum VisualizerRender: Equatable, Sendable {
         } else {
             pausedStop?.cancel(); pausedStop = nil
             stopLive()
-            if c.mode != .live { liveStatus = .off }
+            if c.mode != .live, liveStatus != .off { liveStatus = .off }
         }
     }
 
@@ -159,7 +161,7 @@ nonisolated enum VisualizerRender: Equatable, Sendable {
     private func stopLive() {
         if #available(macOS 14.2, *) { (live as? LiveSpectrum)?.stop() }
         if energy != 0 { energy = 0 }
-        if liveStatus == .receiving || liveStatus == .waiting || liveStatus == .silent { liveStatus = .off }
+        if [.receiving, .waiting, .silent].contains(liveStatus) { liveStatus = .off }
     }
 
     @available(macOS 14.2, *)

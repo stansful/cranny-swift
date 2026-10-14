@@ -64,7 +64,7 @@ struct MediaPlayingView: View {
         let source = nowPlaying.bundleID ?? nowPlaying.parentBundleID
         let appName = source.map { PlayerApps.name(for: $0, fallback: nowPlaying.appName) } ?? nowPlaying.appName
         return Button { if let source { PlayerApps.open(source) } } label: {
-            ArtworkView(image: service.artwork, identity: service.artwork == nil ? nil : nowPlaying.trackKey, size: size,
+            ArtworkView(image: service.artwork, identity: service.artworkKey, size: size,
                         radius: theme.grid.innerRadius, glows: settings[CoreSettings.albumGlow], accent: service.palette?.accent)
                 .notchMatched(MatchedID.mediaArtwork)
         }
@@ -152,4 +152,18 @@ struct MediaPlayingView: View {
             withAnimation(theme.animation(.snapBack)) { swipe = 0 }
         }
     }
+}
+
+#Preview("Playing · 5 cells, long title") {
+    let service = SampleMedia.previewService()
+    var np = SampleMedia.nowPlaying()
+    np.title = "An unusually long title that needs the marquee"
+    return MediaPlayingView(service: service, nowPlaying: np,
+                            context: WidgetContext(cells: 5, contentSize: CGSize(width: 288, height: 96)),
+                            haptics: nil, settings: service.settings)
+        .frame(width: 288, height: 96)
+        .crannyCard(cells: 5)
+        .padding(Space.xxl)
+        .background(.black)
+        .crannyThemeRoot(CrannyTheme())
 }

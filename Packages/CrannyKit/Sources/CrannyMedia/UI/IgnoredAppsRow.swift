@@ -67,3 +67,12 @@ struct IgnoredAppsRow: View {
         add(bundleID)
     }
 }
+
+#Preview("Ignore apps") {
+    let services = CrannyServices.preview()
+    services.settings[MediaSettings.ignoredBundleIDs] = ["com.apple.Safari"]
+    let service = SampleMedia.service(settings: services.settings, environment: services.environment, permissions: services.permissions)
+    return Form { Section { IgnoredAppsRow(service: service, settings: services.settings) } }
+        .formStyle(.grouped)
+        .frame(width: 520, height: 200)
+}

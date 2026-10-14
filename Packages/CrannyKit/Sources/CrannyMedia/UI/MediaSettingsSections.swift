@@ -190,3 +190,18 @@ private struct AutomationRow: View {
         }
     }
 }
+
+#Preview("Live why-sheet") {
+    LiveVisualizerSheet(confirm: {}, cancel: {})
+}
+
+#Preview("Source and fallback sections") {
+    let services = CrannyServices.preview()
+    let service = SampleMedia.service(settings: services.settings, environment: services.environment, permissions: services.permissions)
+    Form {
+        MediaSourceSection(service: service, health: BridgeHealthMonitor(service: service))
+        AppleEventsSection(services: services)
+    }
+    .formStyle(.grouped)
+    .frame(width: 560, height: 360)
+}

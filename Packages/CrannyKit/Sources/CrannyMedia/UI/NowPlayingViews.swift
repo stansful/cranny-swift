@@ -13,7 +13,7 @@ struct NowPlayingLeading: View {
         let service = activity.service
         let size = 20 * theme.notchUnit
         if service.settings[MediaSettings.artworkInCompact] {
-            ArtworkView(image: service.artwork, identity: service.artwork == nil ? nil : service.nowPlaying?.trackKey,
+            ArtworkView(image: service.artwork, identity: service.artworkKey,
                         size: size, radius: Radius.artCompact * theme.notchUnit,
                         glows: service.settings[CoreSettings.albumGlow], accent: service.palette?.accent)
                 .notchMatched(MatchedID.mediaArtwork)
@@ -45,7 +45,7 @@ struct NowPlayingMinimal: View {
 
     var body: some View {
         let size = 18 * theme.notchUnit
-        ArtworkView(image: activity.service.artwork, identity: activity.service.nowPlaying?.trackKey,
+        ArtworkView(image: activity.service.artwork, identity: activity.service.artworkKey,
                     size: size, radius: size / 2, accent: activity.service.palette?.accent)
     }
 }
@@ -60,7 +60,7 @@ struct NowPlayingPeekRow: View {
         let service = activity.service
         if let np = service.nowPlaying {
             HStack(spacing: Space.l) {
-                ArtworkView(image: service.artwork, identity: service.artwork == nil ? nil : np.trackKey,
+                ArtworkView(image: service.artwork, identity: service.artworkKey,
                             size: 40, radius: Radius.artPeek,
                             glows: service.settings[CoreSettings.albumGlow], accent: service.palette?.accent)
                 VStack(alignment: .leading, spacing: 1) {

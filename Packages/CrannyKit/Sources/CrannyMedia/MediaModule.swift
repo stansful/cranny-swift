@@ -16,6 +16,7 @@ public enum MediaModule: FeatureModule {
         let service = makeService(services)
         services.nowPlaying = service
         let health = BridgeHealthMonitor(service: service)
+        service.health = health
 
         registry.add(widget: MediaWidget(service: service, services: services))
         registry.add(activity: NowPlayingActivity(service: service, settings: services.settings), kind: NowPlayingActivity.kind,

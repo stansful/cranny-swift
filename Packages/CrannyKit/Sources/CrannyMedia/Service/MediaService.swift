@@ -15,6 +15,9 @@ private nonisolated let log = Log.logger(.media)
     private(set) var nowPlaying: NowPlaying?
     private(set) var artwork: CGImage?
     private(set) var palette: AmbientPalette?
+    /// Track key of `artwork` (the previous track's art stays up to `artworkGrace` after a change): views use
+    /// it as the artwork's identity, so a swap cross-fades exactly when the picture changes.
+    private(set) var artworkKey: String?
     private(set) var trackChangeCount = 0
     var audioEnergy: Double { visualizer.energy }
 
@@ -31,6 +34,8 @@ private nonisolated let log = Log.logger(.media)
     @ObservationIgnored let settings: SettingsStore
     @ObservationIgnored let clock: any MediaClock
     @ObservationIgnored let visualizer: VisualizerEngine
+    /// The blocked-helper heuristic (set by the module; read by diagnostics).
+    @ObservationIgnored weak var health: BridgeHealthMonitor?
     @ObservationIgnored private let factories: [MediaProviderFactory]
     @ObservationIgnored private var index = 0
     @ObservationIgnored private var provider: (any MediaProvider)?
@@ -42,7 +47,6 @@ private nonisolated let log = Log.logger(.media)
     @ObservationIgnored private var debounceTask: Task<Void, Never>?
     @ObservationIgnored private var artworkGrace: Task<Void, Never>?
     @ObservationIgnored private var cache = ArtworkCache()
-    @ObservationIgnored private var artworkKey: String?
     @ObservationIgnored private var raw: NowPlaying?
     @ObservationIgnored private var tokens: [ObservationToken] = []
 
@@ -202,10 +206,8 @@ private nonisolated let log = Log.logger(.media)
 
     private func ingest(_ incoming: NowPlaying?) {
         raw = incoming
-        if let source = incoming?.parentBundleID ?? incoming?.bundleID {
-            recentSources.removeAll { $0 == source }
-            recentSources.insert(source, at: 0)
-            if recentSources.count > 8 { recentSources.removeLast() }
+        if let source = incoming?.parentBundleID ?? incoming?.bundleID, recentSources.first != source {
+            recentSources = Array(([source] + recentSources.filter { $0 != source }).prefix(8))
         }
         publish(filter.apply(incoming))
     }
@@ -258,6 +260,7 @@ private nonisolated let log = Log.logger(.media)
 
     private func setArtwork(_ decoded: DecodedArtwork?, key: String?) {
         artworkGrace?.cancel(); artworkGrace = nil
+        guard artworkKey != key || artwork !== decoded?.image else { return }
         artworkKey = key
         artwork = decoded?.image
         palette = decoded?.palette

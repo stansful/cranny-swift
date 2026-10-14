@@ -47,6 +47,18 @@ import Testing
         #expect(registry.permissionUses.allSatisfy { $0.module == .media && !$0.reason.isEmpty })
     }
 
+    @Test func diagnosticsNeverContainPersonalData() throws {
+        let registry = ModuleRegistry(services: .preview())
+        registry.register(MediaModule.self)
+        let diagnostics = try #require(registry.services.nowPlaying as? any NowPlayingDiagnostics).diagnostics
+        #expect(diagnostics["media.provider"] == "none")
+        #expect(diagnostics["media.status"] == "idle")
+        #expect(diagnostics["media.degraded"] == "false")
+        let sample = SampleMedia.previewService().diagnostics
+        #expect(sample["media.session"] == "playing")
+        #expect(!sample.values.contains { $0.contains(SampleMedia.title) || $0.contains(SampleMedia.artist) || $0.contains("Music") })
+    }
+
     @Test func settingsDefaultsMatchTheArchitecture() {
         #expect(MediaSettings.visualizer.defaultValue == .ambient)
         #expect(MediaSettings.allowAppleEvents.defaultValue == false)
