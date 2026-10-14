@@ -2,6 +2,7 @@
 // Small, verified building blocks so modules never hand-roll threading.
 import Foundation
 import Observation
+import os
 
 // MARK: - Observation outside SwiftUI (macOS 14-safe; `Observations` is macOS 26+)
 
@@ -78,6 +79,24 @@ public nonisolated enum ProcessRunner {
     public static func run(_ executable: String, _ arguments: [String],
                            environment: [String: String] = ["PATH": "/usr/bin:/bin", "LANG": "en_US.UTF-8"],
                            currentDirectory: URL? = nil) async throws -> ProcessOutput {
+        try await launch(executable, arguments, environment: environment, currentDirectory: currentDirectory,
+                         interruptGrace: nil)
+    }
+
+    /// Like `run(_:_:environment:currentDirectory:)`, but cancelling the task first sends SIGINT — the tool's own
+    /// Ctrl-C path, e.g. `shortcuts run` stops the shortcut it started — and SIGTERM only if the tool is still
+    /// running `interruptGrace` later.
+    @concurrent
+    public static func run(_ executable: String, _ arguments: [String],
+                           environment: [String: String] = ["PATH": "/usr/bin:/bin", "LANG": "en_US.UTF-8"],
+                           currentDirectory: URL? = nil, interruptGrace: Duration) async throws -> ProcessOutput {
+        try await launch(executable, arguments, environment: environment, currentDirectory: currentDirectory,
+                         interruptGrace: interruptGrace)
+    }
+
+    @concurrent
+    private static func launch(_ executable: String, _ arguments: [String], environment: [String: String],
+                               currentDirectory: URL?, interruptGrace: Duration?) async throws -> ProcessOutput {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = arguments
@@ -115,31 +134,47 @@ public nonisolated enum ProcessRunner {
                 }
             }
         } onCancel: {
-            box.terminate()
+            if let interruptGrace { box.interrupt(thenTerminateAfter: interruptGrace) } else { box.terminate() }
         }
     }
 }
 
-/// Launch and cancellation of one process, serialized by `lock` so a cancellation that arrives before the launch
-/// is not lost (it used to find no running process, and the tool then ran to the end).
-private nonisolated final class ProcessBox: @unchecked Sendable {   // `cancelled` is guarded by `lock`
+/// Launch and cancellation of one process, serialized by `cancellation` so a cancellation that arrives before the
+/// launch is not lost (it used to find no running process, and the tool then ran to the end).
+private nonisolated final class ProcessBox: @unchecked Sendable {   // `process` is only touched under the lock
     private let process: Process
-    private let lock = NSLock()
-    private var cancelled = false
+    /// Whether the task was cancelled; the lock also serializes `Process.run()` against the signals.
+    private let cancellation = OSAllocatedUnfairLock(initialState: false)
     init(_ p: Process) { process = p }
+
     /// Launches the process; false (not launched) when the task was cancelled first.
     func run() throws -> Bool {
-        try lock.withLock {
+        try cancellation.withLockUnchecked { cancelled in
             guard !cancelled else { return false }
             try process.run()
             return true
         }
     }
+
     func terminate() {
-        lock.withLock {
+        cancellation.withLockUnchecked { cancelled in
             cancelled = true
             if process.isRunning { process.terminate() }
         }
+    }
+
+    /// SIGINT now, SIGTERM after `grace` if the process has not exited by then.
+    func interrupt(thenTerminateAfter grace: Duration) {
+        let interrupted = cancellation.withLockUnchecked { cancelled -> Bool in
+            cancelled = true
+            guard process.isRunning else { return false }
+            process.interrupt()
+            return true
+        }
+        guard interrupted else { return }
+        let (seconds, attoseconds) = grace.components
+        let delay = Double(seconds) + Double(attoseconds) / 1e18
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + delay) { [self] in terminate() }
     }
 }
 
