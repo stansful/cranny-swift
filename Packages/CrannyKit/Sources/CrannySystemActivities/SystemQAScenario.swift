@@ -13,8 +13,8 @@ enum SystemQAScenario: String, CaseIterable {
     case charging, charged, plugged, unplugged, warning, critical, airpods, trackpad, headphones
 
     init?(arguments: [String]) {
-        guard let index = arguments.firstIndex(of: "--qa-system"), index + 1 < arguments.count,
-              let scenario = SystemQAScenario(rawValue: arguments[index + 1]) else { return nil }
+        guard let scenario = LaunchArguments(arguments).value(after: "--qa-system").flatMap(SystemQAScenario.init(rawValue:))
+        else { return nil }
         self = scenario
     }
 

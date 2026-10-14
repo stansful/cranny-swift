@@ -383,6 +383,7 @@
     },
     "Reset to Default" : {
       "comment" : "Settings ▸ Live Activities: context menu item of a system activity option",
+      "extractionState" : "stale",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
