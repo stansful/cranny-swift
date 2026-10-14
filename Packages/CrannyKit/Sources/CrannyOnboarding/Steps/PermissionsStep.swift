@@ -91,7 +91,7 @@ private struct PermissionRowView: View {
                 Text("System Settings…", bundle: .module, comment: "Welcome step 5: opens System Settings for a permission that was turned off")
             }
         case .restricted:
-            Text("Managed by your organisation", bundle: .module, comment: "Welcome step 5: status of a permission a device profile controls")
+            Text("Managed by your organization", bundle: .module, comment: "Welcome step 5: status of a permission a device profile controls")
                 .font(.callout).foregroundStyle(.secondary)
         case .deferred:
             Text("Asks when needed", bundle: .module, comment: "Welcome step 5: status when the system could not ask yet (e.g. the music app is not running)")

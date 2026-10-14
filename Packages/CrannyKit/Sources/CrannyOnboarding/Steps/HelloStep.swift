@@ -9,7 +9,7 @@ struct HelloStep: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.l) {
-            StepHeader(title: String(localized: "Look up. That's Cranny.", bundle: .module, comment: "Welcome: headline"),
+            StepHeader(title: String(localized: "Look up. That’s Cranny.", bundle: .module, comment: "Welcome: headline"),
                        message: String(localized: "Your music, calendar, files and shortcuts live in the notch, one glance away.",
                                        bundle: .module, comment: "Welcome: one sentence about what Cranny does"))
             if !flow.stage.hasNotch {

@@ -200,7 +200,7 @@ private let log = Log.logger(.onboarding)
     }
 
     private static var farewellText: String {
-        String(localized: "That's the tour. Replay it any time from the menu bar.", bundle: .module,
+        String(localized: "That’s the tour. Replay it any time from the menu bar.", bundle: .module,
                comment: "Tutorial: last bubble after every step is done")
     }
 

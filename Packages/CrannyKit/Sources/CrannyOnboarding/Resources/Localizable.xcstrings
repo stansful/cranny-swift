@@ -436,7 +436,7 @@
         }
       }
     },
-    "Look up. That's Cranny." : {
+    "Look up. That’s Cranny." : {
       "comment" : "Welcome: headline",
       "localizations" : {
         "ru" : {
@@ -458,7 +458,7 @@
         }
       }
     },
-    "Managed by your organisation" : {
+    "Managed by your organization" : {
       "comment" : "Welcome step 5: status of a permission a device profile controls",
       "localizations" : {
         "ru" : {
@@ -513,7 +513,7 @@
         }
       }
     },
-    "Music, your day and favourite apps" : {
+    "Music, your day and favorite apps" : {
       "comment" : "Welcome, layouts: Listener preset description",
       "localizations" : {
         "ru" : {
@@ -755,7 +755,7 @@
         }
       }
     },
-    "Put two fingers on the trackpad and swipe over the notch above. It's only practice." : {
+    "Put two fingers on the trackpad and swipe over the notch above. It’s only practice." : {
       "comment" : "Welcome step 3: sentence under the headline",
       "localizations" : {
         "ru" : {
@@ -1025,7 +1025,7 @@
         }
       }
     },
-    "That's the tour. Replay it any time from the menu bar." : {
+    "That’s the tour. Replay it any time from the menu bar." : {
       "comment" : "Tutorial: last bubble after every step is done",
       "localizations" : {
         "ru" : {
@@ -1069,13 +1069,13 @@
         }
       }
     },
-    "To open at login, allow Cranny in System Settings ▸ General ▸ Login Items." : {
+    "To open at login, allow Cranny under Login Items in System Settings." : {
       "comment" : "Welcome step 6: footnote when macOS waits for the login item to be approved",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Чтобы Cranny открывался при входе, разрешите это: Системные настройки ▸ Основные ▸ Объекты входа."
+            "value" : "Чтобы Cranny открывался при входе, разрешите его в разделе «Объекты входа» в Системных настройках."
           }
         }
       }
@@ -1157,17 +1157,6 @@
         }
       }
     },
-    "You're set" : {
-      "comment" : "Welcome step 6: headline",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Всё готово"
-          }
-        }
-      }
-    },
     "Your calendar, a camera check and a timer" : {
       "comment" : "Welcome, layouts: Meetings preset description",
       "localizations" : {
@@ -1197,6 +1186,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ваша раскладка останется, если не выбрать другую. Изменить её можно в любой момент: Настройки ▸ Раскладка и виджеты."
+          }
+        }
+      }
+    },
+    "You’re set" : {
+      "comment" : "Welcome step 6: headline",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Всё готово"
           }
         }
       }

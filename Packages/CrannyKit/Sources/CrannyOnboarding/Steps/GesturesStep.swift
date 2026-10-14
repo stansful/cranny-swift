@@ -11,7 +11,7 @@ struct GesturesStep: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.l) {
             StepHeader(title: String(localized: "Try a gesture", bundle: .module, comment: "Welcome step 3: headline"),
-                       message: String(localized: "Put two fingers on the trackpad and swipe over the notch above. It's only practice.",
+                       message: String(localized: "Put two fingers on the trackpad and swipe over the notch above. It’s only practice.",
                                        bundle: .module, comment: "Welcome step 3: sentence under the headline"))
             VStack(alignment: .leading, spacing: Space.m) {
                 PracticeRow(isDone: flow.pulledDown,
