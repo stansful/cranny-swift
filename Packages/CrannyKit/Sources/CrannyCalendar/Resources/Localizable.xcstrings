@@ -1,6 +1,996 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ elapsed" : {
+      "comment" : "VoiceOver: time since a meeting started (\"12 minutes elapsed\")",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "прошло %@"
+          }
+        }
+      }
+    },
+    "%@ in" : {
+      "comment" : "Meeting in progress: time elapsed since the start (\"12m in\")",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "идёт %@"
+          }
+        }
+      }
+    },
+    "%@ left" : {
+      "comment" : "Meeting in progress: time left; the argument is a duration (\"12m left\", VoiceOver \"12 minutes left\")",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ещё %@"
+          }
+        }
+      }
+    },
+    "%@ · %@" : {
+      "comment" : "Meeting peek: time range and place (\"10:30–11:00 · Room 4\")",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "%lld days" : {
+      "comment" : "Calendar settings: a number of days (plural)",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld day"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld days"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld дня"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld дней"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld день"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld дня"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "+%@" : {
+      "comment" : "Meeting in progress, in the notch band: time elapsed with a plus sign (\"+12m\", \"+1:30\"); at most 48 pt",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+%@"
+          }
+        }
+      }
+    },
+    "+%lld more" : {
+      "comment" : "Calendar widget: events below the visible list (\"+3 more\")",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ещё %lld"
+          }
+        }
+      }
+    },
+    "Access is off" : {
+      "comment" : "Calendar widget, 2 cells: access was denied (very short)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доступ выключен"
+          }
+        }
+      }
+    },
+    "All day" : {
+      "comment" : "Calendar widget: time column of an all-day event",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Весь день"
+          }
+        }
+      }
+    },
+    "App" : {
+      "comment" : "Settings ▸ Calendar ▸ Open meetings in: the service's own app",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приложение"
+          }
+        }
+      }
+    },
+    "Birthdays" : {
+      "comment" : "Settings ▸ Calendar: search keyword for the birthdays calendar",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дни рождения"
+          }
+        }
+      }
+    },
+    "Browser" : {
+      "comment" : "Settings ▸ Calendar ▸ Open meetings in: the web browser",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Браузер"
+          }
+        }
+      }
+    },
+    "Calendar" : {
+      "comment" : "Calendar: module name (widget, Settings pane, ⌘K result kind)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Календарь"
+          }
+        }
+      }
+    },
+    "Calendar access is off." : {
+      "comment" : "Calendar widget: access was denied in System Settings",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доступ к календарям выключен."
+          }
+        }
+      }
+    },
+    "Calendar access is restricted on this Mac." : {
+      "comment" : "Calendar widget: access blocked by a profile or parental controls",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доступ к календарям на этом Mac ограничен."
+          }
+        }
+      }
+    },
+    "Calendars" : {
+      "comment" : "Settings ▸ Calendar: section title",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Календари"
+          }
+        }
+      }
+    },
+    "Calendars: 0 of %lld shown" : {
+      "comment" : "Calendar widget: every calendar is hidden in Settings",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Календари: показано 0 из %lld"
+          }
+        }
+      }
+    },
+    "Choose…" : {
+      "comment" : "Calendar widget: opens Settings ▸ Calendar to pick calendars",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбрать…"
+          }
+        }
+      }
+    },
+    "Couldn't read your calendars" : {
+      "comment" : "Calendar widget: error state, one line",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось прочитать календари"
+          }
+        }
+      }
+    },
+    "Cranny can't see your calendars yet." : {
+      "comment" : "Settings ▸ Calendar: access not granted yet",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny пока не видит ваши календари."
+          }
+        }
+      }
+    },
+    "Days after today" : {
+      "comment" : "Calendar settings: how many future days the widget can show",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дней вперёд"
+          }
+        }
+      }
+    },
+    "Days before today" : {
+      "comment" : "Calendar settings: how many past days the widget can show",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дней назад"
+          }
+        }
+      }
+    },
+    "Design review" : {
+      "comment" : "Calendar sample data: event title",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обзор дизайна"
+          }
+        }
+      }
+    },
+    "Dismiss" : {
+      "comment" : "Meeting soon: hide this reminder until the next one",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скрыть"
+          }
+        }
+      }
+    },
+    "Ended, %@" : {
+      "comment" : "VoiceOver: an event that is over (\"Ended, 9:00–9:30\")",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закончилось, %@"
+          }
+        }
+      }
+    },
+    "Event" : {
+      "comment" : "Calendar: placeholder title shown instead of real titles in Demo mode",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Событие"
+          }
+        }
+      }
+    },
+    "Events" : {
+      "comment" : "Settings ▸ Calendar: section title",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "События"
+          }
+        }
+      }
+    },
+    "Focus time" : {
+      "comment" : "Calendar sample data: event title",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Время фокуса"
+          }
+        }
+      }
+    },
+    "Hidden calendars never appear in the widget or as live activities." : {
+      "comment" : "Settings ▸ Calendar: footnote under the calendar list",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скрытые календари не появляются ни в виджете, ни в активностях."
+          }
+        }
+      }
+    },
+    "In %@" : {
+      "comment" : "Calendar widget: next event starts in a duration (\"In 4m\")",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Через %@"
+          }
+        }
+      }
+    },
+    "Join" : {
+      "comment" : "Calendar: Join button title (opens the meeting link)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключиться"
+          }
+        }
+      }
+    },
+    "Join appears when an event's URL, location or notes link to one of these services. The app is used only when it is installed." : {
+      "comment" : "Settings ▸ Calendar: footnote under the meeting services",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кнопка «Подключиться» появляется, если в ссылке, месте или заметках события есть ссылка на один из этих сервисов. Приложение используется, только если оно установлено."
+          }
+        }
+      }
+    },
+    "Join meeting" : {
+      "comment" : "Calendar: Join button, VoiceOver label",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключиться к встрече"
+          }
+        }
+      }
+    },
+    "Join next meeting" : {
+      "comment" : "Command palette: Calendar command",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключиться к следующей встрече"
+          }
+        }
+      }
+    },
+    "Lead time" : {
+      "comment" : "Live Activities ▸ Meeting soon: how long before a meeting it appears",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Напоминать за"
+          }
+        }
+      }
+    },
+    "Loading events…" : {
+      "comment" : "Calendar widget: loading state (shown after 300 ms)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загрузка событий…"
+          }
+        }
+      }
+    },
+    "Lunch with Ana" : {
+      "comment" : "Calendar sample data: event title",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обед с Аней"
+          }
+        }
+      }
+    },
+    "Meeting in progress" : {
+      "comment" : "Live Activities pane: the current-meeting activity",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Идёт встреча"
+          }
+        }
+      }
+    },
+    "Meeting in progress: %@" : {
+      "comment" : "Meeting in progress: VoiceOver label; the argument is the event title",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Идёт встреча: %@"
+          }
+        }
+      }
+    },
+    "Meeting links" : {
+      "comment" : "Settings ▸ Calendar: section title (services that get a Join button)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ссылки на встречи"
+          }
+        }
+      }
+    },
+    "Meeting soon" : {
+      "comment" : "Live Activities pane: the upcoming-meeting activity",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скоро встреча"
+          }
+        }
+      }
+    },
+    "Meeting soon appears this long before an event, and again one minute before." : {
+      "comment" : "Live Activities ▸ Meeting soon: tooltip of the lead time row",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«Скоро встреча» появляется за это время до события и ещё раз за минуту."
+          }
+        }
+      }
+    },
+    "Meeting soon: %@" : {
+      "comment" : "Meeting soon: VoiceOver label; the argument is the event title",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скоро встреча: %@"
+          }
+        }
+      }
+    },
+    "Next day" : {
+      "comment" : "Calendar widget: page to the next day (button label)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Следующий день"
+          }
+        }
+      }
+    },
+    "No calendars yet" : {
+      "comment" : "Settings ▸ Calendar: the account has no calendars (or they are still loading)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Календарей пока нет"
+          }
+        }
+      }
+    },
+    "No events" : {
+      "comment" : "Calendar widget: empty state for another day",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет событий"
+          }
+        }
+      }
+    },
+    "No more events today" : {
+      "comment" : "Calendar widget: empty state for the rest of today",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сегодня больше нет событий"
+          }
+        }
+      }
+    },
+    "Now" : {
+      "comment" : "Calendar widget: label for the event in progress",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сейчас"
+          }
+        }
+      }
+    },
+    "Now · %@ left" : {
+      "comment" : "Calendar widget: the event in progress and the time left (\"Now · 12m left\")",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сейчас · ещё %@"
+          }
+        }
+      }
+    },
+    "Now, %@, %@" : {
+      "comment" : "VoiceOver: an event in progress (\"Now, 12 minutes left, 10:30–11:00\")",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Now, %1$@, %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сейчас, %1$@, %2$@"
+          }
+        }
+      }
+    },
+    "Open System Settings" : {
+      "comment" : "Calendar widget: button that opens Privacy & Security ▸ Calendars",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть Системные настройки"
+          }
+        }
+      }
+    },
+    "Open in Calendar" : {
+      "comment" : "Calendar: action that shows the event in the Calendar app",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть в Календаре"
+          }
+        }
+      }
+    },
+    "Open meetings in" : {
+      "comment" : "Settings ▸ Calendar: where Join opens a meeting",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открывать встречи в"
+          }
+        }
+      }
+    },
+    "Permissions…" : {
+      "comment" : "Settings ▸ Calendar: opens Settings ▸ Permissions (calendar access is not granted yet)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешения…"
+          }
+        }
+      }
+    },
+    "Personal" : {
+      "comment" : "Calendar sample data: calendar name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Личное"
+          }
+        }
+      }
+    },
+    "Planning" : {
+      "comment" : "Calendar sample data: event title",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Планирование"
+          }
+        }
+      }
+    },
+    "Previous day" : {
+      "comment" : "Calendar widget: page to the previous day (button label)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Предыдущий день"
+          }
+        }
+      }
+    },
+    "Release day" : {
+      "comment" : "Calendar sample data: all-day event title",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "День релиза"
+          }
+        }
+      }
+    },
+    "Reset to Default" : {
+      "comment" : "Settings: context menu item that restores a row's default value",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вернуть значение по умолчанию"
+          }
+        }
+      }
+    },
+    "Roadmap sync" : {
+      "comment" : "Calendar sample data: event title",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сверка планов"
+          }
+        }
+      }
+    },
+    "Room 4" : {
+      "comment" : "Calendar sample data: event location",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переговорная 4"
+          }
+        }
+      }
+    },
+    "See your day and join meetings from here." : {
+      "comment" : "Calendar widget: why to allow calendar access (one line)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Здесь — события дня и быстрый вход на встречи."
+          }
+        }
+      }
+    },
+    "Show" : {
+      "comment" : "Live Activities ▸ Meeting in progress: what the activity counts",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывать"
+          }
+        }
+      }
+    },
+    "Show all-day events" : {
+      "comment" : "Settings ▸ Calendar: toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывать события на весь день"
+          }
+        }
+      }
+    },
+    "Show today's events" : {
+      "comment" : "Command palette: Calendar command (opens the panel at the Calendar widget)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать события на сегодня"
+          }
+        }
+      }
+    },
+    "Show today's past events" : {
+      "comment" : "Calendar options: keep ended events in today's list",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывать прошедшие события дня"
+          }
+        }
+      }
+    },
+    "Show your events" : {
+      "comment" : "Calendar widget: button that asks for calendar access",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать события"
+          }
+        }
+      }
+    },
+    "Show your events in Cranny. Cranny never edits or uploads them." : {
+      "comment" : "Permission reason: Calendar (Settings ▸ Calendar, Permissions pane, onboarding)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывать ваши события в Cranny. Cranny никогда не изменяет и не выгружает их."
+          }
+        }
+      }
+    },
+    "Starts in %@, at %@" : {
+      "comment" : "VoiceOver: when a meeting starts (\"Starts in 4 minutes, at 10:30\")",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Starts in %1$@, at %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Начнётся через %1$@, в %2$@"
+          }
+        }
+      }
+    },
+    "Team" : {
+      "comment" : "Calendar sample data: calendar name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Команда"
+          }
+        }
+      }
+    },
+    "Team standup" : {
+      "comment" : "Calendar sample data: event title",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Планёрка"
+          }
+        }
+      }
+    },
+    "Time elapsed" : {
+      "comment" : "Live Activities ▸ Meeting in progress ▸ Show: elapsed time",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прошло"
+          }
+        }
+      }
+    },
+    "Time left" : {
+      "comment" : "Live Activities ▸ Meeting in progress ▸ Show: remaining time",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Осталось"
+          }
+        }
+      }
+    },
+    "Today's events, with Join for meetings" : {
+      "comment" : "Widget library: Calendar description",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "События дня и быстрый вход на встречи"
+          }
+        }
+      }
+    },
+    "Tomorrow %@" : {
+      "comment" : "Calendar widget, 2 cells: start time of tomorrow's first event under \"No more events today\"",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Завтра в %@"
+          }
+        }
+      }
+    },
+    "Tomorrow %@ · %@" : {
+      "comment" : "Calendar widget: tomorrow's first event under \"No more events today\"",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tomorrow %1$@ · %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Завтра %1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "Try again" : {
+      "comment" : "Calendar widget: retry after an error",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторить"
+          }
+        }
+      }
+    },
+    "Untitled event" : {
+      "comment" : "Calendar: an event without a title",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без названия"
+          }
+        }
+      }
+    },
+    "Work" : {
+      "comment" : "Calendar sample data: calendar name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Работа"
+          }
+        }
+      }
+    },
+    "agenda" : {
+      "comment" : "Command palette: search keyword for Show today's events",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "повестка"
+          }
+        }
+      }
+    },
+    "in %@" : {
+      "comment" : "Meeting soon, in the notch band: starts in a duration (\"in 4m\"); keep it as short as possible",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@"
+          }
+        }
+      }
+    },
+    "meeting" : {
+      "comment" : "Command palette: search keyword for Join next meeting",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "встреча"
+          }
+        }
+      }
+    },
+    "schedule" : {
+      "comment" : "Command palette: search keyword for Show today's events",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "расписание"
+          }
+        }
+      }
+    },
+    "−%@" : {
+      "comment" : "Meeting in progress, in the notch band: time left with a minus sign (\"−12m\", \"−1:30\"); at most 48 pt",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "−%@"
+          }
+        }
+      }
+    }
   },
   "version" : "1.0"
 }
