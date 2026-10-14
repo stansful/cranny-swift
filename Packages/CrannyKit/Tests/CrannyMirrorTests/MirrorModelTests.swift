@@ -293,6 +293,63 @@ import Testing
         #expect(h.controller.starts.isEmpty)
     }
 
+    @Test func aSuspendedPickFallsBackToAWorkingCamera() async {
+        // Picked the built-in camera, then closed the lid with a USB camera attached (clamshell mode).
+        let h = MirrorHarness(cameras: Cameras.lidClosedWithUSB)
+        h.settings[MirrorSettings.cameraID] = Cameras.builtIn.id
+        await h.show()
+        #expect(h.model.camera == Cameras.usb)
+        let shown = h.model.presentation(isLive: true)
+        #expect(shown.message == MirrorCopy.previewCamera)
+        #expect(shown.action == .turnOn)               // never "Camera unavailable" with no way out
+        await h.model.tap()
+        #expect(h.controller.starts == [Cameras.usb.id])
+        h.controller.send(.started(deviceID: Cameras.usb.id))
+        #expect(h.settings[MirrorSettings.cameraID] == Cameras.builtIn.id)   // the pick is kept
+
+        // The lid opens while the Mirror runs: follow the pick again (the camera is on by the user's click).
+        h.discovery.change(Cameras.builtInAndUSB)
+        #expect(await eventually { h.controller.starts == [Cameras.usb.id, Cameras.builtIn.id] })
+    }
+
+    @Test func closingTheLidOnTheRunningCameraStopsAndOffersTheOtherOne() async {
+        let h = MirrorHarness(cameras: Cameras.builtInAndUSB)
+        h.settings[MirrorSettings.cameraID] = Cameras.builtIn.id
+        await h.run()
+        h.discovery.change(Cameras.lidClosedWithUSB)
+        #expect(await eventually { h.controller.stops == 1 })
+        #expect(h.model.phase == .off)
+        #expect(h.controller.starts == [Cameras.builtIn.id])  // never switches on its own
+        #expect(h.model.presentation(isLive: true).action == .turnOn)
+        await h.model.tap()
+        #expect(h.controller.starts == [Cameras.builtIn.id, Cameras.usb.id])
+    }
+
+    @Test func aSuspendedReportFromTheCameraRefreshesTheList() async {
+        // The session reports the suspension before any list notification: the model asks for a fresh list, so
+        // the card does not stay at "Camera unavailable" while the USB camera works.
+        let h = MirrorHarness(cameras: Cameras.builtInAndUSB)
+        await h.run()
+        let enumerations = h.discovery.enumerations
+        h.discovery.snapshotValue = Cameras.lidClosedWithUSB      // what AVFoundation says now, no notification
+        h.controller.send(.failed(.suspended))
+        #expect(h.controller.stops == 1)
+        #expect(await eventually { h.model.phase == .off })
+        #expect(h.discovery.enumerations == enumerations + 1)
+        #expect(h.model.presentation(isLive: true).action == .turnOn)
+    }
+
+    @Test func aCameraResumingClearsTheMessage() async {
+        // Only camera: suspended (e.g. a privacy shutter). Its resumption arrives as a list change.
+        let shut = CameraDevice(id: Cameras.usb.id, name: Cameras.usb.name, kind: .external, isSuspended: true)
+        let h = MirrorHarness(cameras: CameraSnapshot(devices: [shut], systemPreferredID: nil))
+        await h.show()
+        #expect(h.model.presentation(isLive: true).message == MirrorCopy.unavailable)
+        h.discovery.change(CameraSnapshot(devices: [Cameras.usb], systemPreferredID: Cameras.usb.id))
+        #expect(await eventually { h.model.presentation(isLive: true).action == .turnOn })
+        #expect(h.controller.starts.isEmpty)
+    }
+
     @Test func noCameraSaysSo() async {
         let h = MirrorHarness(cameras: Cameras.none)
         await h.show()

@@ -165,6 +165,9 @@ private let log = Log.logger(.mirror)
     private func handle(_ event: CameraEvent) {
         if case .started = event { feed = controller.feed }
         dispatch(.camera(event))
+        // The list may not know yet that the camera is suspended (lid, shutter): re-read it, so the card offers
+        // another working camera or clears the message when it resumes.
+        if event == .failed(.suspended) { catalog.requestRefresh() }
     }
 
     /// Only after "Open Settings" (the user may have allowed the camera there): `PermissionsCenter.refresh`
@@ -179,8 +182,8 @@ private let log = Log.logger(.mirror)
     }
 
     private func dispatch(_ event: MirrorEvent) {
-        let inputs = MirrorInputs(authorization: authorization.status, camera: camera,
-                                  connectedIDs: Set(catalog.devices.map(\.id)), isEligible: isEligible)
+        let inputs = MirrorInputs(authorization: authorization.status, camera: camera, devices: catalog.devices,
+                                  isEligible: isEligible)
         let (next, effects) = MirrorMachine.reduce(phase, event, inputs)
         if next != phase {
             log.info("mirror: \(self.phase.logName, privacy: .public) → \(next.logName, privacy: .public)")

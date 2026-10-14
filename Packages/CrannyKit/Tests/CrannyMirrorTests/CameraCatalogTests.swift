@@ -42,6 +42,39 @@ import Testing
         #expect(CameraCatalog.resolve(selectedID: nil, devices: [], systemPreferredID: nil) == nil)
     }
 
+    @Test func aSuspendedPickFallsBackLikeAnUnpluggedOne() {
+        let closed = Cameras.builtInSuspended
+        // Picked the built-in camera, lid closed: the system's preferred camera...
+        #expect(CameraCatalog.resolve(selectedID: closed.id, devices: [closed, Cameras.usb, Cameras.iPhone],
+                                      systemPreferredID: Cameras.iPhone.id) == Cameras.iPhone)
+        // ...else the first camera that works (the preferred one may be suspended or unknown).
+        #expect(CameraCatalog.resolve(selectedID: closed.id, devices: [closed, Cameras.usb], systemPreferredID: closed.id) == Cameras.usb)
+        #expect(CameraCatalog.resolve(selectedID: closed.id, devices: [closed, Cameras.usb], systemPreferredID: nil) == Cameras.usb)
+        // Every camera suspended: the pick, so the widget explains the camera the user chose.
+        let shut = CameraDevice(id: "shut", name: "Shut", kind: .external, isSuspended: true)
+        #expect(CameraCatalog.resolve(selectedID: closed.id, devices: [shut, closed], systemPreferredID: shut.id) == closed)
+        #expect(CameraCatalog.resolve(selectedID: nil, devices: [closed, shut], systemPreferredID: shut.id) == shut)
+    }
+
+    @Test func aSuspensionChangeIsAListChange() async {
+        // The live discovery observes each camera's `isSuspended` and calls back; the catalog must treat a flag
+        // change alone as a change worth telling the model about.
+        let discovery = FakeDiscovery(Cameras.builtInOnly)
+        let catalog = CameraCatalog(discovery: discovery)
+        var changes = 0
+        catalog.onChange = { changes += 1 }
+        catalog.activate()
+        await catalog.ensureLoaded()
+        discovery.change(Cameras.lidClosed)
+        #expect(await eventually { catalog.devices.first?.isSuspended == true })
+        #expect(changes == 2)
+        // `requestRefresh` re-reads without any notification.
+        discovery.snapshotValue = Cameras.builtInOnly
+        catalog.requestRefresh()
+        #expect(await eventually { catalog.devices.first?.isSuspended == false })
+        #expect(changes == 3)
+    }
+
     @Test func nothingIsEnumeratedUntilActivated() async {
         let discovery = FakeDiscovery(Cameras.two)
         let catalog = CameraCatalog(discovery: discovery)

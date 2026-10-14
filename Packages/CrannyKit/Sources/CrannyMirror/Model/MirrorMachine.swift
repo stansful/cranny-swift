@@ -67,18 +67,26 @@ nonisolated enum MirrorEffect: Equatable, Sendable {
 nonisolated struct MirrorInputs: Equatable, Sendable {
     /// Camera permission (never prompts to read).
     var authorization: PermissionStatus
-    /// The camera to use: the user's choice, else the system's preferred camera (`CameraCatalog.resolve`).
+    /// The camera to use (`CameraCatalog.resolve`): the user's choice, else the system's preferred camera; a
+    /// working one whenever any camera works.
     var camera: CameraDevice?
-    /// Every connected camera (`CameraDevice.id`), to tell "the camera in use went away" from "another was chosen".
-    var connectedIDs: Set<String>
+    /// Every connected camera, to tell "the camera in use went away or was suspended" from "another was chosen".
+    var devices: [CameraDevice]
     /// The widget is on screen in the open panel, the screen is unlocked and the displays are awake.
     var isEligible: Bool
 
-    init(authorization: PermissionStatus, camera: CameraDevice?, connectedIDs: Set<String>? = nil, isEligible: Bool) {
+    /// `devices` defaults to just `camera`.
+    init(authorization: PermissionStatus, camera: CameraDevice?, devices: [CameraDevice]? = nil, isEligible: Bool) {
         self.authorization = authorization; self.camera = camera
-        self.connectedIDs = connectedIDs ?? Set(camera.map { [$0.id] } ?? [])
+        self.devices = devices ?? (camera.map { [$0] } ?? [])
         self.isEligible = isEligible
     }
+
+    /// A connected camera by `CameraDevice.id`.
+    func device(_ id: String) -> CameraDevice? { devices.first { $0.id == id } }
+
+    /// The resolved camera can run now (connected and not suspended).
+    var hasWorkingCamera: Bool { camera.map { !$0.isSuspended } ?? false }
 }
 
 nonisolated enum MirrorMachine {
@@ -94,7 +102,7 @@ nonisolated enum MirrorMachine {
             return (next, [.holdOpen(false)] + effects)
 
         case .camera(let cameraEvent):
-            return camera(phase, cameraEvent)
+            return camera(phase, cameraEvent, inputs)
 
         case .devicesChanged:
             return devicesChanged(phase, inputs)
@@ -128,7 +136,7 @@ nonisolated enum MirrorMachine {
         }
     }
 
-    private static func camera(_ phase: MirrorPhase, _ event: CameraEvent) -> (MirrorPhase, [MirrorEffect]) {
+    private static func camera(_ phase: MirrorPhase, _ event: CameraEvent, _ inputs: MirrorInputs) -> (MirrorPhase, [MirrorEffect]) {
         switch (phase, event) {
         case (.starting(let id), .started(let started)) where id == started:
             return (.running(deviceID: id), [])
@@ -136,6 +144,8 @@ nonisolated enum MirrorMachine {
             return (phase, [])                                                 // a superseded start
         case (_, .started):
             return (phase, [.stop])                                            // started after a halt: release it
+        case (.starting(let id), .failed(.suspended)), (.running(let id), .failed(.suspended)):
+            return (suspended(inUse: id, inputs), [.stop])
         case (.starting, .failed(let error)), (.running, .failed(let error)):
             return (.problem(error), [.stop])
         case (.starting, .stoppedBySystem), (.running, .stoppedBySystem):
@@ -148,8 +158,9 @@ nonisolated enum MirrorMachine {
     private static func devicesChanged(_ phase: MirrorPhase, _ inputs: MirrorInputs) -> (MirrorPhase, [MirrorEffect]) {
         switch phase {
         case .starting(let id), .running(let id):
-            // The camera in use went away: say so, never switch to another camera on our own.
-            guard inputs.connectedIDs.contains(id) else { return (.problem(.disconnected), [.stop]) }
+            // The camera in use went away or was suspended: stop, never switch to another camera on our own.
+            guard let inUse = inputs.device(id) else { return (.problem(.disconnected), [.stop]) }
+            if inUse.isSuspended { return (suspended(inUse: id, inputs), [.stop]) }
             guard let camera = inputs.camera else { return (.problem(.noCamera), [.stop]) }
             if camera.isSuspended { return (.problem(.suspended), [.stop]) }
             guard camera.id != id else { return (phase, []) }
@@ -158,14 +169,21 @@ nonisolated enum MirrorMachine {
             // `systemPreferredCamera`).
             return (.starting(deviceID: camera.id), [.start(deviceID: camera.id)])
         case .problem(.noCamera), .problem(.suspended):
-            guard let camera = inputs.camera, !camera.isSuspended else { return (phase, []) }
-            return (.off, [])                                                  // usable again: wait for a click
+            return inputs.hasWorkingCamera ? (.off, []) : (phase, [])         // usable again: wait for a click
         case .off, .requestingAccess, .problem:
             return (phase, [])
         }
     }
 
     // MARK: Helpers
+
+    /// The camera in use (`id`) was suspended (lid closed, privacy shutter). If another camera works the card goes
+    /// back to "Preview camera", so one click starts that one; otherwise it explains ("Camera unavailable").
+    /// Never a dead end, and never a switch without a click.
+    private static func suspended(inUse id: String, _ inputs: MirrorInputs) -> MirrorPhase {
+        guard let camera = inputs.camera, camera.id != id, !camera.isSuspended else { return .problem(.suspended) }
+        return .off
+    }
 
     /// Starts the resolved camera, or explains why it cannot.
     private static func start(_ inputs: MirrorInputs) -> (MirrorPhase, [MirrorEffect]) {

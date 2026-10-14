@@ -121,10 +121,15 @@ enum Cameras {
     static let usb = CameraDevice(id: "cam.usb", name: "USB Camera", kind: .external)
     static let deskView = CameraDevice(id: "cam.desk", name: "Desk View Camera", kind: .deskView)
 
+    /// The built-in camera with the lid closed.
+    static let builtInSuspended = CameraDevice(id: builtIn.id, name: builtIn.name, kind: .builtIn, isSuspended: true)
+
     static let two = CameraSnapshot(devices: [builtIn, iPhone], systemPreferredID: builtIn.id)
     static let builtInOnly = CameraSnapshot(devices: [builtIn], systemPreferredID: builtIn.id)
-    static let lidClosed = CameraSnapshot(devices: [CameraDevice(id: builtIn.id, name: builtIn.name, kind: .builtIn, isSuspended: true)],
-                                          systemPreferredID: nil)
+    static let lidClosed = CameraSnapshot(devices: [builtInSuspended], systemPreferredID: nil)
+    /// Clamshell mode with a USB camera: the system prefers the USB camera.
+    static let lidClosedWithUSB = CameraSnapshot(devices: [builtInSuspended, usb], systemPreferredID: usb.id)
+    static let builtInAndUSB = CameraSnapshot(devices: [builtIn, usb], systemPreferredID: builtIn.id)
     static let none = CameraSnapshot(devices: [], systemPreferredID: nil)
 }
 

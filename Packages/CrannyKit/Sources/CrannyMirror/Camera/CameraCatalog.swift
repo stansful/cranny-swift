@@ -1,6 +1,7 @@
 // CrannyMirror/Camera/CameraCatalog.swift — the cameras the Mirror can use and which one it shows.
 // Lazy and event-driven: nothing is enumerated until the widget (or its options) first appears, then
-// hot-plug, preferred-camera and display changes trigger a refresh. No polling (ARCHITECTURE.md §9.2).
+// hot-plug, preferred-camera, suspension (lid, privacy shutter) and display changes trigger a refresh. No polling
+// (ARCHITECTURE.md §9.2).
 import CrannyCore
 import Foundation
 import Observation
@@ -54,6 +55,9 @@ private let log = Log.logger(.mirror)
         await refreshTask?.value
     }
 
+    /// Enumerates again soon (the camera reported a state the list may not know yet, e.g. suspended).
+    func requestRefresh() { scheduleRefresh() }
+
     /// Bursts of notifications (a dock with two cameras) collapse into one running and one queued refresh.
     private func scheduleRefresh() {
         guard refreshTask == nil else { refreshAgain = true; return }
@@ -95,12 +99,15 @@ private let log = Log.logger(.mirror)
             }
     }
 
-    /// The camera to show: the user's pick while it is connected; otherwise the system's preferred camera
-    /// (Apple's choice, which already skips suspended cameras); otherwise the first camera that is not
-    /// suspended; otherwise the first camera (so the widget can say why it is unavailable). nil = no camera.
+    /// The camera to show, always a working one while any camera works: the user's pick while it is connected
+    /// and not suspended; otherwise the system's preferred camera; otherwise the first camera that is not
+    /// suspended. A pick that is unplugged or suspended (lid closed) is used again when it returns, because the
+    /// setting is kept. Only when every camera is suspended is a suspended one returned (the pick, else the
+    /// preferred, else the first), so the widget can say why it cannot run. nil = no camera.
     nonisolated static func resolve(selectedID: String?, devices: [CameraDevice], systemPreferredID: String?) -> CameraDevice? {
-        if let selectedID, let picked = devices.first(where: { $0.id == selectedID }) { return picked }
-        if let systemPreferredID, let preferred = devices.first(where: { $0.id == systemPreferredID }) { return preferred }
-        return devices.first(where: { !$0.isSuspended }) ?? devices.first
+        let picked = selectedID.flatMap { id in devices.first { $0.id == id } }
+        let preferred = systemPreferredID.flatMap { id in devices.first { $0.id == id } }
+        let inOrder = [picked, preferred].compactMap { $0 } + devices
+        return inOrder.first { !$0.isSuspended } ?? inOrder.first
     }
 }
