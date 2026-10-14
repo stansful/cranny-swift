@@ -59,11 +59,11 @@ private let log = Log.logger(.onboarding)
         let window = NSWindow(contentRect: CGRect(origin: .zero, size: WelcomeView.windowSize),
                               styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
         window.contentViewController = host
-        // Fixed size: the hosting controller must not grow the window by the title bar's safe area (it did by
-        // 32 pt on macOS 27, leaving an empty strip under the footer).
-        window.contentMinSize = WelcomeView.windowSize
-        window.contentMaxSize = WelcomeView.windowSize
-        window.setContentSize(WelcomeView.windowSize)
+        // The FRAME is 640 x 480: with a full-size content view the content covers the hidden title bar, and
+        // setContentSize would add the title bar's height (32 pt on macOS 27) below the footer.
+        window.minSize = WelcomeView.windowSize
+        window.maxSize = WelcomeView.windowSize
+        window.setFrame(CGRect(origin: window.frame.origin, size: WelcomeView.windowSize), display: false)
         window.title = WelcomeView.windowTitle
         window.titleVisibility = .hidden
         window.titlebarAppearsTransparent = true
@@ -127,9 +127,10 @@ private let log = Log.logger(.onboarding)
     /// once the step has settled. In-process, so it also works while the screen is locked (window-server captures
     /// fail then); materials and Metal effects may draw flat.
     private func snapshotForVisualQA(into directory: URL) {
-        Task {
+        Task { [registry] in
             try? await Task.sleep(for: .seconds(3))
-            var frames = ""
+            let shape = registry.services.notch.shapeFrameOnScreen().map(NSStringFromRect) ?? "none"
+            var frames = "shape \(shape)\n"
             for (index, window) in NSApp.windows.enumerated() where window.isVisible {
                 frames += "\(window.level.rawValue)-\(index) frame \(NSStringFromRect(window.frame)) content \(NSStringFromRect(window.contentView?.bounds ?? .zero))\n"
                 guard let view = window.contentView, let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { continue }

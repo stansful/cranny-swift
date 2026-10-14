@@ -1,3 +1,4 @@
+import CoreGraphics
 import CrannyCore
 import Foundation
 import Testing
@@ -157,4 +158,45 @@ import Testing
         #expect(presenter.shown.last?.keys == nil)
         tutorial.stop()
     }
+}
+
+/// A notch whose shape frame the test moves, as the shell's does when the panel opens.
+@MainActor private final class MovingNotch: NotchControl {
+    var frame: CGRect? = CGRect(x: 1000, y: 1431, width: 64, height: 5)
+    private var observers: [UUID: @MainActor (NotchEvent) -> Void] = [:]
+    func open(page: PageID?, focus: WidgetID?, reason: OpenReason) {}
+    func close() {}
+    func togglePinned() {}
+    func setHoldOpen(_ hold: Bool, reason: String) {}
+    func setFocusMode(_ widget: WidgetID?) {}
+    func requestPeek(_ activity: ActivityID) {}
+    func requestKeyboardFocus() {}
+    func setCalibrationOverlay(_ visible: Bool) {}
+    func shapeFrameOnScreen() -> CGRect? { frame }
+    func presentAirDrop(_ urls: [URL]) async -> Bool { false }
+    func presentSharePicker(_ urls: [URL]) {}
+    func flash(symbol: String, label: String) {}
+    func addEventObserver(_ handler: @escaping @MainActor (NotchEvent) -> Void) -> UUID {
+        let id = UUID(); observers[id] = handler; return id
+    }
+    func removeEventObserver(_ id: UUID) { observers[id] = nil }
+    func emit(_ event: NotchEvent) { for observer in observers.values { observer(event) } }
+}
+
+@MainActor @Test func theBubbleFollowsTheShapeWhenThePanelOpens() async {
+    let notch = MovingNotch()
+    let defaults = UserDefaults(suiteName: "cranny.test.\(UUID().uuidString)") ?? .standard
+    let services = CrannyServices(settings: SettingsStore(defaults: defaults), permissions: PermissionsCenter(),
+                                  haptics: Haptics(isEnabled: { false }), paths: .temporary(), notch: notch,
+                                  environment: PreviewSystemEnvironment(), app: PreviewAppControl())
+    let presenter = RecordingTipPresenter()
+    let tutorial = TutorialController(registry: ModuleRegistry(services: services), presenter: presenter)
+    tutorial.startForVisualQA(atStep: 4)                 // waiting for "pin, then Esc"
+    #expect(presenter.anchors.last == notch.frame)
+    let open = CGRect(x: 800, y: 1264, width: 848, height: 170)
+    notch.emit(.opened(.programmatic))
+    notch.frame = open                                    // the shell writes the shape after emitting the event
+    await settle { presenter.anchors.last == open }
+    #expect(presenter.anchors.last == open)
+    tutorial.stop()
 }
