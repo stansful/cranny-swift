@@ -210,6 +210,17 @@
         }
       }
     },
+    "GitHub couldn't find Cranny's releases. Try again later." : {
+      "comment" : "Update check: failure reason, HTTP 404 (the configured repository does not exist)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub не нашёл выпуски Cranny. Попробуйте позже."
+          }
+        }
+      }
+    },
     "GitHub is limiting requests right now. Try again later." : {
       "comment" : "Update check: failure reason, HTTP 403/429",
       "localizations" : {

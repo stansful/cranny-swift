@@ -176,12 +176,12 @@ private let log = Log.logger(.updates)
             case 304:
                 guard let cached, cached.etag(repository: repository, endpoint: endpoint) != nil else { return .failure(.unreadable) }
                 return .success(cached.releases)
-            case 404:
-                return .success([])                                   // nothing published yet
-            case 403, 429:
-                return .failure(.rateLimited)
-            default:
-                return .failure(.server(response.statusCode))
+            case 404 where endpoint == .latest:
+                return try await latestNotFound(repository: repository)
+            case let status:
+                // On the list a 404 can only mean an unknown repository: an existing one answers `[]`.
+                if status == 404 { Self.logNotFound(repository) }
+                return .failure(.http(status))
             }
         } catch let failure as UpdateFailure {
             return .failure(failure)
@@ -190,6 +190,27 @@ private let log = Log.logger(.updates)
         } catch {
             return .failure(.offline)
         }
+    }
+
+    /// `/releases/latest` answers 404 both for a repository without a published stable release (only drafts or
+    /// pre-releases, or nothing yet) and for one GitHub does not know. One request for a single release of the
+    /// list tells them apart, so a wrong `CrannyGitHubRepository` never passes for "up to date".
+    private func latestNotFound(repository: String) async throws -> Result<[GitHubRelease], UpdateFailure> {
+        guard let url = ReleaseEndpoint.list.url(repository: repository, perPage: 1) else { return .failure(.notConfigured) }
+        let (_, response) = try await transport.fetch(UpdateRequest.make(url: url, etag: nil))
+        switch response.statusCode {
+        case 200:
+            log.info("update check: \(repository, privacy: .public) has no stable release yet")
+            return .success([])
+        case let status:
+            if status == 404 { Self.logNotFound(repository) }
+            return .failure(.http(status))
+        }
+    }
+
+    /// The repository is build configuration, not user data: logged in the clear so the cause is obvious.
+    private static func logNotFound(_ repository: String) {
+        log.error("update check: GitHub has no repository \(repository, privacy: .public) (HTTP 404); check \(UpdateConfiguration.repositoryInfoKey, privacy: .public) in Info.plist")
     }
 
     /// Release lists carry notes and assets: decode them off the main actor.

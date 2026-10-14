@@ -72,12 +72,13 @@ nonisolated enum ReleaseEndpoint: String, Codable, Sendable {
 
     init(includesPrereleases: Bool) { self = includesPrereleases ? .list : .latest }
 
-    func url(repository: String) -> URL? {
+    /// `perPage` applies to `.list` only (`per_page=1` tells "no stable release yet" from "no repository").
+    func url(repository: String, perPage: Int = 20) -> URL? {
         var components = URLComponents()
         components.scheme = "https"
         components.host = "api.github.com"
         components.path = "/repos/\(repository)/releases" + (self == .latest ? "/latest" : "")
-        if self == .list { components.queryItems = [URLQueryItem(name: "per_page", value: "20")] }
+        if self == .list { components.queryItems = [URLQueryItem(name: "per_page", value: String(perPage))] }
         return components.url
     }
 
@@ -157,13 +158,27 @@ nonisolated enum UpdateEvaluator {
 
 /// Why a check failed, as a localized one-liner (Settings ▸ About and the result alert show it).
 nonisolated enum UpdateFailure: Error, Equatable, Sendable {
-    case notConfigured, offline, rateLimited, server(Int), unreadable, badVersion
+    /// `repositoryNotFound`: GitHub does not know `CrannyGitHubRepository` (wrong, renamed or private), HTTP 404.
+    case notConfigured, offline, rateLimited, server(Int), repositoryNotFound, unreadable, badVersion
+
+    /// The failure an HTTP status other than 200 and 304 stands for. A 404 from `/releases/latest` is first
+    /// checked against the list, since it also means "no stable release yet" (`UpdateChecker.latestNotFound`).
+    static func http(_ status: Int) -> UpdateFailure {
+        switch status {
+        case 403, 429: .rateLimited
+        case 404: .repositoryNotFound
+        default: .server(status)
+        }
+    }
 
     var message: String {
         switch self {
         case .notConfigured:
             String(localized: "Update checks are not available in this build.", bundle: .module,
                    comment: "Update check: failure reason, no GitHub repository configured")
+        case .repositoryNotFound:
+            String(localized: "GitHub couldn't find Cranny's releases. Try again later.", bundle: .module,
+                   comment: "Update check: failure reason, HTTP 404 (the configured repository does not exist)")
         case .offline:
             String(localized: "GitHub couldn't be reached. Check your internet connection and try again.", bundle: .module,
                    comment: "Update check: failure reason, network error")

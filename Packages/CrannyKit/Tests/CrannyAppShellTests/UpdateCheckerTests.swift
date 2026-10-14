@@ -131,6 +131,8 @@ private func page(_ tag: String) throws -> URL { try #require(URL(string: "https
     #expect(latest.absoluteString == "https://api.github.com/repos/octo/cranny/releases/latest")
     let list = try #require(ReleaseEndpoint(includesPrereleases: true).url(repository: repository))
     #expect(list.absoluteString == "https://api.github.com/repos/octo/cranny/releases?per_page=20")
+    #expect(ReleaseEndpoint.list.url(repository: repository, perPage: 1)?.absoluteString
+            == "https://api.github.com/repos/octo/cranny/releases?per_page=1")
 
     let request = UpdateRequest.make(url: latest, etag: "W/\"abc\"")
     #expect(request.httpMethod == "GET" && !request.httpShouldHandleCookies)
@@ -142,6 +144,13 @@ private func page(_ tag: String) throws -> URL { try #require(URL(string: "https
     #expect(request.value(forHTTPHeaderField: "Accept-Language") == "en")
     #expect(request.allHTTPHeaderFields?.keys.sorted() == ["Accept", "Accept-Language", "If-None-Match", "User-Agent", "X-GitHub-Api-Version"])
     #expect(UpdateRequest.make(url: latest, etag: nil).value(forHTTPHeaderField: "If-None-Match") == nil)
+}
+
+@Test func httpStatusesMapToFailures() {
+    #expect(UpdateFailure.http(403) == .rateLimited && UpdateFailure.http(429) == .rateLimited)
+    #expect(UpdateFailure.http(404) == .repositoryNotFound)
+    #expect(UpdateFailure.http(502) == .server(502))
+    #expect(UpdateFailure.repositoryNotFound.message != UpdateFailure.server(404).message)
 }
 
 // MARK: - Decoding and comparison
@@ -233,7 +242,7 @@ private func page(_ tag: String) throws -> URL { try #require(URL(string: "https
 
 @Test func failuresAreReportedOnlyWhenTheUserAsked() async throws {
     let transport = FakeUpdateTransport([.ok(latestFixture, etag: nil), .failure(.notConnectedToInternet),
-                                         .failure(.notConnectedToInternet), .status(403), .status(502), .status(404),
+                                         .failure(.notConnectedToInternet), .status(403), .status(502),
                                          .ok(Data("<html>".utf8), etag: nil)])
     let checker = makeChecker(transport)
     let available = await checker.check(userInitiated: false)
@@ -241,7 +250,6 @@ private func page(_ tag: String) throws -> URL { try #require(URL(string: "https
     #expect(await checker.check(userInitiated: true) == .failed(UpdateFailure.offline.message))
     #expect(await checker.check() == .failed(UpdateFailure.rateLimited.message))
     #expect(await checker.check() == .failed(UpdateFailure.server(502).message))
-    #expect(await checker.check() == .upToDate)                                    // 404: nothing published yet
     #expect(await checker.check() == .failed(UpdateFailure.unreadable.message))
 }
 
@@ -252,6 +260,29 @@ private func page(_ tag: String) throws -> URL { try #require(URL(string: "https
     #expect(await checker.check(userInitiated: false) == .idle)                    // automatic: nothing changes
     #expect(settings[CoreSettings.lastUpdateCheck] != nil)                          // GitHub answered: next check in a day
     #expect(await checker.check() == .failed(UpdateFailure.badVersion.message))
+}
+
+@Test func notFoundTellsANewRepositoryFromAWrongOne() async throws {
+    // `/latest` is 404 without a stable release: one release of the list proves the repository exists.
+    let fresh = FakeUpdateTransport([.status(404), .ok(Data("[]".utf8), etag: nil)])
+    #expect(await makeChecker(fresh).check() == .upToDate)
+    let requests = await fresh.requests
+    #expect(requests.count == 2 && requests[1].url?.absoluteString.hasSuffix("/releases?per_page=1") == true)
+    #expect(requests[1].value(forHTTPHeaderField: "If-None-Match") == nil)
+    // Both 404: GitHub does not know the repository (a wrong CrannyGitHubRepository is never "up to date").
+    let wrong = FakeUpdateTransport([.status(404), .status(404)])
+    #expect(await makeChecker(wrong).check() == .failed(UpdateFailure.repositoryNotFound.message))
+    // The second request answers like the first would: rate limited, or offline.
+    let limited = FakeUpdateTransport([.status(404), .status(429)])
+    #expect(await makeChecker(limited).check() == .failed(UpdateFailure.rateLimited.message))
+    let offline = FakeUpdateTransport([.status(404), .failure(.timedOut)])
+    #expect(await makeChecker(offline).check() == .failed(UpdateFailure.offline.message))
+    // The list answers `[]` for an existing repository, so its 404 needs no second request.
+    let settings = CrannyServices.preview().settings
+    settings[CoreSettings.includesPrereleases] = true
+    let list = FakeUpdateTransport([.status(404)])
+    #expect(await makeChecker(list, settings: settings).check() == .failed(UpdateFailure.repositoryNotFound.message))
+    #expect(await list.requests.count == 1)
 }
 
 @Test func checksAtTheSameTimeShareOneRequest() async throws {
