@@ -169,3 +169,16 @@ private struct Document: Codable, Equatable, Sendable {
     #expect(Duration.zero.timeInterval == 0)
 }
 
+// MARK: - Launch arguments
+
+@Test func launchArgumentsParseValuesFlagsAndTheSnapshotRule() {
+    let a = LaunchArguments(["Cranny", "--qa-state", "open", "--qa-hints", "--qa-exit-after", "8", "--qa-tutorial", "2",
+                             "--qa-snapshot", "/tmp/Panel.PNG", "--qa-last"])
+    #expect(a.value(after: "--qa-state") == "open" && a.contains("--qa-hints") && !a.contains("--qa-other"))
+    #expect(a.double(after: "--qa-exit-after") == 8 && a.int(after: "--qa-tutorial") == 2)
+    #expect(a.int(after: "--qa-state") == nil && a.value(after: "--qa-last") == nil && a.value(after: "--nope") == nil)
+    #expect(a.qaPanelSnapshot == "/tmp/Panel.PNG" && a.qaSnapshotDirectory == nil)     // `.png` (any case): the canvas
+    let folder = LaunchArguments(["--qa-snapshot", "/tmp/shots"])
+    #expect(folder.qaPanelSnapshot == nil && folder.qaSnapshotDirectory == "/tmp/shots") // anything else: a folder
+    #expect(LaunchArguments([]).qaSnapshotDirectory == nil)
+}
