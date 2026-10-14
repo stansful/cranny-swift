@@ -52,7 +52,7 @@ private nonisolated let log = Log.logger(.media)
     @ObservationIgnored private var detector = TrackChangeDetector()
     @ObservationIgnored private var debounceTask: Task<Void, Never>?
     @ObservationIgnored private var artworkGrace: Task<Void, Never>?
-    @ObservationIgnored private var cache = ArtworkCache()
+    @ObservationIgnored private let artworkStore = ArtworkStore()
     @ObservationIgnored private var raw: NowPlaying?
     /// Counts provider snapshots: a command is confirmed when this moved on after it was sent.
     @ObservationIgnored private var snapshotSequence = 0
@@ -302,7 +302,7 @@ private nonisolated let log = Log.logger(.media)
     private func trackDidChange(to key: String?) {
         artworkGrace?.cancel(); artworkGrace = nil
         guard let key else { setArtwork(nil, key: nil); return }
-        if let hit = cache.value(for: key) { setArtwork(hit, key: key); return }
+        if let hit = artworkStore.cached(key) { setArtwork(hit, key: key); return }
         // Keep the previous artwork briefly: the new one usually follows the state within ≈ 100 ms.
         artworkGrace = Task { [weak self] in
             do { try await self?.clock.sleep(for: Self.artworkGrace) } catch { return }
@@ -311,16 +311,12 @@ private nonisolated let log = Log.logger(.media)
         }
     }
 
+    /// Late or replaced artwork for the current track is applied (never cleared for the same key: seek glitch);
+    /// artwork for another track only fills the cache.
     private func receiveArtwork(key: String, data: Data) {
-        if let hit = cache.value(for: key) {
-            if key == nowPlaying?.trackKey, artworkKey != key { setArtwork(hit, key: key) }
-            return
-        }
-        Task { [weak self] in
-            guard let decoded = await ArtworkDecoder.decode(data), let self else { return }
-            self.cache.insert(decoded, for: key)
-            // Late artwork for the current track is applied; artwork for another track only fills the cache.
-            if key == self.nowPlaying?.trackKey { self.setArtwork(decoded, key: key) }
+        artworkStore.receive(key: key, data: data) { [weak self] decoded in
+            guard let self, key == self.nowPlaying?.trackKey else { return }
+            self.setArtwork(decoded, key: key)
         }
     }
 
@@ -336,7 +332,7 @@ private nonisolated let log = Log.logger(.media)
 
     /// Shows a fixed session without any provider (sample activity, `#Preview`, `--qa-media`).
     func seed(_ np: NowPlaying?, artwork decoded: DecodedArtwork?) {
-        if let decoded, let key = np?.trackKey { cache.insert(decoded, for: key) }
+        if let decoded, let key = np?.trackKey { artworkStore.seed(decoded, for: key) }
         isLocalSession = np != nil
         raw = np
         nowPlaying = np

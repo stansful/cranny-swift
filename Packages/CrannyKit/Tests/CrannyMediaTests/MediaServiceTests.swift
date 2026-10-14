@@ -327,6 +327,40 @@ import Testing
         #expect(service.reportedPlayerPID == nil)                         // … unknown again for the new helper
     }
 
+    @Test func differentArtworkForTheSameTrackReplacesIt() async throws {
+        let clock = ManualClock(), perl = ScriptedProvider(kind: .perl)
+        let service = Fixtures.service([perl], clock: clock)
+        service.start()
+        await settle()
+        perl.emit(.nowPlaying(Fixtures.track("A", itemID: "a")))
+        perl.emit(.artwork(trackKey: "a", data: Fixtures.png(red: 0.9, green: 0.1, blue: 0.1)))   // placeholder first
+        #expect(await eventually { service.artwork != nil })
+        let blue = Fixtures.png(red: 0.1, green: 0.2, blue: 0.9)
+        perl.emit(.artwork(trackKey: "a", data: blue))                    // then the real picture
+        #expect(await eventually { (service.palette?.accent).map { $0.b > $0.r } ?? false })
+        let image = try #require(service.artwork)
+        perl.emit(.artwork(trackKey: "a", data: blue))                    // the same picture again: kept, not decoded
+        try await Task.sleep(for: .milliseconds(100))
+        await settle()
+        #expect(service.artwork === image)
+        #expect(service.artworkKey == "a")
+    }
+
+    @Test func aLateDecodeNeverReplacesANewerPicture() async throws {
+        let clock = ManualClock(), perl = ScriptedProvider(kind: .perl)
+        let service = Fixtures.service([perl], clock: clock)
+        service.start()
+        await settle()
+        perl.emit(.nowPlaying(Fixtures.track("A", itemID: "a")))
+        perl.emit(.artwork(trackKey: "a", data: Fixtures.png(red: 0.9, green: 0.1, blue: 0.1, side: 1024)))   // slow
+        perl.emit(.artwork(trackKey: "a", data: Fixtures.png(red: 0.1, green: 0.2, blue: 0.9, side: 8)))      // fast
+        #expect(await eventually { service.artwork != nil })
+        try await Task.sleep(for: .milliseconds(300))
+        await settle()
+        let accent = try #require(service.palette?.accent)
+        #expect(accent.b > accent.r)                                      // the newer (blue) picture stays
+    }
+
     @Test func sampleSeedNeverStartsAProvider() async {
         let service = SampleMedia.previewService()
         #expect(service.status == .running(.sample))
