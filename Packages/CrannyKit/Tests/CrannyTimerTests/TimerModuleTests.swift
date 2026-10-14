@@ -96,14 +96,39 @@ import Testing
         #expect(running.slot == .medium)
     }
 
-    @Test func everyPlacementRenders() {
-        let h = TimerHarness()
-        h.model.start(seconds: 300)
-        let activities: [any LiveActivity] = [TimerRunningActivity(model: h.model), TimerDoneActivity(model: h.model)]
+    @Test func everyPlacementDraws() throws {
+        let running = TimerHarness()
+        running.model.start(seconds: 300)
+        let done = TimerHarness()
+        done.model.start(seconds: 20)
+        done.scheduler.fire(advancing: done.clock)
+        let activities: [any LiveActivity] = [TimerRunningActivity(model: running.model), TimerDoneActivity(model: done.model)]
         for activity in activities {
             for placement in ActivityPlacement.allCases {
-                _ = activity.view(for: placement)
+                let renderer = ImageRenderer(content: activity.view(for: placement)
+                    .foregroundStyle(.white)
+                    .frame(width: 400, height: NotchLayout.peekRow)
+                    .crannyThemeRoot(CrannyTheme()))
+                renderer.scale = 2
+                let image = try #require(renderer.cgImage, "\(activity.id) \(placement) did not render")
+                #expect(drawnPixels(image) > 50, "\(activity.id) \(placement) drew nothing")
             }
         }
+    }
+
+    /// Pixels with any coverage (the renderer's background is transparent).
+    private func drawnPixels(_ image: CGImage) -> Int {
+        let width = image.width, height = image.height
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let drew = pixels.withUnsafeMutableBytes { buffer -> Bool in
+            guard let space = CGColorSpace(name: CGColorSpace.sRGB),
+                  let context = CGContext(data: buffer.baseAddress, width: width, height: height, bitsPerComponent: 8,
+                                          bytesPerRow: width * 4, space: space,
+                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        guard drew else { return 0 }
+        return stride(from: 3, to: pixels.count, by: 4).count { pixels[$0] > 0 }
     }
 }
