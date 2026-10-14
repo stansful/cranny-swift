@@ -6,39 +6,45 @@ import os
 
 // MARK: - Observation outside SwiftUI (macOS 14-safe; `Observations` is macOS 26+)
 
-/// Calls `onChange` with the new value whenever something `value()` reads changes.
-/// Keep the returned token alive; `cancel()` (or releasing it) stops observing.
+/// Keeps an `observe(_:onChange:)` registration alive. Keep the token; `cancel()` (or releasing it) stops observing.
 @MainActor public final class ObservationToken {
     fileprivate var observer: AnyObject?
+    /// Stops observing; `onChange` is not called again.
     public func cancel() { observer = nil }
 }
 
+/// Calls `onChange` with the new value whenever something `value()` reads changes (Observation outside SwiftUI).
+/// `value()` runs once at registration and once per change: each run both reads the value and registers what it
+/// reads, so keep it cheap but never split it. `onChange` runs on the main actor, after the change, only when the
+/// value differs from the last one delivered. Keep the returned token alive.
 @MainActor @discardableResult
 public func observe<T: Equatable>(_ value: @escaping @MainActor () -> T,
                                   onChange: @escaping @MainActor (T) -> Void) -> ObservationToken {
     let token = ObservationToken()
     let observer = Observer(value: value, onChange: onChange)
     token.observer = observer
-    observer.arm()
+    observer.start()
     return token
 }
 
 @MainActor private final class Observer<T: Equatable> {
     let value: @MainActor () -> T
     let onChange: @MainActor (T) -> Void
-    var last: T
+    /// The value delivered last (set by `start()` before anything can fire).
+    private var last: T?
     init(value: @escaping @MainActor () -> T, onChange: @escaping @MainActor (T) -> Void) {
-        self.value = value; self.onChange = onChange; self.last = value()
+        self.value = value; self.onChange = onChange
     }
-    func arm() {
-        withObservationTracking { _ = value() } onChange: { [weak self] in
+    func start() { last = arm() }
+    /// Evaluates `value` ONCE: the same pass returns the value and registers what it read for the next change.
+    private func arm() -> T {
+        withObservationTracking { value() } onChange: { [weak self] in
             Task { @MainActor in self?.fire() }
         }
     }
     private func fire() {
-        let now = value()
+        let now = arm()
         if now != last { last = now; onChange(now) }
-        arm()
     }
 }
 
