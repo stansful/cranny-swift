@@ -104,6 +104,15 @@ private func kind(_ from: NotchPhase, _ to: NotchPhase, fromHUD: Bool = false, t
     }
 }
 
+@Suite("Edit-mode wiggle (DESIGN.md §6.6)") struct WiggleTests {
+    @Test func oneDegreeOutOfPhaseRestingWhilePaused() {
+        #expect(Wiggle.angle(time: nil, index: 3) == 0)                         // paused clock: the card rests
+        let samples = stride(from: 0.0, to: 2, by: 0.01).map { Wiggle.angle(time: $0, index: 0) }
+        #expect(samples.allSatisfy { abs($0) <= 1 } && (samples.max() ?? 0) > 0.99)
+        #expect(Wiggle.angle(time: 0.4, index: 0) != Wiggle.angle(time: 0.4, index: 1))   // neighbours out of phase
+    }
+}
+
 @Suite("Delight moments (DESIGN.md §5.5)") struct DelightTests {
     @Test func eachSerialPlaysOnce() {
         #expect(DelightPlayback.shouldPlay(moment: .gulp, serial: 3, lastPlayed: 2))

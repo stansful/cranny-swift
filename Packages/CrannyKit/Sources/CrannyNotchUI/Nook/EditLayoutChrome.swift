@@ -24,21 +24,48 @@ struct RemoveBadge: View {
     }
 }
 
-/// The edit-mode wiggle: ±1° at about 1.8 Hz, out of phase per card. Time comes from `EffectClock` at 30 fps
-/// and only while editing; Reduce Motion never wiggles (the "–" badge shows instead).
+/// The edit-mode wiggle: ±1° at about 1.8 Hz, out of phase per card; Reduce Motion never wiggles (the "–" badge
+/// shows instead). The time comes from the editor's one `WiggleClock`. The modifier has the same structure
+/// whether a card wiggles or not (a still card has rotation 0), so starting a drag never re-creates the cards
+/// or the handle whose gesture is in flight.
 struct Wiggle: ViewModifier {
+    @Environment(\.notchWiggleTime) private var time
     let index: Int
     let isActive: Bool
+
     func body(content: Content) -> some View {
-        if isActive {
-            EffectClock(minimumInterval: 1.0 / 30) { date in
-                let t = date.timeIntervalSinceReferenceDate
-                content.rotationEffect(.degrees(sin(t * 2 * .pi * 1.8 + Double(index) * 1.3)))
-            }
-        } else {
-            content
+        content.rotationEffect(.degrees(isActive ? Wiggle.angle(time: time, index: index) : 0))
+    }
+
+    nonisolated static let amplitude = 1.0             // degrees
+    nonisolated static let frequency = 1.8             // Hz
+    nonisolated static let phaseStep = 1.3             // radians between neighbouring cards
+
+    /// The card's angle at `time` (seconds; nil = the clock is paused, the card rests at 0°). Pure.
+    nonisolated static func angle(time: Double?, index: Int) -> Double {
+        guard let time else { return 0 }
+        return amplitude * sin(time * 2 * .pi * frequency + Double(index) * phaseStep)
+    }
+}
+
+/// One frame clock for all cards of the layout editor (instead of one per card): `EffectClock` at the effect
+/// budget's rate (≤ 30 fps on AC, ≤ 20 on battery; paused while occluded, locked, in full screen, in Low Power
+/// Mode and under Reduce Motion or Instant, ARCHITECTURE.md §9.2). Only the cards' `Wiggle` reads the time, so
+/// one tick re-evaluates their rotations and nothing else.
+struct WiggleClock: ViewModifier {
+    let interval: Double?
+
+    func body(content: Content) -> some View {
+        EffectClock(minimumInterval: interval) { date in
+            content.environment(\.notchWiggleTime,
+                                interval == nil ? nil : date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3600))
         }
     }
+}
+
+extension EnvironmentValues {
+    /// Seconds for the edit-mode wiggle (`WiggleClock`); nil = paused.
+    @Entry var notchWiggleTime: Double? = nil
 }
 
 /// The edit-mode controls in the header, in place of the actions: "N cells left", Add widget ▸, Done (↩).

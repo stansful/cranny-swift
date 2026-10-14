@@ -2,7 +2,8 @@
 // an 8 × 24 resize handle on the trailing edge; they wiggle (Reduce Motion: a "–" badge instead). Drag a card
 // to reorder (`listReorder`), drag the handle to resize in whole cells (an `.alignment` haptic and a "4 cells"
 // tooltip per cell), ⌥← / ⌥→ move the focused card, ⌥⇧← / ⌥⇧→ resize it; every change is announced to
-// VoiceOver and written through `NotchUIActions.commitLayout`. ↩ or Esc finishes (the header's Done).
+// VoiceOver and written through `NotchUIActions.commitLayout`. ↩ or Esc finishes (the header's Done). One
+// `WiggleClock` drives every card's wiggle at the effect budget's rate.
 import AppKit
 import CrannyCore
 import Foundation
@@ -11,6 +12,10 @@ import SwiftUI
 struct EditLayoutView: View {
     @Environment(\.cranny) private var theme
     @FocusState private var focused: WidgetID?
+    /// The card / handle whose drag is in flight. SwiftUI resets these when a gesture ends OR is cancelled, so
+    /// the drafts below only count while their gesture is alive (a cancelled drag leaves nothing behind).
+    @GestureState private var reordering: WidgetID?
+    @GestureState private var resizing: WidgetID?
     @State private var drag: CardDrag?
     @State private var resize: HandleDrag?
     let page: NookPage
@@ -20,34 +25,51 @@ struct EditLayoutView: View {
 
     private struct CardDrag: Equatable {
         var widget: WidgetID
+        var origin: CGPoint              // where this drag began (a new drag never reuses an old draft)
         var startX: CGFloat              // the card's x in the row when the drag began
         var translation: CGFloat
         var draft: [NookItem]
     }
     private struct HandleDrag: Equatable {
         var widget: WidgetID
+        var origin: CGPoint
         var startCells: Int
         var cells: Int
     }
 
+    /// The reorder in flight, if its gesture is still alive.
+    private var activeDrag: CardDrag? { drag.flatMap { $0.widget == reordering ? $0 : nil } }
+    /// The resize in flight, if its gesture is still alive.
+    private var activeResize: HandleDrag? { resize.flatMap { $0.widget == resizing ? $0 : nil } }
+
     var body: some View {
-        let items = drag?.draft ?? page.items
+        let items = activeDrag?.draft ?? page.items
         HStack(spacing: theme.grid.gutter) {
             ForEach(Array(items.enumerated()), id: \.element.widget) { index, item in
                 card(item, index: index, items: items)
             }
         }
+        .modifier(WiggleClock(interval: wiggleInterval))
         .animation(theme.animation(.listReorder), value: items)
         .onKeyPress(keys: [.leftArrow, .rightArrow], phases: .down) { press in
             keyboardEdit(press) ? .handled : .ignored
         }
         .onAppear { focused = model.open?.focus ?? page.items.first?.widget }
+        .onDisappear { drag = nil; resize = nil }
+    }
+
+    /// The wiggle's frame interval from the effect budget (nil = paused: occluded, Low Power, full screen,
+    /// Reduce Motion or Instant).
+    private var wiggleInterval: Double? {
+        registry.services.environment.effectBudget(
+            isOpen: model.phase == .open, isOnScreen: model.isVisibleOnScreen,
+            reduceMotion: theme.reduceMotion || theme.motion == .instant).minimumInterval
     }
 
     // MARK: Cards
 
     private func card(_ item: NookItem, index: Int, items: [NookItem]) -> some View {
-        let isDragged = drag?.widget == item.widget
+        let isDragged = activeDrag?.widget == item.widget
         let cells = registry.widget(item.widget)?.sizes.clamp(item.cells) ?? max(item.cells, 1)
         return WidgetCard(item: item, registry: registry, isEditing: true, isFocused: focused == item.widget,
                           commands: cardCommands)
@@ -60,7 +82,7 @@ struct EditLayoutView: View {
             .overlay(alignment: .topLeading) {
                 if theme.reduceMotion { RemoveBadge { remove(item.widget) } }
             }
-            .modifier(Wiggle(index: index, isActive: !theme.reduceMotion && !isDragged && resize == nil))
+            .modifier(Wiggle(index: index, isActive: !theme.reduceMotion && !isDragged && activeResize?.widget != item.widget))
             .crannyElevation(Elevation.lifted, amount: isDragged ? 1 : 0)
             .offset(x: isDragged ? dragOffset(index: index, items: items) : 0)
             .zIndex(isDragged ? 1 : 0)
@@ -84,7 +106,7 @@ struct EditLayoutView: View {
 
     /// The 8 × 24 handle on the trailing edge, with the "4 cells" tooltip while it is dragged.
     private func handle(for item: NookItem, cells: Int) -> some View {
-        let active = resize?.widget == item.widget
+        let active = activeResize?.widget == item.widget
         return Capsule(style: .continuous)
             .fill(active ? theme.accentColor : theme.palette.secondaryLabel)
             .frame(width: 4, height: 18)
@@ -94,7 +116,7 @@ struct EditLayoutView: View {
             .offset(x: 4)
             .overlay(alignment: .top) {
                 if active {
-                    CardStrings.cells(resize?.cells ?? cells)
+                    CardStrings.cells(activeResize?.cells ?? cells)
                         .crannyFont(.caption)
                         .foregroundStyle(theme.palette.label)
                         .padding(.horizontal, Space.s).padding(.vertical, Space.xxs)
@@ -104,7 +126,7 @@ struct EditLayoutView: View {
                         .transition(.opacity)
                 }
             }
-            .onHover { inside in if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() } }
+            .modifier(ResizeCursor())
             .gesture(resizeGesture(item.widget, cells: cells))
             .accessibilityHidden(true)                    // VoiceOver: Wider / Narrower actions on the card
     }
@@ -114,8 +136,11 @@ struct EditLayoutView: View {
     private func reorderGesture(_ widget: WidgetID, index: Int, items: [NookItem]) -> some Gesture {
         // Measured in the canvas: the card itself moves (and reorders) under the pointer while it is dragged.
         DragGesture(minimumDistance: 4, coordinateSpace: .named(NotchCoordinateSpace.name))
+            .updating($reordering) { _, state, _ in state = widget }
             .onChanged { value in
-                var current = drag ?? CardDrag(widget: widget, startX: rowX(of: index, in: items), translation: 0, draft: items)
+                var current = drag.flatMap { $0.widget == widget && $0.origin == value.startLocation ? $0 : nil }
+                    ?? CardDrag(widget: widget, origin: value.startLocation, startX: rowX(of: index, in: items),
+                                translation: 0, draft: items)
                 current.translation = value.translation.width
                 let widths = current.draft.map { width(of: $0) }
                 if let from = current.draft.firstIndex(where: { $0.widget == widget }) {
@@ -131,7 +156,7 @@ struct EditLayoutView: View {
                 drag = current
             }
             .onEnded { _ in
-                guard let final = drag else { return }
+                guard let final = drag, final.widget == widget else { return }
                 drag = nil
                 if final.draft != page.items, let editing = editing() {
                     var next = editing
@@ -144,8 +169,10 @@ struct EditLayoutView: View {
     private func resizeGesture(_ widget: WidgetID, cells: Int) -> some Gesture {
         // Measured in the canvas: the handle follows the card's trailing edge as it grows.
         DragGesture(minimumDistance: 1, coordinateSpace: .named(NotchCoordinateSpace.name))
+            .updating($resizing) { _, state, _ in state = widget }
             .onChanged { value in
-                var current = resize ?? HandleDrag(widget: widget, startCells: cells, cells: cells)
+                var current = resize.flatMap { $0.widget == widget && $0.origin == value.startLocation ? $0 : nil }
+                    ?? HandleDrag(widget: widget, origin: value.startLocation, startCells: cells, cells: cells)
                 let target = current.startCells + LayoutEditing.cellDelta(translation: value.translation.width,
                                                                           cell: theme.grid.cell, gutter: theme.grid.gutter)
                 if target != current.cells, let editing = editing(),
@@ -158,7 +185,7 @@ struct EditLayoutView: View {
                 resize = current
             }
             .onEnded { _ in
-                if let final = resize, final.cells != final.startCells {
+                if let final = resize, final.widget == widget, final.cells != final.startCells {
                     announce(cellsAnnouncement(final.widget, cells: final.cells))
                 }
                 resize = nil
@@ -166,7 +193,7 @@ struct EditLayoutView: View {
     }
 
     private func dragOffset(index: Int, items: [NookItem]) -> CGFloat {
-        guard let drag else { return 0 }
+        guard let drag = activeDrag else { return 0 }
         return drag.startX + drag.translation - rowX(of: index, in: items)
     }
 
@@ -248,6 +275,33 @@ struct EditLayoutView: View {
 
     private func title(of widget: WidgetID) -> String {
         registry.widget(widget)?.title ?? WidgetPlaceholder(widget).title
+    }
+}
+
+/// The column-resize pointer over the handle. macOS 15+: `pointerStyle`, which SwiftUI resets by itself.
+/// macOS 14: `NSCursor` push/pop, balanced on disappear, because SwiftUI sends no hover-out when a hovered view
+/// goes away (Done, Esc, the card removed, the panel closing) and the resize cursor would stick.
+private struct ResizeCursor: ViewModifier {
+    @State private var pushed = false
+
+    func body(content: Content) -> some View {
+        if #available(macOS 15.0, *) {
+            content.pointerStyle(.columnResize)
+        } else {
+            content
+                .onHover { inside in
+                    if inside, !pushed {
+                        NSCursor.resizeLeftRight.push()
+                        pushed = true
+                    } else if !inside, pushed {
+                        NSCursor.pop()
+                        pushed = false
+                    }
+                }
+                .onDisappear {
+                    if pushed { NSCursor.pop(); pushed = false }
+                }
+        }
     }
 }
 

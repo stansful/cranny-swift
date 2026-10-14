@@ -96,3 +96,15 @@ struct ModifiedCounter<M: ViewModifier>: View {
     func minimal() -> some View { EmptyView() }
     func peekRow() -> some View { InstanceCounter(probe: probe) }
 }
+
+/// A widget whose body reports every new instance.
+@MainActor final class ProbeWidget: NookWidget {
+    let id: WidgetID
+    let title = "Probe"
+    let symbol = "timer"
+    let summary = ""
+    let sizes: WidgetSizes
+    let probe: NotchLifecycleProbe
+    init(_ id: WidgetID, sizes: WidgetSizes, probe: NotchLifecycleProbe) { self.id = id; self.sizes = sizes; self.probe = probe }
+    func makeBody(context: WidgetContext) -> some View { InstanceCounter(probe: probe) }
+}

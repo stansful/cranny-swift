@@ -93,6 +93,10 @@ extension HostedTests {
             #expect(flips { ShortcutHint(shortcut: $0 ? NookKeyMap.palette : nil) } == 1)
         }
 
+        @Test func wiggleOnAndOff() {
+            #expect(flips { Wiggle(index: 2, isActive: $0) } == 1)
+        }
+
         @Test(arguments: [NotchPhase.compact, .peek]) func activityValueComesAndGoes(phase: NotchPhase) {
             let (model, registry) = previewScene(phase)
             let probe = NotchLifecycleProbe()
@@ -107,6 +111,25 @@ extension HostedTests {
                 hosted.settle(0.05)
             }
             #expect(probe.appearances(of: "instance") == initial, "the activity's views were re-created")
+        }
+    }
+
+    /// The layout editor's cards are not re-created by the wiggle's clock, by the clock pausing (occluded) or
+    /// resuming, so a drag in flight survives (review: the first handle event re-created every card).
+    @MainActor @Suite("Layout editor identity") struct EditorIdentityTests {
+        @Test func cardsSurviveTheWiggleClock() {
+            let (model, registry) = previewScene(.open, mode: .editLayout)
+            let probe = NotchLifecycleProbe()
+            registry.add(widget: ProbeWidget(.media, sizes: WidgetSizes(minimum: 4, preferred: 5, maximum: 6), probe: probe))
+            let (hosted, _) = hostedCanvas(model, registry)
+            defer { hosted.tearDown() }
+            hosted.settle(0.3)                                             // ~9 wiggle frames at 30 fps
+            #expect(probe.appearances(of: "instance") == 1)
+            model.isVisibleOnScreen = false                                // occluded: the clock pauses
+            hosted.settle(0.1)
+            model.isVisibleOnScreen = true
+            hosted.settle(0.2)
+            #expect(probe.appearances(of: "instance") == 1, "a wiggle frame or pause re-created the card")
         }
     }
 
