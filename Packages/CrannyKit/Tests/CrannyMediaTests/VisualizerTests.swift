@@ -174,3 +174,50 @@ import Testing
         #expect(out == [0.5, 0.5, 0])
     }
 }
+
+@Suite("Visualizer engine") @MainActor struct VisualizerEngineTests {
+    private func engine(_ mode: MediaVisualizerMode, environment: PreviewSystemEnvironment = PreviewSystemEnvironment())
+        -> (VisualizerEngine, SettingsStore) {
+        let services = CrannyServices.preview(environment: environment)
+        services.settings[MediaSettings.visualizer] = mode
+        let engine = VisualizerEngine(settings: services.settings, environment: services.environment,
+                                      permissions: services.permissions, clock: ManualClock())
+        return (engine, services.settings)
+    }
+
+    @Test func whatEachModeDraws() {
+        let (e, settings) = engine(.ambient)
+        #expect(e.render(isPlaying: true, trackKey: "k", reduceMotion: false) == .ambient(SyntheticSpectrum(trackKey: "k")))
+        #expect(e.render(isPlaying: false, trackKey: "k", reduceMotion: false) == .dots)       // paused → static
+        #expect(e.render(isPlaying: true, trackKey: "k", reduceMotion: true) == .dots)         // Reduce Motion → static
+        settings[MediaSettings.visualizer] = .static
+        #expect(e.render(isPlaying: true, trackKey: "k", reduceMotion: false) == .dots)
+        settings[MediaSettings.visualizer] = .off
+        #expect(e.render(isPlaying: true, trackKey: "k", reduceMotion: false) == .hidden)
+        settings[MediaSettings.visualizer] = .live
+        // Until the tap delivers sound, Live shows the honest ambient pattern.
+        #expect(e.render(isPlaying: true, trackKey: "k", reduceMotion: false) == .ambient(SyntheticSpectrum(trackKey: "k")))
+        #expect(e.liveStatus == .off)
+        #expect(e.energy == 0)
+    }
+
+    @Test func frameRateFollowsPower() {
+        let environment = PreviewSystemEnvironment()
+        let (e, _) = engine(.ambient, environment: environment)
+        #expect(e.frameRateCap == 30)
+        environment.isOnBattery = true
+        #expect(e.frameRateCap == 20)
+        environment.isOnBattery = false
+        environment.isLowPowerMode = true
+        #expect(e.frameRateCap == 20)
+    }
+
+    @Test func liveNeverStartsWithoutAVisibleVisualizer() async {
+        // Mode Live and playing, but no visualizer on screen: the tap (and its permission prompt) never starts.
+        let (e, _) = engine(.live)
+        e.bind(isPlaying: { true })
+        await settle()
+        #expect(e.liveStatus == .off)
+        #expect(e.visibleCount == 0)
+    }
+}

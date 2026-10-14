@@ -148,7 +148,7 @@ final class VisualizerNSView: NSView, LevelSink {
         }
         layoutBars(configuration.metrics)
         guard visible else {
-            if installed != nil { rest(animated: false) }
+            if let installed, installed != .dots { rest(animated: false) }     // nothing animates off screen
             return
         }
         let target = configuration.render
