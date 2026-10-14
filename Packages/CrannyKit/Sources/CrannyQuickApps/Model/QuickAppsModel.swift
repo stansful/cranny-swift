@@ -3,7 +3,6 @@
 //
 // Energy: `init` does nothing. `start()` (registry.onLaunch) resolves the quick apps once and subscribes to app
 // launch/quit notifications; the Shortcuts list is read only on demand (ShortcutsCatalog). Nothing polls.
-import Accessibility
 import CrannyCore
 import Foundation
 import Observation
@@ -166,7 +165,8 @@ nonisolated private let log = Log.logger(.quickApps)
         String(localized: "Failed", bundle: .module, comment: "Notch flash: a shortcut or an app failed (≤ 12 characters)")
     }
 
-    /// The name of a shortcut wherever it could be seen or heard; neutral in Demo mode (it may be personal).
+    /// The name of a shortcut wherever it could be seen or heard; neutral in Demo mode (it may be personal). A run's
+    /// VoiceOver result has its own sentences instead (`resultAnnouncement`).
     func publicName(of entry: ShortcutEntry) -> String {
         environment.isDemoMode ? Self.neutralShortcutName : entry.displayName
     }
@@ -175,6 +175,9 @@ nonisolated private let log = Log.logger(.quickApps)
         String(localized: "Shortcut", bundle: .module, comment: "Quick Apps: a Shortcuts.app shortcut (⌘K result kind, Settings row subtitle, neutral tile name in Demo mode)")
     }
 
+    /// Runs the shortcut, or stops it while it runs. The only way a shortcut runs, and only a user's action calls it
+    /// (a click, ↩ or Space, ⌥1–⌥9, ⌘K, the tile and "+N" menus, VoiceOver): nothing runs a shortcut by itself, so
+    /// every result reported below is one the user asked for (DESIGN.md §16).
     func toggleRun(_ entry: ShortcutEntry) {
         if runs.isRunning(entry.id) {
             runs.cancel(entry.id)
@@ -188,12 +191,10 @@ nonisolated private let log = Log.logger(.quickApps)
         case .succeeded:
             reportInNotch(entry, symbol: "checkmark.circle.fill",
                           label: String(localized: "Done", bundle: .module, comment: "Notch flash: a shortcut finished (≤ 12 characters)"),
-                          announcement: String(localized: "\(publicName(of: entry)) finished", bundle: .module,
-                                               comment: "Quick Apps: VoiceOver announcement after a shortcut ran (shortcut name)"))
+                          announcement: resultAnnouncement(of: entry, failed: false))
         case .failed:
             reportInNotch(entry, symbol: "exclamationmark", label: Self.failedLabel,
-                          announcement: String(localized: "\(publicName(of: entry)) failed", bundle: .module,
-                                               comment: "Quick Apps: VoiceOver announcement after a shortcut failed (shortcut name)"))
+                          announcement: resultAnnouncement(of: entry, failed: true))
             // A deleted shortcut fails too: re-read the list once to say so.
             Task {
                 await shortcutsCatalog.refresh()
@@ -206,9 +207,31 @@ nonisolated private let log = Log.logger(.quickApps)
         }
     }
 
-    /// A result nobody can see on a tile — the panel is closed, the tile is in "+N" or on a page that is not shown,
-    /// or the shortcut ran from ⌘K and has no tile — flashes in the notch and, at most once per 10 s, is announced
-    /// to VoiceOver (DESIGN.md §16). A tile on screen shows the result itself and in its accessibility value.
+    /// What VoiceOver hears when a run finished or failed: the shortcut's name, or in Demo mode a sentence that names
+    /// no shortcut. (Putting the neutral name into the named sentence would say "shortcut" twice in Russian.)
+    /// `bundle` picks a localization in tests.
+    func resultAnnouncement(of entry: ShortcutEntry, failed: Bool, bundle: Bundle = .module) -> String {
+        switch (environment.isDemoMode, failed) {
+        case (false, false):
+            String(localized: "\(entry.displayName) finished", bundle: bundle,
+                   comment: "Quick Apps: VoiceOver announcement after a shortcut ran (shortcut name)")
+        case (false, true):
+            String(localized: "\(entry.displayName) failed", bundle: bundle,
+                   comment: "Quick Apps: VoiceOver announcement after a shortcut failed (shortcut name)")
+        case (true, false):
+            String(localized: "Shortcut finished", bundle: bundle,
+                   comment: "Quick Apps: VoiceOver announcement after a shortcut ran, Demo mode (no name)")
+        case (true, true):
+            String(localized: "Shortcut failed", bundle: bundle,
+                   comment: "Quick Apps: VoiceOver announcement after a shortcut failed, Demo mode (no name)")
+        }
+    }
+
+    /// The result of a run the user started that nobody can see on a tile — the panel is closed, the tile is in "+N"
+    /// or on a page that is not shown, or the shortcut ran from ⌘K and has no tile — flashes in the notch and is
+    /// announced to VoiceOver through `services.announcer` as a `.result`, so it shares the app's one limit (one
+    /// alert or result per 10 s; dropped, not queued, when another module just spoke) (DESIGN.md §16). A tile on
+    /// screen shows the result itself and in its accessibility value; a run the user stopped reports nothing.
     private func reportInNotch(_ entry: ShortcutEntry, symbol: String, label: String, announcement: String) {
         guard !isOnScreenAsTile(.shortcut(entry.id)) else { return }
         notch.flash(symbol: symbol, label: label)

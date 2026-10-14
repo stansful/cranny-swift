@@ -191,6 +191,8 @@ private let log = Log.logger(.timer)
         }
     }
 
+    /// The user's alert sound. It plays while Live Activities are paused too: it is an alarm the user set, and only
+    /// the activity follows the pause (DESIGN.md §9.2). Demo mode mutes it (§14.3).
     private func playDoneSound() {
         guard !dependencies.isDemoMode(), let name = settings[TimerSettings.sound], !name.isEmpty else { return }
         dependencies.sound.play(named: name)

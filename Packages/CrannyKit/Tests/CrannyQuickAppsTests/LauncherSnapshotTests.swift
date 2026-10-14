@@ -1,6 +1,7 @@
 // Opt-in visual QA: renders the launcher card in its states to PNGs for a human to look at.
 //   CRANNY_SNAPSHOT_DIR=/some/dir swift test --scratch-path .build-test --filter LauncherSnapshot
-// Skipped otherwise (and never in CI). Uses real app icons (read-only); launches and runs nothing.
+// writes into /some/dir/QuickApps. Skipped otherwise (and never in CI). Uses real app icons (read-only); launches
+// and runs nothing.
 import AppKit
 import CrannyCore
 import Foundation
@@ -8,7 +9,7 @@ import SwiftUI
 import Testing
 @testable import CrannyQuickApps
 
-nonisolated private let snapshotDirectory = ProcessInfo.processInfo.environment["CRANNY_SNAPSHOT_DIR"]
+nonisolated private let snapshotDirectory = SnapshotOutput.directory("QuickApps")
 
 @Suite(.enabled(if: snapshotDirectory != nil, "set CRANNY_SNAPSHOT_DIR to render"), .serialized)
 struct LauncherSnapshot {
@@ -22,7 +23,7 @@ struct LauncherSnapshot {
 
     @Test func renderStates() async throws {
         let directory = try #require(snapshotDirectory)
-        try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         var hints = NotchContext()
         hints.showsCommandHints = true
         var xl = CrannyTheme()
@@ -62,7 +63,7 @@ struct LauncherSnapshot {
             let image = try #require(renderer.cgImage)
             let rep = NSBitmapImageRep(cgImage: image)
             let png = try #require(rep.representation(using: .png, properties: [:]))
-            try png.write(to: URL(fileURLWithPath: directory).appending(path: "\(name).png"))
+            try png.write(to: directory.appending(path: "\(name).png"))
         }
     }
 
@@ -70,7 +71,7 @@ struct LauncherSnapshot {
     /// host them in an off-screen window (never ordered front) and cache its display.
     @Test func renderSettings() async throws {
         let directory = try #require(snapshotDirectory)
-        try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let model = QuickAppsPreview.model(apps: AppEntry.defaults.map(\.bundleID) + ["com.example.not-installed"])
         await model.shortcutsCatalog.refresh()
         await warmIcons(model, theme: CrannyTheme())
@@ -95,7 +96,7 @@ struct LauncherSnapshot {
                 host.cacheDisplay(in: host.bounds, to: rep)
                 let png = try #require(rep.representation(using: .png, properties: [:]))
                 let suffix = appearance == .darkAqua ? "dark" : "light"
-                try png.write(to: URL(fileURLWithPath: directory).appending(path: "\(name)-\(suffix).png"))
+                try png.write(to: directory.appending(path: "\(name)-\(suffix).png"))
                 window.close()
             }
         }
@@ -105,7 +106,7 @@ struct LauncherSnapshot {
     /// behind "+" and "+N" are attached as in the app: they must draw nothing.
     @Test func renderHostedLauncher() async throws {
         let directory = try #require(snapshotDirectory)
-        try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let variants: [(String, QuickAppsModel, Int)] = [
             ("16-hosted-editing-overflow", QuickAppsPreview.model(editing: true, states: states), 2),
             ("17-hosted-overflow-failed",
@@ -126,7 +127,7 @@ struct LauncherSnapshot {
             let rep = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
             host.cacheDisplay(in: host.bounds, to: rep)
             let png = try #require(rep.representation(using: .png, properties: [:]))
-            try png.write(to: URL(fileURLWithPath: directory).appending(path: "\(name).png"))
+            try png.write(to: directory.appending(path: "\(name).png"))
             window.close()
         }
     }

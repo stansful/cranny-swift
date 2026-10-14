@@ -2,9 +2,10 @@
 // opaque}, plus the palette, the layout editor, Notes focus, the catch state, the HUD in the header, the
 // satellite and hold-⌘ hints. Writes PNGs for a human (or a design QA script) to look at:
 //
-//   CRANNY_SNAPSHOT_DIR=/tmp/notchui swift test --scratch-path .build-test --filter CrannyNotchUITests.SnapshotGallery
+//   CRANNY_SNAPSHOT_DIR=/tmp/snapshots swift test --scratch-path .build-test --filter CrannyNotchUITests.SnapshotGallery
 //
-// Never runs in CI (no directory set). The renders are the final state of each presentation.
+// writes into /tmp/snapshots/NotchUI. Never runs in CI (no directory set). The renders are the final state of each
+// presentation.
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -12,7 +13,7 @@ import Testing
 import UniformTypeIdentifiers
 @testable import CrannyNotchUI
 
-nonisolated private let directory = ProcessInfo.processInfo.environment["CRANNY_SNAPSHOT_DIR"].map { URL(filePath: $0, directoryHint: .isDirectory) }
+nonisolated private let directory = SnapshotOutput.directory("NotchUI")
 
 @MainActor @Suite(.enabled(if: directory != nil, "set CRANNY_SNAPSHOT_DIR to write the gallery"))
 struct SnapshotGallery {

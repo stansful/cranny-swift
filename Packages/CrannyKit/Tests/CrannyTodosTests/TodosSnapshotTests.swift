@@ -5,14 +5,14 @@ import SwiftUI
 import Testing
 @testable import CrannyTodos
 
-/// Opt-in visual QA without a screen: renders the widget's states to PNGs in `CRANNY_SNAPSHOTS=<directory>`
+/// Opt-in visual QA without a screen: renders the widget's states to PNGs in `<CRANNY_SNAPSHOT_DIR>/Todos`
 /// through an offscreen hosting view. Never runs in CI; nothing is shown on screen and nothing outside that
 /// directory is written. Look at the images yourself (`50-editor-alignment`: the title must not move when
 /// editing starts).
 @MainActor
-@Suite(.enabled(if: ProcessInfo.processInfo.environment["CRANNY_SNAPSHOTS"] != nil))
+@Suite(.enabled(if: SnapshotOutput.directory("Todos") != nil))
 struct TodosSnapshotTests {
-    let directory = URL(fileURLWithPath: ProcessInfo.processInfo.environment["CRANNY_SNAPSHOTS"] ?? NSTemporaryDirectory())
+    let directory = SnapshotOutput.directory("Todos") ?? URL(filePath: NSTemporaryDirectory(), directoryHint: .isDirectory)
 
     private func fixture(hidesCompleted: Bool = true) -> TodosModel {
         let services = CrannyServices.testing()

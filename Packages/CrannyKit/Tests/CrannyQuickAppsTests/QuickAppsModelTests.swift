@@ -129,14 +129,81 @@ private let resize = ShortcutEntry(id: "5C1B1E0B-2B7A-4E59-8D3B-7A0C1F3E2D02", n
     h.model.stop()
 }
 
-@Test func demoModeAnnouncesNoShortcutName() async {
-    let h = ModelHarness(apps: [], shortcuts: [morning], cli: FakeCLI(listing: shortcutListFixture))
+@Test(arguments: [false, true]) func demoModeAnnouncesNoShortcutName(failed: Bool) async {
+    let h = ModelHarness(apps: [], shortcuts: [morning],
+                         cli: FakeCLI(listing: shortcutListFixture, failing: failed ? [morning.id] : []))
     await h.model.start()
     h.environment.isDemoMode = true
     h.model.toggleRun(morning)
     #expect(await waitUntil { h.announced.messages.count == 1 })
-    #expect(h.announced.messages.first?.contains("Morning") == false)
+    // Its own sentence, not the named one with the neutral name in it (that would say "shortcut" twice in Russian).
+    #expect(h.announced.messages == [failed ? "Shortcut failed" : "Shortcut finished"])
     #expect(h.model.publicName(of: morning) == QuickAppsModel.neutralShortcutName)
+    h.model.stop()
+}
+
+@Test func outsideDemoModeTheResultNamesTheShortcut() {
+    let h = ModelHarness(apps: [], shortcuts: [morning])
+    #expect(h.model.resultAnnouncement(of: morning, failed: false) == "Morning routine finished")
+    #expect(h.model.resultAnnouncement(of: morning, failed: true) == "Morning routine failed")
+}
+
+@Test(arguments: [false, true]) func russianResultAnnouncementsSayShortcutOnce(demo: Bool) throws {
+    // VoiceOver reads these in Russian: «Быстрая команда «Утро» выполнена», and in Demo mode a sentence of its own,
+    // never «Быстрая команда «Быстрая команда» выполнена».
+    let path = try #require(Bundle.module.path(forResource: "ru", ofType: "lproj"))
+    let russian = try #require(Bundle(path: path))
+    let entry = ShortcutEntry(id: morning.id, name: "Утро")
+    let h = ModelHarness(apps: [], shortcuts: [entry])
+    h.environment.isDemoMode = demo
+    let finished = h.model.resultAnnouncement(of: entry, failed: false, bundle: russian)
+    let failed = h.model.resultAnnouncement(of: entry, failed: true, bundle: russian)
+    if demo {
+        #expect(finished == "Быстрая команда выполнена")
+        #expect(failed == "Быстрая команда завершилась с ошибкой")
+    } else {
+        #expect(finished == "Быстрая команда «Утро» выполнена")
+        #expect(failed == "Быстрая команда «Утро» завершилась с ошибкой")
+    }
+}
+
+// MARK: - Announcements are for runs the user started (DESIGN.md §16)
+
+@Test func nothingRunsAShortcutByItself() async {
+    // Launch, panel events, the palette and the list refreshes never run a shortcut: every run, and so every result
+    // that is flashed or announced, comes from a user's action (`activate` / `toggleRun`).
+    let h = ModelHarness(apps: [], shortcuts: [morning, resize], cli: FakeCLI(listing: shortcutListFixture))
+    await h.model.start()
+    for event in [NotchEvent.opened(.click), .paletteOpened, .pinned(true), .pinned(false), .closed] { h.notch.emit(event) }
+    h.model.prepareShortcutList()
+    #expect(await waitUntil { h.cli.calls.contains { $0.first == "list" } })
+    h.model.stop()
+    #expect(!h.cli.calls.contains { $0.first == "run" })
+    #expect(h.announced.messages.isEmpty)
+    #expect(!h.notch.calls.contains { $0.hasPrefix("flash") })
+}
+
+@Test func aRunTheUserStopsIsNeitherFlashedNorAnnounced() async {
+    let h = ModelHarness(apps: [], shortcuts: [morning], cli: FakeCLI(listing: shortcutListFixture, runDuration: .seconds(30)))
+    await h.model.start()
+    h.model.toggleRun(morning)
+    #expect(h.model.runs.isRunning(morning.id))
+    h.model.toggleRun(morning)                                             // stop: the same tile, menu or ⌘K entry
+    #expect(await waitUntil { h.model.runs.state(of: morning.id) == .idle })
+    #expect(h.announced.messages.isEmpty)
+    #expect(!h.notch.calls.contains { $0.hasPrefix("flash") })
+    h.model.stop()
+}
+
+@Test func aShortcutResultSharesTheAppWideAnnouncementLimit() async {
+    // `services.announcer` is one limit for the whole app: a P1 alert announced by another module a moment earlier
+    // leaves the shortcut's result to the notch flash.
+    let h = ModelHarness(apps: [], shortcuts: [morning], cli: FakeCLI(listing: shortcutListFixture))
+    await h.model.start()
+    #expect(h.services.announcer.announce("Timer done", kind: .alert))
+    h.model.toggleRun(morning)
+    #expect(await waitUntil { h.notch.calls.contains("flash(checkmark.circle.fill)") })
+    #expect(h.announced.messages == ["Timer done"])
     h.model.stop()
 }
 

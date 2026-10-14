@@ -1,6 +1,6 @@
 // Renders the HUD the way the shell lays out a compact activity and checks what lands where: the glyph left of
-// the camera, the bar right of it, nothing over the camera housing. Set CRANNY_HUD_SNAPSHOTS=<dir> to also
-// write the PNGs for visual review (Debug QA; never needed in CI).
+// the camera, the bar right of it, nothing over the camera housing. Set CRANNY_SNAPSHOT_DIR=<dir> to also
+// write the PNGs to <dir>/HUD for visual review (Debug QA; never needed in CI).
 import AppKit
 import CrannyCore
 import Foundation
@@ -58,7 +58,7 @@ import Testing
     }
 
     @Test func rendersEveryVariant() throws {
-        let directory = ProcessInfo.processInfo.environment["CRANNY_HUD_SNAPSHOTS"].map { URL(fileURLWithPath: $0) }
+        let directory = SnapshotOutput.directory("HUD")
         for item in cases {
             let activity = previewHUD(item.display, configure: item.configure)
             let preview = HUDBandPreview(activity: activity, metrics: item.metrics, theme: item.theme)
@@ -98,9 +98,10 @@ import Testing
             .crannyThemeRoot(CrannyTheme())
         let image = try render(row)
         #expect(try brightPixels(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height)) > 200)
-        if let directory = ProcessInfo.processInfo.environment["CRANNY_HUD_SNAPSHOTS"] {
+        if let directory = SnapshotOutput.directory("HUD") {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
             let data = try #require(NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]))
-            try data.write(to: URL(fileURLWithPath: directory).appending(path: "hud-peek-row.png"))
+            try data.write(to: directory.appending(path: "hud-peek-row.png"))
         }
     }
 

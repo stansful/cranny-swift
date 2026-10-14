@@ -70,6 +70,29 @@ import Testing
         #expect(quiet.sound.played.isEmpty)
     }
 
+    /// DESIGN.md §9.2: the done sound is an alarm the user set, so it plays while Live Activities are paused (the
+    /// activity itself follows the pause: the shell shows and peeks nothing); Demo mode still mutes it. Runs the app's
+    /// own wiring (`TimerDependencies.live`) with a manual clock and scheduler and a silent player in place of NSSound.
+    @Test(arguments: [false, true]) func theDoneSoundPlaysWhileActivitiesArePausedButNeverInDemoMode(demo: Bool) {
+        let environment = PreviewSystemEnvironment()
+        environment.areLiveActivitiesPaused = true
+        environment.isDemoMode = demo
+        let services = CrannyServices.preview(environment: environment)
+        services.settings[CoreSettings.pausedUntil] = .distantFuture                // "Until I resume"
+        services.settings[TimerSettings.sound] = "Hero"
+        let clock = ManualClock(), scheduler = ManualScheduler(), sound = SilentTimerSound()
+        var dependencies = TimerDependencies.live(services: services)
+        dependencies.now = { clock.now }
+        dependencies.scheduler = scheduler
+        dependencies.sound = sound
+        dependencies.file = nil
+        let model = TimerModel(settings: services.settings, dependencies: dependencies)
+        model.start(seconds: 30)
+        scheduler.fire(advancing: clock)
+        #expect(model.state.isDone && model.doneRevision == 1)                    // the activity is there for the shell
+        #expect(sound.played == (demo ? [] : ["Hero"]))
+    }
+
     @Test func aDeadlineMissedByMoreThanAMinuteEndsSilently() {
         let h = TimerHarness()
         h.model.start(seconds: 30)

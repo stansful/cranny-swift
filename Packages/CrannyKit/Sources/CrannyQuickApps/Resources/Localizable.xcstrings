@@ -683,6 +683,28 @@
         }
       }
     },
+    "Shortcut failed" : {
+      "comment" : "Quick Apps: VoiceOver announcement after a shortcut failed, Demo mode (no name)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Быстрая команда завершилась с ошибкой"
+          }
+        }
+      }
+    },
+    "Shortcut finished" : {
+      "comment" : "Quick Apps: VoiceOver announcement after a shortcut ran, Demo mode (no name)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Быстрая команда выполнена"
+          }
+        }
+      }
+    },
     "Shortcuts" : {
       "comment" : "Settings sidebar: Quick Apps & Shortcuts pane name (Apple's Shortcuts app)",
       "localizations" : {

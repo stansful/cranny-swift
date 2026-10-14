@@ -32,16 +32,18 @@ struct NoteListMenu: View {
             Divider()
             Button(NotesStrings.deleteEllipsis, role: .destructive) { model.requestDelete() }
         } label: {
+            // The label is the button: its 28 × 24 frame is what takes clicks (DESIGN.md §2.3; a frame outside a
+            // `Menu` does not widen it).
             Image(systemName: "chevron.down")
                 .crannyFont(.caption)
                 .foregroundStyle(theme.palette.tertiaryLabel)
+                .frame(width: HitTarget.nook.width, height: HitTarget.nook.height)
+                .contentShape(Rectangle())
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
         .menuIndicator(.hidden)
         .fixedSize()
-        .frame(width: HitTarget.nook.width, height: HitTarget.nook.height)
-        .contentShape(Rectangle())
         .help(NotesStrings.allNotes)
         .accessibilityLabel(Text(NotesStrings.allNotes))
     }
