@@ -50,7 +50,6 @@ import Foundation
     }
 
     func stop() {
-        appControl.disconnect()
         updates.stop()
         displays.stop()
         demo.stop()

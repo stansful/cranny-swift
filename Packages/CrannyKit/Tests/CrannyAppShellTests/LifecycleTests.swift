@@ -1,5 +1,5 @@
-// Launch, quit and display changes (ARCHITECTURE.md §3.4, §4.9): terminate hooks only after launch hooks, and one
-// display rule for the panels and the menu's Show On ▸ checkmarks.
+// Launch, quit and display changes (ARCHITECTURE.md §3.4, §4.9): terminate hooks only after launch hooks, one display
+// rule for the panels and the menu's Show On ▸ checkmarks, and a panel removed with its display closes like any other.
 import AppKit
 import CrannyCore
 import CrannyNotchUI
@@ -84,3 +84,27 @@ private let external = ConnectedDisplay(key: "external", name: "DELL U2723QE", i
     }
 }
 
+// MARK: - A panel removed while open (C-SHELL-8)
+
+nonisolated private let integration = ProcessInfo.processInfo.environment["CRANNY_INTEGRATION"] == "1"
+
+/// Unchecking the display of a pinned open panel (or unplugging it) closes that panel through its machine: observers
+/// get `.closed`, "Keep Cranny Open" is unchecked and the menu no longer sees an open panel. Shows a real panel
+/// briefly, so it is opt-in (`CRANNY_INTEGRATION=1`).
+@Test(.enabled(if: integration)) func aPanelRemovedWhileOpenClosesFirst() throws {
+    _ = NSApplication.shared
+    let screen = try #require(NSScreen.screens.first)
+    let registry = ModuleRegistry(services: .preview())
+    let overlay = OverlayCoordinator(registry: registry, environment: ShellEnvironment())
+    let control = ShellAppControl()
+    control.connect(settings: registry.services.settings, overlay: overlay, settingsWindow: SettingsWindowController(registry: registry),
+                    welcomeWindow: WelcomeWindowController(registry: registry), hotKeys: overlay.hotKeys)
+    var events: [NotchEvent] = []
+    overlay.notchControl.addEventObserver { events.append($0) }
+    overlay.controllers["selftest.gone"] = overlay.makeController(screen: screen, key: "selftest.gone", style: .floatingIsland)
+    overlay.setPinned(true)
+    #expect(overlay.isPinned && overlay.isOpen && control.isPanelOpen)
+    overlay.retirePanel("selftest.gone")
+    #expect(events.suffix(2) == [.closed, .pinned(false)] || events.suffix(2) == [.pinned(false), .closed])
+    #expect(!overlay.isPinned && !overlay.isOpen && !control.isPanelOpen && overlay.controllers.isEmpty)
+}

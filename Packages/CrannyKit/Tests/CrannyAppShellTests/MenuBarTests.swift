@@ -135,17 +135,13 @@ private func policy(_ selection: DisplaySelection, _ perDisplay: [DisplayKey: Di
 @Test func openCrannyInTheMenuNeverCloses() {
     let (services, _, overlay) = makeServices()
     services.start()
+    defer { services.stop() }
     let control = services.appControl
     #expect(control.openRequest == .hotKey)                                         // nothing open: opens like ⌃⌥N
+    #expect(ShellAppControl.OpenRequest(isPanelOpen: true) == .reopen)              // open: opens again, never closes
+    // The open state is the panels' own, not inferred from events (a panel removed with its display sends none).
     overlay.notchControl.emit(.opened(.hover))
-    #expect(control.isPanelOpen && control.openRequest == .reopen)                  // open: opens again, never closes
-    overlay.notchControl.emit(.pinned(true))
-    #expect(control.openRequest == .reopen)
-    overlay.notchControl.emit(.closed)
-    #expect(!control.isPanelOpen && control.openRequest == .hotKey)
-    services.stop()
-    overlay.notchControl.emit(.opened(.click))
-    #expect(control.openRequest == .hotKey)                                         // stopped: no longer followed
+    #expect(!control.isPanelOpen && control.openRequest == .hotKey && !overlay.isOpen)
 }
 
 @Test func theMenuChecksForUpdatesAndSettingsShowsTheResult() async throws {
