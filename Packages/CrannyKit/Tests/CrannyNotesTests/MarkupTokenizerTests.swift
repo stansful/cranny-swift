@@ -133,3 +133,29 @@ import Testing
         #expect(SyntaxHighlighter.tokens(in: text, language: .swift).isEmpty)
     }
 }
+
+@Suite("Markdown on pathological lines") struct PathologicalMarkdownTests {
+    /// One pass per line: before, every unmatched opener rescanned to the end of its line (133 ms in Release for
+    /// the first line below; 31 ms for the second). The bound is generous for Debug builds and slow machines.
+    @Test(arguments: [String(repeating: "*x", count: 5_000) + String(repeating: "y", count: 23_896),
+                      String(repeating: "[", count: 5_000) + String(repeating: "y", count: 23_896),
+                      String(repeating: "_a ", count: 5_000), String(repeating: "`` ` ", count: 3_000),
+                      String(repeating: "[a](", count: 5_000), String(repeating: "<http ", count: 5_000)])
+    func unmatchedOpenersStayLinear(_ line: String) {
+        let elapsed = ContinuousClock().measure { _ = SyntaxHighlighter.tokens(in: line, language: .markdown) }
+        #expect(elapsed < .milliseconds(500), "took \(elapsed)")
+    }
+
+    @Test func rememberedSearchesKeepTheSameTokens() {
+        #expect(highlights("*a *b* c", .markdown).has(.emphasis, "a *b"))
+        #expect(highlights("[x] [y](z) [w", .markdown).has(.link, "y"))
+        #expect(highlights("[x] [y](z) [w", .markdown).leavesPlain("x"))
+        #expect(highlights("``a`b`` `c`", .markdown).has(.code, "``a`b``"))
+        #expect(highlights("``a`b`` `c`", .markdown).has(.code, "`c`"))
+        #expect(highlights("**a** *b* **c", .markdown).has(.strong, "a"))
+        #expect(highlights("**a** *b* **c", .markdown).has(.emphasis, "b"))
+        #expect(highlights("**a** *b* **c", .markdown).leavesPlain("c"))
+        #expect(highlights("![alt](p.png) and [t](u", .markdown).has(.link, "alt"))
+        #expect(highlights("<http://a> <http://b", .markdown).has(.link, "<http://a>"))
+    }
+}

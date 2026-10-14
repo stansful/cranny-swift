@@ -1,6 +1,8 @@
 // CrannyNotes/Editor/Syntax/MarkdownTokenizer.swift — Markdown for code mode (DESIGN.md §7.5): headings, quotes,
 // lists, rules, fences (with their own language), inline code, links, emphasis. Punctuation is a dimmed
 // `.marker` so the prose stays the brightest thing on the card. Line-based; a fence is the only multi-line state.
+// Linear per line: an opener whose closer was already searched for and not found does not search again
+// (`InlineScan`), so a pasted log line full of `[`, `*` or `_` costs one pass, not one per opener.
 import Foundation
 
 nonisolated struct MarkdownTokenizer {
@@ -133,13 +135,14 @@ nonisolated struct MarkdownTokenizer {
     private func inline(_ s: SourceText, _ range: Range<Int>, into sink: inout TokenSink) {
         var i = range.lowerBound
         let end = range.upperBound
+        var scan = InlineScan()
         while i < end {
             let c = s[i]
             if c == SourceText.backslash { i += 2; continue }
-            if let next = codeSpan(s, at: i, end: end, into: &sink)
-                ?? link(s, at: i, end: end, into: &sink)
-                ?? autolink(s, at: i, end: end, into: &sink)
-                ?? emphasis(s, at: i, end: end, into: &sink) {
+            if let next = codeSpan(s, at: i, end: end, scan: &scan, into: &sink)
+                ?? link(s, at: i, end: end, scan: &scan, into: &sink)
+                ?? autolink(s, at: i, end: end, scan: &scan, into: &sink)
+                ?? emphasis(s, at: i, end: end, scan: &scan, into: &sink) {
                 i = max(next, i + 1)
             } else {
                 i += 1
@@ -147,11 +150,59 @@ nonisolated struct MarkdownTokenizer {
         }
     }
 
-    private func codeSpan(_ s: SourceText, at i: Int, end: Int, into sink: inout TokenSink) -> Int? {
+    /// What the searches of one line already found out. Searches move forward with the line, so a search from
+    /// `p` that found nothing (or found `q`) answers every later search from `p…q` the same way. Allocates only
+    /// when a closing run is missing (rare outside pathological lines).
+    private struct InlineScan {
+        private var closeBracket = Search(), closeParen = Search(), greater = Search()
+        /// Closing runs (character and width) that do not exist after the position stored.
+        private var missingCloser: [Closer: Int] = [:]
+
+        private struct Search {
+            var from = Int.max
+            var found: Int?
+        }
+
+        private struct Closer: Hashable {
+            var unit: UInt16
+            var width: Int
+        }
+
+        /// The first `]`, `)` or `>` at or after `index` before `end` (the line's end, the same for every search).
+        mutating func next(_ unit: UInt16, in s: SourceText, from index: Int, until end: Int) -> Int? {
+            switch unit {
+            case ASCII.closeBracket: Self.next(unit, &closeBracket, s, index, end)
+            case ASCII.closeParen: Self.next(unit, &closeParen, s, index, end)
+            default: Self.next(unit, &greater, s, index, end)
+            }
+        }
+
+        private static func next(_ unit: UInt16, _ last: inout Search, _ s: SourceText, _ index: Int, _ end: Int) -> Int? {
+            if index >= last.from, last.found.map({ index <= $0 }) ?? true { return last.found }
+            var j = index
+            while j < end && s[j] != unit { j += 1 }
+            last = Search(from: index, found: j < end ? j : nil)
+            return last.found
+        }
+
+        /// A closing run was searched for from at or before `index` and not found. Valid because every search
+        /// starts just after a whole run of its character, where an earlier search of the line also passes.
+        func lacksCloser(_ unit: UInt16, width: Int, after index: Int) -> Bool {
+            missingCloser[Closer(unit: unit, width: width)].map { index >= $0 } ?? false
+        }
+
+        mutating func noCloser(_ unit: UInt16, width: Int, after index: Int) {
+            let key = Closer(unit: unit, width: width)
+            missingCloser[key] = min(missingCloser[key] ?? index, index)
+        }
+    }
+
+    private func codeSpan(_ s: SourceText, at i: Int, end: Int, scan: inout InlineScan, into sink: inout TokenSink) -> Int? {
         guard s[i] == ASCII.backtick else { return nil }
         var run = i
         while run < end && s[run] == ASCII.backtick { run += 1 }
         let width = run - i
+        guard !scan.lacksCloser(ASCII.backtick, width: width, after: run) else { return run }
         var j = run
         while j < end {
             if s[j] == ASCII.backtick {
@@ -166,16 +217,17 @@ nonisolated struct MarkdownTokenizer {
                 j += 1
             }
         }
+        scan.noCloser(ASCII.backtick, width: width, after: run)
         return run                                                                // unmatched: plain backticks
     }
 
     /// `[text](url)` and `![alt](url)`: the text is a link, the brackets and the URL are markers.
-    private func link(_ s: SourceText, at i: Int, end: Int, into sink: inout TokenSink) -> Int? {
+    private func link(_ s: SourceText, at i: Int, end: Int, scan: inout InlineScan, into sink: inout TokenSink) -> Int? {
         let image = s[i] == ASCII.bang && s[i + 1] == ASCII.openBracket
         guard s[i] == ASCII.openBracket || image else { return nil }
         let open = image ? i + 1 : i
-        guard let close = s.find("]", from: open + 1, until: end), s[close + 1] == ASCII.openParen,
-              let urlEnd = s.find(")", from: close + 2, until: end) else { return nil }
+        guard let close = scan.next(ASCII.closeBracket, in: s, from: open + 1, until: end), s[close + 1] == ASCII.openParen,
+              let urlEnd = scan.next(ASCII.closeParen, in: s, from: close + 2, until: end) else { return nil }
         sink.add(.marker, i..<(open + 1))
         sink.add(.link, (open + 1)..<close)
         sink.add(.marker, close..<(urlEnd + 1))
@@ -183,9 +235,9 @@ nonisolated struct MarkdownTokenizer {
     }
 
     /// `<https://…>` and bare `https://…` URLs.
-    private func autolink(_ s: SourceText, at i: Int, end: Int, into sink: inout TokenSink) -> Int? {
+    private func autolink(_ s: SourceText, at i: Int, end: Int, scan: inout InlineScan, into sink: inout TokenSink) -> Int? {
         if s[i] == ASCII.less, s.matches("http", at: i + 1, caseInsensitive: true),
-           let close = s.find(">", from: i + 1, until: end) {
+           let close = scan.next(ASCII.greater, in: s, from: i + 1, until: end) {
             sink.add(.link, i..<(close + 1))
             return close + 1
         }
@@ -200,7 +252,7 @@ nonisolated struct MarkdownTokenizer {
 
     /// `*em*`, `_em_`, `**strong**`, `__strong__`, `***both***` on one line. Openers need a non-space after
     /// them, closers a non-space before; `_` only counts at word boundaries (snake_case stays plain).
-    private func emphasis(_ s: SourceText, at i: Int, end: Int, into sink: inout TokenSink) -> Int? {
+    private func emphasis(_ s: SourceText, at i: Int, end: Int, scan: inout InlineScan, into sink: inout TokenSink) -> Int? {
         let c = s[i]
         guard c == ASCII.star || c == ASCII.underscore else { return nil }
         if c == ASCII.underscore && SourceText.isIdentifierPart(s[i - 1]) { return nil }
@@ -208,6 +260,7 @@ nonisolated struct MarkdownTokenizer {
         while run < end && s[run] == c { run += 1 }
         let width = min(run - i, 3)
         guard run < end, !SourceText.isWhitespace(s[run]) else { return run }
+        guard !scan.lacksCloser(c, width: width, after: run) else { return run }
         var j = run
         while j < end {
             if s[j] == c && !SourceText.isWhitespace(s[j - 1]) {
@@ -225,6 +278,7 @@ nonisolated struct MarkdownTokenizer {
                 j += 1
             }
         }
+        scan.noCloser(c, width: width, after: run)
         return run
     }
 }
