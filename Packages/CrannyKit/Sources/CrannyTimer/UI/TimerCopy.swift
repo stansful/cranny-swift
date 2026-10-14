@@ -122,4 +122,28 @@ nonisolated enum TimerCopy {
     static var noSound: String {
         String(localized: "None", bundle: .module, comment: "Timer options: sound picker entry for no sound")
     }
+
+    /// The name System Settings ▸ Sound shows for one of `TimerSettings.systemSounds` (a file name, which is what
+    /// the setting stores and `NSSound(named:)` plays). Since macOS 14 they differ: "Glass" is Crystal / Кристалл.
+    /// The keys are those English names and the catalog has Apple's Russian ones. A name that is not one of the
+    /// system sounds (written outside the picker) shows as stored.
+    static func soundName(_ fileName: String) -> String {
+        switch fileName {
+        case "Basso": String(localized: "Mezzo", bundle: .module, comment: "Timer options: macOS alert sound name (match System Settings ▸ Sound)")
+        case "Blow": String(localized: "Breeze", bundle: .module, comment: "Timer options: macOS alert sound name (match System Settings ▸ Sound)")
+        case "Bottle": String(localized: "Pebble", bundle: .module, comment: "Timer options: macOS alert sound name (match System Settings ▸ Sound)")
+        case "Frog": String(localized: "Jump", bundle: .module, comment: "Timer options: macOS alert sound name (match System Settings ▸ Sound)")
+        case "Funk": String(localized: "Funky", bundle: .module, comment: "Timer options: macOS alert sound name (match System Settings ▸ Sound)")
+        case "Glass": String(localized: "Crystal", bundle: .module, comment: "Timer options: macOS alert sound name (match System Settings ▸ Sound)")
+        case "Hero": String(localized: "Heroine", bundle: .module, comment: "Timer options: macOS alert sound name (match System Settings ▸ Sound)")
+        case "Morse": String(localized: "Pong", bundle: .module, comment: "Timer options: macOS alert sound name (match System Settings ▸ Sound)")
+        case "Ping": String(localized: "Sonar", bundle: .module, comment: "Timer options: macOS alert sound name (match System Settings ▸ Sound)")
+        case "Pop": String(localized: "Bubble", bundle: .module, comment: "Timer options: macOS alert sound name (match System Settings ▸ Sound)")
+        case "Purr": String(localized: "Pluck", bundle: .module, comment: "Timer options: macOS alert sound name (match System Settings ▸ Sound)")
+        case "Sosumi": String(localized: "Sonumi", bundle: .module, comment: "Timer options: macOS alert sound name (match System Settings ▸ Sound)")
+        case "Submarine": String(localized: "Submerge", bundle: .module, comment: "Timer options: macOS alert sound name (match System Settings ▸ Sound)")
+        case "Tink": String(localized: "Boop", bundle: .module, comment: "Timer options: macOS alert sound name (match System Settings ▸ Sound)")
+        default: fileName
+        }
+    }
 }

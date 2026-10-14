@@ -33,8 +33,8 @@ struct TimerOptionsView: View {
                 Picker(selection: soundBinding) {
                     Text(TimerCopy.noSound).tag(String?.none)
                     Divider()
-                    ForEach(TimerSettings.systemSounds, id: \.self) { name in
-                        Text(verbatim: name).tag(String?.some(name))
+                    ForEach(Self.soundChoices(), id: \.fileName) { sound in
+                        Text(verbatim: sound.name).tag(String?.some(sound.fileName))
                     }
                 } label: {
                     Text(TimerCopy.soundTitle)
@@ -60,6 +60,14 @@ struct TimerOptionsView: View {
             presets[index] = minutes * 60
             settings[TimerSettings.presets] = Array(presets.prefix(TimerSettings.maximumPresets))
         }
+    }
+
+    /// The system sounds under the names System Settings ▸ Sound shows (already localized by `TimerCopy`), in
+    /// that pane's order: alphabetical by shown name. `name` is replaceable for tests.
+    static func soundChoices(named name: (String) -> String = TimerCopy.soundName) -> [(fileName: String, name: String)] {
+        TimerSettings.systemSounds
+            .map { (fileName: $0, name: name($0)) }
+            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
     }
 
     /// The sound; choosing one plays it once, as System Settings does.

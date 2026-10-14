@@ -62,6 +62,39 @@
         }
       }
     },
+    "Boop" : {
+      "comment" : "Timer options: macOS alert sound name (match System Settings ▸ Sound)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Капля"
+          }
+        }
+      }
+    },
+    "Breeze" : {
+      "comment" : "Timer options: macOS alert sound name (match System Settings ▸ Sound)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Бриз"
+          }
+        }
+      }
+    },
+    "Bubble" : {
+      "comment" : "Timer options: macOS alert sound name (match System Settings ▸ Sound)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пузырьки"
+          }
+        }
+      }
+    },
     "Choose a duration" : {
       "comment" : "Timer widget: VoiceOver value when the presets are shown",
       "localizations" : {
@@ -95,6 +128,17 @@
         }
       }
     },
+    "Crystal" : {
+      "comment" : "Timer options: macOS alert sound name (match System Settings ▸ Sound)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кристалл"
+          }
+        }
+      }
+    },
     "Done" : {
       "comment" : "Timer done: short label in the band next to the timer glyph (≤ 6 characters)",
       "localizations" : {
@@ -113,6 +157,50 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "До %@"
+          }
+        }
+      }
+    },
+    "Funky" : {
+      "comment" : "Timer options: macOS alert sound name (match System Settings ▸ Sound)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Фанк"
+          }
+        }
+      }
+    },
+    "Heroine" : {
+      "comment" : "Timer options: macOS alert sound name (match System Settings ▸ Sound)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Героиня"
+          }
+        }
+      }
+    },
+    "Jump" : {
+      "comment" : "Timer options: macOS alert sound name (match System Settings ▸ Sound)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пружина"
+          }
+        }
+      }
+    },
+    "Mezzo" : {
+      "comment" : "Timer options: macOS alert sound name (match System Settings ▸ Sound)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Меццо"
           }
         }
       }
@@ -161,6 +249,17 @@
         }
       }
     },
+    "Pebble" : {
+      "comment" : "Timer options: macOS alert sound name (match System Settings ▸ Sound)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Галька"
+          }
+        }
+      }
+    },
     "Peek at one minute left" : {
       "comment" : "Live Activities pane: timer option",
       "localizations" : {
@@ -168,6 +267,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Мини-просмотр за минуту до конца"
+          }
+        }
+      }
+    },
+    "Pluck" : {
+      "comment" : "Timer options: macOS alert sound name (match System Settings ▸ Sound)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Щипок"
+          }
+        }
+      }
+    },
+    "Pong" : {
+      "comment" : "Timer options: macOS alert sound name (match System Settings ▸ Sound)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Понг"
           }
         }
       }
@@ -216,6 +337,28 @@
         }
       }
     },
+    "Sonar" : {
+      "comment" : "Timer options: macOS alert sound name (match System Settings ▸ Sound)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сонар"
+          }
+        }
+      }
+    },
+    "Sonumi" : {
+      "comment" : "Timer options: macOS alert sound name (match System Settings ▸ Sound)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сонуми"
+          }
+        }
+      }
+    },
     "Sound when done" : {
       "comment" : "Timer options: picker of the system alert sound",
       "localizations" : {
@@ -244,12 +387,6 @@
         "ru" : {
           "variations" : {
             "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Запустить таймер на %lld минуту"
-                }
-              },
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
@@ -260,6 +397,12 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "Запустить таймер на %lld минут"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Запустить таймер на %lld минуту"
                 }
               },
               "other" : {
@@ -313,6 +456,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Остановить таймер"
+          }
+        }
+      }
+    },
+    "Submerge" : {
+      "comment" : "Timer options: macOS alert sound name (match System Settings ▸ Sound)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Погружение"
           }
         }
       }
