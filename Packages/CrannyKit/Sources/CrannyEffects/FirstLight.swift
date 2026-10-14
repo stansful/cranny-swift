@@ -1,0 +1,112 @@
+// CrannyEffects/FirstLight.swift — the first open per session (DESIGN.md §5.5, §5.6 "First light"): the ambient light
+// fills outward from the camera over 1.0 s, with a soft crest of glow1 riding out from it. The reveal reaches the
+// light through the environment, so it works on every ambient path (the Metal layer gets it as a uniform, the
+// SwiftUI paths as a radial mask). Reduce Motion: a static fade.
+import CrannyCore
+import Foundation
+import SwiftUI
+
+/// Wraps the ambient light (an `AmbientLayer` or a field) and reveals it from the camera outward, once. Remove the
+/// wrapper (or keep it; it is inert) after `onFinished`.
+public struct FirstLight<Content: View>: View {
+    /// Seconds from the open to the fully revealed light.
+    public static var duration: Double { 1.0 }
+
+    /// The light's colours (`glow1` rides the front as a crest).
+    public var palette: AmbientPalette
+    /// Settings ▸ Appearance ▸ Ambient light; the crest shows at least at Subtle strength.
+    public var level: AmbienceLevel
+    /// Frame rate (AC / battery) and path (Reduce Motion, Low Power).
+    public var budget: EffectBudget
+    /// Called once when the light is fully revealed.
+    public var onFinished: (() -> Void)?
+    private let content: Content
+
+    @State private var size: CGSize = .zero
+
+    /// Reveals `content` (the ambient light) outward from the top centre.
+    public init(palette: AmbientPalette, level: AmbienceLevel, budget: EffectBudget, onFinished: (() -> Void)? = nil,
+                @ViewBuilder content: () -> Content) {
+        self.palette = palette; self.level = level; self.budget = budget; self.onFinished = onFinished
+        self.content = content()
+    }
+
+    public var body: some View {
+        Group {
+            switch MomentPath.resolve(budget: budget, shadersAvailable: ShaderEffects.isAvailable) {
+            case .reduced:
+                ReducedReveal(duration: Self.duration, onFinished: onFinished) { content }
+            case .shader, .fallback:
+                MomentClock(duration: Self.duration, interval: EffectTiming.momentInterval(budget),
+                            onFinished: onFinished) { t in
+                    let reveal = FirstLightMath.reveal(elapsed: t, size: size)
+                    content
+                        .environment(\.ambientReveal, t < Self.duration ? reveal : nil)
+                        .overlay { crest(reveal: reveal, elapsed: t) }
+                }
+            }
+        }
+        .onGeometryChange(for: CGSize.self) { $0.size } action: { size = $0 }
+    }
+
+    /// A haloGlow in glow1 at 0.5 · cap that grows with the reveal and fades as it lands (no pop on removal).
+    @ViewBuilder private func crest(reveal: AmbientReveal, elapsed: Double) -> some View {
+        let fade = 1 - Easing.easeInOut(elapsed / Self.duration)
+        let cap = Glow.ambientAlphaCap(max(level, .subtle)) * 0.5 * fade
+        let placement = HaloPlacement(center: .top, radius: max(reveal.radius * 0.6, 1))
+        if ShaderEffects.usesShader(budget) {
+            Rectangle()
+                .colorEffect(ShaderEffects.library.haloGlow(.boundingRect, .float2(0.5, 0), .float(placement.radius),
+                                                            .color(palette.glow1.color(1)), .float(cap)))
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        } else {
+            RadialGradient(gradient: HaloFallback.gradient(glow: palette.glow1, cap: cap), center: .top,
+                           startRadius: 0, endRadius: placement.radius * 1.5)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
+    }
+}
+
+// MARK: - Math
+
+nonisolated enum FirstLightMath {
+    /// The reveal at `elapsed` seconds: the radius eases out from 0 to 1.6 × the diagonal over 1.0 s with a soft edge
+    /// of 35 % of the radius, so the fully lit inside has passed the far corners when it lands (no pop at the end).
+    static func reveal(elapsed: Double, size: CGSize) -> AmbientReveal {
+        let diagonal = (size.width * size.width + size.height * size.height).squareRoot()
+        let radius = Easing.easeOut(elapsed / 1.0) * diagonal * 1.6
+        return AmbientReveal(center: .top, radius: radius, feather: radius * 0.35)
+    }
+}
+
+/// Reduce Motion: the light simply fades in (`ambientIn`, a 0.2-s dissolve under Reduce Motion), no radial movement.
+private struct ReducedReveal<Content: View>: View {
+    let duration: Double
+    let onFinished: (() -> Void)?
+    @ViewBuilder let content: () -> Content
+    @Environment(\.cranny) private var theme
+    @State private var isShown = false
+
+    var body: some View {
+        content()
+            .opacity(isShown ? 1 : 0)
+            .task {
+                withAnimation(theme.animation(.ambientIn)) { isShown = true }
+                do { try await Task.sleep(for: .seconds(duration)) } catch { return }
+                onFinished?()
+            }
+    }
+}
+
+// MARK: - Previews
+
+#Preview("First light") {
+    FirstLight(palette: .afterglow, level: .subtle, budget: .previewRunning) {
+        AmbientLayer(palette: .afterglow, level: .subtle, effect: .aurora, energy: 0, budget: .previewRunning)
+    }
+    .frame(width: 656, height: 170)
+    .background(.black)
+    .crannyThemeRoot(CrannyTheme())
+}
