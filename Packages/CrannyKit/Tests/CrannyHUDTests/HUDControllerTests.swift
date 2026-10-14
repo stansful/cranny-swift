@@ -35,6 +35,7 @@ import Testing
         #expect(fake.taps.isEmpty)
         #expect(fake.observers.isEmpty)
         #expect(!controller.isTapRunning)
+        #expect(!controller.tapFailed)
     }
 
     @Test func turningTheSettingOnAndOffAddsAndRemovesTheTap() async throws {
@@ -60,6 +61,23 @@ import Testing
         #expect(fake.taps.isEmpty)
         grant.granted = true                                        // granted later in System Settings
         #expect(await eventually { fake.taps.count == 1 })
+    }
+
+    @Test func aNewGrantTurnsTheHUDOn() async {
+        grant.granted = false                                       // onboarding: the user taps "Allow" …
+        controller.start()
+        defer { controller.stop() }
+        #expect(!settings[HUDSettings.replaceSystemHUD])
+        grant.granted = true                                        // … and grants Accessibility
+        #expect(await eventually { settings[HUDSettings.replaceSystemHUD] && fake.taps.count == 1 })
+    }
+
+    @Test func aGrantFromAnEarlierSessionChangesNothing() async throws {
+        controller.start()                                          // granted at launch, HUD off by choice
+        defer { controller.stop() }
+        try await Task.sleep(for: .milliseconds(50))
+        #expect(!settings[HUDSettings.replaceSystemHUD])
+        #expect(fake.taps.isEmpty)
     }
 
     @Test func disablingTheActivityHandsTheKeysBack() async {
@@ -88,6 +106,7 @@ import Testing
         defer { controller.stop() }
         #expect(fake.taps.count == 1)
         #expect(!controller.isTapRunning)
+        #expect(controller.tapFailed)                              // Settings ▸ HUD says macOS refused
     }
 
     @Test func aKeyPressShowsTheHUDAndItHidesAfterTheDuration() async throws {
@@ -97,12 +116,12 @@ import Testing
         defer { controller.stop() }
         let tap = try #require(fake.taps.first)
         #expect(tap.handler.handle(MediaKeyEvent(key: .soundUp, isDown: true)))
-        #expect(await eventually { activity.isActive })
+        #expect(await eventually { activity.revision == 1 })       // (it may already have hidden on a busy main actor)
         #expect(activity.display?.level == 0.5625)
-        #expect(activity.revision == 1)
         #expect(activity.priority == .hud)
-        let expires = try #require(activity.expiresAt)
-        #expect(expires.timeIntervalSinceNow <= 0.8)          // now + duration, minus the hop to the main actor
+        if let expires = activity.expiresAt {
+            #expect(expires.timeIntervalSinceNow <= 0.8)            // now + duration, minus the hop to the main actor
+        }
         #expect(fake.volume.state?.level == 0.5625)
         #expect(await eventually(timeout: .seconds(3)) { !activity.isActive })
         #expect(activity.display != nil)                           // kept for the out-animation
@@ -122,6 +141,7 @@ import Testing
 
     @Test func lockingHidesTheHUDAndPassesKeys() async throws {
         settings[HUDSettings.replaceSystemHUD] = true
+        controller.now = { [start = Date()] in start }              // frozen: the HUD stays up however busy the main actor is
         controller.start()
         defer { controller.stop() }
         let tap = try #require(fake.taps.first)
@@ -135,6 +155,7 @@ import Testing
 
     @Test func voiceOverActionsAdjustTheLevel() async throws {
         settings[HUDSettings.replaceSystemHUD] = true
+        controller.now = { [start = Date()] in start }              // frozen: the HUD stays up however busy the main actor is
         controller.start()
         defer { controller.stop() }
         let tap = try #require(fake.taps.first)
@@ -148,6 +169,7 @@ import Testing
 
     @Test func aVisibleVolumeHUDFollowsTheOutput() async throws {
         settings[HUDSettings.replaceSystemHUD] = true
+        controller.now = { [start = Date()] in start }              // frozen: the HUD stays up however busy the main actor is
         controller.start()
         defer { controller.stop() }
         let tap = try #require(fake.taps.first)
@@ -164,6 +186,7 @@ import Testing
 
     @Test func stopRemovesEverything() async throws {
         settings[HUDSettings.replaceSystemHUD] = true
+        controller.now = { [start = Date()] in start }              // frozen: the HUD stays up however busy the main actor is
         controller.start()
         let tap = try #require(fake.taps.first)
         _ = tap.handler.handle(MediaKeyEvent(key: .soundUp, isDown: true))

@@ -27,6 +27,8 @@ struct HUDSettingsPane: View {
                 Text("Cranny draws its HUD only when it can hide the one macOS shows. Without Accessibility, macOS keeps its own HUD and Cranny shows none.",
                      bundle: .module, comment: "Settings ▸ HUD: footnote under Replace the system HUD (why Accessibility is needed)")
                     .font(.caption).foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
 
             Section {
@@ -112,11 +114,14 @@ struct HUDSettingsPane: View {
             return Text("Turn on Cranny in Privacy & Security ▸ Accessibility, then come back here.", bundle: .module,
                         comment: "Settings ▸ HUD: footnote while Accessibility is not granted")
         }
-        guard replacing else { return nil }
-        return controller?.isTapRunning == false
+        guard replacing, let controller else { return nil }
+        if controller.isTapRunning {
+            return Text("Cranny handles the keys now.", bundle: .module, comment: "Settings ▸ HUD: footnote while the HUD replacement is active")
+        }
+        return controller.tapFailed
             ? Text("macOS did not hand the keys to Cranny. Try turning the HUD off and on.", bundle: .module,
                    comment: "Settings ▸ HUD: footnote when the key tap could not start although Accessibility is granted")
-            : Text("Cranny handles the keys now.", bundle: .module, comment: "Settings ▸ HUD: footnote while the HUD replacement is active")
+            : nil
     }
 
     private var competingRow: some View {

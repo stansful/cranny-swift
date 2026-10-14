@@ -18,6 +18,8 @@ private let log = Log.logger(.hud)
 @MainActor @Observable final class HUDController {
     /// The event tap is installed (Settings ▸ HUD status).
     private(set) var isTapRunning = false
+    /// The config wanted a tap but macOS refused to create it (Settings ▸ HUD explains).
+    private(set) var tapFailed = false
 
     @ObservationIgnored let activity: HUDActivity
     @ObservationIgnored private let services: CrannyServices
@@ -39,6 +41,10 @@ private let log = Log.logger(.hud)
     @ObservationIgnored private var announceTask: Task<Void, Never>?
     @ObservationIgnored private var pollTask: Task<Void, Never>?
     @ObservationIgnored private var lastPress = Date.distantPast
+    /// The clock of sessions and deadlines (tests freeze it; sleeps still use real time).
+    @ObservationIgnored var now: @MainActor () -> Date = { Date() }
+    /// The grant as last applied (nil before `start()`): a false → true transition turns the HUD on.
+    @ObservationIgnored private var lastAccessibilityGranted: Bool?
 
     /// `accessibilityGranted` defaults to the Core permissions center (tests inject their own).
     init(services: CrannyServices, activity: HUDActivity, hardware: HUDHardware,
@@ -99,6 +105,17 @@ private let log = Log.logger(.hud)
     }
 
     private func apply(_ inputs: HUDTapConfig.Inputs) {
+        var inputs = inputs
+        if lastAccessibilityGranted == false, inputs.accessibilityGranted, !inputs.replaceSystemHUD {
+            // Accessibility arrived while Cranny runs (onboarding's "Allow", or System Settings after Settings ▸ HUD).
+            // Cranny asks for it only for the HUD, so the grant means "replace the system HUD". A grant that already
+            // existed at launch changes nothing. (Applied here too: a write inside the observer's callback is not
+            // reported back to it.)
+            log.info("Accessibility granted: turning on the HUD replacement")
+            services.settings[HUDSettings.replaceSystemHUD] = true
+            inputs.replaceSystemHUD = true
+        }
+        lastAccessibilityGranted = inputs.accessibilityGranted
         let config = HUDTapConfig(inputs)
         configBox.update(config)
         if config.wantsTap { startTap() } else { stopTap() }
@@ -112,7 +129,9 @@ private let log = Log.logger(.hud)
         if tap.start() {
             interceptor = tap
             isTapRunning = true
+            if tapFailed { tapFailed = false }
         } else {
+            tapFailed = true
             // The grant was revoked since it was last read: refresh, which turns the config off.
             log.error("event tap could not be created although Accessibility was reported granted")
             services.permissions.refresh()
@@ -123,6 +142,7 @@ private let log = Log.logger(.hud)
         interceptor?.stop()
         interceptor = nil
         if isTapRunning { isTapRunning = false }
+        if tapFailed { tapFailed = false }
     }
 
     private func startVolumeObserver() {
@@ -148,10 +168,10 @@ private let log = Log.logger(.hud)
         switch signal {
         case .changed(let update):
             let duration = HUDSettings.clampedDuration(services.settings[HUDSettings.duration])
-            let (next, effects) = HUDPresentation.receive(update, state: state, now: Date(), duration: duration)
+            let (next, effects) = HUDPresentation.receive(update, state: state, now: now(), duration: duration)
             guard next != state else { return }
             state = next
-            lastPress = Date()
+            lastPress = now()
             activity.present(state.session)
             perform(effects)
             updateBrightnessPolling()
@@ -162,16 +182,16 @@ private let log = Log.logger(.hud)
     }
 
     private func observed(_ observation: VolumeObservation) {
-        let next = HUDPresentation.observe(observation, state: state, now: Date(),
+        let next = HUDPresentation.observe(observation, state: state, now: now(),
                                            showsOutputDevice: services.settings[HUDSettings.showsOutputDevice])
         guard next != state else { return }
         state = next
-        if state.session?.isVisible(at: Date()) == true { activity.present(state.session) }
+        if state.session?.isVisible(at: now()) == true { activity.present(state.session) }
     }
 
     private func observedBrightness(_ level: Double) {
-        guard Date().timeIntervalSince(lastPress) > 0.75 else { return }   // the panel may still be fading to our level
-        let next = HUDPresentation.observeBrightness(level, state: state, now: Date())
+        guard now().timeIntervalSince(lastPress) > 0.75 else { return }   // the panel may still be fading to our level
+        let next = HUDPresentation.observeBrightness(level, state: state, now: now())
         guard next != state else { return }
         state = next
         activity.present(state.session)
@@ -194,7 +214,7 @@ private let log = Log.logger(.hud)
         hideDeadline = deadline
         guard hideTask == nil else { return }
         hideTask = Task { [weak self] in
-            while let wait = self?.hideDeadline?.timeIntervalSinceNow, wait > 0 {
+            while let wait = self?.secondsUntilHide(), wait > 0 {
                 try? await Task.sleep(for: .seconds(wait))
                 if Task.isCancelled { return }
             }
@@ -203,8 +223,10 @@ private let log = Log.logger(.hud)
         }
     }
 
+    private func secondsUntilHide() -> TimeInterval? { hideDeadline.map { $0.timeIntervalSince(now()) } }
+
     private func hideExpired() {
-        state = HUDPresentation.hide(state, now: Date())
+        state = HUDPresentation.hide(state, now: now())
         if state.session == nil { endSession() }
     }
 
@@ -273,7 +295,7 @@ private let log = Log.logger(.hud)
     /// Shows `display` for an hour without touching any device or the tap.
     func presentForQA(_ display: HUDDisplay) {
         state.revision += 1
-        state.session = HUDSession(display: display, deadline: Date().addingTimeInterval(3600),
+        state.session = HUDSession(display: display, deadline: now().addingTimeInterval(3600),
                                    revision: state.revision, sequence: 0)
         activity.present(state.session)
     }
