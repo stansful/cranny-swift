@@ -1,5 +1,6 @@
 // MediaService with scripted providers and a manual clock: restart backoff 0.5/2/8 s, failover after 3 failures in
-// 60 s, optimistic commands, track-change debounce, filters, artwork cache (ARCHITECTURE.md §6.5, §10.2).
+// 60 s, optimistic commands and their confirmation (refresh, then the player's state again), track-change debounce,
+// filters, artwork cache (ARCHITECTURE.md §6.5, §10.2).
 import CoreGraphics
 import CrannyCore
 import Foundation
@@ -126,7 +127,7 @@ import Testing
         #expect(service.nowPlaying?.isPlaying == true)                    // the provider is authoritative
     }
 
-    @Test func readOnlyProvidersReceiveNoCommands() async {
+    @Test func readOnlyProvidersReceiveNoCommandsAndNothingChanges() async {
         let clock = ManualClock(), script = ScriptedProvider(kind: .appleScript, supportsCommands: false)
         let service = Fixtures.service([script], clock: clock)
         service.start()
@@ -134,7 +135,87 @@ import Testing
         script.emit(.nowPlaying(Fixtures.track("A")))
         await settle()
         #expect(await service.send(.nextTrack) == false)
+        #expect(await service.send(.togglePlayPause) == false)
+        #expect(await service.send(.seek(to: 100)) == false)
         #expect(script.commands.isEmpty)
+        #expect(service.nowPlaying?.isPlaying == true)                    // no optimistic flip for a read-only source
+        #expect(service.nowPlaying?.elapsed == 10)
+    }
+
+    /// A playing session at `clock.now`, elapsed 10 s.
+    private func playing() async -> (MediaService, ScriptedProvider, ManualClock) {
+        let clock = ManualClock(), perl = ScriptedProvider(kind: .perl)
+        let service = Fixtures.service([perl], clock: clock)
+        service.start()
+        await settle()
+        perl.emit(.nowPlaying(Fixtures.track("A", playing: true, elapsed: 10, timestamp: clock.now)))
+        await settle()
+        return (service, perl, clock)
+    }
+
+    @Test func aStateAfterTheCommandConfirmsIt() async {
+        let (service, perl, clock) = await playing()
+        #expect(await service.send(.pause))
+        perl.emit(.nowPlaying(Fixtures.track("A", playing: false, elapsed: 10, timestamp: clock.now)))
+        await settle()
+        await clock.advance(by: .seconds(5))
+        #expect(perl.refreshes == 0)                                      // confirmed: nothing to ask
+        #expect(service.nowPlaying?.isPlaying == false)
+    }
+
+    @Test func anIgnoredCommandAsksForTheStateThenShowsThePlayersStateAgain() async {
+        // The bridge de-duplicates identical states: a pause the player ignores produces no new state at all.
+        let (service, perl, clock) = await playing()
+        #expect(await service.send(.pause))
+        #expect(service.nowPlaying?.isPlaying == false)                   // optimistic
+        await settle()                                                    // the confirmation task starts its sleep
+        await clock.advance(by: MediaService.confirmationWindow - .milliseconds(1))
+        #expect(perl.refreshes == 0)
+        await clock.advance(by: .milliseconds(1))
+        #expect(perl.refreshes == 1)                                      // nothing confirmed it: "refresh state"
+        #expect(service.nowPlaying?.isPlaying == false)
+        await clock.advance(by: MediaService.rollbackWindow)
+        #expect(service.nowPlaying?.isPlaying == true)                    // the player's last state again …
+        let position = service.nowPlaying?.position(at: clock.now) ?? 0
+        #expect(abs(position - 11.5) < 1e-6)                              // … still counting from its anchor
+    }
+
+    @Test func theRefreshedStateIsAuthoritative() async {
+        let (service, perl, clock) = await playing()
+        await service.send(.seek(to: 120))
+        #expect(service.nowPlaying?.elapsed == 120)
+        await settle()
+        await clock.advance(by: MediaService.confirmationWindow)
+        #expect(perl.refreshes == 1)
+        perl.emit(.nowPlaying(Fixtures.track("A", playing: true, elapsed: 10.8, timestamp: clock.now)))   // the seek was ignored
+        await settle()
+        #expect(service.nowPlaying?.elapsed == 10.8)
+        await clock.advance(by: .seconds(5))
+        #expect(service.nowPlaying?.elapsed == 10.8)                      // no second rollback
+        #expect(perl.refreshes == 1)
+    }
+
+    @Test func aRefusedCommandIsUndoneAtOnce() async {
+        let (service, perl, _) = await playing()
+        perl.accepts = false                                              // `ack ok:false`, a failed script, no answer
+        #expect(await service.send(.togglePlayPause) == false)
+        #expect(service.nowPlaying?.isPlaying == true)
+        #expect(await service.send(.seek(to: 150)) == false)
+        #expect(service.nowPlaying?.elapsed == 10)
+        #expect(perl.commands == [.togglePlayPause, .seek(to: 150)])
+    }
+
+    @Test func theNewestCommandIsTheOneConfirmed() async {
+        let (service, perl, clock) = await playing()
+        await service.send(.pause)
+        await settle()
+        await clock.advance(by: .milliseconds(500))
+        await service.send(.play)                                         // restarts the confirmation window
+        await settle()
+        await clock.advance(by: .milliseconds(500))
+        #expect(perl.refreshes == 0)
+        await clock.advance(by: .milliseconds(300))
+        #expect(perl.refreshes == 1)
     }
 
     @Test func trackChangesAreDebouncedAndCountOnlyWhilePlaying() async {

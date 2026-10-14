@@ -2,8 +2,8 @@
 // (`/usr/bin/perl`, fallback `/usr/bin/ruby`) that loads libCrannyMediaBridge.dylib and speaks NDJSON on stdout
 // and one text command per line on stdin (ARCHITECTURE.md §6.3, R2 §4).
 //
-// Threading: the process, the pipes, the line buffer and the ping waiters are confined to `queue`
-// (a private serial queue). Pipe and termination callbacks hop onto it. Callers may use the public methods
+// Threading: the process, the pipes, the line buffer, the ping waiters and the command waiters are confined to
+// `queue` (a private serial queue). Pipe and termination callbacks hop onto it. Callers may use the public methods
 // from any thread; `onMessage`/`onEnd` are called on `queue`.
 import CrannyCore
 import Foundation
@@ -36,11 +36,14 @@ nonisolated final class BridgeConnection: @unchecked Sendable {   // every mutab
     static let maxLineBytes = 8 << 20
     /// A corrupt or runaway stream: this many bytes without any newline terminates the helper.
     static let maxDroppedBytes = 64 << 20
+    /// How long a command waits for the helper's `ack` (it normally takes ≈ 12 ms, R2).
+    static let commandTimeout: Duration = .seconds(1)
 
     private let queue = DispatchQueue(label: "app.cranny.media.bridge", qos: .utility)
     private let process = Process()
     private let input = Pipe(), output = Pipe(), errors = Pipe()
     private var lines = LineBuffer(maxLineBytes: BridgeConnection.maxLineBytes, maxDroppedBytes: BridgeConnection.maxDroppedBytes)
+    private var acks = CommandAcks<(Bool?) -> Void>()
     private var closedByUs = false
     private var gotHello = false
     private var pingWaiters: [(id: UUID, sent: ContinuousClock.Instant, resume: (Duration?) -> Void)] = []
@@ -101,6 +104,28 @@ nonisolated final class BridgeConnection: @unchecked Sendable {   // every mutab
         }
     }
 
+    /// Writes a transport command line and waits for the helper's answer: true = `ack ok`, false = refused
+    /// (`ack ok:false`, `error`), nil = not written or not answered within `timeout`.
+    func command(_ line: String, timeout: Duration = BridgeConnection.commandTimeout) async -> Bool? {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Bool?, Never>) in
+            queue.async { [self] in
+                guard !closedByUs, process.isRunning else { continuation.resume(returning: nil); return }
+                do { try input.fileHandleForWriting.write(contentsOf: Data((line + "\n").utf8)) } catch {
+                    log.error("bridge: write failed: \(error.localizedDescription, privacy: .private)")
+                    continuation.resume(returning: nil)
+                    return
+                }
+                let id = UUID()
+                acks.append(id) { continuation.resume(returning: $0) }
+                queue.asyncAfter(deadline: .now() + timeout.timeInterval) { [weak self] in
+                    guard let self, let waiter = self.acks.expire(id) else { return }
+                    log.error("bridge: no answer to a command within \(timeout.timeInterval, privacy: .public) s")
+                    waiter(nil)
+                }
+            }
+        }
+    }
+
     /// Round-trip time of a `ping`, or nil after `timeout`.
     func ping(timeout: Duration = .seconds(2)) async -> Duration? {
         await withCheckedContinuation { (continuation: CheckedContinuation<Duration?, Never>) in
@@ -150,6 +175,8 @@ nonisolated final class BridgeConnection: @unchecked Sendable {   // every mutab
                 switch message {
                 case .hello: gotHello = true
                 case .pong: if let first = pingWaiters.first { finishPing(first.id, with: ContinuousClock.now - first.sent) }
+                case .ack(let ok): acks.answerOldest()?(ok)
+                case .error: acks.answerOldest()?(false)       // "bad command id", "bad position", "bad mode"
                 default: break
                 }
                 onMessage(message)
@@ -175,10 +202,11 @@ nonisolated final class BridgeConnection: @unchecked Sendable {   // every mutab
         pingWaiters.remove(at: index).resume(result)
     }
 
-    /// The helper is gone or being closed: every ping still waiting gets "no answer".
+    /// The helper is gone or being closed: every ping and command still waiting gets "no answer".
     private func failWaiters() {
         let waiters = pingWaiters
         pingWaiters.removeAll()
         for waiter in waiters { waiter.resume(nil) }
+        for waiter in acks.removeAll() { waiter(nil) }
     }
 }

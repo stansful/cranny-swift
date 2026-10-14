@@ -20,6 +20,7 @@ nonisolated final class SampleProvider: MediaProvider, @unchecked Sendable {   /
     }
 
     func send(_ command: MediaCommand) async -> Bool { true }
+    func refresh() { lock.withLock { _ = $0?.yield(.nowPlaying(snapshot)) } }
     func ping() async -> Duration? { .zero }
     func stop() { lock.withLock { $0?.finish(); $0 = nil } }
 }

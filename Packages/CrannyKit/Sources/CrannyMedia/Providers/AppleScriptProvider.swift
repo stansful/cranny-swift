@@ -37,6 +37,11 @@ nonisolated final class AppleScriptProvider: MediaProvider, @unchecked Sendable 
         return await MainActor.run { session.send(command) }
     }
 
+    func refresh() {
+        let session = session
+        Task { @MainActor in session.refresh() }
+    }
+
     func ping() async -> Duration? { nil }
 
     func stop() {
@@ -74,6 +79,8 @@ nonisolated struct ScriptablePlayer: Sendable, Equatable {
     private let isPermitted: @MainActor (String) -> Bool
     private var observers: [any NSObjectProtocol] = []
     private var current: ScriptablePlayer?
+    /// The last snapshot sent, the base for `refresh()`.
+    private var lastSnapshot: NowPlaying?
     private var continuation: AsyncStream<ProviderEvent>.Continuation?
 
     init(isPermitted: @escaping @MainActor (String) -> Bool) { self.isPermitted = isPermitted }
@@ -118,9 +125,27 @@ nonisolated struct ScriptablePlayer: Sendable, Equatable {
         return run(verb, in: player) != nil
     }
 
+    /// After a command that no notification confirmed (`MediaService`): the player's state and position, asked
+    /// directly. Nothing is sent when the scripts cannot run; the service then shows the last snapshot again.
+    func refresh() {
+        guard let player = current, var np = lastSnapshot,
+              let state = run("player state as string", in: player)?.stringValue?.lowercased() else { return }
+        guard state != "stopped" else {
+            current = nil; lastSnapshot = nil
+            continuation?.yield(.nowPlaying(nil))
+            return
+        }
+        np.isPlaying = state == "playing"
+        np.rate = np.isPlaying ? 1 : 0
+        if let position = run("player position", in: player)?.doubleValue { np.elapsed = position }
+        np.timestamp = Date()
+        lastSnapshot = np
+        continuation?.yield(.nowPlaying(np))
+    }
+
     private func handle(_ player: ScriptablePlayer, _ info: [String: String]) {
         guard var np = player.nowPlaying(info, now: Date()) else {
-            if current == player { current = nil; continuation?.yield(.nowPlaying(nil)) }
+            if current == player { current = nil; lastSnapshot = nil; continuation?.yield(.nowPlaying(nil)) }
             return
         }
         current = player
@@ -128,6 +153,7 @@ nonisolated struct ScriptablePlayer: Sendable, Equatable {
             np.elapsed = position
             np.timestamp = Date()
         }
+        lastSnapshot = np
         continuation?.yield(.nowPlaying(np))
         if player == .music, let art = run("get raw data of artwork 1 of current track", in: player),
            art.descriptorType != typeUnicodeText, art.descriptorType != typeUTF8Text, !art.data.isEmpty {

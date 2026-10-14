@@ -72,15 +72,21 @@ struct MediaWidgetView: View {
         }
         .frame(width: context.contentSize.width, height: context.contentSize.height, alignment: .topLeading)
         .allowsHitTesting(!context.isEditingLayout)
-        .onKeyPress(.space) { toggle(); return .handled }
+        // Space play/pause, ⌘← / ⌘→ previous/next (DESIGN.md §7.1). Plain arrows belong to the focused scrubber,
+        // which lets ⌘-arrows through. Nothing is handled while the source cannot control the player.
+        .onKeyPress(.space) {
+            guard canControl else { return .ignored }
+            Task { await service.send(.togglePlayPause) }
+            return .handled
+        }
         .onKeyPress(keys: [.leftArrow, .rightArrow]) { press in
-            guard press.modifiers.contains(.command) else { return .ignored }
+            guard canControl, press.modifiers.contains(.command) else { return .ignored }
             Task { await service.send(press.key == .leftArrow ? .previousTrack : .nextTrack) }
             return .handled
         }
     }
 
-    private func toggle() { Task { await service.send(.togglePlayPause) } }
+    private var canControl: Bool { service.nowPlaying != nil && service.supportsCommands && !context.isEditingLayout }
 }
 
 /// Nothing playing: the last source's icon, one line and one action (DESIGN.md §7.1).

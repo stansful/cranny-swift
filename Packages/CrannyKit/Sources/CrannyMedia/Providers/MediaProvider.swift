@@ -55,8 +55,12 @@ nonisolated protocol MediaProvider: AnyObject, Sendable {
     var supportsCommands: Bool { get }
     /// Starts the provider. The stream finishes after `.unavailable` or `stop()`.
     func start() -> AsyncStream<ProviderEvent>
-    /// Sends a transport command. Returns false when it could not be delivered.
+    /// Sends a transport command. Returns true only when the player side accepted it (the bridge's `ack ok`,
+    /// a script that ran); false when it was refused, could not be delivered or was not answered in time.
     @discardableResult func send(_ command: MediaCommand) async -> Bool
+    /// Asks for the current state again, even when it did not change (the service's check after a command
+    /// that no state confirmed). The answer, if any, arrives as an ordinary `.nowPlaying` event.
+    func refresh()
     /// Round trip to the helper for "Test media detection"; nil = no answer within the timeout.
     func ping() async -> Duration?
     /// Stops the provider and its helper. Safe to call more than once.

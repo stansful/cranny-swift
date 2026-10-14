@@ -1,7 +1,8 @@
 // CrannyMedia/Service/MediaService.swift — implements `NowPlayingSource` (`services.nowPlaying`, ARCHITECTURE.md
 // §6.5): runs the provider chain with backoff and failover, filters sessions, debounces track changes, decodes
-// artwork + palette off the main actor (LRU of 16) and applies commands optimistically. Event-driven: nothing
-// polls; every delay is one sleep on the injected `MediaClock`.
+// artwork + palette off the main actor (LRU of 16) and applies commands optimistically, then makes sure a provider
+// state confirms them (else it asks once and shows the player's last state again). Event-driven: nothing polls;
+// every delay is one sleep on the injected `MediaClock`.
 import CoreGraphics
 import CrannyCore
 import Foundation
@@ -48,10 +49,20 @@ private nonisolated let log = Log.logger(.media)
     @ObservationIgnored private var artworkGrace: Task<Void, Never>?
     @ObservationIgnored private var cache = ArtworkCache()
     @ObservationIgnored private var raw: NowPlaying?
+    /// Counts provider snapshots: a command is confirmed when this moved on after it was sent.
+    @ObservationIgnored private var snapshotSequence = 0
+    @ObservationIgnored private var confirmation: Task<Void, Never>?
+    /// A seeded sample (Settings stage, onboarding, previews, `--qa-media`): commands change only its own state.
+    @ObservationIgnored private var isLocalSession = false
     @ObservationIgnored private var tokens: [ObservationToken] = []
 
     /// How long the previous artwork stays while the new track's artwork is on its way (60–140 ms, R2 b2).
     static let artworkGrace: Duration = .milliseconds(600)
+    /// After an optimistic command: how long to wait for a provider state before asking for one (`refresh`; the
+    /// next state normally follows in 60–75 ms, R2) …
+    static let confirmationWindow: Duration = .milliseconds(800)
+    /// … and how long after that request before the optimistic change is undone (the player's last state).
+    static let rollbackWindow: Duration = .milliseconds(700)
 
     init(settings: SettingsStore, environment: any SystemEnvironment, permissions: PermissionsCenter,
          providers: [MediaProviderFactory], clock: any MediaClock = SystemMediaClock()) {
@@ -82,6 +93,7 @@ private nonisolated let log = Log.logger(.media)
         generation += 1
         pump?.cancel(); pump = nil
         restartTask?.cancel(); restartTask = nil
+        confirmation?.cancel(); confirmation = nil
         if let bridge = provider as? MediaRemoteBridgeProvider { bridge.terminateNow() } else { provider?.stop() }
         provider = nil
         status = .idle
@@ -96,11 +108,28 @@ private nonisolated let log = Log.logger(.media)
 
     // MARK: Commands
 
-    /// Optimistic for play/pause/toggle/seek (≈ 12 ms ack; the next state, 60–75 ms later, is authoritative).
+    /// Optimistic for play/pause/toggle/seek: the UI changes at once, the provider's next state (60–75 ms later)
+    /// is authoritative. A refused command is undone at once; one that no state confirms within
+    /// `confirmationWindow` makes the provider re-send its state, and after `rollbackWindow` more the player's last
+    /// state is shown again (the bridge de-duplicates states, so an ignored command would otherwise stick).
+    /// Nothing changes when the provider can only read. Returns whether the provider accepted the command.
     @discardableResult func send(_ command: MediaCommand) async -> Bool {
-        applyOptimistically(command)
+        if isLocalSession {
+            applyOptimistically(command)              // the sample: nothing to deliver, nothing to confirm
+            return false
+        }
         guard let provider, supportsCommands else { return false }
-        return await provider.send(command)
+        let sequence = snapshotSequence
+        let applied = applyOptimistically(command)
+        let delivered = await provider.send(command)
+        guard applied else { return delivered }
+        if delivered {
+            awaitConfirmation(since: sequence)
+        } else {
+            log.info("media: a command was not accepted; showing the player's state again")
+            showLastState(ifNothingSince: sequence)
+        }
+        return delivered
     }
 
     /// "Test media detection": the helper's round trip, nil = no answer.
@@ -109,8 +138,9 @@ private nonisolated let log = Log.logger(.media)
     /// The kind of the provider in use (nil when none).
     var activeKind: MediaProviderKind? { status.kind }
 
-    private func applyOptimistically(_ command: MediaCommand) {
-        guard var np = nowPlaying else { return }
+    /// True when `nowPlaying` changed.
+    @discardableResult private func applyOptimistically(_ command: MediaCommand) -> Bool {
+        guard var np = nowPlaying else { return false }
         let now = clock.now
         switch command {
         case .play, .pause, .togglePlayPause:
@@ -122,9 +152,29 @@ private nonisolated let log = Log.logger(.media)
             np.elapsed = max(0, np.duration.map { min(target, $0) } ?? target)
             np.timestamp = now
         default:
-            return
+            return false
         }
         nowPlaying = np
+        return true
+    }
+
+    private func awaitConfirmation(since sequence: Int) {
+        confirmation?.cancel()
+        confirmation = Task { [weak self] in
+            do { try await self?.clock.sleep(for: Self.confirmationWindow) } catch { return }
+            guard !Task.isCancelled, let self, self.snapshotSequence == sequence else { return }   // a state confirmed it
+            self.provider?.refresh()
+            do { try await self.clock.sleep(for: Self.rollbackWindow) } catch { return }
+            guard !Task.isCancelled, self.snapshotSequence == sequence else { return }
+            log.info("media: a command was not confirmed; showing the player's state again")
+            self.showLastState(ifNothingSince: sequence)
+        }
+    }
+
+    /// Undoes optimistic changes: the last provider snapshot again, unless a newer one already replaced them.
+    private func showLastState(ifNothingSince sequence: Int) {
+        guard snapshotSequence == sequence else { return }
+        publish(filter.apply(raw))
     }
 
     // MARK: Provider chain
@@ -134,6 +184,7 @@ private nonisolated let log = Log.logger(.media)
         let generation = generation
         pump?.cancel(); pump = nil
         restartTask?.cancel(); restartTask = nil
+        confirmation?.cancel(); confirmation = nil
         provider?.stop(); provider = nil
         guard factories.indices.contains(i) else {
             index = factories.count
@@ -206,6 +257,7 @@ private nonisolated let log = Log.logger(.media)
     // MARK: Snapshots
 
     private func ingest(_ incoming: NowPlaying?) {
+        snapshotSequence += 1
         raw = incoming
         if let source = incoming?.parentBundleID ?? incoming?.bundleID, recentSources.first != source {
             recentSources = Array(([source] + recentSources.filter { $0 != source }).prefix(8))
@@ -272,6 +324,7 @@ private nonisolated let log = Log.logger(.media)
     /// Shows a fixed session without any provider (sample activity, `#Preview`, `--qa-media`).
     func seed(_ np: NowPlaying?, artwork decoded: DecodedArtwork?) {
         if let decoded, let key = np?.trackKey { cache.insert(decoded, for: key) }
+        isLocalSession = np != nil
         raw = np
         nowPlaying = np
         lastSourceBundleID = np?.bundleID ?? lastSourceBundleID

@@ -51,15 +51,19 @@ import SwiftUI
         return MediaStrings.timeLeft(duration - np.position(at: service.clock.now))
     }
 
+    /// Transport actions only when the provider can control the player (a read-only source offers "Open in …").
     var actions: [ActivityAction] {
         guard let np = service.nowPlaying else { return [] }
         let service = service
-        var actions = [
-            ActivityAction(id: "playPause", title: np.isPlaying ? MediaStrings.pause : MediaStrings.play,
-                           symbol: np.isPlaying ? "pause.fill" : "play.fill") { Task { await service.send(.togglePlayPause) } },
-            ActivityAction(id: "next", title: MediaStrings.nextTrack, symbol: "forward.fill") { Task { await service.send(.nextTrack) } },
-            ActivityAction(id: "previous", title: MediaStrings.previousTrack, symbol: "backward.fill") { Task { await service.send(.previousTrack) } },
-        ]
+        var actions: [ActivityAction] = []
+        if service.supportsCommands {
+            actions += [
+                ActivityAction(id: "playPause", title: np.isPlaying ? MediaStrings.pause : MediaStrings.play,
+                               symbol: np.isPlaying ? "pause.fill" : "play.fill") { Task { await service.send(.togglePlayPause) } },
+                ActivityAction(id: "next", title: MediaStrings.nextTrack, symbol: "forward.fill") { Task { await service.send(.nextTrack) } },
+                ActivityAction(id: "previous", title: MediaStrings.previousTrack, symbol: "backward.fill") { Task { await service.send(.previousTrack) } },
+            ]
+        }
         if let source = np.bundleID ?? np.parentBundleID {
             let open = open
             actions.append(ActivityAction(id: "open", title: MediaStrings.openIn(PlayerApps.name(for: source, fallback: np.appName))) { open(source) })
@@ -106,6 +110,7 @@ import SwiftUI
         let clock = service.clock
         pauseTimer = Task { [weak self] in
             do { try await clock.sleep(for: .seconds(state.timeout)) } catch { return }
+            guard !Task.isCancelled else { return }                  // resumed meanwhile
             self?.pauseExpired = true
         }
     }

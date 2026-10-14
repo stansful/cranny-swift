@@ -1,5 +1,5 @@
-// CrannyMedia/Providers/BridgeStream.swift — the pure part of a bridge connection's stdout handling, kept on its
-// queue and unit-tested: splitting stdout into NDJSON lines (`LineBuffer`).
+// CrannyMedia/Providers/BridgeStream.swift — the two pure parts of a bridge connection, kept on its queue and
+// unit-tested: splitting stdout into NDJSON lines (`LineBuffer`) and matching answers to commands (`CommandAcks`).
 import Foundation
 
 /// Splits the helper's stdout into lines. A line longer than `maxLineBytes` (an artwork the helper could not
@@ -64,5 +64,43 @@ nonisolated struct LineBuffer {
             rest = rest[rest.index(after: newline)...]
         }
         return events
+    }
+}
+
+/// Matches the bridge's answers to the commands Cranny wrote. The helper handles stdin lines in order and answers
+/// every `cmd`/`seek`/`shuffle`/`repeat` line with exactly one `ack` or `error` (CrannyMediaBridge.m `handleLine`),
+/// so the answers come back in the order the commands went out. A command whose answer is late keeps its place as
+/// a placeholder: the late answer then lands on it instead of on the next command.
+nonisolated struct CommandAcks<Waiter> {
+    private var entries: [(id: UUID, waiter: Waiter?)] = []
+
+    /// Commands written and not answered yet, placeholders included.
+    var count: Int { entries.count }
+
+    /// A command was written; `waiter` gets its answer.
+    mutating func append(_ id: UUID, _ waiter: Waiter) {
+        entries.append((id, waiter))
+    }
+
+    /// The command's time ran out: its waiter is handed back (to be told "no answer") and the entry stays,
+    /// so the late answer is matched to it. nil when it was answered already.
+    mutating func expire(_ id: UUID) -> Waiter? {
+        guard let index = entries.firstIndex(where: { $0.id == id }) else { return nil }
+        let waiter = entries[index].waiter
+        entries[index].waiter = nil
+        return waiter
+    }
+
+    /// The helper answered the oldest command: its waiter, or nil when that command had already expired
+    /// (or when no command was outstanding).
+    mutating func answerOldest() -> Waiter? {
+        guard !entries.isEmpty else { return nil }
+        return entries.removeFirst().waiter
+    }
+
+    /// The helper is gone: every waiter still waiting, oldest first.
+    mutating func removeAll() -> [Waiter] {
+        defer { entries.removeAll() }
+        return entries.compactMap(\.waiter)
     }
 }

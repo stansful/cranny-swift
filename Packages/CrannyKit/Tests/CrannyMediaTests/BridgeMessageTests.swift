@@ -1,6 +1,6 @@
 // Bridge NDJSON fixtures → NowPlaying (ARCHITECTURE.md §10.2 acceptance): full state, missing title, +inf duration
 // dropped, lenient MediaRemote values (out-of-range numbers too), artwork keyed by item, protocol messages,
-// malformed lines; the connection's line splitting.
+// malformed lines; the connection's line splitting and command/answer matching.
 import CrannyCore
 import Foundation
 import Testing
@@ -178,5 +178,22 @@ private let now = Date(timeIntervalSince1970: 1_800_000_000)
         #expect(buffer.append(Data(repeating: 0x41, count: 20)) == [.runaway])
         var once = LineBuffer(maxLineBytes: 8, maxDroppedBytes: 32)
         #expect(once.append(Data(repeating: 0x41, count: 40)) == [.runaway])
+    }
+
+    @Test func answersAreMatchedToCommandsInOrderEvenWhenLate() {
+        var acks = CommandAcks<String>()
+        let first = UUID(), second = UUID()
+        acks.append(first, "first")
+        acks.append(second, "second")
+        #expect(acks.expire(first) == "first")                           // its second ran out: told "no answer"
+        #expect(acks.expire(first) == nil)
+        #expect(acks.count == 2)                                           // … but it keeps its place
+        #expect(acks.answerOldest() == nil)                                // the late ack lands on the placeholder
+        #expect(acks.answerOldest() == "second")                           // not on the next command
+        #expect(acks.answerOldest() == nil)                                // an answer nobody waits for
+        acks.append(UUID(), "third")
+        #expect(acks.expire(UUID()) == nil)
+        #expect(acks.removeAll() == ["third"])
+        #expect(acks.count == 0)
     }
 }

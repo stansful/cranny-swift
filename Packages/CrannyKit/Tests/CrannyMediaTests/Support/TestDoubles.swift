@@ -59,11 +59,14 @@ import UniformTypeIdentifiers
     return condition()
 }
 
-/// A provider driven by the test: `emit` pushes events, `commands` records what the service sent.
+/// A provider driven by the test: `emit` pushes events, `commands` records what the service sent, `accepts` is
+/// what `send` answers (the bridge's `ack ok`), `refreshes` counts state requests.
 nonisolated final class ScriptedProvider: MediaProvider, @unchecked Sendable {   // test-only; used on the main actor
     let kind: MediaProviderKind
     let supportsCommands: Bool
+    var accepts = true
     private(set) var commands: [MediaCommand] = []
+    private(set) var refreshes = 0
     private(set) var starts = 0
     private(set) var stops = 0
     private var continuation: AsyncStream<ProviderEvent>.Continuation?
@@ -79,7 +82,8 @@ nonisolated final class ScriptedProvider: MediaProvider, @unchecked Sendable {  
         self.continuation = continuation
         return stream
     }
-    func send(_ command: MediaCommand) async -> Bool { commands.append(command); return true }
+    func send(_ command: MediaCommand) async -> Bool { commands.append(command); return accepts }
+    func refresh() { refreshes += 1 }
     func ping() async -> Duration? { .milliseconds(3) }
     func stop() { stops += 1; continuation?.finish(); continuation = nil }
 

@@ -1,13 +1,15 @@
 // The Now Playing activity: activity rules of DESIGN.md §9.2 (P2/P3, hidden after N s paused, auto-unhide,
-// revision = new tracks, swipes → previous/next with Invert), with scripted providers and a manual clock.
+// revision = new tracks, swipes → previous/next with Invert), read-only sources and an ignored pause, with
+// scripted providers and a manual clock.
 import CrannyCore
 import Foundation
 import Testing
 @testable import CrannyMedia
 
 @Suite("Now Playing activity") @MainActor struct NowPlayingActivityTests {
-    private func running(_ services: CrannyServices = .preview()) async -> (MediaService, ScriptedProvider, ManualClock, NowPlayingActivity) {
-        let clock = ManualClock(), perl = ScriptedProvider(kind: .perl)
+    private func running(_ services: CrannyServices = .preview(), provider perl: ScriptedProvider = ScriptedProvider(kind: .perl))
+        async -> (MediaService, ScriptedProvider, ManualClock, NowPlayingActivity) {
+        let clock = ManualClock()
         let service = Fixtures.service([perl], clock: clock, services: services)
         service.start()
         await settle()
@@ -117,6 +119,32 @@ import Testing
         playPause.perform()
         await settle()
         #expect(perl.commands == [.togglePlayPause])
+    }
+
+    @Test func anIgnoredPauseDoesNotHideMusicThatKeepsPlaying() async {
+        // The optimistic pause starts the paused timeout; when no state confirms it, the player's (playing) state
+        // comes back and the timeout is cancelled.
+        let (service, perl, clock, activity) = await running()
+        perl.emit(.nowPlaying(Fixtures.track("A", playing: true, timestamp: clock.now)))
+        await settle()
+        await service.send(.pause)
+        #expect(activity.priority == .passive)
+        await settle()
+        await clock.advance(by: MediaService.confirmationWindow)              // asks the provider again …
+        await clock.advance(by: MediaService.rollbackWindow)                  // … no answer: the player's state
+        #expect(activity.priority == .ongoing)
+        await clock.advance(by: .seconds(60))
+        #expect(activity.isActive)
+    }
+
+    @Test func readOnlySourcesOfferOnlyOpen() async {
+        let (_, script, _, activity) = await running(provider: ScriptedProvider(kind: .appleScript, supportsCommands: false))
+        script.emit(.nowPlaying(Fixtures.track("A")))
+        await settle()
+        #expect(activity.actions.map(\.id) == ["open"])
+        #expect(activity.handle(.swipeLeft) == false)
+        await settle()
+        #expect(script.commands.isEmpty)
     }
 
     @Test func sampleInstanceIsSelfContained() async {

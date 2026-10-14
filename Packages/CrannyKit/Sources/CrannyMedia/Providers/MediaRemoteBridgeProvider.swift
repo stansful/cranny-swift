@@ -5,6 +5,8 @@ import CrannyCore
 import Foundation
 import os
 
+private nonisolated let log = Log.logger(.mediaBridge)
+
 nonisolated final class MediaRemoteBridgeProvider: MediaProvider, @unchecked Sendable {   // state behind `lock`
     let kind: MediaProviderKind
     let supportsCommands = true
@@ -48,11 +50,23 @@ nonisolated final class MediaRemoteBridgeProvider: MediaProvider, @unchecked Sen
         return stream
     }
 
+    /// Waits for the helper's `ack` (≈ 12 ms): `ok:false` means MediaRemote did not take the command (no player to
+    /// receive it); no answer within a second counts as not delivered.
     func send(_ command: MediaCommand) async -> Bool {
         guard let connection = lock.withLock({ $0.connection }) else { return false }
-        connection.send(Self.line(for: command))
-        return true
+        switch await connection.command(Self.line(for: command)) {
+        case true?: return true
+        case false?: log.info("bridge: MediaRemote refused a command"); return false
+        case nil: return false
+        }
     }
+
+    /// `refresh state`: the helper forgets its last snapshot and sends the current one again (not the artwork).
+    func refresh() {
+        lock.withLock { $0.connection }?.send(Self.refreshLine)
+    }
+
+    static let refreshLine = "refresh state"
 
     func ping() async -> Duration? {
         guard let connection = lock.withLock({ $0.connection }) else { return nil }
@@ -105,7 +119,7 @@ nonisolated final class MediaRemoteBridgeProvider: MediaProvider, @unchecked Sen
             guard let key = itemID ?? lock.withLock({ $0.lastTrackKey }) else { return [] }
             return [.artwork(trackKey: key, data: data)]
         case .hello, .pong, .ack, .error:
-            return []     // diagnostics only (logged by the connection)
+            return []     // answers to pings and commands are matched by the connection
         }
     }
 }

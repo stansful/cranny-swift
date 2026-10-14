@@ -3,7 +3,8 @@
 //   4 cells: [artwork 72] [title · artist · ⏮ (⏸) ⏭] over an inline "1:24 ━━━ −2:11" row
 //   6 cells: 5 + shuffle and repeat around the transport.
 // Click the artwork to open the player; a two-finger swipe over the artwork or title changes the track; the
-// title marquees after a 1.5-s hover (never under Reduce Motion).
+// title marquees after a 1.5-s hover (never under Reduce Motion). Transport and VoiceOver transport actions only
+// when the source can control the player.
 import CrannyCore
 import SwiftUI
 
@@ -115,11 +116,15 @@ struct MediaPlayingView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(verbatim: MediaStrings.nowPlayingLabel(title: nowPlaying.title, artist: nowPlaying.artist)))
         .accessibilityValue(Text(verbatim: nowPlaying.isPlaying ? "" : MediaStrings.paused))
-        .accessibilityAction(named: Text(verbatim: nowPlaying.isPlaying ? MediaStrings.pause : MediaStrings.play)) {
-            Task { await service.send(.togglePlayPause) }
+        .accessibilityActions {
+            if service.supportsCommands {
+                Button { Task { await service.send(.togglePlayPause) } } label: {
+                    Text(verbatim: nowPlaying.isPlaying ? MediaStrings.pause : MediaStrings.play)
+                }
+                Button { Task { await service.send(.nextTrack) } } label: { Text(verbatim: MediaStrings.nextTrack) }
+                Button { Task { await service.send(.previousTrack) } } label: { Text(verbatim: MediaStrings.previousTrack) }
+            }
         }
-        .accessibilityAction(named: Text(verbatim: MediaStrings.nextTrack)) { Task { await service.send(.nextTrack) } }
-        .accessibilityAction(named: Text(verbatim: MediaStrings.previousTrack)) { Task { await service.send(.previousTrack) } }
     }
 
     // MARK: Interaction

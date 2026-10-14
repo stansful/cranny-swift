@@ -10,10 +10,11 @@
 //           {"t":"state", ...}            (full snapshot, de-duplicated)
 //           {"t":"artwork","itemID":..,"mime":..,"data":base64}  (only on change; artwork over
 //                                                     1 MB is re-encoded as a 1024-px JPEG, or skipped)
-//           {"t":"ack"|"error"|"pong", ...}
+//           {"t":"ack"|"error"|"pong", ...}           (exactly one ack or error per cmd/seek/shuffle/repeat line)
 //   stdin   one command per line:
 //           cmd <0-13> [expectPID] | seek <seconds> [expectPID]
-//           shuffle <1-3> | repeat <1-3> | refresh | ping | quit
+//           shuffle <1-3> | repeat <1-3> | refresh [state] | ping | quit
+//           ("refresh" re-sends the state and the artwork, "refresh state" only the state)
 //   lifetime: exits on stdin EOF, SIGPIPE, or when re-parented to launchd.
 //
 // Build (arm64 + x86_64, ad-hoc signed by the linker on arm64):
@@ -182,7 +183,13 @@ static void handleLine(NSString *line) {
     int arg2 = p.count >= 3 ? p[2].intValue : 0;
     if ([verb isEqualToString:@"quit"]) exit(0);
     if ([verb isEqualToString:@"ping"]) { emit(@{ @"t": @"pong" }); return; }
-    if ([verb isEqualToString:@"refresh"]) { gLastState = nil; gLastArtKey = nil; snapshot(); return; }
+    if ([verb isEqualToString:@"refresh"]) {
+        // "refresh state" (Cranny's check after an unconfirmed command) leaves the artwork alone.
+        gLastState = nil;
+        if (!(p.count >= 2 && [p[1] isEqualToString:@"state"])) gLastArtKey = nil;
+        snapshot();
+        return;
+    }
     if ([verb isEqualToString:@"cmd"] && p.count >= 2) {
         int c = p[1].intValue;
         if (c < 0 || c > 13) { emit(@{ @"t": @"error", @"msg": @"bad command id" }); return; }
