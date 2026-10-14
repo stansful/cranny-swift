@@ -4,6 +4,9 @@
 //   --qa-page <page id>                   with `open`: show this page (`nook` = Home, `tray`, `page.<uuid>`)
 //   --qa-exit-after <seconds>             quit after that many seconds (screenshots in scripts and CI)
 //   --qa-settings <pane id>               also open Settings at that pane (`general`, `about`, …)
+//   --qa-capture <directory>              write a PNG of each visible window (the panel, Settings) after
+//   --qa-capture-after <seconds>          … this many seconds (default 3). Rendered in-process (`cacheDisplay`):
+//                                         works where `screencapture` cannot, needs no Screen Recording access
 //
 // No input is synthesized: the state is written through the same view-model inputs the pointer uses.
 // The whole file is compiled out of Release builds.
@@ -23,9 +26,13 @@ enum QAHooks {
         var page: PageID?
         var exitAfter: Double?
         var settingsPage: SettingsPageID?
+        var captureDirectory: URL?
+        var captureAfter: Double = 3
 
-        init(state: State? = nil, page: PageID? = nil, exitAfter: Double? = nil, settingsPage: SettingsPageID? = nil) {
+        init(state: State? = nil, page: PageID? = nil, exitAfter: Double? = nil, settingsPage: SettingsPageID? = nil,
+             captureDirectory: URL? = nil, captureAfter: Double = 3) {
             self.state = state; self.page = page; self.exitAfter = exitAfter; self.settingsPage = settingsPage
+            self.captureDirectory = captureDirectory; self.captureAfter = captureAfter
         }
 
         init(arguments: [String]) {
@@ -36,10 +43,12 @@ enum QAHooks {
             self.init(state: value("--qa-state").flatMap(State.init(rawValue:)),
                       page: value("--qa-page").map(PageID.init(rawValue:)),
                       exitAfter: value("--qa-exit-after").flatMap(Double.init).flatMap { $0 > 0 ? $0 : nil },
-                      settingsPage: value("--qa-settings").map(SettingsPageID.init(rawValue:)))
+                      settingsPage: value("--qa-settings").map(SettingsPageID.init(rawValue:)),
+                      captureDirectory: value("--qa-capture").map { URL(fileURLWithPath: $0, isDirectory: true) },
+                      captureAfter: value("--qa-capture-after").flatMap(Double.init).flatMap { $0 >= 0 ? $0 : nil } ?? 3)
         }
 
-        var isEmpty: Bool { state == nil && exitAfter == nil && settingsPage == nil }
+        var isEmpty: Bool { state == nil && exitAfter == nil && settingsPage == nil && captureDirectory == nil }
     }
 
     /// The label of the sample activity used for `compact` and `peek`.
@@ -56,11 +65,40 @@ enum QAHooks {
                 overlay.forceQAState(state, page: options.page)
             }
         }
+        if let directory = options.captureDirectory {
+            Task {
+                try? await Task.sleep(for: .seconds(options.captureAfter))
+                capture(into: directory)
+            }
+        }
         if let seconds = options.exitAfter {
             Task {
                 try? await Task.sleep(for: .seconds(seconds))
                 log.info("QA: exiting after \(seconds, privacy: .public) s")
                 NSApp.terminate(nil)
+            }
+        }
+    }
+
+    /// `--qa-capture`: draws each visible window's content into `panel-<n>.png` / `window-<n>.png`. Layers that
+    /// SwiftUI does not draw through `cacheDisplay` (Metal effects) come out empty; the views themselves are exact.
+    @MainActor static func capture(into directory: URL) {
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        } catch {
+            log.error("QA: capture folder: \(error.localizedDescription, privacy: .public)")
+            return
+        }
+        for window in NSApp.windows where window.isVisible {
+            guard let view = window.contentView, let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { continue }
+            view.cacheDisplay(in: view.bounds, to: rep)
+            guard let data = rep.representation(using: .png, properties: [:]) else { continue }
+            let url = directory.appending(path: "\(window is NotchPanel ? "panel" : "window")-\(window.windowNumber).png")
+            do {
+                try data.write(to: url)
+                log.info("QA: captured \(url.lastPathComponent, privacy: .public)")
+            } catch {
+                log.error("QA: capture failed: \(error.localizedDescription, privacy: .public)")
             }
         }
     }
