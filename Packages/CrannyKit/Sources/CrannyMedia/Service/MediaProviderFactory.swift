@@ -13,7 +13,8 @@ struct MediaProviderFactory {
 }
 
 extension MediaProviderFactory {
-    /// The app's chain. The bridge library is located once, off the main actor (quarantine copy included).
+    /// The app's chain. The bridge library is located off the main actor before every helper spawn (quarantine copy
+    /// checked against the app's library each time); the interpreters are looked up once.
     @MainActor static func standardChain(settings: SettingsStore, paths: AppPaths,
                                          permissions: PermissionsCenter) -> [MediaProviderFactory] {
         let bridge = BridgeResolution(paths: paths)
@@ -35,27 +36,40 @@ extension MediaProviderFactory {
     }
 }
 
-/// Where the bridge library is and which interpreters exist; resolved once per launch (file I/O off main).
+/// Where the bridge library is and which interpreters exist (file I/O off main). The interpreters are looked up once
+/// per launch. The library is located again for every spawn (each provider start and supervisor restart): the
+/// quarantine copy sits in a directory other processes of the user can write, so a copy that changed since the last
+/// spawn is rewritten from the app's library before perl loads it (`BridgeLocator.unquarantinedCopy`).
 @MainActor final class BridgeResolution {
+    typealias Host = BridgeConnection.Host
+
     nonisolated struct Result: Sendable {
         var dylib: URL?
-        var hosts: Set<BridgeConnection.Host>
+        var hosts: Set<Host>
     }
 
-    private let paths: AppPaths
-    private var cached: Result?
+    private let locate: @Sendable () -> URL?
+    private let findHosts: @Sendable () -> Set<Host>
+    private var hosts: Set<Host>?
 
-    init(paths: AppPaths) { self.paths = paths }
+    convenience init(paths: AppPaths) {
+        self.init(locate: { BridgeLocator.locateForApp(paths: paths) },
+                  hosts: { Set(Host.allCases.filter(\.isAvailable)) })
+    }
+
+    init(locate: @escaping @Sendable () -> URL?, hosts: @escaping @Sendable () -> Set<Host>) {
+        self.locate = locate
+        findHosts = hosts
+    }
 
     func resolve() async -> Result {
-        if let cached { return cached }
-        let result = await Self.lookUp(paths)
-        cached = result
-        return result
+        let found = await Self.lookUp(locate, hosts: hosts == nil ? findHosts : nil)
+        if let foundHosts = found.hosts { hosts = foundHosts }
+        return Result(dylib: found.dylib, hosts: hosts ?? [])
     }
 
-    @concurrent private static func lookUp(_ paths: AppPaths) async -> Result {
-        Result(dylib: BridgeLocator.locateForApp(paths: paths),
-               hosts: Set(BridgeConnection.Host.allCases.filter(\.isAvailable)))
+    @concurrent private static func lookUp(_ locate: @Sendable () -> URL?, hosts: (@Sendable () -> Set<Host>)?) async
+        -> (dylib: URL?, hosts: Set<Host>?) {
+        (locate(), hosts?())
     }
 }
