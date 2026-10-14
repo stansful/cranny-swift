@@ -36,10 +36,14 @@ nonisolated enum Stagger {
 
 /// Plays `crannyContent`'s entrance once, when the view appears: blur 6 → 0, scale 0.96 → 1, opacity 0 → 1,
 /// after `delay` (Reduce Motion: opacity only, no delay). Used where a parent's insertion must not hide the
-/// stagger of its children (the open panel's header and widgets, peek rows).
+/// stagger of its children (the open panel's header and widgets, peek rows). Only during an entrance
+/// (`notchEntrance`): the open panel's widgets radiate out of the camera when the panel opens, not again on
+/// every tab switch or return from the palette or the editor (those use the `crannyTab` slide or `contentSwap`,
+/// DESIGN.md §4.3).
 struct StaggeredReveal: ViewModifier {
     @Environment(\.cranny) private var theme
     @Environment(\.notchRendersFinalState) private var rendersFinalState
+    @Environment(\.notchEntrance) private var entrance
     @State private var revealed = false
     let delay: Double
     var anchor: UnitPoint = .top
@@ -47,15 +51,21 @@ struct StaggeredReveal: ViewModifier {
     func body(content: Content) -> some View {
         let reduce = theme.reduceMotion
         let animation = theme.contentIn(after: reduce ? 0 : delay)
-        let revealed = revealed || rendersFinalState
+        let revealed = StaggeredReveal.isShown(revealed: revealed, rendersFinalState: rendersFinalState, entrance: entrance)
         content
             .blur(radius: revealed || reduce ? 0 : 6)
             .scaleEffect(revealed || reduce ? 1 : 0.96, anchor: anchor)
             .opacity(revealed ? 1 : 0)
             .onAppear {
-                guard !self.revealed else { return }
+                guard !self.revealed, entrance else { return }
                 if let animation { withAnimation(animation) { self.revealed = true } } else { self.revealed = true }
             }
+    }
+
+    /// Whether the content is drawn revealed: after its entrance played, in a snapshot, or at once when it
+    /// appears outside an entrance. Pure.
+    nonisolated static func isShown(revealed: Bool, rendersFinalState: Bool, entrance: Bool) -> Bool {
+        revealed || rendersFinalState || !entrance
     }
 }
 
@@ -70,4 +80,7 @@ extension EnvironmentValues {
     /// Snapshot rendering (`ImageRenderer` in tests): one-shot entrances render their final state, because a
     /// single rasterized frame never runs `onAppear` animations.
     @Entry var notchRendersFinalState = false
+    /// True while a presentation makes its entrance (the open panel's first appearance; peek rows always).
+    /// The open panel clears it once its first content has appeared, so later pages appear without a stagger.
+    @Entry var notchEntrance = true
 }

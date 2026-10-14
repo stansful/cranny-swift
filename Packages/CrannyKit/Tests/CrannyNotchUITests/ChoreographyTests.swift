@@ -91,6 +91,15 @@ private func kind(_ from: NotchPhase, _ to: NotchPhase, fromHUD: Bool = false, t
         #expect(Stagger.delay(ring: 3, reduceMotion: true) == 0)
     }
 
+    @Test func theStaggerIsAnEntranceOnly() {
+        // When the panel opens, cards wait for their ring's turn …
+        #expect(!StaggeredReveal.isShown(revealed: false, rendersFinalState: false, entrance: true))
+        // … but a page that appears later (tab switch, back from the palette or the editor) is drawn at once.
+        #expect(StaggeredReveal.isShown(revealed: false, rendersFinalState: false, entrance: false))
+        #expect(StaggeredReveal.isShown(revealed: true, rendersFinalState: false, entrance: true))
+        #expect(StaggeredReveal.isShown(revealed: false, rendersFinalState: true, entrance: true))
+    }
+
     @Test func wingsGrowAfterTheShapeAndReturnLateOnClose() {
         #expect(ContentTiming.slotDelay(after: .activityIn) == 0.08)
         #expect(ContentTiming.slotDelay(after: .activitySwap) == 0.08)
