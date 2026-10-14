@@ -154,6 +154,7 @@ final class AmbientMetalNSView: NSView {
     private func updateRenderer() {
         guard let window else {
             renderer = nil
+            metalLayer.device = nil                  // the layer would otherwise keep the GPU (and its drawables)
             return
         }
         let display = (window.screen?.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)
@@ -191,6 +192,7 @@ final class AmbientMetalNSView: NSView {
         loop = nil
         loopInterval = nil
         renderer = nil
+        metalLayer.device = nil
     }
 
     private func stateDidChange() {

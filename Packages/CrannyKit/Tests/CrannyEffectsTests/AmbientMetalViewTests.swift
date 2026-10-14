@@ -1,6 +1,7 @@
 import AppKit
 import CrannyCore
 import Foundation
+import QuartzCore
 import Testing
 @testable import CrannyEffects
 
@@ -70,6 +71,7 @@ import Testing
     #expect(view.renderer != nil)
     window.contentView = nil
     #expect(view.renderer == nil, "a view out of its window must not keep the GPU")
+    #expect((view.layer as? CAMetalLayer)?.device == nil, "nor may its layer")
     window.contentView = view
     #expect(view.renderer != nil)
     view.stop()
