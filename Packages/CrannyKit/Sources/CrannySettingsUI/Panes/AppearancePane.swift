@@ -29,12 +29,12 @@ struct AppearancePane: View {
                 ], footnote: String(localized: "With Reduce Motion turned on in System Settings, shapes fade instead of moving.", bundle: .module,
                                     comment: "Settings ▸ Appearance: footnote of Motion"))
                 ToggleRow(info: AppearanceRows.typingEffect, settings: settings, key: CoreSettings.typingEffect,
-                          footnote: String(localized: "New text in notes and to-dos appears with a short reveal.", bundle: .module,
+                          footnote: String(localized: "New characters in notes appear in the accent colour, then settle.", bundle: .module,
                                            comment: "Settings ▸ Appearance: footnote of Typing effect"))
             }
             Section {
                 ChoiceRow(AppearanceRows.ambience, settings: settings, key: CoreSettings.ambience, choices: [
-                    Choice(value: .off, label: String(localized: "Off", bundle: .module, comment: "Settings: option that turns something off (a timeout, a display)")),
+                    Choice(value: .off, label: String(localized: "Off", bundle: .module, comment: "Settings: option that turns something off (ambient light, a display style, a shortcut)")),
                     Choice(value: .subtle, label: String(localized: "Subtle", bundle: .module, comment: "Settings ▸ Appearance ▸ Ambient light: option")),
                     Choice(value: .vivid, label: String(localized: "Vivid", bundle: .module, comment: "Settings ▸ Appearance ▸ Ambient light: option")),
                 ], footnote: String(localized: "Light in the colour of what is playing or happening, only while Cranny is open.", bundle: .module,
@@ -65,7 +65,7 @@ struct AppearancePane: View {
                 ChoiceRow(AppearanceRows.noNotchStyle, settings: settings, key: CoreSettings.noNotchStyle, choices: [
                     Choice(value: .floatingIsland, label: String(localized: "Floating island", bundle: .module, comment: "Settings: no-notch style")),
                     Choice(value: .attached, label: String(localized: "Attached", bundle: .module, comment: "Settings: no-notch style")),
-                    Choice(value: .off, label: String(localized: "Off", bundle: .module, comment: "Settings: option that turns something off (a timeout, a display)")),
+                    Choice(value: .off, label: String(localized: "Off", bundle: .module, comment: "Settings: option that turns something off (ambient light, a display style, a shortcut)")),
                 ], footnote: String(localized: "A floating island does not pretend to be hardware. Each display can override this in General.",
                                     bundle: .module, comment: "Settings ▸ Appearance: footnote of On displays without a notch"))
                 ChoiceRow(AppearanceRows.handle, settings: settings, key: CoreSettings.handleVisibility, choices: [

@@ -52,9 +52,15 @@ enum SettingsFormat {
                comment: "Settings ▸ Layout & Widgets: a widget's description and the widths it allows, on one line")
     }
 
-    /// A timeout where 0 means off: "Off" or "10 s".
+    /// A timeout where 0 means it never fires: "Never" or "10 s". The value stands on its own after the row's label
+    /// ("Close after inactivity", "Fold away after"), so the Russian label never ends in a preposition that would
+    /// need the value in another case (a generic "Off" read «Сворачивать через Выкл.»).
     static func timeout(_ seconds: Double, locale: Locale = .autoupdatingCurrent) -> String {
-        seconds <= 0 ? String(localized: "Off", bundle: .module, comment: "Settings: option that turns something off (a timeout, a display)")
-                     : self.seconds(seconds, locale: locale)
+        seconds <= 0 ? neverTitle : self.seconds(seconds, locale: locale)
+    }
+
+    static var neverTitle: String {
+        String(localized: "Never", bundle: .module,
+               comment: "Settings: the zero value of a timeout (Close after inactivity, Fold away after): it never happens")
     }
 }

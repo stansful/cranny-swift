@@ -381,7 +381,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Переместить ниже"
+            "value" : "Переместить вниз"
           }
         }
       }
@@ -392,7 +392,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Переместить выше"
+            "value" : "Переместить вверх"
           }
         }
       }
@@ -491,7 +491,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Открыть %@"
+            "value" : "Открыть «%@»"
           }
         }
       }
@@ -617,6 +617,17 @@
         }
       }
     },
+    "Reset to Default" : {
+      "comment" : "Settings: row context menu item",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вернуть значение по умолчанию"
+          }
+        }
+      }
+    },
     "Run" : {
       "comment" : "Quick Apps: tile menu, run the shortcut",
       "localizations" : {
@@ -711,7 +722,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Подписи под плитками"
+            "value" : "Показывать подписи под плитками"
           }
         }
       }

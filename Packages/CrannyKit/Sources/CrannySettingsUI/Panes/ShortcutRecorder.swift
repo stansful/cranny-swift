@@ -109,7 +109,7 @@ struct ShortcutRecorder: View {
         return combo?.display ?? String(localized: "Record Shortcut", bundle: .module, comment: "Settings ▸ Keyboard: recorder without a shortcut")
     }
 
-    static var offTitle: String { String(localized: "Off", bundle: .module, comment: "Settings: option that turns something off (a timeout, a display)") }
+    static var offTitle: String { String(localized: "Off", bundle: .module, comment: "Settings: option that turns something off (ambient light, a display style, a shortcut)") }
 
     private func start() {
         ShortcutRecording.shared.begin(recordingID) { stop() }

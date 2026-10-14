@@ -222,7 +222,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Управлять Музыкой и Spotify, если другие способы не сработали. Cranny отправляет только команды воспроизведения."
+            "value" : "Управлять «Музыкой» и Spotify, если другие способы не сработали. Cranny отправляет только команды воспроизведения."
           }
         }
       }
@@ -354,7 +354,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Сразу"
+            "value" : "Мгновенно"
           }
         }
       }
@@ -651,7 +651,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Превью: Cranny здоровается"
+            "value" : "Предпросмотр: Cranny здоровается"
           }
         }
       }
@@ -662,7 +662,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Превью: Cranny закрыт"
+            "value" : "Предпросмотр: Cranny закрыт"
           }
         }
       }
@@ -673,7 +673,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Превью: Cranny открыт с вашей раскладкой"
+            "value" : "Предпросмотр: Cranny открыт с вашей раскладкой"
           }
         }
       }

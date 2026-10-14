@@ -100,6 +100,17 @@
         }
       }
     },
+    "Changed from the default" : {
+      "comment" : "Settings ▸ HUD: tooltip of the dot before a changed row",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменено по сравнению со значением по умолчанию"
+          }
+        }
+      }
+    },
     "Colors" : {
       "comment" : "Settings ▸ HUD: picker for the level bar's colour",
       "localizations" : {
@@ -260,7 +271,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Моно"
+            "value" : "Белый"
           }
         }
       }
@@ -320,13 +331,24 @@
         }
       }
     },
+    "Reset to Default" : {
+      "comment" : "Settings ▸ HUD: row context menu item",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вернуть значение по умолчанию"
+          }
+        }
+      }
+    },
     "Semantic" : {
       "comment" : "Settings ▸ HUD ▸ Colors: a meaningful colour per kind (accent, yellow, blue)",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "По смыслу"
+            "value" : "По назначению"
           }
         }
       }
@@ -348,7 +370,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Показывать индикатор для"
+            "value" : "Показывать индикатор"
           }
         }
       }
@@ -370,7 +392,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Оформление"
+            "value" : "Стиль"
           }
         }
       }
