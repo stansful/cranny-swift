@@ -188,10 +188,10 @@ private struct CanvasBody: View {
     }
 
     /// The budget of the one-shot moments drawn on the canvas (ember burst, charge sweep, satellite neck): their
-    /// path (Reduce Motion and Instant draw the static variant, Low Power the SwiftUI design) and frame rate.
+    /// path (Reduce Motion, Calm and Instant draw the static variant, Low Power the SwiftUI design) and frame rate.
     private var momentBudget: EffectBudget {
         var moment = budget
-        moment.reduceMotion = theme.reduceMotion || theme.motion == .instant
+        moment.reduceMotion = DelightPlayback.drawsReducedVariant(theme)
         return moment
     }
 

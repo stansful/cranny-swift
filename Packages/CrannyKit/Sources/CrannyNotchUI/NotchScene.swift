@@ -62,9 +62,9 @@ public nonisolated struct OpenState: Equatable, Sendable {
     /// The light-layer palette (`ThemeResolver.ambientPalette`); changes cross-fade (`colorShift`).
     public var ambient: AmbientPalette = .afterglow
     /// One-shot delight to play (DESIGN.md §5.5). The owner applies the caps (one at a time, not paused,
-    /// not in full screen, not under Calm/Instant/Reduce Motion) and bumps `delightSerial`; NotchUI plays
-    /// each serial once. Sources: activities' `delight`, track change (`.songRipple`), first open (`.firstLight`),
-    /// file caught (`.gulp`).
+    /// not in full screen, not under Instant) and bumps `delightSerial`; NotchUI plays each serial once, as its
+    /// reduced variant under Calm and Reduce Motion. Sources: activities' `delight`, track change (`.songRipple`),
+    /// first open (`.firstLight`), file caught (`.gulp`).
     public var delight: DelightMoment?
     /// Bumped by the owner for every delight to play; NotchUI plays each value once.
     public var delightSerial = 0

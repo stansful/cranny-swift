@@ -176,8 +176,8 @@ extension OverlayCoordinator {
         registry.services.announcer.announce(activity.accessibilityLabel, kind: .alert)
     }
 
-    /// The caps of §4.6 step 7 (one at a time, not paused, not behind full screen, not on a hidden panel, not
-    /// Calm/Instant/Reduce Motion).
+    /// The caps of §4.6 step 7 (one at a time, not paused, not behind full screen, not on a hidden panel, not under
+    /// Instant). Under Calm and Reduce Motion the scene plays the moment's reduced variant (DelightScheduler).
     func playDelight(_ moment: DelightMoment, on key: DisplayKey) {
         guard let controller = controllers[key] else { return }
         let front = screens.first { $0.key == key }.map { environment.front(of: $0.id) } ?? FullScreenDetector.Front()

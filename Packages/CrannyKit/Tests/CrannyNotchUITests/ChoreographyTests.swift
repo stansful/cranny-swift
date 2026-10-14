@@ -152,6 +152,21 @@ private func kind(_ from: NotchPhase, _ to: NotchPhase, fromHUD: Bool = false, t
         #expect(!DelightPlayback.isSeen(budget(onScreen: false)))             // covered, locked, asleep
         #expect(!DelightPlayback.isSeen(budget(fullScreen: true, open: true)))
     }
+
+    /// Calm and Reduce Motion draw the reduced variants (DESIGN.md §5.5, last column); Standard and Lively the moment.
+    @Test func calmAndReduceMotionDrawTheReducedVariants() {
+        func theme(_ motion: MotionPersonality, reduceMotion: Bool = false) -> CrannyTheme {
+            var t = CrannyTheme()
+            t.motion = motion
+            t.reduceMotion = reduceMotion
+            return t
+        }
+        #expect(!DelightPlayback.drawsReducedVariant(theme(.standard)) && !DelightPlayback.drawsReducedVariant(theme(.lively)))
+        #expect(DelightPlayback.drawsReducedVariant(theme(.calm)))
+        #expect(DelightPlayback.drawsReducedVariant(theme(.standard, reduceMotion: true)))
+        #expect(DelightPlayback.drawsReducedVariant(theme(.lively, reduceMotion: true)))
+        #expect(DelightPlayback.drawsReducedVariant(theme(.instant)))           // a stage that plays one anyway
+    }
 }
 
 /// The charge sweep runs along the lower outline of the shape (`LowerRim.outline`), inside it.
