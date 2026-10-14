@@ -281,6 +281,14 @@ private let log = Log.logger(.tray)
 
     func pageDidAppear() { isPageVisible = true }
 
+    /// A tile was clicked. The panel becomes key so the row's keys (Space, ⌘C, ⌘⌫, ⌘.) reach the Tray and never the
+    /// frontmost app, where ⌘⌫ would trash the user's own selection in Finder. It is key for the selection only, not
+    /// for typing: the panel still closes when the pointer leaves, and the close hands key status back (DESIGN.md
+    /// §3.6, ARCHITECTURE.md §4.10). Controls without selection focus (previews, test doubles) get the plain request.
+    func takeSelectionFocus() {
+        if let focus = notch as? any NotchSelectionFocus { focus.requestSelectionFocus() } else { notch.requestKeyboardFocus() }
+    }
+
     /// Leaving the Tray page: "new" dots go, the selection stays.
     func pageDidDisappear() {
         isPageVisible = false

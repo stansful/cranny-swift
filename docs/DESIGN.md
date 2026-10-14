@@ -1275,7 +1275,8 @@ The closed shape is drawn 0.5 pt inside the measured cutout, with a radius sligh
   - File-drag proximity: the shape + 80 pt wide and 40 pt below the band.
   - A root-view `hitTest` override keeps SwiftUI gestures from firing outside the shape.
 - **Focus:**
-  - The panel becomes key only when opened by the keyboard or when a text field is clicked.
+  - The panel becomes key only when opened by the keyboard, when a text field is clicked, or when a Tray tile is clicked.
+  - Key status for typing holds the panel open. A Tray tile click takes key status for the selection only: Space, ⌘C and ⌘⌫ reach the Tray and never the frontmost app, yet the panel still closes when the pointer leaves, after the grace period. Typing in a text field afterwards holds it open as usual.
   - On close, `orderOut` + `orderFrontRegardless` hands key status back to the previous window.
   - ⌘A/C/V/X/Z work because the SwiftUI `App` lifecycle installs a main menu with Edit (verified by `scripts/smoke.sh`, ARCHITECTURE D12); R1's hidden Edit menu is the fallback only if a future SDK drops it.
 - **Full screen** is detected per R1: the menu-bar window is missing on that display, and another app's window covers it.
@@ -2033,7 +2034,7 @@ The 6 most recent tray items as 44-pt thumbnails. It is also a drop target, and 
   - Hover shows a remove ✕ (a 16-pt circle).
   - Selected: a `controlPressed` well (r 8), a 1.5-pt accent ring and a 14-pt check badge (the badge is not colour-only).
 - **When nothing is selected,** the chip row shows "5 items · 48 MB" and **Clear** (⌥⌘⌫).
-- **Interaction:** click, ⌘-click and ⇧-click select; ⌘A selects all; Space opens Quick Look; ⌘C copies; ⌘⌫ removes. Drag out goes through AppKit `NSDraggingSource` with `NSURL` writers, so the receiving app gets the original file, not a temporary copy (R1 §5.3). The context menu holds Open, Reveal in Finder, Quick Look, Copy Path, Share…, Remove.
+- **Interaction:** click, ⌘-click and ⇧-click select; ⌘A selects all; Space opens Quick Look; ⌘C copies; ⌘⌫ removes. A click makes the panel key for the selection (§3.6), so these keys work while the panel stays a hover panel. Drag out goes through AppKit `NSDraggingSource` with `NSURL` writers, so the receiving app gets the original file, not a temporary copy (R1 §5.3). The context menu holds Open, Reveal in Finder, Quick Look, Copy Path, Share…, Remove.
 - **Retention:** Until removed (default) · Clear on quit · Clear after 1 day.
 - **Empty:** `tray.and.arrow.down.fill` + "Drop files on the notch to keep them here".
 

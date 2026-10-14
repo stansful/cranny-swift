@@ -130,6 +130,19 @@ import UniformTypeIdentifiers
         #expect(!FileManager.default.fileExists(atPath: copy.path))
     }
 
+    // MARK: Keyboard focus
+
+    /// A tile click asks for key status for the selection, so the panel still closes when the pointer leaves; a
+    /// control without selection focus gets the plain request (the Tray's keys must never go to the frontmost app).
+    @Test func aTileClickTakesSelectionFocusNotTypingFocus() {
+        let focusing = FocusNotch()
+        makeStore(notch: focusing).takeSelectionFocus()
+        #expect(focusing.calls == ["selection"])
+        let plain = makeStore()
+        plain.takeSelectionFocus()
+        #expect(notch.calls == ["key"])
+    }
+
     // MARK: Repeat drops
 
     @Test func reDroppingAnEditedFileKeepsTheNewVersion() async throws {
@@ -333,6 +346,26 @@ import UniformTypeIdentifiers
     func requestKeyboardFocus() {}
     func setCalibrationOverlay(_ visible: Bool) {}
     func shapeFrameOnScreen() -> CGRect? { nil }
+    func presentSharePicker(_ urls: [URL]) {}
+    func flash(symbol: String, label: String) {}
+    func addEventObserver(_ handler: @escaping @MainActor (NotchEvent) -> Void) -> UUID { UUID() }
+    func removeEventObserver(_ id: UUID) {}
+}
+
+/// A `NotchControl` with selection focus, as the shell's: records which kind of key status was asked for.
+@MainActor final class FocusNotch: NotchControl, NotchSelectionFocus {
+    private(set) var calls: [String] = []
+    func requestSelectionFocus() { calls.append("selection") }
+    func requestKeyboardFocus() { calls.append("key") }
+    func open(page: PageID?, focus: WidgetID?, reason: OpenReason) {}
+    func close() {}
+    func togglePinned() {}
+    func setHoldOpen(_ hold: Bool, reason: String) {}
+    func setFocusMode(_ widget: WidgetID?) {}
+    func requestPeek(_ activity: ActivityID) {}
+    func setCalibrationOverlay(_ visible: Bool) {}
+    func shapeFrameOnScreen() -> CGRect? { nil }
+    func presentAirDrop(_ urls: [URL]) async -> Bool { false }
     func presentSharePicker(_ urls: [URL]) {}
     func flash(symbol: String, label: String) {}
     func addEventObserver(_ handler: @escaping @MainActor (NotchEvent) -> Void) -> UUID { UUID() }
