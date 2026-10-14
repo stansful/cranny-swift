@@ -172,7 +172,7 @@ CRANNY_SNAPSHOT_DIR=/tmp/notchui swift test --scratch-path .build-test --filter 
 | `CRANNY_RENDER_DIR=<dir>` | Onboarding's rendered surfaces. |
 | `CRANNY_NOTES_BENCH=<file>` | The Notes keystroke benchmark (release configuration; see the file). |
 
-`CRANNY_MEDIA_BRIDGE=<dylib>` also tells the app which media bridge to load.
+`CRANNY_MEDIA_BRIDGE=<dylib>` also tells a Debug build of the app which media bridge to load (Release ignores it).
 
 ## Manual checks (each release)
 

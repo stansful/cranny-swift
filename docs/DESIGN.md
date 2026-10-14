@@ -1930,7 +1930,7 @@ Since ARCHITECTURE D13, the light is drawn by SwiftUI **stitchable** Metal funct
   - A 28-pt search field in a `well` (r 8), then up to 4 result rows of 22 pt each.
   - Each row: icon 16, title (`body`), kind (`caption`, tertiary) and its shortcut as a `KeyCap`.
 - **What it searches:**
-  - actions ("Start 25-minute timer", "New note", "Pause live activities for 1 hour", "Demo mode", "Clear tray");
+  - actions ("Start 25-minute timer", "New note", "Pause live activities for 1 hour", "Demo mode", "Clear Tray");
   - quick apps, Shortcuts.app shortcuts, notes, to-dos and Settings panes.
 - **Keys:** ↑ ↓ ↩ navigate; Esc returns to the grid.
 
@@ -1965,7 +1965,7 @@ Holding ⌘ for 0.5 s makes `KeyCap` hints appear beside every tab, action, quic
 
 `.crannyCard(cells:)` sizes a card to `grid.width(cells)` × `grid.height` (120) with padding 12 and radius 20. The radius is set as the `containerShape`, so inner `ContainerRelativeShape` / `ConcentricRectangle` stay concentric.
 - **No title bars.** Content identifies itself (artwork, date, icons), as in Apple's widgets.
-- **Overflow menu:** hovering a card shows a 20-pt `ellipsis` button (tertiary, top-trailing). It holds widget options, *Resize*, *Remove* and *Edit Layout…*, and is also available from the keyboard (⌘. on a focused card) and as a VoiceOver action.
+- **Overflow menu:** hovering a card shows a 20-pt `ellipsis` button (tertiary, top-trailing). It holds widget options, *Resize*, *Remove* and *Edit layout…*, and is also available from the keyboard (⌘. on a focused card) and as a VoiceOver action.
 - **Every widget defines these states:**
   - content;
   - **empty** (one line + one action);
@@ -2294,18 +2294,19 @@ Peek is 380–460 pt wide (425 on a 14″) and always has the keyline and `Eleva
 | 2 · Open it your way | Three option cards: **Hover** (with delay presets), **Click**, **Shortcut only** (⌃⌥N). A coach mark around the real notch: "Rest the pointer here, or press ⌃⌥N." | Detects the *actual* opening of the real notch: ✓ (green, `.bounce`) per method; Continue enables after one |
 | 3 · Gestures | Only if a trackpad is present. A practice notch on the stage with live rubber-banding and haptics. | Pull down to open; swipe sideways (skipped if nothing plays) |
 | 4 · Pick a starting layout | Preset cards, each a live mini panel: **Listener** (Media 5 · Calendar 3 · Apps 2, the default), **Maker** (Notes 4 · To-dos 3 · Timer 2 · Shortcuts 1), **Meetings** (Calendar 4 · Mirror 2 · Timer 2 · Apps 2), **Minimal** (Media 4, HUD) | Pick one; the stage updates |
-| 5 · Permissions, only for what you chose | Rows for the features the preset needs, all **off**: Calendar, Accessibility (HUD), Automation (media apps), Bluetooth. Each says why and what Cranny does *not* do. Camera is never asked here; Mirror asks on first use. | Allow triggers the system prompt then and there; "Later" is fine |
-| 6 · You're set | Launch at login (on) · Check for updates (on) · a cheat sheet of 6 keys | **Take the 1-minute tour** (primary) · Done (opens the Nook once) |
+| 5 · Permissions, only for what you chose | Rows for the features the preset needs, all **off**: Calendar, Accessibility (HUD), Automation (media apps), Bluetooth. Automation and Bluetooth serve off-by-default switches (the Apple Events fallback, all Bluetooth devices), so their rows appear only while that switch is on; the switch asks itself when it is turned on. Each row says why and what Cranny does *not* do. Camera is never asked here; Mirror asks on first use. | Allow triggers the system prompt then and there; "Later" is fine |
+| 6 · You're set | Launch at login (on) · Check for updates (on) · a cheat sheet of 6 keys | **Take the 1-minute tutorial** (primary) · Done (opens the Nook once) |
 
 ### 12.2 Interactive tutorial (in the real notch)
 
-- **The tip:** a bubble 10 pt under the shape, using `.regularMaterial` (opaque under Reduce Transparency). It holds one sentence, a `KeyCap` where relevant, "2 of 5" (`micro`) and an always-visible **Skip tour**.
+- **The tip:** a bubble 10 pt under the shape, using `.regularMaterial` (opaque under Reduce Transparency). It holds one sentence, a `KeyCap` where relevant, "2 of 5" (`micro`) and an always-visible **Skip tutorial**. The feature is "tutorial" / «обучение» in every string, never "tour".
 - **Steps:** each completes on real detection, with a ✓ `.bounce`, an `.alignment` haptic and a VoiceOver announcement.
   1. "Rest the pointer on the notch, or press ⌃⌥N"
   2. "Drag any file onto the notch"
   3. "Swipe sideways with two fingers to change the track" (skipped if nothing plays)
   4. "Hold ⌘ to see every shortcut"
   5. "Pin it with 📌, then press Esc"
+  - Steps 4 and 5 need the panel to be key: the tutorial asks for keyboard focus when the panel opens by any route (or is pinned). While the panel is closed their bubbles say "Open Cranny, then …".
 - Replayable from the menu bar extra and from Settings ▸ About.
 
 ---
@@ -2345,7 +2346,7 @@ Every symbol below was verified on this machine against `name_availability.plist
 | Header, pages | `square.grid.2x2.fill` · `tray.full.fill` · `note.text` (11) · `magnifyingglass` · `pin` / `pin.fill` · `gearshape.fill` (11) · `ellipsis` · `plus` · `minus` (edit layout) · `xmark` · `chevron.down` · `checkmark` · `square.resize` (14, card size menu) |
 | Media | `play.fill` · `pause.fill` · `backward.fill` · `forward.fill` · `shuffle` · `repeat` · `airplayaudio` · `music.note` · `music.note.list` · `waveform` |
 | Calendar, meetings | `calendar` · `person.2.wave.2.fill` (12, Join) · `clock` · `mappin.and.ellipse` · `chevron.left` / `chevron.right` (day paging) |
-| Launcher | app icons via `NSWorkspace` · `app.dashed` (12, placeholder) · `square.2.layers.3d.fill` (14, Shortcuts pane) |
+| Launcher | app icons via `NSWorkspace` · `app.dashed` (12, placeholder: a missing app, the empty widget, ⌘K "Open …") · `square.2.layers.3d.fill` (14, the Quick Apps widget's identity glyph and the Shortcuts pane) |
 | Mirror | `web.camera` (13) · `camera.fill` · `flip.horizontal` |
 | Notes, to-dos | `chevron.left.forwardslash.chevron.right` (12) · `arrow.up.left.and.arrow.down.right` / `arrow.down.right.and.arrow.up.left` (focus) · `checklist` (12) · `circle` · `checkmark.circle.fill` |
 | Timer | `timer` · `pause.fill` · `stop.fill` · `arrow.counterclockwise` |
@@ -2506,7 +2507,7 @@ A build script could render 16–1024 px for an `AppIcon.appiconset`; it is need
 
 - **Languages:** English and Russian, in String Catalogs (`.xcstrings`) with translator comments.
 - **Formatting:** numbers, dates and durations always go through `FormatStyle`, never concatenation (12/24-hour clock from the locale).
-- **Voice:** calm, plain and sentence case. No exclamation marks, no "Oops", no marketing words inside the product. Examples:
+- **Voice:** calm, plain and sentence case (title case only in standard AppKit chrome: the menu bar menu and the Settings window's menu items and push buttons), American English, ’ and “ ” in English and « » in Russian; the full rules are `docs/CONTRIBUTING.md` ▸ Copy, checked by `scripts/lint-copy.py`. No exclamation marks, no "Oops", no marketing words inside the product. Examples:
   - empty Media "Nothing playing"; Calendar "No more events today"; Tray "Drop files on the notch to keep them here";
   - permission rows "Show your events in Cranny. Cranny never edits or uploads them."
 - **Length:** Russian runs 15–35 % longer.
