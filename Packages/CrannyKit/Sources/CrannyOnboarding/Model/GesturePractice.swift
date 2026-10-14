@@ -35,13 +35,10 @@ nonisolated struct GesturePractice: Sendable {
         guard let update = tracker.handle(sample) else { return [] }
         switch update {
         case .tracking(.vertical, let translation):
-            if !isOpen, translation > 0 {
-                return [.follow(CGSize(width: 0, height: CrannyMotion.rubberBand(translation, limit: GestureSpec.verticalTravel)))]
-            }
-            if isOpen, translation < 0 {
-                return [.follow(CGSize(width: 0, height: CrannyMotion.rubberBand(translation, limit: GestureSpec.verticalTravel)))]
-            }
-            return []
+            // Only the way that does something moves the shape; a pull that comes back past where it started
+            // rests at zero (it never stays at its last small offset).
+            let useful = isOpen ? min(translation, 0) : max(translation, 0)
+            return [.follow(CGSize(width: 0, height: CrannyMotion.rubberBand(useful, limit: GestureSpec.verticalTravel)))]
         case .tracking(.horizontal, let translation):
             guard !isOpen, allowsTrackSwipe else { return [] }
             return [.follow(CGSize(width: CrannyMotion.rubberBand(translation, limit: GestureSpec.horizontalTravel), height: 0))]

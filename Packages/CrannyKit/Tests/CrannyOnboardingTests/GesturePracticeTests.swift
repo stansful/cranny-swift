@@ -32,6 +32,19 @@ private func touch(dx: CGFloat = 0, dy: CGFloat = 0, steps: Int, start: TimeInte
         #expect(practice.isOpen)
     }
 
+    @Test func aPullThatComesBackPastTheStartRestsAtZero() {
+        var practice = GesturePractice(allowsTrackSwipe: false)
+        var samples = Array(touch(dy: 2, steps: 2).dropLast())                     // 4 pt down, fingers still on
+        samples += touch(dy: -3, steps: 3, start: 0.05).dropFirst().dropLast()    // then 9 pt back up: past the start
+        let follows = samples.flatMap { practice.handle($0) }.compactMap { effect -> CGSize? in
+            if case .follow(let offset) = effect { return offset }
+            return nil
+        }
+        #expect(follows.contains { $0.height > 0 })
+        #expect(follows.last == .zero)                         // not stuck at the last small offset
+        #expect(!practice.isOpen)
+    }
+
     @Test func pushingUpClosesAnOpenPracticeNotch() {
         var practice = GesturePractice(allowsTrackSwipe: false)
         _ = touch(dy: 10, steps: 3).flatMap { practice.handle($0) }
