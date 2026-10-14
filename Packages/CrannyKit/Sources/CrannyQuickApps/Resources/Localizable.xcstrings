@@ -880,6 +880,24 @@
           }
         }
       }
+    },
+    "quickapps.empty.add" : {
+      "comment" : "Quick Apps widget: empty-state chip (opens the open panel); ≤ 10 characters, the card is narrow",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Add App…"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить…"
+          }
+        }
+      }
     }
   },
   "version" : "1.0"

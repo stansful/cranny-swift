@@ -28,7 +28,8 @@ struct LauncherView: View {
             } else if tiles.isEmpty && !model.isEditing && context.cells > 1 {
                 WidgetStateView(.empty, symbol: "app.dashed",
                                 message: String(localized: "Drag apps here", bundle: .module, comment: "Quick Apps widget: empty state"),
-                                actionTitle: interactive ? String(localized: "Add App…", bundle: .module, comment: "Quick Apps: add an app with the open panel") : nil,
+                                actionTitle: interactive ? String(localized: "quickapps.empty.add", defaultValue: "Add App…", bundle: .module,
+                                                                  comment: "Quick Apps widget: empty-state chip (opens the open panel); ≤ 10 characters, the card is narrow") : nil,
                                 action: interactive ? chooseApps : nil)
             } else {
                 LauncherGrid(model: model, tiles: tiles, layout: layout,

@@ -26,6 +26,7 @@ struct LauncherTileView: View {
                 content
                     .frame(width: metrics.tile, height: metrics.tile)
                     .contentShape(RoundedRectangle(cornerRadius: Radius.tile, style: .continuous))
+                    .onTapGesture {}                        // a click on a tile does not end edit mode (the card's does)
                     .gesture(DragGesture(minimumDistance: 3, coordinateSpace: .named(LauncherGrid.space))
                         .onChanged(onDrag)
                         .onEnded { _ in onDragEnd() })
