@@ -24,7 +24,7 @@ private struct SettingRowModifier<Value: Codable & Sendable & Equatable>: ViewMo
                     Circle()
                         .fill(Color.accentColor)
                         .frame(width: 6, height: 6)
-                        .offset(x: -12)
+                        .offset(x: -9)                    // inside the grouped row's 10-pt inset
                         .accessibilityHidden(true)
                 }
             }

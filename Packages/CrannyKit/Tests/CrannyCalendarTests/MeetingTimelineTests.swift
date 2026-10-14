@@ -43,6 +43,14 @@ import Testing
         #expect(MeetingTimeline.nextBoundary(events: [holiday], now: T.date(h: 12), leadMinutes: 5) == nil)
     }
 
+    @Test func longBlocksAreNotMeetings() {
+        let conference = T.event("conference", start: T.date(2026, 10, 13, h: 9), minutes: 3 * 24 * 60)
+        let state = MeetingTimeline.state(events: [conference], now: T.date(), leadMinutes: 5)
+        #expect(state == .none)
+        let workday = T.event("workday", start: T.date(h: 9), minutes: 11 * 60)        // under 12 h still counts
+        #expect(MeetingTimeline.state(events: [workday], now: T.date(), leadMinutes: 5).current?.id == "workday")
+    }
+
     @Test func overlappingMeetingsPickTheLatestStart() {
         let long = T.event("all-hands", start: T.date(h: 9), minutes: 120)
         let state = MeetingTimeline.state(events: [long, T.event("review", start: T.date(h: 9, 30), minutes: 30), meeting],

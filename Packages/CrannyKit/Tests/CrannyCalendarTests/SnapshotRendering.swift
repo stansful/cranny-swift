@@ -52,6 +52,18 @@ import Testing
         try await render("activity-now-elapsed", band(now))
     }
 
+    @Test func settingsRows() async throws {
+        let services = CrannyServices.preview()
+        services.settings[CalendarSettings.daysAhead] = 3                  // a changed row shows its accent dot
+        services.settings[CalendarSettings.leadMinutes] = 10
+        try await render("settings-pane", CalendarSettingsPane(model: .sample(services: services)).frame(width: 600, height: 720))
+        try await render("settings-activities", Form {
+            Section { MeetingSoonOptions(settings: services.settings) }
+            Section { MeetingNowOptions(settings: services.settings) }
+        }.formStyle(.grouped).frame(width: 520, height: 200))
+        try await render("widget-options", CalendarWidgetOptions(settings: services.settings).frame(width: 360, height: 220))
+    }
+
     /// Roughly the compact presentation: wings of the medium slot around a 185-pt camera housing.
     private func band(_ activity: any LiveActivity) -> some View {
         CompactSlots(layout: NotchLayout(metrics: .reference), slot: activity.slot,

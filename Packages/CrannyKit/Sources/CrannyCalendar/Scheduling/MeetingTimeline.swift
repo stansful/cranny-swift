@@ -35,10 +35,11 @@ nonisolated enum MeetingTimeline {
         static let none = State()
     }
 
-    /// The meeting state at `now`. `events` must already be filtered; all-day events and birthdays never count.
+    /// The meeting state at `now`. `events` must already be filtered; only meeting-like events count (timed,
+    /// under 12 hours: no all-day events, birthdays or multi-day blocks).
     static func state(events: [EventSnapshot], now: Date, leadMinutes: Int) -> State {
         let lead = leadInterval(leadMinutes)
-        let timed = events.filter(\.isTimed)
+        let timed = events.filter(\.isMeetingLike)
         let current = timed.filter { $0.isInProgress(at: now) }
             .max { ($0.start, $1.end) < ($1.start, $0.end) }
         let soon = timed.filter { $0.start > now && $0.start.timeIntervalSince(now) <= lead }
@@ -59,7 +60,7 @@ nonisolated enum MeetingTimeline {
         let lead = leadInterval(leadMinutes)
         var next: Date?
         func consider(_ date: Date) { if date > now, next.map({ date < $0 }) ?? true { next = date } }
-        for event in events where event.isTimed {
+        for event in events where event.isTimed {             // all timed events: the widget's rows change too
             consider(event.start.addingTimeInterval(-lead))
             consider(event.start.addingTimeInterval(-lastMinute))
             consider(event.start)

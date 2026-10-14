@@ -31,14 +31,20 @@ struct CalendarSettingsPane: View {
             }
 
             Section {
-                Picker(selection: settings.binding(CalendarSettings.joinsInApp)) {
-                    Text("App", bundle: .module, comment: "Settings ▸ Calendar ▸ Open meetings in: the service's own app").tag(true)
-                    Text("Browser", bundle: .module, comment: "Settings ▸ Calendar ▸ Open meetings in: the web browser").tag(false)
+                let openIn = Text("Open meetings in", bundle: .module, comment: "Settings ▸ Calendar: where Join opens a meeting")
+                LabeledContent {
+                    Picker(selection: settings.binding(CalendarSettings.joinsInApp)) {
+                        Text("App", bundle: .module, comment: "Settings ▸ Calendar ▸ Open meetings in: the service's own app").tag(true)
+                        Text("Browser", bundle: .module, comment: "Settings ▸ Calendar ▸ Open meetings in: the web browser").tag(false)
+                    } label: {
+                        openIn
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .fixedSize()
                 } label: {
-                    Text("Open meetings in", bundle: .module, comment: "Settings ▸ Calendar: where Join opens a meeting")
+                    openIn
                 }
-                .pickerStyle(.segmented)
-                .fixedSize()
                 .settingRow(settings, CalendarSettings.joinsInApp)
                 ServiceGrid(settings: settings)
             } header: {

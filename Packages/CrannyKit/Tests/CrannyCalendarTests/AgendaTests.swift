@@ -62,6 +62,14 @@ import Testing
         #expect(past.rows.map(\.role) == [.ended])                         // never hidden on earlier days
     }
 
+    @Test func longBlocksAreListedButNotFeatured() {
+        let list = EventFilter().apply([T.event("conference", start: T.date(2026, 10, 13, h: 9), minutes: 3 * 24 * 60),
+                                        T.event("call", start: T.date(h: 15))])
+        let agenda = Agenda.make(events: list, day: today, now: T.date(), isToday: true, showsPastToday: true)
+        #expect(agenda.rows.map(\.id) == ["conference", "call"])
+        #expect(agenda.featuredID == "call")
+    }
+
     @Test func multiDayEventsAppearOnEveryDay() {
         let trip = T.event("trip", start: T.date(2026, 10, 13, h: 18), minutes: 48 * 60)
         for offset in [0, 1] {

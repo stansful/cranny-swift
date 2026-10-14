@@ -34,8 +34,13 @@ nonisolated struct EventSnapshot: Identifiable, Hashable, Sendable {
         self.isCancelled = isCancelled; self.isDeclined = isDeclined; self.isBirthday = isBirthday
     }
 
-    /// Timed events can become meeting activities; all-day events and birthdays never do.
+    /// Not an all-day event or a birthday.
     var isTimed: Bool { !isAllDay && !isBirthday }
+
+    /// Timed and shorter than 12 hours: can be featured as "Now"/"Next" and become a meeting activity. A
+    /// three-day conference entered with times must not sit in the notch for three days.
+    var isMeetingLike: Bool { isTimed && end.timeIntervalSince(start) < Self.longestMeeting }
+    static let longestMeeting: TimeInterval = 12 * 3600
 
     func isInProgress(at now: Date) -> Bool { start <= now && now < end }
     func hasEnded(at now: Date) -> Bool { end <= now && !(start == end && start == now) }

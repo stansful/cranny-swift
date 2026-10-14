@@ -45,9 +45,10 @@ nonisolated struct Agenda: Equatable, Sendable {
         var rows = allDay.map { Row(event: $0, role: .allDay) }
         var featuredID: String?
         if isToday {
-            let live = timed.filter { $0.isInProgress(at: now) }
+            // Only meeting-like events are featured (a multi-day block stays an ordinary row).
+            let live = timed.filter { $0.isMeetingLike && $0.isInProgress(at: now) }
             let liveFeature = live.max { ($0.start, $1.end) < ($1.start, $0.end) }   // latest start, then earliest end
-            let nextID = liveFeature == nil ? timed.first { $0.start > now }?.id : nil
+            let nextID = liveFeature == nil ? timed.first { $0.isMeetingLike && $0.start > now }?.id : nil
             featuredID = liveFeature?.id ?? nextID
             for event in timed {
                 let role: Role

@@ -35,14 +35,20 @@ struct MeetingNowOptions: View {
     let settings: SettingsStore
 
     var body: some View {
-        Picker(selection: settings.binding(CalendarSettings.inEventDisplay)) {
-            Text("Time left", bundle: .module, comment: "Live Activities ▸ Meeting in progress ▸ Show: remaining time").tag(InEventDisplay.remaining)
-            Text("Time elapsed", bundle: .module, comment: "Live Activities ▸ Meeting in progress ▸ Show: elapsed time").tag(InEventDisplay.elapsed)
+        let label = Text("Show", bundle: .module, comment: "Live Activities ▸ Meeting in progress: what the activity counts")
+        LabeledContent {
+            Picker(selection: settings.binding(CalendarSettings.inEventDisplay)) {
+                Text("Time left", bundle: .module, comment: "Live Activities ▸ Meeting in progress ▸ Show: remaining time").tag(InEventDisplay.remaining)
+                Text("Time elapsed", bundle: .module, comment: "Live Activities ▸ Meeting in progress ▸ Show: elapsed time").tag(InEventDisplay.elapsed)
+            } label: {
+                label
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
         } label: {
-            Text("Show", bundle: .module, comment: "Live Activities ▸ Meeting in progress: what the activity counts")
+            label
         }
-        .pickerStyle(.segmented)
-        .fixedSize()
         .settingRow(settings, CalendarSettings.inEventDisplay)
     }
 }
