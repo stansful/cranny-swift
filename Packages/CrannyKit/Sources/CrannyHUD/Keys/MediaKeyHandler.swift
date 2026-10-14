@@ -5,8 +5,8 @@
 // Thread: called on the tap thread (`MediaKeyInterceptor`) and, for VoiceOver adjustments, on a concurrent
 // executor (`HUDController.adjust`), never on the main actor. It must return within microseconds: it reads the
 // config snapshot, calls CoreAudio / DisplayServices (thread-safe C APIs) and never blocks on the main actor. Its
-// own state (keys whose key-down was consumed, the update counter) sits behind an unfair lock. Tests drive it with
-// fakes; it never touches a real device there.
+// own state (keys whose key-down was consumed, the update counter, the volume it last applied) sits behind an
+// unfair lock. Tests drive it with fakes; it never touches a real device there.
 import Foundation
 import os
 
@@ -20,18 +20,37 @@ nonisolated final class MediaKeyHandler: Sendable {
         var sequence: UInt64 = 0
         /// Keyboard backlight level before the toggle key turned it off.
         var backlightBeforeOff: Double?
+        /// The volume Cranny last applied. A press within `recentVolumeWindow` on the same device steps from it
+        /// instead of a fresh read: Bluetooth outputs report a new level late, and stepping from a stale read would
+        /// repeat the same step while a key is held (and a double-tapped mute would not toggle back).
+        var lastVolume: AppliedVolume?
     }
+
+    private struct AppliedVolume {
+        var deviceID: UInt32?
+        var level: Double
+        var isMuted: Bool
+        /// `uptime` when it was applied.
+        var time: TimeInterval
+    }
+
+    /// How long the volume Cranny applied is trusted over the device's own report (key repeat runs at ~30 Hz).
+    static let recentVolumeWindow: TimeInterval = 0.5
 
     private let config: HUDTapConfigBox
     private let volume: any SystemVolume
     private let brightness: any DisplayBrightness
     private let keyboard: any KeyboardBacklight
     private let sink: Sink
+    /// A monotonic clock in seconds (tests drive their own).
+    private let uptime: @Sendable () -> TimeInterval
     private let state = OSAllocatedUnfairLock(initialState: State())
 
     init(config: HUDTapConfigBox, volume: any SystemVolume, brightness: any DisplayBrightness,
-         keyboard: any KeyboardBacklight, sink: @escaping Sink) {
-        self.config = config; self.volume = volume; self.brightness = brightness; self.keyboard = keyboard; self.sink = sink
+         keyboard: any KeyboardBacklight, uptime: @escaping @Sendable () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
+         sink: @escaping Sink) {
+        self.config = config; self.volume = volume; self.brightness = brightness; self.keyboard = keyboard
+        self.uptime = uptime; self.sink = sink
     }
 
     /// true = consume (Cranny applied the change and shows the HUD); false = macOS handles the key.
@@ -77,7 +96,16 @@ nonisolated final class MediaKeyHandler: Sendable {
     }
 
     private func applyVolume(_ action: LevelAction, fine: Bool, isRepeat: Bool) -> HUDUpdate? {
-        guard let before = volume.readState() else { return nil }          // HDMI / DisplayPort: not settable
+        guard let read = volume.readState() else { return nil }            // HDMI / DisplayPort: not settable
+        let now = uptime()
+        let before = state.withLock { state -> VolumeState in
+            guard let last = state.lastVolume, last.deviceID == read.deviceID,
+                  now - last.time < Self.recentVolumeWindow else { return read }
+            var recent = read
+            recent.level = last.level
+            recent.isMuted = last.isMuted
+            return recent
+        }
         var after = before
         var limit: LevelLimit?
         switch action {
@@ -100,6 +128,8 @@ nonisolated final class MediaKeyHandler: Sendable {
             after.level = target            // not a read-back: Bluetooth outputs report the new level late
             limit = LevelStepper.limit(from: before.level, to: target, up: up)
         }
+        let applied = AppliedVolume(deviceID: read.deviceID, level: after.level, isMuted: after.isMuted, time: now)
+        state.withLock { $0.lastVolume = applied }
         return makeUpdate(.volume, level: after.level, muted: after.isMuted, fine: fine, limit: limit, isRepeat: isRepeat)
     }
 

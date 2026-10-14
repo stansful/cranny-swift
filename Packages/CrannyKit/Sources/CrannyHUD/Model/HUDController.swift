@@ -44,6 +44,10 @@ private let log = Log.logger(.hud)
     /// The grant as last applied (nil before `start()`): a false → true transition turns the HUD on.
     @ObservationIgnored private var lastAccessibilityGranted: Bool?
 
+    /// After a press, the output's own report of the level is ignored this long (only a device change counts):
+    /// it echoes the write, and a Bluetooth output may still report the old level then.
+    static let volumeEchoWindow: TimeInterval = 0.4
+
     /// `accessibility` defaults to the Core permissions center (tests inject their own).
     init(services: CrannyServices, activity: HUDActivity, hardware: HUDHardware,
          accessibility: HUDAccessibility? = nil, feedback: FeedbackSound = FeedbackSound()) {
@@ -189,6 +193,7 @@ private let log = Log.logger(.hud)
     }
 
     private func observed(_ observation: VolumeObservation) {
+        guard observation.deviceChanged || now().timeIntervalSince(lastPress) >= Self.volumeEchoWindow else { return }
         let next = HUDPresentation.observe(observation, state: state, now: now(),
                                            showsOutputDevice: services.settings[HUDSettings.showsOutputDevice])
         guard next != state else { return }

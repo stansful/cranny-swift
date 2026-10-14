@@ -258,6 +258,29 @@ import Testing
         #expect(activity.revision == 1)
     }
 
+    @Test func theOutputsEchoOfAPressIsIgnored() async throws {
+        settings[HUDSettings.replaceSystemHUD] = true
+        let clock = FakeClock()
+        controller.now = clock.now
+        controller.start()
+        defer { controller.stop() }
+        let tap = try #require(fake.taps.first)
+        let observer = try #require(fake.observers.first)
+        let airPods = OutputDevice(id: 2, name: "AirPods Pro", transport: 0x626C_7565)
+        _ = tap.handler.handle(MediaKeyEvent(key: .soundUp, isDown: true))
+        #expect(await eventually { activity.display?.level == 0.5625 })
+        clock.date += 0.1
+        observer.emit(VolumeObservation(level: 0.5, isMuted: false, device: airPods, deviceChanged: false))   // late report
+        // A device change always counts; with no readable level it keeps the bar. The main actor runs both hops in
+        // order, so once its glyph shows, the late report has been handled (and ignored).
+        observer.emit(VolumeObservation(level: nil, isMuted: false, device: airPods, deviceChanged: true))
+        #expect(await eventually { activity.display?.deviceGlyph == "airpodspro" })
+        #expect(activity.display?.level == 0.5625)                  // the bar did not jump back
+        clock.date += HUDController.volumeEchoWindow
+        observer.emit(VolumeObservation(level: 0.25, isMuted: false, device: airPods, deviceChanged: false))  // Control Center
+        #expect(await eventually { activity.display?.level == 0.25 })
+    }
+
     @Test func stopRemovesEverything() async throws {
         settings[HUDSettings.replaceSystemHUD] = true
         controller.now = { [start = Date()] in start }              // frozen: the HUD stays up however busy the main actor is

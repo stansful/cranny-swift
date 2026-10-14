@@ -190,6 +190,47 @@ import Testing
         #expect(recorder.signals.last == .volumeKeyReleased(shiftHeld: true))
     }
 
+    @Test func aLateBluetoothReportDoesNotStallAHeldKey() {
+        let uptime = FakeUptime()
+        volume.reportLate()                                        // the device keeps reading 0.5 for a while
+        let handler = MediaKeyHandler(config: config, volume: volume, brightness: brightness, keyboard: keyboard,
+                                      uptime: uptime.clock, sink: recorder.sink)
+        #expect(handler.handle(down(.soundUp)))
+        uptime.advance(0.03)                                       // key repeat
+        #expect(handler.handle(down(.soundUp, repeat: true)))
+        uptime.advance(0.03)
+        #expect(handler.handle(down(.soundUp, repeat: true)))
+        #expect(volume.calls == ["level(0.5625)", "level(0.625)", "level(0.6875)"])
+        #expect(recorder.updates.map(\.level) == [0.5625, 0.625, 0.6875])
+        uptime.advance(MediaKeyHandler.recentVolumeWindow + 0.01)  // later, the device's own report counts again
+        #expect(handler.handle(down(.soundUp)))
+        #expect(volume.calls.last == "level(0.5625)")
+    }
+
+    @Test func aQuickSecondMuteTogglesBackOnALateDevice() {
+        let uptime = FakeUptime()
+        volume.reportLate()
+        let handler = MediaKeyHandler(config: config, volume: volume, brightness: brightness, keyboard: keyboard,
+                                      uptime: uptime.clock, sink: recorder.sink)
+        _ = handler.handle(down(.mute))
+        _ = handler.handle(up(.mute))
+        uptime.advance(0.2)
+        _ = handler.handle(down(.mute))
+        #expect(volume.calls == ["muted(true)", "muted(false)"])
+        #expect(recorder.updates.map(\.isMuted) == [true, false])
+    }
+
+    @Test func anotherOutputIsReadAfresh() {
+        let uptime = FakeUptime()
+        let handler = MediaKeyHandler(config: config, volume: volume, brightness: brightness, keyboard: keyboard,
+                                      uptime: uptime.clock, sink: recorder.sink)
+        _ = handler.handle(down(.soundUp))                         // 0.5 → 0.5625 on the built-in speakers
+        volume.replace(with: VolumeState(level: 0.25, isMuted: false, canMute: true, deviceID: 9))   // AirPods connect
+        uptime.advance(0.1)
+        _ = handler.handle(down(.soundUp))
+        #expect(volume.calls.last == "level(0.3125)")
+    }
+
     @Test func aDisabledTapIsReported() {
         handler.tapWasDisabled()
         #expect(recorder.signals == [.tapDisabled])

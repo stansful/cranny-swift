@@ -11,6 +11,8 @@ nonisolated final class FakeVolume: SystemVolume {
         var state: VolumeState?
         var calls: [String] = []
         var failsWrites = false
+        /// Like a Bluetooth output that reports a new level late: writes succeed, reads keep the old values.
+        var reportsLate = false
     }
     let store: OSAllocatedUnfairLock<Store>
 
@@ -21,13 +23,16 @@ nonisolated final class FakeVolume: SystemVolume {
     var state: VolumeState? { store.withLock { $0.state } }
     var calls: [String] { store.withLock { $0.calls } }
     func failWrites() { store.withLock { $0.failsWrites = true } }
+    func reportLate() { store.withLock { $0.reportsLate = true } }
+    /// Another output becomes the default (or the user changes the level elsewhere).
+    func replace(with state: VolumeState?) { store.withLock { $0.state = state } }
 
     func readState() -> VolumeState? { store.withLock { $0.state } }
     func setLevel(_ level: Double) -> Bool {
         store.withLock { store in
             store.calls.append("level(\(level))")
             guard !store.failsWrites, store.state != nil else { return false }
-            store.state?.level = level
+            if !store.reportsLate { store.state?.level = level }
             return true
         }
     }
@@ -35,7 +40,7 @@ nonisolated final class FakeVolume: SystemVolume {
         store.withLock { store in
             store.calls.append("muted(\(muted))")
             guard !store.failsWrites, store.state?.canMute == true else { return false }
-            store.state?.isMuted = muted
+            if !store.reportsLate { store.state?.isMuted = muted }
             return true
         }
     }
@@ -142,6 +147,20 @@ nonisolated final class FakeVolumeObserver: VolumeObserving {
         try? await Task.sleep(for: .milliseconds(10))
     }
     return condition()
+}
+
+/// A monotonic clock the test moves by hand (`MediaKeyHandler.uptime`).
+nonisolated final class FakeUptime: Sendable {
+    private let seconds = OSAllocatedUnfairLock(initialState: 100.0)
+    var now: TimeInterval { seconds.withLock { $0 } }
+    func advance(_ delta: TimeInterval) { seconds.withLock { $0 += delta } }
+    var clock: @Sendable () -> TimeInterval { { [seconds] in seconds.withLock { $0 } } }
+}
+
+/// A wall clock the test moves by hand (`HUDController.now`).
+@MainActor final class FakeClock {
+    var date = Date(timeIntervalSinceReferenceDate: 1_000_000)
+    var now: @MainActor () -> Date { { [self] in self.date } }
 }
 
 extension HUDTapConfig {

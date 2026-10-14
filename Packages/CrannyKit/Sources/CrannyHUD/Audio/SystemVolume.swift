@@ -15,6 +15,8 @@ nonisolated struct VolumeState: Sendable, Equatable {
     var isMuted: Bool
     /// The device has a settable mute (most do; some HDMI sinks don't).
     var canMute: Bool
+    /// The CoreAudio device the values belong to (nil = unknown).
+    var deviceID: UInt32? = nil
 }
 
 /// Volume and mute of the current default output. `readState()` is nil when the device's volume cannot be set
@@ -33,7 +35,8 @@ nonisolated struct CoreAudioVolume: SystemVolume {
         guard let device = AudioOutput.defaultDevice(), AudioOutput.isSettable(device, volumeAddress),
               let level = AudioOutput.float(device, volumeAddress) else { return nil }
         let muted = AudioOutput.uint32(device, muteAddress).map { $0 != 0 } ?? false
-        return VolumeState(level: Double(level), isMuted: muted, canMute: AudioOutput.isSettable(device, muteAddress))
+        return VolumeState(level: Double(level), isMuted: muted, canMute: AudioOutput.isSettable(device, muteAddress),
+                           deviceID: device)
     }
 
     func setLevel(_ level: Double) -> Bool {
