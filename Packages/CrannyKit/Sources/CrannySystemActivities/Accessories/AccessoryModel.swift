@@ -12,8 +12,8 @@ private let log = Log.logger(.bluetooth)
 
 @MainActor final class AccessoryModel {
     /// Battery levels often arrive a moment after the connection; then the 60-s visible refresh (§9.2).
-    static let firstRefresh: Duration = .seconds(1)
-    static let visibleRefresh: Duration = .seconds(60)
+    static let firstRefresh: TimeInterval = 1
+    static let visibleRefresh: TimeInterval = 60
 
     let activity: BluetoothActivity
     private(set) var audio: [AudioOutputDevice] = []
@@ -27,6 +27,7 @@ private let log = Log.logger(.bluetooth)
     private let hardware: any AccessoryHardware
     private var tracker = AccessoryTracker()
     private var refreshTask: Task<Void, Never>?
+    private var refreshGeneration = 0
     private var bluetoothToken: ObservationToken?
 
     init(activity: BluetoothActivity, settings: SettingsStore, permissions: PermissionsCenter, hardware: any AccessoryHardware) {
@@ -34,6 +35,9 @@ private let log = Log.logger(.bluetooth)
     }
 
     var transientDuration: TimeInterval { max(settings[CoreSettings.peekDuration], 1) }
+
+    /// A battery refresh is pending (only while the activity is visible).
+    private(set) var isRefreshScheduled = false
 
     /// Opted in and allowed: the IOBluetooth watcher may run.
     var wantsBluetoothWatcher: Bool {
@@ -107,16 +111,22 @@ private let log = Log.logger(.bluetooth)
         }
     }
 
+    /// One sleep per refresh, and none past the activity: a transient activity (2.6 s) gets the 1-s refresh only.
     private func scheduleVisibleRefresh() {
         refreshTask?.cancel()
+        refreshGeneration += 1
+        let generation = refreshGeneration
+        isRefreshScheduled = true
         refreshTask = Task { [weak self] in
             var delay = Self.firstRefresh
             while !Task.isCancelled {
-                try? await Task.sleep(for: delay)
-                guard let self, !Task.isCancelled, self.activity.isActive else { return }
+                try? await Task.sleep(for: .seconds(delay))
+                guard let self, !Task.isCancelled, self.activity.isActive else { break }
                 await self.refreshBatteries()
+                if let expiresAt = self.activity.expiresAt, expiresAt.timeIntervalSinceNow < Self.visibleRefresh { break }
                 delay = Self.visibleRefresh
             }
+            if let self, self.refreshGeneration == generation { self.isRefreshScheduled = false }
         }
     }
 
@@ -136,7 +146,10 @@ private let log = Log.logger(.bluetooth)
         let present = audio.contains { "audio:\($0.id)" == shown.id }
             || hid.contains { "hid:\($0.id)" == shown.id }
             || bluetooth.contains { "bluetooth:\($0.id)" == shown.id }
-        if !present && !shown.id.hasPrefix("sample:") { activity.end() }
+        if !present && !shown.id.hasPrefix("sample:") {
+            activity.end()
+            refreshTask?.cancel()
+        }
     }
 
     private func setBluetoothWatcher(running: Bool) {

@@ -94,6 +94,21 @@ import Testing
         #expect(!activity.isActive)
     }
 
+    @Test func transientActivityGetsOnlyTheFirstRefresh() async {
+        services.settings[CoreSettings.peekDuration] = 30          // shorter than the 60-s refresh, longer than the test
+        let model = makeModel()
+        model.start()
+        defer { model.stop() }
+        hardware.audio?([])
+        hardware.audio?([AudioOutputDevice(id: "1", name: "AirPods")])
+        await settle { activity.isActive }
+        let start = Date()
+        while model.isRefreshScheduled && Date().timeIntervalSince(start) < 10 { try? await Task.sleep(for: .milliseconds(50)) }
+        #expect(!model.isRefreshScheduled)
+        #expect(hardware.batteryReads == 2)                 // on connect, then once a second later
+        #expect(activity.isActive)                          // still on screen, yet nothing else is scheduled
+    }
+
     @Test func levelsRefreshWhileVisible() async throws {
         let model = makeModel()
         model.start()
@@ -107,6 +122,20 @@ import Testing
         await settle { activity.accessory?.batteries.isEmpty == false }
         #expect(activity.accessory?.batteries.right?.percent == 81)
         #expect(activity.revision == 1)                      // new levels are not a new connection
+    }
+
+    @Test func refreshStopsWithTheActivity() async {
+        let model = makeModel()
+        model.start()
+        defer { model.stop() }
+        hardware.audio?([])
+        hardware.audio?([AudioOutputDevice(id: "1", name: "AirPods")])
+        await settle { activity.isActive }
+        #expect(model.isRefreshScheduled)
+        activity.end()
+        let start = Date()
+        while model.isRefreshScheduled && Date().timeIntervalSince(start) < 10 { try? await Task.sleep(for: .milliseconds(50)) }
+        #expect(!model.isRefreshScheduled)                  // the 1-s wake-up saw it gone; no 60-s wake-up follows
     }
 
     @Test func powerNotificationsReadNothingWhileHidden() async {

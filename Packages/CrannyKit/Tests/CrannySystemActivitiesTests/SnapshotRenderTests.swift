@@ -1,6 +1,7 @@
 // Opt-in visual QA: renders every sample (compact, satellite, peek) to PNGs with ImageRenderer.
-//   CRANNY_SNAPSHOTS=/tmp/out swift test --scratch-path .build-test --filter SnapshotRenderTests
-// Skipped unless CRANNY_SNAPSHOTS is set (never in CI). Nothing is asserted beyond "it renders".
+//   CRANNY_SNAPSHOTS=/tmp/out [CRANNY_SNAPSHOT_LANGUAGE=ru] swift test --scratch-path .build-test --filter SnapshotRenderTests
+// Skipped unless CRANNY_SNAPSHOTS is set (never in CI). Nothing is asserted beyond "it renders". The language
+// switch (`SystemCopy.useLanguage`) exists in Debug builds only.
 import AppKit
 import CrannyCore
 import Foundation
@@ -42,16 +43,21 @@ import Testing
 
     @Test(.enabled(if: directory != nil)) func renderEverySample() throws {
         let directory = try #require(Self.directory)
+        let language = ProcessInfo.processInfo.environment["CRANNY_SNAPSHOT_LANGUAGE"]
+        SystemCopy.useLanguage(language)
+        defer { SystemCopy.useLanguage(nil) }
         try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
         for variant in Self.variants {
             for (name, activity) in Self.samples {
                 let view = ActivityPreviewBoard(activity: activity, metrics: variant.metrics, theme: variant.theme)
                     .environment(\.colorScheme, .dark)
+                    .environment(\.locale, language.map(Locale.init(identifier:)) ?? .current)
                 let renderer = ImageRenderer(content: view)
                 renderer.scale = 2
                 let image = try #require(renderer.cgImage, "\(name) did not render")
                 let data = try #require(NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:]))
-                try data.write(to: URL(fileURLWithPath: directory).appending(path: "\(variant.name)-\(name).png"))
+                let suffix = language.map { "-\($0)" } ?? ""
+                try data.write(to: URL(fileURLWithPath: directory).appending(path: "\(variant.name)-\(name)\(suffix).png"))
             }
         }
     }
