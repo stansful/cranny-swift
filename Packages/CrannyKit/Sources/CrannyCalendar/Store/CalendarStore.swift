@@ -2,7 +2,10 @@
 // Fetches the window `today − daysBehind … today + daysAhead` from an `EventSource` off the main actor, keeps
 // the unfiltered result and filters on read, so hiding a calendar never refetches. Event-driven only: it reloads
 // on calendar-database changes, wake, day change, clock and time-zone changes, access changes and window
-// settings — never on a timer.
+// settings — never on a timer. The reloads nobody waits for (launch, notifications, window settings) run at utility
+// priority, so the fetch and the conversion in `EventKitSource` need no performance cores; an access change (often the
+// user's own "Show your events") keeps the caller's. The filtered list is computed once per change of the events or
+// the filter, not on every read.
 import AppKit
 import CrannyCore
 import EventKit
@@ -44,6 +47,9 @@ private let log = Log.logger(.calendar)
     @ObservationIgnored private var generation = 0
     @ObservationIgnored private var lastAccess: PermissionStatus?
     @ObservationIgnored private(set) var isStarted = false
+    /// The last `events` result and what it was computed from (reads are frequent: every widget body, the scheduler's
+    /// plan, each ⌘K keystroke).
+    @ObservationIgnored private var eventsCache: (fetched: [EventSnapshot], filter: EventFilter, events: [EventSnapshot])?
 
     init(source: any EventSource, access: any CalendarAccess, settings: SettingsStore, clock: CalendarClock = .live,
          center: NotificationCenter = .default, workspaceCenter: NotificationCenter = NSWorkspace.shared.notificationCenter,
@@ -66,8 +72,17 @@ private let log = Log.logger(.calendar)
         return hasLoaded ? .ready : .loading
     }
 
-    /// Filtered by the user's settings and sorted (observes the filter keys).
-    var events: [EventSnapshot] { EventFilter(settings: settings).apply(fetched) }
+    /// Filtered by the user's settings and sorted (observes `fetched` and the filter keys). Filtered and sorted again
+    /// only when either changed; `fetched` is replaced only when a load found something new, so comparing it with the
+    /// cached copy usually stops at their shared storage.
+    var events: [EventSnapshot] {
+        let filter = EventFilter(settings: settings)
+        let all = fetched
+        if let cache = eventsCache, cache.filter == filter, cache.fetched == all { return cache.events }
+        let result = filter.apply(all)
+        eventsCache = (all, filter, result)
+        return result
+    }
 
     /// Calendars that are shown / all calendars (the "0 of 5 shown" state, Settings).
     var visibleCalendarCount: Int {
@@ -89,7 +104,7 @@ private let log = Log.logger(.calendar)
         let names: [Notification.Name] = [.EKEventStoreChanged, .NSCalendarDayChanged, .NSSystemTimeZoneDidChange, .NSSystemClockDidChange]
         for name in names { addObserver(center, name) }
         addObserver(workspaceCenter, NSWorkspace.didWakeNotification)
-        Task { await reload() }
+        reloadInBackground()
     }
 
     func stop() {
@@ -103,7 +118,14 @@ private let log = Log.logger(.calendar)
     /// Coalesces bursts (EventKit posts several changes per sync) into one reload.
     func requestReload() {
         reloadRequests += 1
-        debouncer.schedule { [weak self] in await self?.reload() }
+        debouncer.schedule { [weak self] in self?.reloadInBackground() }
+    }
+
+    /// `reload()` at utility priority, for the reloads nobody waits for (launch, calendar-database changes, wake, day,
+    /// clock and time-zone changes, window settings). Started, not awaited: awaiting it from the main actor would raise
+    /// it back to the main thread's priority.
+    private func reloadInBackground() {
+        Task(priority: .utility) { [weak self] in await self?.reload() }
     }
 
     /// Fetches the window now. Results of a reload that a newer one overtook are dropped.

@@ -71,13 +71,15 @@ import Observation
     }
 
     /// The meeting ⌘K "Join next meeting" opens: the one in progress, else the next one today, if it has a link.
+    /// Read on every palette keystroke: the allowed services are read once, not once per candidate.
     var nextJoinable: (event: EventSnapshot, link: MeetingLink)? {
         let now = scheduler.now
         let candidates = store.events.filter { $0.isTimed && $0.end > now }
         let today = EventWindow.day(offset: 0, from: now, calendar: store.clock.calendar())
         let ordered = candidates.filter { $0.isInProgress(at: now) }.sorted { $0.start > $1.start }
             + candidates.filter { $0.start > now && today.contains($0.start) }
-        for event in ordered { if let link = link(for: event) { return (event, link) } }
+        let services = allowedServices
+        for event in ordered { if let link = event.link(allowing: services) { return (event, link) } }
         return nil
     }
 

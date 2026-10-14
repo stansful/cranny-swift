@@ -2,6 +2,7 @@ import AppKit
 import CrannyCore
 import EventKit
 import Foundation
+import Observation
 import Testing
 @testable import CrannyCalendar
 
@@ -50,6 +51,26 @@ import Testing
         #expect(await source.eventFetches == 1)                                    // hiding refetches nothing
     }
 
+    @Test func cachedEventsStillObserveTheirInputs() async throws {
+        let settings = CrannyServices.preview().settings
+        let store = makeStore(access: FakeAccess(.granted), source: FixtureEventSource(events: sampleEvents), settings: settings)
+        await store.reload()
+        #expect(store.events.map(\.id) == ["standup", "private", "tomorrow"])
+        // A second read is served from the cache: it must still register the filter keys and `fetched`.
+        let changed = Flag()
+        withObservationTracking { _ = store.events } onChange: { changed.isSet = true }
+        settings[CalendarSettings.includesAllDay] = false
+        #expect(changed.isSet)
+        #expect(store.events.map(\.id) == ["standup", "private", "tomorrow"])     // none of them is all-day
+        settings[CalendarSettings.hiddenCalendarIDs] = ["work"]
+        #expect(store.events.map(\.id) == ["private"])
+        let reloaded = Flag()
+        withObservationTracking { _ = store.events } onChange: { reloaded.isSet = true }
+        store.preload(events: [T.event("new", start: T.date(h: 11), calendarID: "home")], calendars: [])
+        #expect(reloaded.isSet)
+        #expect(store.events.map(\.id) == ["new"])
+    }
+
     @Test func windowSettingsRefetch() async throws {
         let settings = CrannyServices.preview().settings
         let source = FixtureEventSource(events: sampleEvents)
@@ -57,8 +78,14 @@ import Testing
         store.start()
         await settle()
         settings[CalendarSettings.daysBehind] = 2
-        await settle(10)
-        #expect(await source.lastInterval?.start == T.date(2026, 10, 12, h: 0))
+        // The reload runs at utility priority: wait for it (generous bound, suites run in parallel), not a fixed time.
+        let widened = T.date(2026, 10, 12, h: 0)
+        var waits = 0
+        while await source.lastInterval?.start != widened, waits < 500 {
+            waits += 1
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(await source.lastInterval?.start == widened)
         store.stop()
     }
 
@@ -157,6 +184,16 @@ import Testing
         #expect(store.visibleCalendarCount == 2)                                     // birthdays are off by default
         settings[CalendarSettings.hiddenCalendarIDs] = ["work", "home"]
         #expect(store.visibleCalendarCount == 0)
+    }
+}
+
+/// Set by an observation's `onChange` (which may run on any thread).
+nonisolated final class Flag: @unchecked Sendable {
+    private let lock = NSLock()
+    private var value = false
+    var isSet: Bool {
+        get { lock.withLock { value } }
+        set { lock.withLock { value = newValue } }
     }
 }
 

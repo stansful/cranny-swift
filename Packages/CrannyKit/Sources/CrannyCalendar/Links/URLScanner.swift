@@ -1,6 +1,7 @@
 // CrannyCalendar/Links/URLScanner.swift — finds URLs in free text (event URL, location, notes) and unwraps the
 // redirect wrappers mail systems put around them (Outlook SafeLinks, Teams' safelinks page, Google redirects,
-// Proofpoint URL Defense). Pure and `nonisolated`: it runs inside `EventKitSource`, off the main actor.
+// Proofpoint URL Defense). Pure and `nonisolated`: it runs inside `EventKitSource`, off the main actor, and from row
+// tooltips (`readableLocation`). The pattern is compiled once per process, not once per call.
 import Foundation
 
 nonisolated enum URLScanner {
@@ -23,7 +24,6 @@ nonisolated enum URLScanner {
         for match in decoded.matches(of: candidate).reversed() {
             result.replaceSubrange(match.range, with: " ")
         }
-        let separators = CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: ";,|·-–—:()[]<>"))
         let collapsed = result.split(whereSeparator: \.isWhitespace).joined(separator: " ")
         return collapsed.trimmingCharacters(in: separators)
     }
@@ -41,8 +41,13 @@ nonisolated enum URLScanner {
     // MARK: - Internals
 
     /// A scheme we care about, then everything up to whitespace or a character that cannot end a URL in prose.
-    /// (A computed property: `Regex` is not `Sendable`, so it cannot be a shared static constant.)
-    private static var candidate: Regex<Substring> { #/(?i)(?:https?://|zoommtg://|zoomus://|msteams:/{0,2})[^\s<>"'`{}|\\^\[\]]+/# }
+    /// Built once: a regex literal is parsed and compiled at run time, so a computed property paid for that on every
+    /// call. `Regex` is not `Sendable`, but it is immutable and publishes its lazily compiled program atomically, so
+    /// one instance can be shared across threads (hence `nonisolated(unsafe)`).
+    nonisolated(unsafe) private static let candidate: Regex<Substring> = #/(?i)(?:https?://|zoommtg://|zoomus://|msteams:/{0,2})[^\s<>"'`{}|\\^\[\]]+/#
+
+    /// What `removingURLs` trims from both ends once the URLs are gone.
+    private static let separators = CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: ";,|·-–—:()[]<>"))
 
     private static func trimTrailingPunctuation(_ raw: String) -> String {
         var s = Substring(raw)
