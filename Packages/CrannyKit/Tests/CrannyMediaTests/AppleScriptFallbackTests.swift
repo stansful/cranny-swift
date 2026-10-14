@@ -328,3 +328,39 @@ private enum Payload {
         #expect(ScriptablePlayer.spotify.script(for: .setRepeat(.all)) == "set repeating to true")
     }
 }
+
+@Suite("Apple Events fallback: declared players") @MainActor struct AutomationDeclarationTests {
+    private func automationIDs(_ isInstalled: @escaping (String) -> Bool) -> [String] {
+        let registry = ModuleRegistry(services: .preview())
+        registry.registerMedia(isInstalled: isInstalled)
+        return registry.permissionUses.compactMap { if case .automation(let id) = $0.kind { id } else { nil } }
+    }
+
+    @Test func onlyInstalledPlayersAskForAutomation() {
+        #expect(automationIDs { _ in true } == ["com.apple.Music", "com.spotify.client"])
+        #expect(automationIDs { $0 == "com.apple.Music" } == ["com.apple.Music"])
+        #expect(automationIDs { _ in false } == [])
+    }
+
+    @Test func systemAudioRecordingIsDeclaredEitherWay() {
+        let registry = ModuleRegistry(services: .preview())
+        registry.registerMedia(isInstalled: { _ in false })
+        #expect(registry.permissionUses.map(\.kind) == [.systemAudioRecording])
+        #expect(registry.permissionUses.allSatisfy { $0.module == .media })
+    }
+}
+
+private extension ModuleRegistry {
+    /// `register(MediaModule.self)` with a fake installation check (attribution to `.media` included).
+    func registerMedia(isInstalled: @escaping (String) -> Bool) {
+        MediaWithFakeInstalls.isInstalled = isInstalled
+        register(MediaWithFakeInstalls.self)
+    }
+}
+
+/// Registers Media through the registry (so uses are attributed to the module) with a fake installation check.
+@MainActor private enum MediaWithFakeInstalls: FeatureModule {
+    static var isInstalled: (String) -> Bool = { _ in true }
+    static var id: ModuleID { .media }
+    static func register(in registry: ModuleRegistry) { MediaModule.register(in: registry, isInstalled: isInstalled) }
+}
