@@ -133,8 +133,9 @@ public nonisolated enum PermissionStatus: String, Codable, Sendable {
         return await queryAutomation(bundleID)
     }
 
-    /// Re-query everything (Settings ▸ Permissions appeared, a click about to act on the status): the cheap kinds at
-    /// once, the Automation answers already known off the main actor (they land a moment later).
+    /// Re-query everything (a pane or step that reads the statuses as it appears, a click about to act on the
+    /// status): the cheap kinds at once, the Automation answers already known off the main actor (they land a moment
+    /// later).
     public func refresh() {
         for kind in Self.queriedKinds + [.systemAudioRecording] { land(query(kind), for: kind) }
         refreshKnownApps()

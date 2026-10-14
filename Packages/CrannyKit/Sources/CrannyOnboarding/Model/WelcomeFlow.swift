@@ -40,7 +40,8 @@ private let log = Log.logger(.onboarding)
     @ObservationIgnored private let onFinish: @MainActor (WelcomeOutcome) -> Void
     @ObservationIgnored private var practice = GesturePractice(allowsTrackSwipe: false)
     @ObservationIgnored private var observer: UUID?
-    /// Step 5: back from System Settings, statuses may have changed (event-driven, no polling).
+    /// Step 5: back in Cranny, a player may have been installed or removed (event-driven, no polling; the statuses
+    /// are the center's own activation refresh).
     @ObservationIgnored private var activationObserver: (any NSObjectProtocol)?
     @ObservationIgnored private var reduceMotion = false
     /// Step 2: the coach mark follows the shape, the notch's visibility and the theme (observed, no polling).

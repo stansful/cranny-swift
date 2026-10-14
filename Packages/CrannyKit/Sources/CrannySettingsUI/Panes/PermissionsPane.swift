@@ -2,10 +2,11 @@
 // per permission a module declared (`registry.permissionUses`), with a status pill (Granted / Not yet / Denied), the
 // one-line why, and Grant… or Open System Settings. Statuses are read with `PermissionsCenter` (never prompts, off the
 // main actor) when the pane appears; the center refreshes them itself whenever the app becomes active (the rows follow
-// `statuses`), so an activation only looks the apps up again. A system prompt appears only after a click on Grant…. An Automation row is
-// named after its app (CrannyCore's `AppIdentityResolver`: Finder's name, never the bundle identifier) and shown
-// only while that app is installed. Automation statuses come from `PermissionsCenter`'s cache, read off the main actor:
-// a row shows a small spinner until its first answer lands, and no view body runs an Apple Events query.
+// `statuses`), so an activation only looks the apps up again. A system prompt appears only after a click on Grant….
+// An Automation row is named after its app (CrannyCore's `AppIdentityResolver`: Finder's name, never the bundle
+// identifier) and shown only while that app is installed. Automation statuses come from `PermissionsCenter`'s cache,
+// read off the main actor: a row shows a small spinner until its first answer lands, and no view body runs an Apple
+// Events query.
 import AppKit
 import CrannyCore
 import Foundation
