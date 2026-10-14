@@ -80,6 +80,7 @@ nonisolated final class FakeCLI: @unchecked Sendable {   // `calls` is guarded b
     let resolver: FakeResolver
 
     var notch: PreviewNotchControl { services.notch as! PreviewNotchControl }
+    var environment: PreviewSystemEnvironment { services.environment as! PreviewSystemEnvironment }
 
     init(installed: [String] = ["com.apple.finder", "com.apple.Safari", "com.apple.mail", "com.apple.Music"],
          apps: [String]? = nil, shortcuts: [ShortcutEntry] = [], running: [String] = [], cli: FakeCLI = FakeCLI()) {
@@ -93,6 +94,27 @@ nonisolated final class FakeCLI: @unchecked Sendable {   // `calls` is guarded b
         resolver = FakeResolver(installed)
         model = QuickAppsModel(services: services, resolver: resolver, launcher: launcher, cli: cli.cli,
                                running: RunningAppsObserver(center: center, snapshot: { running }))
+        let recorder = self.announced
+        model.announce = { recorder.messages.append($0) }
+    }
+
+    /// VoiceOver announcements the model posted.
+    let announced = Recorder()
+}
+
+/// Collects strings (announcements) on the main actor.
+@MainActor final class Recorder {
+    var messages: [String] = []
+}
+
+/// Apps from a table that also renders a 1 × 1 icon, so icon caching can be tested.
+nonisolated struct IconResolver: AppResolving {
+    func resolve(_ bundleID: String) async -> ResolvedApp? { FakeResolver.app(bundleID) }
+    func app(at url: URL) async -> ResolvedApp? { nil }
+    func icon(at url: URL, pixelSize: Int) async -> CGImage? {
+        let context = CGContext(data: nil, width: pixelSize, height: pixelSize, bitsPerComponent: 8, bytesPerRow: 0,
+                                space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        return context?.makeImage()
     }
 }
 

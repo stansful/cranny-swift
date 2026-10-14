@@ -14,12 +14,24 @@ extension QuickAppsModel {
         add(await catalog.apps(at: urls))
     }
 
-    /// A file drop on the launcher (`.crannyDropZone(accepts: [.application])`): adds the apps among the files.
-    /// Taken (true) when it held at least one app, new or not; other files are left for the shell's fallback.
+    /// A file drop on the launcher (`.crannyDropZone(accepts: [.application])`). Only a drop of apps alone is taken:
+    /// they are added (the new ones) and it returns true. A drop with any other file returns false and adds nothing,
+    /// so the shell's fallback keeps the WHOLE drop in the Tray (ARCHITECTURE.md §4.4) and no file is lost. Modules
+    /// never call the Tray themselves (`TrayIntake.accept` is the shell's).
     func acceptDrop(_ payload: DropPayload) async -> Bool {
-        let apps = await catalog.apps(at: payload.fileURLs)
-        add(apps)
-        return !apps.isEmpty
+        let found = await catalog.sort(payload.fileURLs)
+        guard !found.apps.isEmpty, found.others.isEmpty else { return false }
+        add(found.apps)
+        return true
+    }
+
+    /// Whether a drag of `types` is one the launcher adds (apps only), so its drop target may say "Add to Quick
+    /// Apps". Generic types that every file drag may carry (file URL, item, directory, package) do not count.
+    nonisolated static func dragAddsApps(_ types: [UTType]) -> Bool {
+        let specific = types.filter { type in
+            !(type.conforms(to: .url) || UTType.applicationBundle.conforms(to: type)) || type.conforms(to: .application)
+        }
+        return !specific.isEmpty && specific.allSatisfy { $0.conforms(to: .application) }
     }
 
     @discardableResult

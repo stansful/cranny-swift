@@ -36,6 +36,32 @@ private let resize = ShortcutEntry(id: "5C1B1E0B-2B7A-4E59-8D3B-7A0C1F3E2D02", n
     h.model.stop()
 }
 
+@Test func openingAnAppKeepsAPinnedPanelOpen() async {
+    // ARCHITECTURE.md §4.5: Pin holds the Nook open; the shell's close input would ignore it.
+    let h = ModelHarness(installed: ["a"], apps: ["a"])
+    await h.model.start()
+    h.notch.emit(.opened(.click))
+    h.notch.emit(.pinned(true))
+    h.model.activate(h.model.tiles[0])
+    #expect(await waitUntil { h.launcher.opened.count == 1 })
+    #expect(!h.notch.calls.contains("close"))
+    h.notch.emit(.pinned(false))
+    h.model.activate(h.model.tiles[0])
+    #expect(h.notch.calls == ["close"])
+    h.model.stop()
+}
+
+@Test func openingAnAppKeepsTheDemoModePanelOpen() async {
+    // ARCHITECTURE.md §4.4: Demo mode never auto-closes.
+    let h = ModelHarness(installed: ["a"], apps: ["a"])
+    await h.model.start()
+    h.environment.isDemoMode = true
+    h.model.activate(h.model.tiles[0])
+    #expect(await waitUntil { h.launcher.opened.count == 1 })
+    #expect(h.notch.calls.isEmpty)
+    h.model.stop()
+}
+
 @Test func anAppThatFailsToOpenSaysSoInTheNotch() async {
     let h = ModelHarness(installed: ["a"], apps: ["a"])
     await h.model.start()
@@ -47,15 +73,70 @@ private let resize = ShortcutEntry(id: "5C1B1E0B-2B7A-4E59-8D3B-7A0C1F3E2D02", n
     h.model.stop()
 }
 
-@Test func shortcutRunFlashesItsResultOnlyWhileClosed() async {
+@Test func shortcutRunFlashesItsResultOnlyWhileItsTileIsNotOnScreen() async {
     let h = ModelHarness(apps: [], shortcuts: [morning, resize], cli: FakeCLI(listing: shortcutListFixture, failing: [resize.id]))
     await h.model.start()
     h.model.toggleRun(morning)                                             // panel closed: flash "Done"
     #expect(await waitUntil { h.notch.calls.contains("flash(checkmark.circle.fill)") })
     h.notch.emit(.opened(.click))
-    h.model.toggleRun(resize)                                              // panel open: badge only
+    h.model.present([.shortcut(morning.id), .shortcut(resize.id)], by: UUID())
+    h.model.toggleRun(resize)                                              // its tile is on screen: badge only
     #expect(await waitUntil { h.model.runs.state(of: resize.id) == .failed(.shortcutFailed) })
     #expect(!h.notch.calls.contains("flash(exclamationmark)"))
+    h.model.stop()
+}
+
+@Test func aShortcutInOverflowFlashesItsResultWhileOpen() async {
+    // Regression: the first shortcut added to the default launcher lands in "+2"; its result was invisible.
+    let h = ModelHarness(apps: [], shortcuts: [morning, resize], cli: FakeCLI(listing: shortcutListFixture, failing: [resize.id]))
+    await h.model.start()
+    h.notch.emit(.opened(.click))
+    let launcher = UUID()
+    h.model.present([.shortcut(morning.id)], by: launcher)                 // `resize` sits in "+N"
+    h.model.toggleRun(resize)
+    #expect(await waitUntil { h.notch.calls.contains("flash(exclamationmark)") })
+    #expect(h.model.isOnScreenAsTile(.shortcut(morning.id)))
+    #expect(!h.model.isOnScreenAsTile(.shortcut(resize.id)))
+    h.model.withdrawTiles(of: launcher)                                    // the page changed
+    #expect(!h.model.isOnScreenAsTile(.shortcut(morning.id)))
+    h.notch.emit(.closed)
+    h.model.present([.shortcut(morning.id)], by: launcher)
+    #expect(!h.model.isOnScreenAsTile(.shortcut(morning.id)))              // a closed panel shows no tile
+    h.model.stop()
+}
+
+@Test func resultsNobodyCanSeeAreAnnouncedAtMostOncePer10Seconds() async {
+    let h = ModelHarness(apps: [], shortcuts: [morning, resize], cli: FakeCLI(listing: shortcutListFixture))
+    await h.model.start()
+    h.model.toggleRun(morning)                                             // closed: flash + announcement
+    h.model.toggleRun(resize)                                              // within 10 s: flash only
+    #expect(await waitUntil { h.notch.calls.filter { $0 == "flash(checkmark.circle.fill)" }.count == 2 })
+    #expect(h.announced.messages.count == 1)
+    #expect(h.announced.messages.first?.contains("Morning routine") == true
+            || h.announced.messages.first?.contains("Resize images") == true)
+    h.model.stop()
+}
+
+@Test func aResultOnAVisibleTileIsNotAnnounced() async {
+    let h = ModelHarness(apps: [], shortcuts: [morning], cli: FakeCLI(listing: shortcutListFixture))
+    await h.model.start()
+    h.notch.emit(.opened(.click))
+    h.model.present([.shortcut(morning.id)], by: UUID())
+    h.model.toggleRun(morning)
+    #expect(await waitUntil { h.model.runs.state(of: morning.id) == .succeeded })
+    #expect(h.announced.messages.isEmpty)                                  // the tile and its value show it
+    #expect(!h.notch.calls.contains { $0.hasPrefix("flash") })
+    h.model.stop()
+}
+
+@Test func demoModeAnnouncesNoShortcutName() async {
+    let h = ModelHarness(apps: [], shortcuts: [morning], cli: FakeCLI(listing: shortcutListFixture))
+    await h.model.start()
+    h.environment.isDemoMode = true
+    h.model.toggleRun(morning)
+    #expect(await waitUntil { h.announced.messages.count == 1 })
+    #expect(h.announced.messages.first?.contains("Morning") == false)
+    #expect(h.model.publicName(of: morning) == QuickAppsModel.neutralShortcutName)
     h.model.stop()
 }
 
@@ -197,6 +278,28 @@ private let resize = ShortcutEntry(id: "5C1B1E0B-2B7A-4E59-8D3B-7A0C1F3E2D02", n
     let document = DropPayload(fileURLs: [URL(fileURLWithPath: "/tmp/notes.txt")], contentTypes: [.plainText])
     #expect(await h.model.acceptDrop(document) == false)
     h.model.stop()
+}
+
+@Test func aDropOfAppsAndDocumentsGoesWhollyToTheTray() async {
+    // Regression: the app was added and the documents silently dropped (a true return skips the Tray fallback).
+    let h = ModelHarness(installed: ["a"], apps: ["a"])
+    await h.model.start()
+    let mixed = DropPayload(fileURLs: [URL(fileURLWithPath: "/Applications/b.app"), URL(fileURLWithPath: "/tmp/notes.txt")],
+                            contentTypes: [.applicationBundle, .plainText])
+    #expect(await h.model.acceptDrop(mixed) == false)
+    #expect(h.model.appEntries.map(\.bundleID) == ["a"])                   // nothing added: one place for one drop
+    #expect(await h.model.acceptDrop(DropPayload(fileURLs: [], contentTypes: [])) == false)
+    h.model.stop()
+}
+
+@Test func onlyAnAppOnlyDragArmsTheAddOverlay() {
+    #expect(QuickAppsModel.dragAddsApps([.applicationBundle]))
+    #expect(QuickAppsModel.dragAddsApps([.fileURL, .applicationBundle]))   // generic file-drag types do not count
+    #expect(QuickAppsModel.dragAddsApps([.item, .application]))
+    #expect(!QuickAppsModel.dragAddsApps([.applicationBundle, .plainText]))
+    #expect(!QuickAppsModel.dragAddsApps([.fileURL]))
+    #expect(!QuickAppsModel.dragAddsApps([.folder]))
+    #expect(!QuickAppsModel.dragAddsApps([]))
 }
 
 @Test func aShortcutRunFromThePaletteFlashesEvenWhileOpen() async {

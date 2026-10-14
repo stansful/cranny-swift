@@ -63,13 +63,22 @@ import Observation
 
     /// The apps among `urls` (application bundles with a bundle identifier), in order, without repeats.
     func apps(at urls: [URL]) async -> [ResolvedApp] {
+        await sort(urls).apps
+    }
+
+    /// `urls` split into the apps among them (in order, without repeats) and the files that are not apps.
+    func sort(_ urls: [URL]) async -> (apps: [ResolvedApp], others: [URL]) {
         var seen = Set<String>()
-        var result: [ResolvedApp] = []
+        var apps: [ResolvedApp] = []
+        var others: [URL] = []
         for url in urls {
-            guard let app = await resolver.app(at: url), seen.insert(app.bundleID).inserted else { continue }
-            result.append(app)
+            guard let app = await resolver.app(at: url) else {
+                others.append(url)
+                continue
+            }
+            if seen.insert(app.bundleID).inserted { apps.append(app) }
         }
-        return result
+        return (apps, others)
     }
 
     /// Records an app found through a drop or the open panel, so its tile appears before the next refresh.
@@ -97,4 +106,9 @@ import Observation
 
     /// A cached icon (synchronous, for the first frame of a tile that was on screen before).
     func cachedIcon(at url: URL, pixelSize: Int) -> CGImage? { icons[IconKey(url: url, pixels: pixelSize)] }
+
+    /// The largest cached icon of the app at `url` in any size (a menu row scales it down; nothing is read).
+    func anyCachedIcon(at url: URL) -> CGImage? {
+        icons.filter { $0.key.url == url }.max { $0.key.pixels < $1.key.pixels }?.value
+    }
 }

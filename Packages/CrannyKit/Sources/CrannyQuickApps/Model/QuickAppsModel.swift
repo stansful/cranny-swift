@@ -27,7 +27,14 @@ nonisolated private let log = Log.logger(.quickApps)
     var isEditing = false
     /// Whether a panel is open (from `NotchEvent`s): a shortcut that finishes while it is closed flashes its result.
     private(set) var isPanelOpen = false
+    /// Whether the open panel is pinned (from `NotchEvent.pinned`): opening an app then leaves it open.
+    private(set) var isPinned = false
 
+    /// Posts a VoiceOver announcement (tests record them instead).
+    @ObservationIgnored var announce: @MainActor (String) -> Void = { AccessibilityNotification.Announcement($0).post() }
+    @ObservationIgnored private var announcements = AnnouncementLimiter()
+    /// The tiles each launcher on screen shows as tiles (not in "+N"), per launcher view (`present(_:by:)`).
+    @ObservationIgnored private var presentedTiles: [UUID: Set<TileID>] = [:]
     @ObservationIgnored private var observations: [ObservationToken] = []
     @ObservationIgnored private var notchObserver: UUID?
     @ObservationIgnored private var started = false
@@ -80,6 +87,8 @@ nonisolated private let log = Log.logger(.quickApps)
         case .closed:
             isPanelOpen = false
             isEditing = false
+        case .pinned(let pinned):
+            isPinned = pinned
         case .paletteOpened:
             Task { await shortcutsCatalog.refresh(maximumAge: 300) }
         default:
@@ -135,10 +144,11 @@ nonisolated private let log = Log.logger(.quickApps)
         }
     }
 
-    /// Opens the app and closes the panel at once, like a menu: a cold launch can take a second and the panel
-    /// should not sit there meanwhile. A failure flashes in the notch and re-checks which apps are installed.
+    /// Opens the app. The panel closes at once, like a menu (a cold launch can take a second and the panel should
+    /// not sit there meanwhile), unless it is pinned or in Demo mode: both keep it open (ARCHITECTURE.md §4.4–§4.5).
+    /// A failure flashes in the notch and re-checks which apps are installed.
     func open(_ app: ResolvedApp) {
-        notch.close()
+        if !isPinned && !environment.isDemoMode { notch.close() }
         Task {
             do {
                 try await launcher.open(app.url)
@@ -152,7 +162,16 @@ nonisolated private let log = Log.logger(.quickApps)
 
     /// The notch flash after a failure (≤ 12 characters).
     static var failedLabel: String {
-        String(localized: "Failed", bundle: .module, comment: "Notch flash after a shortcut or an app failed (≤ 12 characters)")
+        String(localized: "Failed", bundle: .module, comment: "Notch flash: a shortcut or an app failed (≤ 12 characters)")
+    }
+
+    /// The name of a shortcut wherever it could be seen or heard; neutral in Demo mode (it may be personal).
+    func publicName(of entry: ShortcutEntry) -> String {
+        environment.isDemoMode ? Self.neutralShortcutName : entry.displayName
+    }
+
+    static var neutralShortcutName: String {
+        String(localized: "Shortcut", bundle: .module, comment: "Quick Apps: a Shortcuts.app shortcut (⌘K result kind, Settings row subtitle, neutral tile name in Demo mode)")
     }
 
     func toggleRun(_ entry: ShortcutEntry) {
@@ -166,18 +185,14 @@ nonisolated private let log = Log.logger(.quickApps)
     private func finished(_ entry: ShortcutEntry, _ outcome: ShortcutRunOutcome) {
         switch outcome {
         case .succeeded:
-            announce(String(localized: "\(entry.displayName) finished", bundle: .module,
-                            comment: "Quick Apps: VoiceOver announcement after a shortcut ran (shortcut name)"))
-            if showsResultInNotch(entry) {
-                notch.flash(symbol: "checkmark.circle.fill",
-                            label: String(localized: "Done", bundle: .module, comment: "Notch flash after a shortcut ran (≤ 12 characters)"))
-            }
+            reportInNotch(entry, symbol: "checkmark.circle.fill",
+                          label: String(localized: "Done", bundle: .module, comment: "Notch flash: a shortcut finished (≤ 12 characters)"),
+                          announcement: String(localized: "\(publicName(of: entry)) finished", bundle: .module,
+                                               comment: "Quick Apps: VoiceOver announcement after a shortcut ran (shortcut name)"))
         case .failed:
-            announce(String(localized: "\(entry.displayName) failed", bundle: .module,
-                            comment: "Quick Apps: VoiceOver announcement after a shortcut failed (shortcut name)"))
-            if showsResultInNotch(entry) {
-                notch.flash(symbol: "exclamationmark", label: Self.failedLabel)
-            }
+            reportInNotch(entry, symbol: "exclamationmark", label: Self.failedLabel,
+                          announcement: String(localized: "\(publicName(of: entry)) failed", bundle: .module,
+                                               comment: "Quick Apps: VoiceOver announcement after a shortcut failed (shortcut name)"))
             // A deleted shortcut fails too: re-read the list once to say so.
             Task {
                 await shortcutsCatalog.refresh()
@@ -190,14 +205,36 @@ nonisolated private let log = Log.logger(.quickApps)
         }
     }
 
-    /// A tile shows its own result while the panel is open; otherwise (panel closed, or a shortcut run from ⌘K
-    /// that has no tile) the notch flashes it.
-    private func showsResultInNotch(_ entry: ShortcutEntry) -> Bool {
-        !isPanelOpen || !isAdded(shortcut: entry.id)
+    /// A result nobody can see on a tile — the panel is closed, the tile is in "+N" or on a page that is not shown,
+    /// or the shortcut ran from ⌘K and has no tile — flashes in the notch and, at most once per 10 s, is announced
+    /// to VoiceOver (DESIGN.md §16). A tile on screen shows the result itself and in its accessibility value.
+    private func reportInNotch(_ entry: ShortcutEntry, symbol: String, label: String, announcement: String) {
+        guard !isOnScreenAsTile(.shortcut(entry.id)) else { return }
+        notch.flash(symbol: symbol, label: label)
+        if announcements.allows(at: Date()) { announce(announcement) }
     }
 
-    private func announce(_ message: String) {
-        AccessibilityNotification.Announcement(message).post()
+    // MARK: - Tiles on screen
+
+    /// A launcher view reports which tiles it shows as tiles (not in "+N"), whenever that changes.
+    func present(_ tiles: Set<TileID>, by launcher: UUID) {
+        presentedTiles[launcher] = tiles
+    }
+
+    /// A launcher view left the screen (closed panel, another page, another layout).
+    func withdrawTiles(of launcher: UUID) {
+        presentedTiles[launcher] = nil
+    }
+
+    /// Whether the open panel shows this tile, so the tile itself shows its run state.
+    func isOnScreenAsTile(_ id: TileID) -> Bool {
+        isPanelOpen && presentedTiles.values.contains { $0.contains(id) }
+    }
+
+    /// Reads the Shortcuts list ahead of the add menu (hover or focus on "+", the menu opening). Skipped when
+    /// it was read within the last minute.
+    func prepareShortcutList() {
+        Task { await shortcutsCatalog.refresh(maximumAge: 60) }
     }
 
     /// Keeps tile names in step with Shortcuts.app (a renamed shortcut keeps its tile: it runs by identifier).
