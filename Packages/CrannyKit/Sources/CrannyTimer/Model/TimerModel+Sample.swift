@@ -25,7 +25,7 @@ extension TimerModel {
 
     /// Real time, nothing persisted, no sound, no peeks. `settings` supplies the presets (in-memory by default).
     static func sample(_ sample: Sample, settings: SettingsStore? = nil) -> TimerModel {
-        let store = settings ?? SettingsStore(defaults: UserDefaults(suiteName: "cranny.timer.sample.\(UUID().uuidString)") ?? .standard)
+        let store = settings ?? SettingsStore(defaults: InMemoryDefaults())
         let model = TimerModel(settings: store, dependencies: .sample())
         let (state, draft) = sample.state(at: model.now)
         model.showSample(state, draft: draft)

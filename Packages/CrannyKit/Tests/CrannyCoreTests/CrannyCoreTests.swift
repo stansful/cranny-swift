@@ -4,8 +4,7 @@ import Testing
 @testable import CrannyCore
 
 @MainActor @Test func settingsPersistResetAndNamespace() throws {
-    let suite = "cranny.test.\(UUID().uuidString)"
-    let defaults = try #require(UserDefaults(suiteName: suite))
+    let defaults = InMemoryDefaults()
     let key = SettingKey<[Int]>(.timer, "presets", default: [1, 5])
     let a = SettingsStore(defaults: defaults)
     #expect(a[key] == [1, 5] && a.isDefault(key))
@@ -51,7 +50,7 @@ import Testing
 }
 
 @MainActor @Test func resetAllCanBeUndone() throws {
-    let defaults = try #require(UserDefaults(suiteName: "cranny.test.\(UUID().uuidString)"))
+    let defaults = InMemoryDefaults()
     let s = SettingsStore(defaults: defaults)
     s[CoreSettings.openMode] = .click
     s[CoreSettings.panelPaddingTune] = 3

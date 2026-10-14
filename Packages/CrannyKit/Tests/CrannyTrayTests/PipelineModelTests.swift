@@ -121,7 +121,7 @@ import UniformTypeIdentifiers
         let data = try JSONEncoder().encode([pipeline])
         #expect(try JSONDecoder().decode([PipelineDefinition].self, from: data) == [pipeline])
 
-        let settings = SettingsStore(defaults: UserDefaults(suiteName: "cranny.tray.tests.\(UUID().uuidString)") ?? .standard)
+        let settings = SettingsStore(defaults: InMemoryDefaults())
         settings[TraySettings.userPipelines] = [pipeline]
         #expect(settings[TraySettings.userPipelines] == [pipeline])
         #expect(settings[TraySettings.pinnedPipelines] == ["builtin.compress", "builtin.zip"])

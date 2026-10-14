@@ -78,6 +78,7 @@ private typealias ProbeHapticPattern = HapticPattern
 private typealias ProbeHaptics = Haptics
 private typealias ProbeHitTarget = HitTarget
 private typealias ProbeHoverIntent = HoverIntent
+private typealias ProbeInMemoryDefaults = InMemoryDefaults
 private typealias ProbeKeyCap = KeyCap
 private typealias ProbeKeyCombo = KeyCombo
 private typealias ProbeLevelBar = LevelBar

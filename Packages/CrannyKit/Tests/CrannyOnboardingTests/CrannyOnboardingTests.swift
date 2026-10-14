@@ -42,8 +42,7 @@ import Testing
 @MainActor func makeRegistry(trackpad: Bool = true) -> ModuleRegistry {
     let environment = PreviewSystemEnvironment()
     environment.hasTrackpad = trackpad
-    let defaults = UserDefaults(suiteName: "cranny.test.\(UUID().uuidString)") ?? .standard
-    let services = CrannyServices(settings: SettingsStore(defaults: defaults), permissions: PermissionsCenter(),
+    let services = CrannyServices(settings: SettingsStore(defaults: InMemoryDefaults()), permissions: PermissionsCenter(),
                                   haptics: Haptics(isEnabled: { false }), paths: .temporary(), notch: TestNotch(),
                                   environment: environment, app: PreviewAppControl())
     let registry = ModuleRegistry(services: services)

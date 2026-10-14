@@ -80,7 +80,7 @@ private struct Document: Codable, Equatable, Sendable {
 // MARK: - Settings value types
 
 @MainActor @Test func settingsRoundTripNestedKeyedValues() throws {
-    let defaults = try #require(UserDefaults(suiteName: "cranny.test.\(UUID().uuidString)"))
+    let defaults = InMemoryDefaults()
     let a = SettingsStore(defaults: defaults)
     a[CoreSettings.shortcuts] = [.openNook: KeyCombo.openNookDefault, .togglePin: nil]   // nil = explicitly off
     a[CoreSettings.displaySelection] = .custom(["37D8832A-2D66-02CA-B9F7-8F30A301B230"])

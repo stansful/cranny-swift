@@ -19,9 +19,9 @@ import Testing
         #expect(!FeedbackSound.shouldPlay(systemFeedback: true, shiftHeld: false, demoMode: false, muted: true))
     }
 
-    @Test func readsTheGlobalDefault() throws {
-        // A suite still searches the global domain (where macOS keeps the switch), so set both values explicitly.
-        let defaults = try #require(UserDefaults(suiteName: "cranny.hud.tests.\(UUID().uuidString)"))
+    @Test func readsTheGlobalDefault() {
+        // In-memory defaults: nothing reaches ~/Library/Preferences, and both values are set explicitly.
+        let defaults = InMemoryDefaults()
         defaults.set(1, forKey: FeedbackSound.feedbackDefaultsKey)
         #expect(FeedbackSound.systemFeedbackEnabled(defaults))
         defaults.set(0, forKey: FeedbackSound.feedbackDefaultsKey)
