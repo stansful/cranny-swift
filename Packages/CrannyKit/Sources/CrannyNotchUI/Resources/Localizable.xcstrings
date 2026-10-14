@@ -356,17 +356,6 @@
         }
       }
     },
-    "Calendar" : {
-      "comment" : "Open panel: placeholder card for a widget whose module is not built yet",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Календарь"
-          }
-        }
-      }
-    },
     "Collapsed" : {
       "comment" : "Closed notch: VoiceOver value (\"Cranny, collapsed\")",
       "localizations" : {
@@ -433,17 +422,6 @@
         }
       }
     },
-    "Files" : {
-      "comment" : "Open panel: placeholder card for a widget whose module is not built yet",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Файлы"
-          }
-        }
-      }
-    },
     "Home" : {
       "comment" : "Open panel: the built-in widget page (tab)",
       "localizations" : {
@@ -462,28 +440,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Закрепить Cranny"
-          }
-        }
-      }
-    },
-    "Media" : {
-      "comment" : "Open panel: placeholder card for a widget whose module is not built yet",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Медиа"
-          }
-        }
-      }
-    },
-    "Mirror" : {
-      "comment" : "Open panel: placeholder card for a widget whose module is not built yet",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Зеркало"
           }
         }
       }
@@ -543,17 +499,6 @@
         }
       }
     },
-    "Notes" : {
-      "comment" : "Open panel: placeholder card for a widget whose module is not built yet",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Заметки"
-          }
-        }
-      }
-    },
     "Nothing here yet" : {
       "comment" : "Open panel: placeholder for a page that is gone",
       "localizations" : {
@@ -583,17 +528,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Параметры…"
-          }
-        }
-      }
-    },
-    "Quick Apps" : {
-      "comment" : "Open panel: placeholder card for a widget whose module is not built yet",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Быстрые приложения"
           }
         }
       }
@@ -671,28 +605,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Показать"
-          }
-        }
-      }
-    },
-    "Timer" : {
-      "comment" : "Open panel: placeholder card for a widget whose module is not built yet",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Таймер"
-          }
-        }
-      }
-    },
-    "To-dos" : {
-      "comment" : "Open panel: placeholder card for a widget whose module is not built yet",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Задачи"
           }
         }
       }

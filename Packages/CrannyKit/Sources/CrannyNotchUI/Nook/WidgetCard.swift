@@ -160,25 +160,14 @@ private struct WidgetOptionsPopover: View {
 
 // MARK: - Placeholder
 
-/// Name and glyph of a well-known widget, shown until its module registers it (DESIGN.md §14.1 symbols).
+/// What a card shows for a widget no module registered (an ID left in a saved layout): its raw identifier and a
+/// placeholder glyph. Previews and tests that want real names register Core's stand-ins
+/// (`ModuleRegistry.addPreviewStandIns()`); the app registers every real widget.
 struct WidgetPlaceholder {
     let title: String
-    let symbol: String
+    let symbol = "app.dashed"
 
-    init(_ id: WidgetID) {
-        switch id {
-        case .media: (title, symbol) = (String(localized: "Media", bundle: .module, comment: "Open panel: placeholder card for a widget whose module is not built yet"), "music.note")
-        case .calendar: (title, symbol) = (String(localized: "Calendar", bundle: .module, comment: "Open panel: placeholder card for a widget whose module is not built yet"), "calendar")
-        case .quickApps: (title, symbol) = (String(localized: "Quick Apps", bundle: .module, comment: "Open panel: placeholder card for a widget whose module is not built yet"), "app.dashed")
-        case .mirror: (title, symbol) = (String(localized: "Mirror", bundle: .module, comment: "Open panel: placeholder card for a widget whose module is not built yet"), "web.camera")
-        case .notes: (title, symbol) = (String(localized: "Notes", bundle: .module, comment: "Open panel: placeholder card for a widget whose module is not built yet"), "note.text")
-        case .todos: (title, symbol) = (String(localized: "To-dos", bundle: .module, comment: "Open panel: placeholder card for a widget whose module is not built yet"), "checklist")
-        case .timer: (title, symbol) = (String(localized: "Timer", bundle: .module, comment: "Open panel: placeholder card for a widget whose module is not built yet"), "timer")
-        case .airDrop: (title, symbol) = ("AirDrop", "dot.radiowaves.up.forward")
-        case .files: (title, symbol) = (String(localized: "Files", bundle: .module, comment: "Open panel: placeholder card for a widget whose module is not built yet"), "folder")
-        default: (title, symbol) = (id.rawValue, "app.dashed")
-        }
-    }
+    init(_ id: WidgetID) { title = id.rawValue }
 }
 
 #Preview("Cards · placeholders, hover menu") {

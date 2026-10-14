@@ -45,9 +45,12 @@ import Testing
 }
 
 @Test func placeholderCardsNameWellKnownWidgets() {
-    #expect(WidgetPlaceholder(.media).symbol == "music.note")
-    #expect(WidgetPlaceholder(.airDrop).title == "AirDrop")
+    // An unregistered ID shows itself and a placeholder glyph; names come from registered widgets (or Core's stand-ins).
+    #expect(WidgetPlaceholder(.media).symbol == "app.dashed" && WidgetPlaceholder(.media).title == "media.player")
     #expect(WidgetPlaceholder("custom.widget").title == "custom.widget")
+    let registry = ModuleRegistry(services: .preview())
+    registry.addPreviewStandIns()
+    #expect(registry.widget(.airDrop)?.title == "AirDrop" && registry.widget(.media)?.symbol == "music.note")
 }
 
 @Test func themeResolverAppliesSettingsAndNotchFit() throws {
