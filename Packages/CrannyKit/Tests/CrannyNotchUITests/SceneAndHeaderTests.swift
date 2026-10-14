@@ -1,5 +1,6 @@
 // The render contract's additions (middle label width, visibility), the header (tabs, hit targets, clock),
 // the satellite's place and the open panel's final layout.
+import AppKit
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -20,6 +21,19 @@ private let notch = NotchLayout(metrics: .reference)
         #expect(short > 60 && short < 140 && short == short.rounded(.up))
         #expect(MiddleLabelMetrics.width(of: "Midnight Window", layout: attached) == short)
         #expect(MiddleLabelMetrics.width(of: String(repeating: "Very long title ", count: 8), layout: island) == 160)
+    }
+
+    /// The helper measures what MiddleLabel draws: `compactLabel` is SF Rounded with monospaced digits, so a
+    /// label with digits measured with proportional digits came out too narrow and was truncated.
+    @Test(arguments: ["Track 11", "1111", "Song 2011 (Remastered 2021)", "Midnight Window", "in 4m · 10:30"])
+    func measuresTheDrawnFont(label: String) {
+        var theme = CrannyTheme()
+        theme.notchUnit = island.u
+        let host = NSHostingView(rootView: Text(verbatim: label).crannyFont(.compactLabel).fixedSize().crannyThemeRoot(theme))
+        let drawn = min(host.fittingSize.width, MiddleLabelMetrics.maximumWidth)    // longer labels truncate at 160
+        let measured = MiddleLabelMetrics.width(of: label, layout: island)
+        #expect(measured >= drawn - 0.01, "\(label): measured \(measured) < drawn \(drawn)")
+        #expect(measured - drawn < 1.01, "\(label): measured \(measured), drawn \(drawn)")
     }
 
     @Test func widensTheCompactGeometry() {
