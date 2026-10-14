@@ -55,7 +55,13 @@ struct TimerFace: View {
         .focused($focused)
         .focusEffectDisabled()
         .onKeyPress(phases: .down) { handleKey($0) }
-        .crannyContinuousScrollZone(Self.scrollZone, axis: .vertical) { handleScroll($0) }
+        .background {
+            // The zone keeps the closure it was registered with until the card's frame changes, so it exists only
+            // while the face takes input: never on a preview stage, removed on entering edit mode.
+            if interactive {
+                Color.clear.crannyContinuousScrollZone(Self.scrollZone, axis: .vertical) { handleScroll($0) }
+            }
+        }
         .allowsHitTesting(interactive)
         .onChange(of: context.isFocused, initial: true) { _, isFocused in
             if isFocused && interactive { focused = true }
@@ -71,8 +77,8 @@ struct TimerFace: View {
 
     // MARK: Scroll: one detent per 12 pt of finger travel, one `.levelChange` per minute applied
 
+    /// Reads only what stays current in a registered closure (the model, `detents`' storage, the haptic port).
     private func handleScroll(_ update: SwipeUpdate) {
-        guard !context.isPreview, !context.isEditingLayout else { return }       // the zone outlives edit mode
         switch update {
         case .tracking(_, let translation):
             let steps = detents.update(translation: translation)
