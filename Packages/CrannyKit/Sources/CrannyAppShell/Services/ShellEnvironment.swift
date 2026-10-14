@@ -1,8 +1,10 @@
 // CrannyAppShell/Services/ShellEnvironment.swift — the `SystemEnvironment` port (ARCHITECTURE.md §7.10).
-// Event-driven only: lock/unlock and fast user switching, display sleep, Low Power Mode, thermal state, AC vs battery,
-// frontmost app, Reduce Motion, trackpad presence, and per-display full-screen detection (§5.7) re-evaluated 0.6 s
-// after Space/app/screen changes (and on demand right before a hover-open). Demo mode and "Pause Live Activities" are
-// derived from CoreSettings by observation; their only writers are DemoMode and PauseController.
+// Event-driven only: lock/unlock and fast user switching, display sleep, Low Power Mode, thermal state, AC vs battery
+// (IOKit's limited-power notification: it fires only when the providing source switches between AC, battery and UPS,
+// never on the battery's percent or time-remaining updates), frontmost app, Reduce Motion, trackpad presence, and
+// per-display full-screen detection (§5.7) re-evaluated 0.6 s after Space/app/screen changes (and on demand right
+// before a hover-open). Demo mode and "Pause Live Activities" are derived from CoreSettings by observation; their only
+// writers are DemoMode and PauseController.
 import AppKit
 import CoreGraphics
 import CrannyCore
@@ -45,6 +47,9 @@ import Observation
     @ObservationIgnored private var excludedBundleIDs: Set<String> = []
     @ObservationIgnored private var locked = false
     @ObservationIgnored private var sessionActive = true
+    /// The Dock, whose windows never count as full screen. Kept between checks (it changes only when the Dock
+    /// restarts), so a check does not search the running applications each time.
+    @ObservationIgnored private var dock: NSRunningApplication?
     /// Target of the IOKit power-source callback (a C function pointer cannot capture context).
     private static weak var current: ShellEnvironment?
 
@@ -81,10 +86,8 @@ import Observation
         listen(.default, ProcessInfo.thermalStateDidChangeNotification.rawValue) {
             $0.thermalState = ProcessInfo.processInfo.thermalState
         }
-        if let source = IOPSNotificationCreateRunLoopSource({ _ in
-            // Delivered on the main run loop (the source is added there).
-            MainActor.assumeIsolated { ShellEnvironment.current?.refreshPowerSource() }
-        }, nil)?.takeRetainedValue() {
+        // AC vs battery only (`kIOPSNotifyPowerSource`), not every capacity update of the any-source notification.
+        if let source = IOPSCreateLimitedPowerNotification(Self.powerSourceChanged, nil)?.takeRetainedValue() {
             CFRunLoopAddSource(CFRunLoopGetMain(), source, .defaultMode)
             powerSource = source
         }
@@ -131,8 +134,7 @@ import Observation
             return FullScreenDetector.Display(id: id, bounds: CGDisplayBounds(id), notchBand: screen.safeAreaInsets.top)
         }
         let front = NSWorkspace.shared.frontmostApplication
-        let ignored = Set([ProcessInfo.processInfo.processIdentifier]
-            + NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock").map(\.processIdentifier))
+        let ignored = Set([ProcessInfo.processInfo.processIdentifier] + [dockPID()].compactMap { $0 })
         let next = FullScreenDetector.evaluate(
             windows: FullScreenDetector.snapshot(), displays: displays, frontmostPID: front?.processIdentifier,
             frontmostIsExcluded: front?.bundleIdentifier.map(excludedBundleIDs.contains) ?? false, ignoredPIDs: ignored)
@@ -162,6 +164,20 @@ import Observation
         fullScreenDebouncer.schedule { [weak self] in self?.refreshFullScreen() }
     }
 
+    /// The Dock's process, looked up again only after it quit (the Dock restarts under a new PID).
+    private func dockPID() -> pid_t? {
+        if let dock, !dock.isTerminated { return dock.processIdentifier }
+        dock = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock").first
+        return dock?.processIdentifier
+    }
+
+    /// The IOKit callback, nonisolated (a closure literal written in a main-actor method would be inferred `@MainActor`).
+    private nonisolated static let powerSourceChanged: IOPowerSourceCallbackType = { _ in
+        // Delivered on the main run loop (the source is added there).
+        MainActor.assumeIsolated { ShellEnvironment.current?.refreshPowerSource() }
+    }
+
+    /// UPS power is not battery (it keeps its meaning: only `kIOPMBatteryPowerKey` is).
     private func refreshPowerSource() {
         let type = IOPSGetProvidingPowerSourceType(nil)?.takeUnretainedValue() as String?
         isOnBattery = type == kIOPMBatteryPowerKey
