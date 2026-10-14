@@ -1,0 +1,48 @@
+// CrannySystemActivities/SystemSettings.swift — the module's settings keys (ARCHITECTURE.md §10.11).
+// There is no System pane: both keys are option rows under their activities in Settings ▸ Live Activities.
+import CrannyCore
+import Foundation
+
+/// Settings of the system activities (namespace `system`).
+public enum SystemSettings {
+    /// Battery levels (percent) that raise the Low battery activity, any order. The lowest one is the final
+    /// warning: below it the activity stays until power is connected (DESIGN.md §9.2).
+    public static let lowBatteryThresholds = SettingKey<[Int]>(.system, "lowBatteryThresholds", default: [20, 10])
+    /// Opt-in: also watch every Bluetooth device through IOBluetooth, which needs Bluetooth access.
+    /// Off, only headphones (Core Audio) and Apple's Magic accessories (IOKit) are shown, with no prompt.
+    public static let showsAllBluetoothDevices = SettingKey<Bool>(.system, "showsAllBluetoothDevices", default: false)
+}
+
+/// `SystemSettings.lowBatteryThresholds`, cleaned up: unique, 1…99 %, highest first.
+nonisolated struct LowBatteryThresholds: Equatable, Sendable {
+    /// Highest first.
+    let values: [Int]
+
+    init(_ raw: [Int]) {
+        values = Set(raw.filter { (1...99).contains($0) }).sorted(by: >)
+    }
+
+    /// The lowest threshold: its alert stays while the Mac runs on battery at or below it.
+    var final: Int? { values.last }
+    /// The highest threshold when there is more than one (Settings shows it as "First warning").
+    var firstWarning: Int? { values.count > 1 ? values.first : nil }
+
+    /// True while the final warning must stay visible.
+    func isCritical(_ state: BatteryState) -> Bool {
+        guard let final, state.hasBattery, !state.isPluggedIn else { return false }
+        return state.percent <= final
+    }
+
+    /// The thresholds after Settings changed the first warning (nil = off). A first warning at or below the
+    /// final one is dropped, so the final warning always stays the lowest value.
+    func replacingFirstWarning(_ value: Int?) -> LowBatteryThresholds {
+        let kept = values.count > 2 ? Array(values.dropFirst().dropLast()) : []
+        let first = value.flatMap { $0 > (final ?? 0) ? $0 : nil }
+        return LowBatteryThresholds([first].compactMap { $0 } + kept + [final].compactMap { $0 })
+    }
+
+    /// The thresholds after Settings changed the final warning; warnings at or below it are dropped.
+    func replacingFinal(_ value: Int) -> LowBatteryThresholds {
+        LowBatteryThresholds(values.dropLast().filter { $0 > value } + [value])
+    }
+}
