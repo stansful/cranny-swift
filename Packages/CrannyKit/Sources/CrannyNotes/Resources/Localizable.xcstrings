@@ -1,6 +1,391 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "All notes" : {
+      "comment" : "Notes widget: the note list menu button (VoiceOver label, tooltip)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Все заметки"
+          }
+        }
+      }
+    },
+    "Automatic" : {
+      "comment" : "Notes: code language, detected from the title or the text",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Автоматически"
+          }
+        }
+      }
+    },
+    "Automatic (%@)" : {
+      "comment" : "Notes: code language menu item; the argument is the detected language, e.g. Swift",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Автоматически (%@)"
+          }
+        }
+      }
+    },
+    "Cancel" : {
+      "comment" : "Notes widget: delete confirmation, keep the note",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отменить"
+          }
+        }
+      }
+    },
+    "Code" : {
+      "comment" : "Notes: note mode with syntax colours (menu item, options picker)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Код"
+          }
+        }
+      }
+    },
+    "Code mode" : {
+      "comment" : "Notes widget: code mode toggle (button tooltip, VoiceOver label)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Режим кода"
+          }
+        }
+      }
+    },
+    "Couldn’t save. Cranny will try again." : {
+      "comment" : "Notes widget: tooltip and VoiceOver label of the warning shown when saving failed",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось сохранить. Cranny попробует ещё раз."
+          }
+        }
+      }
+    },
+    "Delete" : {
+      "comment" : "Notes widget: delete confirmation, delete the note",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить"
+          }
+        }
+      }
+    },
+    "Delete “%@”?" : {
+      "comment" : "Notes widget: delete confirmation; the argument is the note’s title",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить «%@»?"
+          }
+        }
+      }
+    },
+    "Delete…" : {
+      "comment" : "Notes: menu item that asks before deleting the current note",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить…"
+          }
+        }
+      }
+    },
+    "Double-click to rename" : {
+      "comment" : "Notes widget: tooltip on the title",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дважды нажмите, чтобы переименовать"
+          }
+        }
+      }
+    },
+    "Exit focus" : {
+      "comment" : "Notes widget: button that ends focus mode (tooltip, VoiceOver label)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выйти из режима фокуса"
+          }
+        }
+      }
+    },
+    "Focus" : {
+      "comment" : "Notes widget: button that enlarges the note to the whole panel (tooltip, VoiceOver label)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Фокус"
+          }
+        }
+      }
+    },
+    "Language" : {
+      "comment" : "Notes: code mode language submenu",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Язык"
+          }
+        }
+      }
+    },
+    "Mode" : {
+      "comment" : "Notes: menu section for plain text or code",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Режим"
+          }
+        }
+      }
+    },
+    "New characters appear in the accent colour, then settle." : {
+      "comment" : "Widget options: footnote under the Notes typing effect toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новые символы появляются акцентным цветом, а затем принимают обычный."
+          }
+        }
+      }
+    },
+    "New note" : {
+      "comment" : "Notes: create a note (button, menu item, ⌘K command, shortcut name)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новая заметка"
+          }
+        }
+      }
+    },
+    "New notes" : {
+      "comment" : "Widget options: label of the picker for the mode of new notes",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новые заметки"
+          }
+        }
+      }
+    },
+    "Next note" : {
+      "comment" : "Notes: menu item (⌘])",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Следующая заметка"
+          }
+        }
+      }
+    },
+    "No notes yet" : {
+      "comment" : "Notes widget: empty state",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заметок пока нет"
+          }
+        }
+      }
+    },
+    "Note title" : {
+      "comment" : "Notes widget: the title (VoiceOver label, rename field placeholder)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Название заметки"
+          }
+        }
+      }
+    },
+    "Notes" : {
+      "comment" : "Notes: module name (widget title, type-to-capture target, ⌘K result kind)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заметки"
+          }
+        }
+      }
+    },
+    "Notes couldn’t be loaded" : {
+      "comment" : "Notes widget: error state when the notes folder can’t be read",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось загрузить заметки"
+          }
+        }
+      }
+    },
+    "Notes list" : {
+      "comment" : "Notes widget: VoiceOver label of the note list beside the editor (6 cells and wider)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Список заметок"
+          }
+        }
+      }
+    },
+    "Open “%@”" : {
+      "comment" : "Command palette: open a note; the argument is its title",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть «%@»"
+          }
+        }
+      }
+    },
+    "Plain text" : {
+      "comment" : "Notes: note mode (menu item, options picker)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обычный текст"
+          }
+        }
+      }
+    },
+    "Previous note" : {
+      "comment" : "Notes: menu item (⌘[)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Предыдущая заметка"
+          }
+        }
+      }
+    },
+    "Quick notes with code highlighting" : {
+      "comment" : "Widget library: Notes description",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Быстрые заметки с подсветкой кода"
+          }
+        }
+      }
+    },
+    "Rename" : {
+      "comment" : "Notes: rename the current note (menu item, VoiceOver action)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переименовать"
+          }
+        }
+      }
+    },
+    "Start typing" : {
+      "comment" : "Notes widget: placeholder in an empty note",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Начните печатать"
+          }
+        }
+      }
+    },
+    "Try again" : {
+      "comment" : "Notes widget: retry button in the error state",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторить"
+          }
+        }
+      }
+    },
+    "Typing effect" : {
+      "comment" : "Widget options: Notes typing effect toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Эффект печати"
+          }
+        }
+      }
+    },
+    "Untitled" : {
+      "comment" : "Notes: title of a new note",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без названия"
+          }
+        }
+      }
+    },
+    "Untitled %lld" : {
+      "comment" : "Notes: title of a new note when “Untitled” is taken; the argument is a number",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без названия %lld"
+          }
+        }
+      }
+    },
+    "You can’t undo this." : {
+      "comment" : "Notes widget: delete confirmation, second line",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это действие нельзя отменить."
+          }
+        }
+      }
+    }
   },
   "version" : "1.0"
 }
