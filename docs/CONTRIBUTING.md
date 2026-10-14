@@ -78,6 +78,19 @@ Screenshot the panel by window id: it is the app's only window at layer 26 (find
 `CGWindowListCopyWindowInfo`), then `screencapture -x -o -l <id> open.png`. That works even while the
 screen is covered; `--diagnostics` lists which display hosts the panel (`panelScreens`).
 
+## Manual checks (each release)
+
+Some things only a person at a Mac can check: real input, a hardware notch, permission prompts. The hardware
+checklist is ARCHITECTURE.md §11.2. Also check:
+
+- **Live visualizer permission.** The app ships no microphone entitlement (`device.audio-input`) and no
+  `NSMicrophoneUsageDescription`: the Core Audio process tap is "System Audio Recording", which needs only
+  `NSAudioCaptureUsageDescription`. Confirm it on a Release build: run
+  `tccutil reset AudioCapture app.cranny.Cranny`, play music, then choose Live in Settings ▸ Media. macOS should
+  ask once for System Audio Recording and never for the microphone, and after you allow it the bars should follow
+  the music. If they stay flat, put `com.apple.security.device.audio-input` and `NSMicrophoneUsageDescription`
+  back and add the entitlement to the allow-list in `scripts/smoke.sh`.
+
 ## Engineering rules (summary of ARCHITECTURE.md §9)
 
 **Concurrency.** UI and façades are `@MainActor` (the default isolation of every target except

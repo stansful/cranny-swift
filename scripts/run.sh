@@ -31,7 +31,7 @@ if (( build )); then
   # With ad-hoc signing, Xcode prints "Disabling hardened runtime with ad-hoc codesigning"
   # for Debug builds while ENABLE_XOJIT_PREVIEWS=YES (the Debug default). Turn it off for CLI
   # runs so the dev build behaves like Release (library validation, hardened-runtime
-  # resource entitlements for camera/mic/calendars/Apple Events).
+  # resource entitlements for camera/calendars/Apple Events).
   [[ "${XOJIT:-0}" == 1 ]] || overrides+=(ENABLE_XOJIT_PREVIEWS=NO)
   # Stable code identity keeps TCC grants (Accessibility, Camera, Calendars) across rebuilds:
   #   DEV_SIGN_IDENTITY="Cranny Dev" scripts/run.sh   (a self-signed Code Signing certificate in your login keychain)
