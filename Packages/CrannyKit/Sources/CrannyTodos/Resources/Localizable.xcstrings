@@ -199,6 +199,17 @@
         }
       }
     },
+    "Space checks it, Return edits it, Command-Up and Command-Down move it." : {
+      "comment" : "To-dos widget: VoiceOver hint on a to-do (its keyboard shortcuts)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пробел отмечает, Return изменяет, Command-стрелки вверх и вниз перемещают."
+          }
+        }
+      }
+    },
     "To-dos" : {
       "comment" : "To-dos: module name (widget title, widget header, type-to-capture target, ⌘K result kind)",
       "localizations" : {

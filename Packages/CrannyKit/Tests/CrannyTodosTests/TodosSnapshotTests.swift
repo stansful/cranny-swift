@@ -77,6 +77,9 @@ struct TodosSnapshotTests {
         drafting.beginNew(after: nil)
         try await write(card(drafting, cells: 3), "12-new-draft")
         try await write(card(fixture(), cells: 3, isFocused: true), "13-keyboard-focus")
+        var hints = NotchContext()
+        hints.showsCommandHints = true
+        try await write(card(fixture(), cells: 3, isFocused: true).environment(\.notchContext, hints), "14-command-hints")
     }
 
     @Test func rowsAndMoments() async throws {

@@ -93,6 +93,7 @@ private struct TodoRowAccessibility: ViewModifier {
                         Text(verbatim: todo.title)
                     }
                 }
+                .accessibilityHint(Text(verbatim: TodosStrings.rowHint))
                 .accessibilityAction(named: Text(verbatim: TodosStrings.edit)) { model.beginEditing(todo.id) }
                 .accessibilityAction(named: Text(verbatim: TodosStrings.moveUp)) { model.move(todo.id, .up) }
                 .accessibilityAction(named: Text(verbatim: TodosStrings.moveDown)) { model.move(todo.id, .down) }

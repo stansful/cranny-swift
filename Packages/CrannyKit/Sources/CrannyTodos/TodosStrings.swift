@@ -60,6 +60,12 @@ nonisolated enum TodosStrings {
                comment: "To-dos widget options: button that deletes every checked to-do (also the Undo action name)")
     }
 
+    /// VoiceOver gets the widget's shortcuts as a hint (DESIGN.md §6.5).
+    static var rowHint: String {
+        String(localized: "Space checks it, Return edits it, Command-Up and Command-Down move it.", bundle: .module,
+               comment: "To-dos widget: VoiceOver hint on a to-do (its keyboard shortcuts)")
+    }
+
     // MARK: Options
 
     static var hideCompleted: String {

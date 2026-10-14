@@ -1,15 +1,19 @@
 // CrannyTodos/UI/TodosHeader.swift — "To-dos" (`eyebrow`) + "3 left" (`caption`, tertiary) (DESIGN.md §7.6).
-// At 2 cells the count is left out (§6.7). After a failed save a `danger` "!" sits before the count; clicking it
+// At 2 cells the count is left out (§6.7). While ⌘ is held and the widget has the keyboard, the count makes
+// room for the widget's key caps (§6.5). After a failed save a `danger` "!" sits before the count; clicking it
 // retries (it is also the only place the failure shows, with a tooltip and a VoiceOver label).
 import CrannyCore
 import SwiftUI
 
 struct TodosHeader: View {
     @Environment(\.cranny) private var theme
+    @Environment(\.notchContext) private var notchContext
     let remaining: Int
     let showsCount: Bool
     let saveFailed: Bool
     let metrics: TodoMetrics
+    /// The widget has the keyboard: hold-⌘ hints may show.
+    var isFocusedWidget = false
     let retrySave: () -> Void
 
     var body: some View {
@@ -33,7 +37,14 @@ struct TodosHeader: View {
                 .help(TodosStrings.saveFailed)
                 .accessibilityLabel(Text(verbatim: TodosStrings.saveFailed))
             }
-            if showsCount {
+            if showsCount && notchContext.showsCommandHints && isFocusedWidget {
+                HStack(spacing: Space.xxs) {
+                    KeyCap("↩")
+                    KeyCap("␣")
+                    KeyCap("⌘↑↓")
+                }
+                .transition(.opacity)
+            } else if showsCount {
                 Text(remaining == 0 ? TodosStrings.allDone : TodosStrings.remaining(remaining))
                     .crannyFont(.caption)
                     .foregroundStyle(p.tertiaryLabel)
@@ -43,6 +54,7 @@ struct TodosHeader: View {
             }
         }
         .frame(height: metrics.headerHeight)
+        .animation(theme.animation(.hover), value: notchContext.showsCommandHints)
     }
 }
 

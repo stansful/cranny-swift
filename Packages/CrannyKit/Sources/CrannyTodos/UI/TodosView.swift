@@ -38,7 +38,7 @@ struct TodosView: View {
                 VStack(alignment: .leading, spacing: Space.xs) {
                     TodosHeader(remaining: context.isPreview ? items.count(where: { !$0.isDone }) : model.remainingCount,
                                 showsCount: context.cells >= 3, saveFailed: model.store.saveFailed && !isReadOnly,
-                                metrics: metrics) { model.store.retrySave() }
+                                metrics: metrics, isFocusedWidget: context.isFocused) { model.store.retrySave() }
                     TodoListView(model: model, items: items, metrics: metrics,
                                  checkStyle: model.checkStyle(personality: theme.motion, reduceMotion: theme.reduceMotion),
                                  isReadOnly: isReadOnly, redacts: context.redactsPersonalData,
