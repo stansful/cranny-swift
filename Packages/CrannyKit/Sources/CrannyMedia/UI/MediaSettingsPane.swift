@@ -94,22 +94,14 @@ struct MediaSettingsPane: View {
     }
 }
 
-/// A row with the "changed" dot and a "Reset to Default" context menu (DESIGN.md §11.3).
+/// A row with Core's conventions: the "changed" dot and "Reset to Default" (DESIGN.md §11.3).
 struct SettingRow<Content: View>: View {
     let isDefault: Bool
-    let reset: () -> Void
+    let reset: @MainActor () -> Void
     @ViewBuilder let content: Content
 
     var body: some View {
-        content
-            .overlay(alignment: .leading) {
-                if !isDefault {
-                    Circle().fill(.tint).frame(width: 6, height: 6).offset(x: -Space.l).accessibilityHidden(true)
-                }
-            }
-            .contextMenu {
-                Button { reset() } label: { Text(verbatim: MediaPaneStrings.resetToDefault) }.disabled(isDefault)
-            }
+        content.crannySettingRow(isDefault: isDefault, reset: reset)
     }
 }
 

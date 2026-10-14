@@ -91,9 +91,6 @@ nonisolated final class BridgeConnection: @unchecked Sendable {   // every mutab
         }
     }
 
-    /// PID of the helper (0 before `start`).
-    var helperPID: Int32 { queue.sync { process.isRunning ? process.processIdentifier : 0 } }
-
     /// Writes one command line ("cmd 2", "seek 30.000", "ping").
     func send(_ line: String) {
         queue.async { [self] in
@@ -137,8 +134,7 @@ nonisolated final class BridgeConnection: @unchecked Sendable {   // every mutab
                     finishPing(id, with: nil)
                     return
                 }
-                let seconds = Double(timeout.components.seconds) + Double(timeout.components.attoseconds) / 1e18
-                queue.asyncAfter(deadline: .now() + seconds) { [weak self] in self?.finishPing(id, with: nil) }
+                queue.asyncAfter(deadline: .now() + timeout.timeInterval) { [weak self] in self?.finishPing(id, with: nil) }
             }
         }
     }

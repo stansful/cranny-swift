@@ -15,13 +15,13 @@ private nonisolated let log = Log.logger(.media)
 
 enum MediaQA {
     static func service(_ services: CrannyServices, arguments: [String] = ProcessInfo.processInfo.arguments) -> MediaService? {
-        guard let i = arguments.firstIndex(of: "--qa-media"), i + 1 < arguments.count else { return nil }
-        log.info("QA: media \(arguments[i + 1], privacy: .public)")
+        guard let mode = LaunchArguments(arguments).value(after: "--qa-media") else { return nil }
+        log.info("QA: media \(mode, privacy: .public)")
         VisualizerNSView.qaIgnoresOcclusion = true
-        switch arguments[i + 1] {
+        switch mode {
         case "playing", "paused":
             return SampleMedia.service(settings: services.settings, environment: services.environment,
-                                       permissions: services.permissions, playing: arguments[i + 1] == "playing")
+                                       permissions: services.permissions, playing: mode == "playing")
         case "none":
             return MediaService(settings: services.settings, environment: services.environment, permissions: services.permissions,
                                 providers: [MediaProviderFactory(kind: .sample) { SampleProvider(snapshot: nil) }])

@@ -11,8 +11,6 @@ nonisolated struct SyntheticSpectrum: Equatable, Sendable {
     /// Lowest and highest level a playing bar reaches (fractions of the bar's travel).
     static let floor = 0.12
     static let ceiling = 1.0
-    /// The level of a resting (paused) bar: the 3-pt dot.
-    static let restLevel = 0.0
     /// Easing back to rest after a pause (R2 §8: ≈ 400 ms).
     static let restDuration = 0.4
 
