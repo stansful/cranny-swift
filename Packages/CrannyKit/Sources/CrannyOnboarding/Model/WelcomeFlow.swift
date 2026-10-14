@@ -208,18 +208,12 @@ private let log = Log.logger(.onboarding)
         if openMethod != .hover { choose(.hover) }
     }
 
-    /// The coach mark's sentence for the chosen way in (DESIGN.md §12.1: "Rest the pointer here, or press ⌃⌥N").
+    /// The coach mark's sentence for the chosen way in (DESIGN.md §12.1: "Rest the pointer here, or press ⌃⌥N");
+    /// the tour's first step says the same thing (`OpenPrompt`).
     func coachContent() -> TipContent {
         let shortcut = openShortcut
-        let text: String = switch (openMethod, shortcut != nil) {
-        case (.hover, true): String(localized: "Rest the pointer here, or press", bundle: .module, comment: "Welcome step 2: coach mark under the real notch; followed by a key cap such as ⌃⌥N")
-        case (.hover, false): String(localized: "Rest the pointer here", bundle: .module, comment: "Welcome step 2: coach mark under the real notch (no shortcut set)")
-        case (.click, true): String(localized: "Click here, or press", bundle: .module, comment: "Welcome step 2: coach mark under the real notch; followed by a key cap such as ⌃⌥N")
-        case (.click, false): String(localized: "Click here", bundle: .module, comment: "Welcome step 2: coach mark under the real notch (no shortcut set)")
-        case (.shortcut, true): String(localized: "Press", bundle: .module, comment: "Welcome step 2: coach mark under the real notch; followed by a key cap such as ⌃⌥N")
-        case (.shortcut, false): String(localized: "Set a shortcut in Settings ▸ Keyboard", bundle: .module, comment: "Welcome step 2: coach mark when the Open Cranny shortcut is turned off")
-        }
-        return TipContent(text: text, keys: shortcut)
+        let prompt = OpenPrompt(openMethod, hasShortcut: shortcut != nil)
+        return TipContent(text: prompt.coachText, keys: prompt.endsWithKeyCap ? shortcut : nil)
     }
 
     private func showCoach() {

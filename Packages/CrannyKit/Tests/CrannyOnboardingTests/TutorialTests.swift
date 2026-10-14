@@ -237,3 +237,40 @@ import Testing
         #expect(!TipContent.Mark.bounces(from: .done, to: .done, reduceMotion: false))
     }
 }
+
+@MainActor @Suite struct OpenPromptTests {
+    @Test func eachWayInGetsItsOwnSentence() {
+        #expect(OpenPrompt(.hover, hasShortcut: true) == .rest(orPress: true))
+        #expect(OpenPrompt(.hover, hasShortcut: false) == .rest(orPress: false))
+        #expect(OpenPrompt(.click, hasShortcut: true) == .click(orPress: true))
+        #expect(OpenPrompt(.click, hasShortcut: false) == .click(orPress: false))
+        #expect(OpenPrompt(.shortcut, hasShortcut: true) == .press)
+        #expect(OpenPrompt(.shortcut, hasShortcut: false) == .noShortcut)
+        #expect(OpenPrompt.press.endsWithKeyCap && OpenPrompt.click(orPress: true).endsWithKeyCap)
+        #expect(!OpenPrompt.noShortcut.endsWithKeyCap && !OpenPrompt.rest(orPress: false).endsWithKeyCap)
+        let all: [OpenPrompt] = [.rest(orPress: true), .rest(orPress: false), .click(orPress: true), .click(orPress: false), .press]
+        #expect(Set(all.map(\.tutorialText)).count == all.count)
+        #expect(Set(all.map(\.coachText)).count == all.count)
+        #expect(OpenPrompt.noShortcut.tutorialText == OpenPrompt.click(orPress: false).tutorialText)   // a click always opens
+    }
+}
+
+@MainActor @Test func theToursFirstStepFollowsTheWayInChosenInTheWelcome() {
+    func firstTip(_ mode: OpenMode, shortcut: Bool = true) -> TipContent? {
+        let registry = makeRegistry()
+        registry.services.settings[CoreSettings.openMode] = mode
+        if !shortcut { registry.services.settings[CoreSettings.shortcuts] = [.openNook: nil] }
+        let presenter = RecordingTipPresenter()
+        let tutorial = TutorialController(registry: registry, presenter: presenter)
+        tutorial.start()
+        defer { tutorial.stop() }
+        return presenter.shown.last
+    }
+    #expect(firstTip(.hover)?.text == OpenPrompt.rest(orPress: true).tutorialText)
+    #expect(firstTip(.click)?.text == OpenPrompt.click(orPress: true).tutorialText)      // never "rest the pointer"
+    #expect(firstTip(.click)?.keys == "⌃⌥N")
+    #expect(firstTip(.shortcutOnly)?.text == OpenPrompt.press.tutorialText)
+    #expect(firstTip(.shortcutOnly)?.mark == .symbol("keyboard"))
+    #expect(firstTip(.shortcutOnly, shortcut: false)?.text == OpenPrompt.click(orPress: false).tutorialText)
+    #expect(firstTip(.shortcutOnly, shortcut: false)?.keys == nil)
+}

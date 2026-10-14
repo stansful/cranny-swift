@@ -172,6 +172,17 @@
         }
       }
     },
+    "Click the notch" : {
+      "comment" : "Tutorial step 1 when Cranny opens on a click, or has no shortcut to press",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Щёлкните по вырезу"
+          }
+        }
+      }
+    },
     "Click the notch to open it" : {
       "comment" : "Welcome step 2: Click card description",
       "localizations" : {
@@ -179,6 +190,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Щёлкните по вырезу, чтобы открыть"
+          }
+        }
+      }
+    },
+    "Click the notch, or press" : {
+      "comment" : "Tutorial step 1 when Cranny opens on a click; followed by a key cap such as ⌃⌥N",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Щёлкните по вырезу или нажмите"
           }
         }
       }
@@ -663,6 +685,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Нажмите"
+          }
+        }
+      }
+    },
+    "Press the shortcut" : {
+      "comment" : "Tutorial step 1 when Cranny opens only with its shortcut; followed by a key cap such as ⌃⌥N",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нажмите сочетание клавиш"
           }
         }
       }

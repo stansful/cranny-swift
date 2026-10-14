@@ -148,13 +148,12 @@ private let log = Log.logger(.onboarding)
         let progress = String(localized: "\(run.number) of \(run.count)", bundle: .module,
                               comment: "Tutorial: progress in the bubble, e.g. \"2 of 5\" (shown in small capitals)")
         let skip = String(localized: "Skip tour", bundle: .module, comment: "Tutorial: always-visible button that ends the tour")
-        let shortcut = ShortcutText.openCranny(services.settings[CoreSettings.shortcuts])
         switch step ?? .reachNotch {
         case .reachNotch:
-            let text = shortcut == nil
-                ? String(localized: "Rest the pointer on the notch, or click it", bundle: .module, comment: "Tutorial step 1 (no keyboard shortcut set)")
-                : String(localized: "Rest the pointer on the notch, or press", bundle: .module, comment: "Tutorial step 1; followed by a key cap such as ⌃⌥N")
-            return TipContent(text: text, keys: shortcut, progress: progress, mark: .symbol("cursorarrow.motionlines"), actionTitle: skip)
+            let shortcut = ShortcutText.openCranny(services.settings[CoreSettings.shortcuts])
+            let prompt = OpenPrompt(OpenMethod(mode: services.settings[CoreSettings.openMode]), hasShortcut: shortcut != nil)
+            return TipContent(text: prompt.tutorialText, keys: prompt.endsWithKeyCap ? shortcut : nil, progress: progress,
+                              mark: .symbol(prompt.tutorialSymbol), actionTitle: skip)
         case .dropFile:
             return TipContent(text: String(localized: "Drag any file onto the notch", bundle: .module, comment: "Tutorial step 2"),
                               progress: progress, mark: .symbol("tray.and.arrow.down.fill"), actionTitle: skip)
