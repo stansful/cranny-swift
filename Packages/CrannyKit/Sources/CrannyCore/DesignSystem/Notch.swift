@@ -146,8 +146,8 @@ public nonisolated enum SlotWidth: Int, CaseIterable, Comparable, Sendable {
         switch self {
         case .none: 0
         case .glyph: 40     // 20-pt artwork, a glyph, a 16-pt ring
-        case .short: 52     // 5-bar visualizer, "82%", battery ring + value
-        case .medium: 68    // "4:59", "in 4m", Join capsule
+        case .short: 52     // 5-bar visualizer, "82%"
+        case .medium: 68    // "4:59", "in 4m", Join capsule, battery ring + value
         case .wide: 92      // HUD: glyph | level bar 64 (+ optional value)
         }
     }

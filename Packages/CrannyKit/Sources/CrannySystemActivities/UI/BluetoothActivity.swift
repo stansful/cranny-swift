@@ -2,7 +2,7 @@
 // the peek duration when an accessory connects.
 //   compact   device glyph | 12-pt battery ring + "84%", or ✓ when the level is unknown
 //   peek      glyph tile · name / "Connected" · L / R / Case rings with %, or the single level in `numeral`
-// Slot: medium, not DESIGN.md's short — ring + "84%" measures 44 pt, the short slot holds 32 (see the report).
+// Slot: medium (DESIGN.md §3.3, §9.2): ring + "84%" measures 45 pt and the short slot holds 32 (`SlotFitTests`).
 import CrannyCore
 import Foundation
 import Observation

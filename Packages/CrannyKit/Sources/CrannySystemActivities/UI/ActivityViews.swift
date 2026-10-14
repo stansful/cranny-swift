@@ -23,6 +23,10 @@ struct BandSymbol: View {
 /// A battery level in the band ("82%"), optionally after a 12-pt battery ring. The `compact` style when it
 /// fits the slot; otherwise `compactLabel`, and at last without the locale's space before "%" ("100 %" in
 /// Russian is 41 pt, the short slot holds 32). Never truncated, never below 10 pt.
+///
+/// The ring decides the slot (DESIGN.md §3.3): a plain level fits `short`, ring + level does not (ring + "84%" is
+/// 45 pt, and still 38 in the tight variant at the minimum scale; `short` holds 32), so the Bluetooth device
+/// activity takes `medium`. `SlotFitTests` measures this.
 struct BandLevel: View {
     @Environment(\.cranny) private var theme
     let percent: Int
@@ -30,26 +34,47 @@ struct BandLevel: View {
     var showsRing = false
 
     var body: some View {
-        let full = SystemCopy.percent(percent)
         ViewThatFits(in: .horizontal) {
-            level(full, style: .compact)
-            level(full, style: .compactLabel)
-            level(SystemCopy.tightPercent(percent), style: .compactLabel)
+            BandLevelForm(percent: percent, variant: .compact, showsRing: showsRing)
+            BandLevelForm(percent: percent, variant: .label, showsRing: showsRing)
+            BandLevelForm(percent: percent, variant: .tight, showsRing: showsRing)
         }
         .foregroundStyle(color ?? theme.palette.label)
         .accessibilityHidden(true)
     }
+}
 
-    private func level(_ text: String, style: CrannyTextStyle) -> some View {
+/// One of the forms `BandLevel` tries, widest first: [ring] + the level in one text style.
+struct BandLevelForm: View {
+    enum Variant: CaseIterable {
+        /// The locale's level ("84%", "84 %" in Russian) in `compact`.
+        case compact
+        /// The same in `compactLabel`.
+        case label
+        /// "84%" in `compactLabel`, without the locale's space before "%".
+        case tight
+
+        var style: CrannyTextStyle { self == .compact ? .compact : .compactLabel }
+    }
+
+    /// The smallest scale the level's text may shrink to before it would be truncated.
+    static let minimumScale: CGFloat = 0.84
+
+    @Environment(\.cranny) private var theme
+    let percent: Int
+    let variant: Variant
+    var showsRing = false
+
+    var body: some View {
         HStack(spacing: Space.xs) {
             if showsRing {
                 BatteryRing(percent: percent)
                     .frame(width: 12 * theme.notchUnit, height: 12 * theme.notchUnit)
             }
-            Text(text)
-                .crannyFont(style)
+            Text(variant == .tight ? SystemCopy.tightPercent(percent) : SystemCopy.percent(percent))
+                .crannyFont(variant.style)
                 .lineLimit(1)
-                .minimumScaleFactor(0.84)
+                .minimumScaleFactor(Self.minimumScale)
                 .contentTransition(theme.reduceMotion ? .opacity : .numericText(value: Double(percent)))
         }
     }

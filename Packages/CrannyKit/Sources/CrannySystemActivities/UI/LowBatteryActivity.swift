@@ -99,7 +99,8 @@ import SwiftUI
 }
 
 extension LowBatteryContent.Level {
-    /// `warning` for a first warning, `danger` at the final one (DESIGN.md §2.1 semantic colours).
+    /// `warning` at a first warning, `danger` at the final one (DESIGN.md §2.1, §9.2). The role sets the colour,
+    /// not the percentage: the thresholds are options, so a first warning may come at 40 % or a final one at 20 %.
     func color(_ palette: CrannyPalette) -> Color { self == .critical ? palette.danger : palette.warning }
     /// The stepped glyph that goes with the colour (Differentiate Without Color: never colour alone).
     var symbol: String { self == .critical ? "battery.0percent" : "battery.25percent" }

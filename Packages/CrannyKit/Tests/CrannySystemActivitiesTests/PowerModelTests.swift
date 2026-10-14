@@ -160,6 +160,20 @@ import Testing
         #expect(lowBattery.isPersistent)
     }
 
+    @Test func theWarningsRoleNotItsPercentSetsItsLevel() {
+        // DESIGN.md §9.2: the first warning is `warning` and the final one `danger` wherever Settings puts them,
+        // so a first warning at 40 % and a final one at 20 % keep those roles.
+        services.settings[SystemSettings.lowBatteryThresholds] = [40, 20]
+        let model = model()
+        model.apply(onBattery(41))
+        model.apply(onBattery(40))
+        #expect(lowBattery.content?.level == .warning)
+        #expect(!lowBattery.isPersistent)
+        model.apply(onBattery(20))
+        #expect(lowBattery.content?.level == .critical)
+        #expect(lowBattery.isPersistent)
+    }
+
     @Test func raisingTheFinalWarningShowsItRightAway() async {
         let model = model(read: { BatteryState(hasBattery: true, percent: 14, isPluggedIn: false) })
         model.start()

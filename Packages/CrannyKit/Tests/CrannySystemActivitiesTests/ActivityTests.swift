@@ -61,6 +61,18 @@ import Testing
         #expect(LowBatteryContent.Level.warning.symbol == "battery.25percent")
     }
 
+    @Test func lowBatteryColourAndGlyphFollowTheWarningsRole() {
+        // DESIGN.md §2.1 / §9.2: `warning` + battery.25percent at the first warning, `danger` + battery.0percent at
+        // the final one, in every palette; the glyphs differ too, so colour is never the only cue (§16).
+        for variant in CrannyPalette.Variant.allCases {
+            let palette = CrannyPalette.make(variant)
+            #expect(LowBatteryContent.Level.warning.color(palette) == palette.warning, "\(variant)")
+            #expect(LowBatteryContent.Level.critical.color(palette) == palette.danger, "\(variant)")
+        }
+        #expect(LowBatteryContent.Level.warning.symbol != LowBatteryContent.Level.critical.symbol)
+        #expect(LowBatteryActivity(openBatterySettings: {}).slot == .short)
+    }
+
     @Test func bluetoothUpdatesOnlyTheDeviceOnScreen() {
         let activity = BluetoothActivity()
         let airPods = BluetoothActivity.SampleDevice.airPods.accessory
