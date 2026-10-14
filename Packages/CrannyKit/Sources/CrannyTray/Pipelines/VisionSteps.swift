@@ -1,6 +1,7 @@
 // CrannyTray/Pipelines/VisionSteps.swift — Remove background (`VNGenerateForegroundInstanceMaskRequest`, macOS 14)
 // and Copy text (`VNRecognizeTextRequest`), on-device only (ARCHITECTURE.md §7.8, R3 §8). Runs in the pipeline's
-// background context.
+// background context. One Core Image context serves every image (each new one would set up its own Metal queue and
+// caches); it is made on the first Remove background, never at launch.
 import CoreImage
 import CoreGraphics
 import Foundation
@@ -9,6 +10,9 @@ import UniformTypeIdentifiers
 import Vision
 
 nonisolated enum VisionSteps {
+    /// Shared by every Remove background (`CIContext` is thread-safe); intermediates are not kept between images.
+    private static let context = CIContext(options: [.cacheIntermediates: false])
+
     /// The subject on a transparent background, as PNG in `directory`.
     static func removeBackground(_ input: URL, into directory: URL, naming: OutputNaming) throws -> URL {
         let image = try ImageFile(input)
@@ -25,7 +29,7 @@ nonisolated enum VisionSteps {
         }
         let ciImage = CIImage(cvPixelBuffer: buffer)
         guard let space = CGColorSpace(name: CGColorSpace.sRGB),
-              let masked = CIContext().createCGImage(ciImage, from: ciImage.extent, format: .RGBA8, colorSpace: space) else {
+              let masked = context.createCGImage(ciImage, from: ciImage.extent, format: .RGBA8, colorSpace: space) else {
             throw TrayError.cannotWrite
         }
         try Task.checkCancellation()

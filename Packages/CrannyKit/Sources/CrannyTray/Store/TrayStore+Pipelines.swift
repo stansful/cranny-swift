@@ -1,8 +1,12 @@
 // CrannyTray/Store/TrayStore+Pipelines.swift — running pipelines on tray items or on files dropped on a pipeline zone
 // (DESIGN.md §8.2–§8.3): progress on the source tiles, cancellation, results slid in beside the source with an Undo
 // chip for 5 s, a `.generic` haptic and a VoiceOver announcement; errors as a one-line badge.
+// Runs are background work with a visible ring, so they run at `.utility` (efficiency cores, throttled under thermal
+// pressure and Low Power Mode). Progress ticks go to a per-job `TrayJobProgress` box, not to `jobs`, so a tick
+// re-renders only the views that show that job's ring; `jobs` changes only when a run starts, fails or ends.
 import CrannyCore
 import Foundation
+import Observation
 import os
 
 private nonisolated let log = Log.logger(.pipelines)
@@ -17,8 +21,24 @@ nonisolated struct TrayJob: Identifiable, Equatable, Sendable {
     let sourceIDs: [UUID]
     /// Dropped files that are not in the Tray get a placeholder tile with this name.
     let placeholderName: String?
+    /// The fraction done when the job was made (previews, QA). While it runs, the live value is
+    /// `TrayStore.progress(of:)`, which ticks without touching `jobs`.
     var progress: Double = 0
     var failure: String?
+}
+
+/// The live progress of one running job. Observable on its own, so a tick invalidates only the views that read it.
+@MainActor @Observable final class TrayJobProgress {
+    /// 0…1, never going back.
+    private(set) var fraction: Double
+
+    init(_ fraction: Double) { self.fraction = fraction }
+
+    /// Moves forward to `fraction` (an equal or lower report changes nothing and notifies nobody).
+    func advance(to fraction: Double) {
+        let next = max(self.fraction, fraction)
+        if next != self.fraction { self.fraction = next }
+    }
 }
 
 /// The Undo chip offered for 5 s after a run wrote files.
@@ -42,6 +62,12 @@ extension TrayStore {
 
     func title(of pipeline: PipelineDefinition) -> String {
         PipelineTitles.title(pipeline, maxDimension: settings[TraySettings.maxDimension])
+    }
+
+    /// How far `job` is: the live box while it runs, else the value it was made with. Read it in the body that draws
+    /// the ring (or says the percent), so only that view follows the ticks.
+    func progress(of job: TrayJob) -> Double {
+        liveProgress[job.id]?.fraction ?? job.progress
     }
 
     // MARK: Starting
@@ -71,6 +97,7 @@ extension TrayStore {
 
     private func start(_ job: TrayJob, pipeline: PipelineDefinition, inputs: [URL], origins: [URL]? = nil,
                        after anchor: UUID?, selectsResults: Bool) {
+        liveProgress[job.id] = TrayJobProgress(job.progress)
         jobs.append(job)
         let options = pipelineOptions
         let location = settings[TraySettings.outputLocation]
@@ -81,7 +108,8 @@ extension TrayStore {
         let report: @Sendable (Double) -> Void = { [weak self] fraction in
             Task { @MainActor [weak self] in self?.setProgress(fraction, of: jobID) }
         }
-        tasks[jobID] = Task { [weak self] in
+        // `.utility`: the steps (`@concurrent`) run at this priority instead of the main actor's user-initiated one.
+        tasks[jobID] = Task(priority: .utility) { [weak self] in
             do {
                 let result = try await PipelineRunner.run(pipeline.steps, inputs: inputs, options: options, workDirectory: work,
                                                           progress: report)
@@ -105,9 +133,9 @@ extension TrayStore {
 
     // MARK: Finishing
 
+    /// A tick: only the job's box changes (gone once the job ended or failed, so late ticks are dropped).
     private func setProgress(_ fraction: Double, of jobID: UUID) {
-        guard let i = jobs.firstIndex(where: { $0.id == jobID }), jobs[i].failure == nil else { return }
-        jobs[i].progress = max(jobs[i].progress, fraction)
+        liveProgress[jobID]?.advance(to: fraction)
     }
 
     private func finish(_ jobID: UUID, result: PipelineRunResult, inputs: [URL], destinationSource: URL?,
@@ -157,6 +185,7 @@ extension TrayStore {
         let message = (error as? TrayError)?.errorDescription ?? TrayError.cannotWrite.errorDescription ?? ""
         log.error("pipeline \(self.jobs[i].pipelineID, privacy: .public) failed: \(TrayLogCode.of(error), privacy: .public) \(error.localizedDescription, privacy: .private)")
         tasks[jobID] = nil
+        liveProgress[jobID] = nil
         if jobs[i].sourceIDs.isEmpty {
             jobs[i].failure = message                       // dropped files: the placeholder tile shows the error
         } else {
@@ -169,6 +198,7 @@ extension TrayStore {
     private func endJob(_ jobID: UUID) {
         jobs.removeAll { $0.id == jobID }
         tasks[jobID] = nil
+        liveProgress[jobID] = nil
     }
 
     // MARK: Undo

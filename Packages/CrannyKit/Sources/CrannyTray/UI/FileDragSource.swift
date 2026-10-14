@@ -49,9 +49,11 @@ struct FileDragSource: NSViewRepresentable {
     // The notch panel is non-activating: the first click must work (R1 gotcha 6).
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 
+    /// One tracking area for the view's life: with `.inVisibleRect` AppKit keeps it in step with the visible rect
+    /// itself (the rect is ignored), so the passes during scrolling and the open morph have nothing to rebuild.
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
-        if let tracking { removeTrackingArea(tracking) }
+        guard tracking == nil else { return }
         let area = NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect], owner: self)
         addTrackingArea(area)
         tracking = area

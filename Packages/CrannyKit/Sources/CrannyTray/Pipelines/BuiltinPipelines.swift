@@ -33,10 +33,15 @@ nonisolated enum BuiltinPipelines {
     /// Built-ins first, then the user's chains.
     static func all(userPipelines: [PipelineDefinition]) -> [PipelineDefinition] { pinnable + [reveal] + userPipelines }
 
-    /// The pipeline with `id` among the built-ins and `userPipelines`.
+    /// The pipeline with `id` among the built-ins and `userPipelines` (built-ins win, as in `all`). The catch view
+    /// asks once per pinned id in every body during a drag, so the built-ins are looked up, never rebuilt.
     static func definition(_ id: String, userPipelines: [PipelineDefinition]) -> PipelineDefinition? {
-        all(userPipelines: userPipelines).first { $0.id == id }
+        builtinsByID[id] ?? userPipelines.first { $0.id == id }
     }
+
+    /// `pinnable` and Reveal by id. Fixed for the session: the writable formats are read once (`ImageSteps`).
+    private static let builtinsByID: [String: PipelineDefinition] =
+        Dictionary((pinnable + [reveal]).map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
 
     /// Pinned pipelines that can take every one of `types`, at most `TraySettings.maxPinnedPipelines`
     /// (DESIGN.md §8.3: the catch state shows Keep and AirDrop, then up to 3 pinned pipelines that accept the drag).

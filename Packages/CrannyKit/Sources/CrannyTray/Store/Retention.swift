@@ -5,6 +5,10 @@ import Foundation
 nonisolated enum Retention {
     /// How long an item stays with `.afterOneDay`.
     static let oneDay: TimeInterval = 24 * 60 * 60
+    /// Expiries this close together are applied in one pass (and the wake-up for them may slip by as much): an item
+    /// can leave up to a minute before or after its day is up, which nobody can tell, and nearby drops cost one
+    /// wake-up and one index write instead of one each.
+    static let batchWindow: TimeInterval = 60
 
     /// Items whose time is up at `now`.
     static func expired(_ items: [TrayItem], policy: TrayRetention, now: Date) -> Set<UUID> {

@@ -25,12 +25,14 @@ struct TrayTile: View {
     var body: some View {
         let selected = store.selection.contains(item.id)
         let job = store.job(for: item.id)
+        // The live fraction (`TrayJobProgress`): only a running tile follows the ticks.
+        let progress = job.map { store.progress(of: $0) }
         let missing = store.isLoaded && store.url(item.id) == nil
         let failure = store.failures[item.id] ?? (missing ? TrayError.fileMissing.errorDescription : nil)
         let layout = TrayTileLayout(theme: theme)
         ZStack(alignment: .top) {
             if isInteractive && !renderStatically { FileDragSource(handlers: handlers) }
-            visuals(selected: selected, job: job, failure: failure, missing: missing, layout: layout)
+            visuals(selected: selected, job: job, progress: progress, failure: failure, missing: missing, layout: layout)
                 .allowsHitTesting(false)
             controls(job: job)
         }
@@ -39,7 +41,8 @@ struct TrayTile: View {
         .help(failure ?? item.name)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(verbatim: item.name))
-        .accessibilityValue(Text(verbatim: TrayTileAccessibility.value(selected: selected, job: job, failure: failure)))
+        .accessibilityValue(Text(verbatim: TrayTileAccessibility.value(selected: selected, job: job, progress: progress,
+                                                                       failure: failure)))
         .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
         .accessibilityAction { store.click(item.id, modifiers: []) }
         .modifier(TrayItemActions(store: store, id: item.id))
@@ -47,14 +50,15 @@ struct TrayTile: View {
 
     // MARK: Visuals
 
-    private func visuals(selected: Bool, job: TrayJob?, failure: String?, missing: Bool, layout: TrayTileLayout) -> some View {
+    private func visuals(selected: Bool, job: TrayJob?, progress: Double?, failure: String?, missing: Bool,
+                         layout: TrayTileLayout) -> some View {
         let p = theme.palette
         let radius = theme.grid.innerRadius
         let well = RoundedRectangle(cornerRadius: radius, style: .continuous)
         return VStack(spacing: 0) {
             TrayThumbnailView(url: store.url(item.id), type: item.contentType, cache: store.thumbnails)
                 .opacity(job != nil ? 0.5 : missing ? 0.4 : 1)
-                .overlay { if let job { TrayProgressRing(progress: job.progress) } }
+                .overlay { if let progress { TrayProgressRing(progress: progress) } }
                 .overlay(alignment: .topTrailing) { badge(failure: failure) }
                 .overlay(alignment: .bottomTrailing) {
                     if selected { TrayCheckBadge().offset(x: Space.xs, y: Space.xs) }
@@ -100,7 +104,7 @@ struct TrayTile: View {
             }
             .padding(.top, Space.xs + (TrayMetrics.thumbnail - TrayMetrics.removeBadge) / 2)
         } else if hovered, isInteractive {
-            TrayRoundButton(symbol: "xmark", label: String(localized: "Remove from Tray", bundle: .module, comment: "Tray tile: hover button and menu item that removes the file from the Tray")) {
+            TrayRoundButton(symbol: "xmark", label: TrayItemCommand.remove.title) {
                 store.remove([item.id])
             }
             .frame(maxWidth: .infinity, alignment: .topLeading)
@@ -139,17 +143,21 @@ struct TrayTile: View {
 
 /// VoiceOver value of a tile: state first, then what failed.
 enum TrayTileAccessibility {
-    static func value(selected: Bool, job: TrayJob?, failure: String?) -> String {
+    /// `progress`: the job's live fraction (`TrayStore.progress(of:)`); nil = the value the job was made with.
+    static func value(selected: Bool, job: TrayJob?, progress: Double? = nil, failure: String?) -> String {
         var parts: [String] = []
-        if selected { parts.append(String(localized: "Selected", bundle: .module, comment: "Tray tile: VoiceOver value")) }
+        if selected { parts.append(selectedValue) }
         if let job {
-            let percent = job.progress.formatted(.percent.precision(.fractionLength(0)))
+            let percent = (progress ?? job.progress).formatted(.percent.precision(.fractionLength(0)))
             parts.append(String(localized: "\(job.title), \(percent)", bundle: .module,
                                 comment: "Tray tile: VoiceOver value while a pipeline runs; pipeline name and percent done"))
         }
         if let failure { parts.append(failure) }
         return parts.joined(separator: ", ")
     }
+
+    /// Looked up once per session (every tile body asks; the UI language only changes with a relaunch).
+    private static let selectedValue = String(localized: "Selected", bundle: .module, comment: "Tray tile: VoiceOver value")
 }
 
 // MARK: - Small pieces

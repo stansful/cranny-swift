@@ -1,6 +1,7 @@
 // CrannyTray/UI/TrayThumbnailView.swift — a tile's picture (DESIGN.md §8.1: 44-pt Quick Look thumbnail, r 8).
-// Real previews (photos, PDFs, videos) fill the rounded square; type icons are shown whole. While the thumbnail is
-// generated off-main, the type icon stands in, so nothing pops from empty.
+// Real previews (photos, PDFs, videos) fill the rounded square; type icons are shown whole. A cached thumbnail is drawn
+// on the first frame (no type-icon frame, no second render); while a missing one is generated off-main, the type icon
+// stands in, so nothing pops from empty. Type icons are looked up once per type and session.
 import AppKit
 import CrannyCore
 import SwiftUI
@@ -18,8 +19,10 @@ struct TrayThumbnailView: View {
     var body: some View {
         let radius = theme.grid.innerRadius
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        // The cache first: a changed `url` never shows the previous file's picture when the new one is cached.
+        let shown = cachedThumbnail ?? thumbnail
         ZStack {
-            if let thumbnail, !thumbnail.isIcon {
+            if let thumbnail = shown, !thumbnail.isIcon {
                 Image(decorative: thumbnail.image, scale: displayScale)
                     .resizable()
                     .interpolation(.high)
@@ -27,13 +30,13 @@ struct TrayThumbnailView: View {
                     .frame(width: side, height: side)
                     .clipShape(shape)
                     .overlay(shape.strokeBorder(theme.palette.hairline, lineWidth: StrokeWidth.hairline(displayScale)))
-            } else if let thumbnail {
+            } else if let thumbnail = shown {
                 Image(decorative: thumbnail.image, scale: displayScale)
                     .resizable()
                     .interpolation(.high)
                     .aspectRatio(contentMode: .fit)
             } else {
-                Image(nsImage: NSWorkspace.shared.icon(for: type))
+                Image(nsImage: Self.icon(for: type))
                     .resizable()
                     .interpolation(.high)
                     .aspectRatio(contentMode: .fit)
@@ -41,10 +44,26 @@ struct TrayThumbnailView: View {
         }
         .frame(width: side, height: side)
         .task(id: url) {
-            guard let url, let cache else { return }
+            // Only a miss is generated; a hit is already on screen (`cachedThumbnail`).
+            guard let url, let cache, cache.cached(for: url, pointSize: side, scale: displayScale) == nil else { return }
             thumbnail = await cache.thumbnail(for: url, pointSize: side, scale: displayScale)
         }
         .accessibilityHidden(true)
+    }
+
+    private var cachedThumbnail: TrayThumbnail? {
+        url.flatMap { cache?.cached(for: $0, pointSize: side, scale: displayScale) }
+    }
+
+    /// The icons of the file types shown so far (bounded by the types in the Tray): `NSWorkspace` returns a fresh
+    /// image per call, and a missing file's tile asks on every body.
+    private static var typeIcons: [String: NSImage] = [:]
+
+    private static func icon(for type: UTType) -> NSImage {
+        if let icon = typeIcons[type.identifier] { return icon }
+        let icon = NSWorkspace.shared.icon(for: type)
+        typeIcons[type.identifier] = icon
+        return icon
     }
 }
 

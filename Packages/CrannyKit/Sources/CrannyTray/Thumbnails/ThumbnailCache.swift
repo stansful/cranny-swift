@@ -1,6 +1,7 @@
 // CrannyTray/Thumbnails/ThumbnailCache.swift — Quick Look thumbnails for tiles (DESIGN.md §8.1: 44-pt thumbnail,
 // r 8), generated off the main actor by `QLThumbnailGenerator` and kept in a small LRU (ARCHITECTURE.md §7.8, §9.2:
-// decode off-main, cache thumbnails). Tiles ask on appear (`.task(id:)`); nothing is generated for hidden tiles.
+// decode off-main, cache thumbnails). Tiles draw a cached one on their first frame (`cached`) and ask for a missing
+// one on appear (`.task(id:)`); nothing is generated for hidden tiles. Items that leave the Tray leave the cache.
 import CoreGraphics
 import Foundation
 import QuickLookThumbnailing
@@ -35,6 +36,12 @@ nonisolated struct LRUCache<Key: Hashable, Value> {
 
     mutating func removeAll() { values = [:]; order = [] }
 
+    /// Drops every entry whose key matches.
+    mutating func removeValues(where shouldRemove: (Key) -> Bool) {
+        order.removeAll(where: shouldRemove)
+        values = values.filter { !shouldRemove($0.key) }
+    }
+
     private mutating func touch(_ key: Key) {
         if let i = order.firstIndex(of: key) { order.remove(at: i) }
         order.append(key)
@@ -42,12 +49,23 @@ nonisolated struct LRUCache<Key: Hashable, Value> {
 }
 
 @MainActor final class ThumbnailCache {
-    private var cache = LRUCache<String, TrayThumbnail>(capacity: 160)
-    private var inFlight: [String: Task<TrayThumbnail?, Never>] = [:]
+    /// A file at one pixel size (tiles and the Files widget, 1× and 2× displays, are cached apart).
+    nonisolated struct Key: Hashable, Sendable {
+        let path: String
+        let pixels: Int
+
+        init(_ url: URL, pointSize: CGFloat, scale: CGFloat) {
+            path = url.path
+            pixels = Int(pointSize * scale)
+        }
+    }
+
+    private var cache = LRUCache<Key, TrayThumbnail>(capacity: 160)
+    private var inFlight: [Key: Task<TrayThumbnail?, Never>] = [:]
 
     /// The thumbnail of `url` at `pointSize` × `scale`, from the cache or freshly generated.
     func thumbnail(for url: URL, pointSize: CGFloat, scale: CGFloat) async -> TrayThumbnail? {
-        let key = "\(url.path)#\(Int(pointSize * scale))"
+        let key = Key(url, pointSize: pointSize, scale: scale)
         if let hit = cache.value(for: key) { return hit }
         if let running = inFlight[key] { return await running.value }
         let task = Task { await Self.generate(url, size: CGSize(width: pointSize, height: pointSize), scale: scale) }
@@ -58,9 +76,15 @@ nonisolated struct LRUCache<Key: Hashable, Value> {
         return result
     }
 
-    /// A thumbnail that is already cached (the drag image), without generating one.
+    /// A thumbnail that is already cached (a tile's first frame, the drag image), without generating one.
     func cached(for url: URL, pointSize: CGFloat, scale: CGFloat) -> TrayThumbnail? {
-        cache.value(for: "\(url.path)#\(Int(pointSize * scale))")
+        cache.value(for: Key(url, pointSize: pointSize, scale: scale))
+    }
+
+    /// Forgets the thumbnails of files that left the Tray, at every size.
+    func forget(paths: Set<String>) {
+        guard !paths.isEmpty else { return }
+        cache.removeValues { paths.contains($0.path) }
     }
 
     /// Forget everything (memory pressure is handled by the small capacity; this is for Clear).

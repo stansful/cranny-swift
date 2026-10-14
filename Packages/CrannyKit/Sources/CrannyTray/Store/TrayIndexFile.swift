@@ -5,6 +5,7 @@
 // list (under Clear on quit: the items whose copies were just deleted). Each write stages its bytes in a hidden file
 // beside the index with no lock held; only the compare-and-rename that publishes it runs under the lock, so a
 // background save delays the quit write by one rename(2), never by disk I/O (the timer's state file works the same).
+// The JSON is compact (no pretty-printing or key sorting): it is internal, and every reader accepts either form.
 import Darwin
 import Foundation
 import os
@@ -37,9 +38,7 @@ nonisolated final class TrayIndexFile: Sendable {
     /// newer revision is already on disk.
     func stage(_ index: TrayIndex, revision: Int) throws -> Staged? {
         guard newestWritten.withLock({ revision > $0 }) else { return nil }
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let data = try encoder.encode(index)
+        let data = try JSONEncoder().encode(index)
         let directory = url.deletingLastPathComponent()
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         // Same folder as the index, so the rename that publishes it stays on one volume and is atomic.

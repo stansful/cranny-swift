@@ -52,6 +52,9 @@ private let log = Log.logger(.tray)
     @ObservationIgnored private var expiryTask: Task<Void, Never>?
     @ObservationIgnored private var settingTokens: [ObservationToken] = []
     @ObservationIgnored var tasks: [UUID: Task<Void, Never>] = [:]
+    /// The live fraction of each running job (`progress(of:)`): a tick changes one box, so only the views that show
+    /// that job's ring re-render, never every tile through `jobs` (`TrayStore+Pipelines.swift`).
+    @ObservationIgnored var liveProgress: [UUID: TrayJobProgress] = [:]
     @ObservationIgnored var undoTask: Task<Void, Never>?
 
     init(settings: SettingsStore, notch: any NotchControl, haptics: Haptics, system: any TraySystem,
@@ -137,21 +140,30 @@ private let log = Log.logger(.tray)
     }
 
     /// Re-checks where linked files are (the Tray page appears); stale bookmarks are refreshed. The result is merged:
-    /// items added while it resolved keep their URL, and items removed meanwhile do not get one back.
+    /// items added while it resolved keep their URL, and items removed meanwhile do not get one back. Each list is
+    /// published once and only when something changed, so a page appearance where nothing moved (the usual case)
+    /// invalidates no tile.
     func refreshLocations() async {
         guard isLoaded else { return }
         let snapshot = items
         let resolved = await storage.resolve(snapshot)
         let present = Set(order)
-        for item in snapshot where present.contains(item.id) { urls[item.id] = resolved.urls[item.id] }
+        var nextURLs = urls
+        for item in snapshot where present.contains(item.id) { nextURLs[item.id] = resolved.urls[item.id] }
+        if nextURLs != urls { urls = nextURLs }
+        guard !resolved.refreshed.isEmpty else { return }
+        var updated = items
         var changed = false
         for fresh in resolved.refreshed {
-            guard let i = items.firstIndex(where: { $0.id == fresh.id }) else { continue }
-            items[i].location = fresh.location
-            items[i].name = fresh.name
+            guard let i = updated.firstIndex(where: { $0.id == fresh.id }) else { continue }
+            updated[i].location = fresh.location
+            updated[i].name = fresh.name
             changed = true
         }
-        if changed { persist() }
+        if changed {
+            items = updated
+            persist()
+        }
     }
 
     // MARK: Adding
@@ -236,10 +248,11 @@ private let log = Log.logger(.tray)
 
     // MARK: Removing
 
-    /// Removes items (owned copies are deleted; linked files are never touched).
+    /// Removes items (owned copies are deleted; linked files are never touched). Their thumbnails leave the cache.
     func remove(_ ids: Set<UUID>) {
         guard !ids.isEmpty else { return }
         let removed = items.filter { ids.contains($0.id) }
+        thumbnails.forget(paths: Set(ids.compactMap { urls[$0]?.path }))
         for job in jobs where job.sourceIDs.contains(where: ids.contains) { tasks[job.id]?.cancel() }
         items.removeAll { ids.contains($0.id) }
         for id in ids { urls[id] = nil; failures[id] = nil; freshItems.remove(id) }
@@ -296,19 +309,23 @@ private let log = Log.logger(.tray)
 
     // MARK: Retention
 
+    /// Expires every item due within `Retention.batchWindow`, so drops made minutes apart leave together: one wake-up,
+    /// one batch of deletions and one index write instead of one each.
     private func applyRetention() {
-        let expired = Retention.expired(items, policy: settings[TraySettings.retention], now: now())
+        let expired = Retention.expired(items, policy: settings[TraySettings.retention],
+                                        now: now().addingTimeInterval(Retention.batchWindow))
         remove(expired)
         scheduleExpiry()
     }
 
-    /// One sleep to the next expiry; no polling (ARCHITECTURE.md §9.2).
+    /// One sleep to the next expiry, with the batch window as timer tolerance so the system can coalesce the wake-up;
+    /// no polling (ARCHITECTURE.md §9.2).
     private func scheduleExpiry() {
         expiryTask?.cancel()
         guard let next = Retention.nextExpiry(items, policy: settings[TraySettings.retention]) else { return }
         let delay = max(next.timeIntervalSince(now()), 0)
         expiryTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(delay))
+            try? await Task.sleep(for: .seconds(delay), tolerance: .seconds(Retention.batchWindow))
             guard !Task.isCancelled else { return }
             self?.applyRetention()
         }

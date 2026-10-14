@@ -1,7 +1,8 @@
 // CrannyTray/UI/TrayContextMenu.swift — the tile's context menu (DESIGN.md §8.1: Open, Reveal in Finder, Quick Look,
 // Copy Path, Share…, Remove) as an AppKit `NSMenu` (the tile's AppKit layer receives the right click), and the same
 // commands as VoiceOver actions so nothing is hover- or pointer-only (§16). While a pipeline runs on the tile, Stop
-// leads both (the hover ✕ on the ring is not the only way to cancel; keys: ⌘.).
+// leads both (the hover ✕ on the ring is not the only way to cancel; keys: ⌘.). Every tile body names these actions,
+// so the titles are looked up once per session (the UI language only changes with a relaunch).
 import AppKit
 import CrannyCore
 import Foundation
@@ -27,7 +28,13 @@ import SwiftUI
 enum TrayItemCommand: CaseIterable {
     case open, reveal, quickLook, copyPath, airDrop, share, remove
 
-    var title: String {
+    /// The localized title (looked up once, `titles`).
+    var title: String { Self.titles[self] ?? localizedTitle }
+
+    private static let titles: [TrayItemCommand: String] =
+        Dictionary(allCases.map { ($0, $0.localizedTitle) }, uniquingKeysWith: { first, _ in first })
+
+    private var localizedTitle: String {
         switch self {
         case .open: String(localized: "Open", bundle: .module, comment: "Tray tile: context menu item and VoiceOver action")
         case .reveal: String(localized: "Reveal in Finder", bundle: .module, comment: "Tray action and pipeline step: show the files in Finder")
@@ -52,14 +59,11 @@ enum TrayItemCommand: CaseIterable {
     }
 
     /// Stop a running pipeline: the tile's ✕ on the ring, the chip, the menu item and the VoiceOver action.
-    static var stopTitle: String {
+    static let stopTitle =
         String(localized: "Stop", bundle: .module, comment: "Tray: stop a running pipeline (tile button, chip, context menu item, VoiceOver action)")
-    }
 
     /// Hide the error tile of a failed drop (hover button, VoiceOver action).
-    static var dismissTitle: String {
-        String(localized: "Dismiss", bundle: .module, comment: "Tray tile: hide a failed run of dropped files")
-    }
+    static let dismissTitle = String(localized: "Dismiss", bundle: .module, comment: "Tray tile: hide a failed run of dropped files")
 
     @MainActor func perform(on id: UUID, store: TrayStore) {
         switch self {

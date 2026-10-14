@@ -18,7 +18,7 @@ extension TrayStore {
 
     func click(_ id: UUID, modifiers: TraySelection.Modifiers) {
         selection.click(id, modifiers: modifiers, order: order)
-        failures[id] = nil
+        if failures[id] != nil { failures[id] = nil }       // an in-place write notifies even when nothing changes
         followSelectionInQuickLook()
     }
     func selectAll() { selection.selectAll(order); followSelectionInQuickLook() }
