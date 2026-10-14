@@ -95,17 +95,6 @@
         }
       }
     },
-    "Calendar" : {
-      "comment" : "Welcome, layouts: widget name",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Календарь"
-          }
-        }
-      }
-    },
     "Calendars" : {
       "comment" : "Welcome step 5: permission name (System Settings ▸ Privacy)",
       "localizations" : {
@@ -304,17 +293,6 @@
         }
       }
     },
-    "Files" : {
-      "comment" : "Welcome, layouts: widget name",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Файлы"
-          }
-        }
-      }
-    },
     "Find any command" : {
       "comment" : "Welcome step 6 cheat sheet: ⌘K command palette",
       "localizations" : {
@@ -469,17 +447,6 @@
         }
       }
     },
-    "Media" : {
-      "comment" : "Welcome, layouts: widget name",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Медиа"
-          }
-        }
-      }
-    },
     "Meetings" : {
       "comment" : "Welcome, layouts: preset name (Calendar, Mirror, Timer, Apps)",
       "localizations" : {
@@ -502,17 +469,6 @@
         }
       }
     },
-    "Mirror" : {
-      "comment" : "Welcome, layouts: widget name (camera preview)",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Зеркало"
-          }
-        }
-      }
-    },
     "Music, your day and favourite apps" : {
       "comment" : "Welcome, layouts: Listener preset description",
       "localizations" : {
@@ -520,17 +476,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Музыка, ваш день и любимые приложения"
-          }
-        }
-      }
-    },
-    "Notes" : {
-      "comment" : "Welcome, layouts: widget name",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Заметки"
           }
         }
       }
@@ -762,17 +707,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Положите два пальца на трекпад и смахните над вырезом выше. Это просто тренировка."
-          }
-        }
-      }
-    },
-    "Quick Apps" : {
-      "comment" : "Welcome, layouts: widget name",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Быстрые приложения"
           }
         }
       }
@@ -1058,17 +992,6 @@
         }
       }
     },
-    "Timer" : {
-      "comment" : "Welcome, layouts: widget name",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Таймер"
-          }
-        }
-      }
-    },
     "To open at login, allow Cranny in System Settings ▸ General ▸ Login Items." : {
       "comment" : "Welcome step 6: footnote when macOS waits for the login item to be approved",
       "localizations" : {
@@ -1076,17 +999,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Чтобы Cranny открывался при входе, разрешите это: Системные настройки ▸ Основные ▸ Объекты входа."
-          }
-        }
-      }
-    },
-    "To-dos" : {
-      "comment" : "Welcome, layouts: widget name",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Задачи"
           }
         }
       }

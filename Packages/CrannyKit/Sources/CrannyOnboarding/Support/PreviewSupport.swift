@@ -98,6 +98,7 @@ struct WelcomePreview: View {
     init(step: WelcomeStep, detected: [OpenMethod] = []) {
         let registry = ModuleRegistry(services: .preview())
         registerSamplePermissionUses(in: registry)
+        registry.addPreviewStandIns()                                // the presets' widget names and glyphs
         let stage = StageScene(registry: registry, layout: NotchLayout(metrics: .reference), theme: CrannyTheme(),
                                ambient: .afterglow, greeting: WelcomeFlow.greeting)
         let flow = WelcomeFlow(registry: registry, permissions: StaticPermissionGateway([.calendar: .granted]),
