@@ -37,6 +37,8 @@ import SwiftUI
     @ObservationIgnored private var script: Task<Void, Never>?
     @ObservationIgnored private var screenObserver: (any NSObjectProtocol)?
     @ObservationIgnored private var lastMotion: MotionPersonality
+    /// A Motion change is replaying the entrance: settings refreshes wait for it.
+    @ObservationIgnored private var isReplaying = false
 
     init(registry: ModuleRegistry, state: PreviewStageState) {
         self.registry = registry
@@ -203,15 +205,21 @@ import SwiftUI
                                             accent: settings[CoreSettings.accent], systemAccent: AccentResolver.systemAccent())
     }
 
-    /// Re-applies the picker state (open width, satellite, toggles) unless a chip is playing.
+    /// Re-applies the picker state (open width, satellite, toggles) unless a chip or a replay is playing. A page
+    /// that no longer exists falls back to the first one.
     func refreshScene(animated: Bool) {
-        guard playing == nil else { return }
+        let pages = registry.services.settings[CoreSettings.pages]
+        if !pages.contains(where: { $0.id == page }) && !registry.pages.contains(where: { $0.id == page }) {
+            page = pages.first?.id ?? .nook
+        }
+        guard playing == nil, !isReplaying else { return }
         apply(currentScene, animated: animated)
     }
 
     private func cancelScript(settle: Bool) {
         script?.cancel()
         script = nil
+        isReplaying = false
         if playing != nil {
             playing = nil
             if settle { apply(currentScene, animated: false) }
@@ -224,12 +232,14 @@ import SwiftUI
         defer { lastMotion = motion }
         guard lastMotion != motion, playing == nil, state != .closed, motion != .instant,
               !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { return }
-        let target = currentScene
+        cancelScript(settle: false)
+        isReplaying = true
         apply(StageScene(phase: .idle, motion: .close), animated: true)
         script = Task { [weak self] in
             try? await Task.sleep(for: .milliseconds(450))
-            guard !Task.isCancelled else { return }
-            self?.apply(target, animated: true)
+            guard !Task.isCancelled, let self else { return }
+            self.isReplaying = false
+            self.apply(self.currentScene, animated: true)
         }
     }
 }

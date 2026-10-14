@@ -104,6 +104,17 @@ private let cast = StageCast(ongoing: [.nowPlaying, .timerRunning], available: [
     #expect(stage.model.open?.page == "page.focus" && stage.model.openColumns == 6)
 }
 
+@Test func aRemovedPageFallsBackToTheFirstOne() {
+    let registry = ModuleRegistry(services: .preview())
+    let focus = NookPage(id: "page.focus", title: "Focus", symbol: "note.text", items: [NookItem(.timer, cells: 2)])
+    registry.services.settings[CoreSettings.pages] = [NookPreset.listener.page, focus]
+    let stage = StageController(registry: registry, state: .open)
+    stage.show(page: "page.focus")
+    registry.services.settings[CoreSettings.pages] = [NookPreset.listener.page]
+    stage.refreshScene(animated: false)
+    #expect(stage.page == .nook && stage.model.open?.page == .nook)
+}
+
 @Test func layoutPaneEditsOnTheStageAndSavesCommits() {
     let registry = ModuleRegistry(services: .preview())
     let stage = StageController(registry: registry, state: .open)
