@@ -112,3 +112,14 @@ enum StageSampleText {
                       comment: "Settings preview stage: subtitle of the sample meeting; the argument is a time range")
     }
 }
+
+#Preview("Stand-in activity · compact") {
+    let sample = StageSampleActivity(.timer)
+    HStack(spacing: 60) {
+        sample.compactLeading()
+        sample.compactTrailing()
+    }
+    .padding(20)
+    .background(.black)
+    .crannyThemeRoot(CrannyTheme())
+}

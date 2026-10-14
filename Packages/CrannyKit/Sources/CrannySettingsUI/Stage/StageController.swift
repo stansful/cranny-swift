@@ -20,6 +20,8 @@ import SwiftUI
     private(set) var state: PreviewStageState
     /// The page the Open state shows (Layout & Widgets follows the page being edited).
     private(set) var page: PageID = .nook
+    /// The open Nook's mode on the stage: `.editLayout` while Layout & Widgets is shown (DESIGN.md §11.1, §6.6).
+    private(set) var openMode: NookMode = .grid
     /// The chip whose script is playing, if any.
     private(set) var playing: SimulateChip?
     /// The display the stage imitates, and whether Cranny is turned off on it (written by the appearance extension).
@@ -98,6 +100,14 @@ import SwiftUI
         if playing == nil, state == .open { apply(currentScene, animated: true) }
     }
 
+    /// Layout & Widgets puts the open Nook into edit mode, so the layout can be edited on the stage itself (NotchUI
+    /// draws the edit chrome and reports changes through `commitLayout`). Only the grid and edit modes apply here.
+    func setOpenMode(_ mode: NookMode) {
+        guard mode == .grid || mode == .editLayout, mode != openMode else { return }
+        openMode = mode
+        if playing == nil, state == .open { apply(currentScene, animated: true) }
+    }
+
     /// Plays a chip once, then settles on the picker state.
     func simulate(_ chip: SimulateChip) {
         let settings = registry.services.settings
@@ -129,7 +139,7 @@ import SwiftUI
 
     private var currentScene: StageScene {
         let settings = registry.services.settings
-        return StageScript.scene(for: state, cast: cast, page: page, showsSatellite: settings[CoreSettings.satellite])
+        return StageScript.scene(for: state, cast: cast, page: page, mode: openMode, showsSatellite: settings[CoreSettings.satellite])
     }
 
     /// Enabled samples, ongoing ones in the user's order (Live Activities toggles and order apply live).

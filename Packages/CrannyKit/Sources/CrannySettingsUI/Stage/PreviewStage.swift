@@ -85,10 +85,14 @@ private struct OffNotice: View {
 }
 
 extension StageController {
-    /// The canvas's callbacks: tabs switch the shown page, a click on the notch opens it. Nothing else acts.
+    /// The canvas's callbacks: tabs switch the shown page, a click on the notch opens it, edit mode (⌘E) toggles and
+    /// a layout edited on the stage is saved. Nothing else acts.
     var actions: NotchUIActions {
         var actions = NotchUIActions()
+        let settings = registry.services.settings
         actions.selectPage = { [weak self] page in self?.show(page: page) }
+        actions.setMode = { [weak self] mode in self?.setOpenMode(mode) }
+        actions.commitLayout = { pages in if settings[CoreSettings.pages] != pages { settings[CoreSettings.pages] = pages } }
         actions.open = { [weak self] in self?.select(.open) }
         actions.activityTapped = { [weak self] _ in self?.select(.open) }
         return actions

@@ -160,9 +160,7 @@ private struct EditorCard: View {
                     if let target = dragCells { apply { $0.resize(info.id, on: pageID, to: target) } }
                     dragCells = nil
                 })
-            .onHover { inside in
-                if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
-            }
+            .modifier(ResizeCursor())
             .accessibilityHidden(true)
     }
 
@@ -196,6 +194,24 @@ private struct EditorCard: View {
     }
 }
 
+/// The left-right resize pointer over the handle (`pointerStyle` on macOS 15+, the cursor stack before).
+private struct ResizeCursor: ViewModifier {
+    @State private var pushed = false
+
+    func body(content: Content) -> some View {
+        if #available(macOS 15.0, *) {
+            content.pointerStyle(.frameResize(position: .trailing, directions: [.inward, .outward]))
+        } else {
+            content
+                .onHover { inside in
+                    if inside, !pushed { NSCursor.resizeLeftRight.push(); pushed = true }
+                    if !inside, pushed { NSCursor.pop(); pushed = false }
+                }
+                .onDisappear { if pushed { NSCursor.pop(); pushed = false } }
+        }
+    }
+}
+
 /// "+" at the end of the row: the free cells, and the door to the library.
 private struct AddTile: View {
     @Environment(\.cranny) private var theme
@@ -222,4 +238,13 @@ private struct AddTile: View {
         .buttonStyle(.plain)
         .accessibilityLabel(Text("Add Widget", bundle: .module, comment: "Settings ▸ Layout & Widgets: opens the widget library"))
     }
+}
+
+#Preview("Grid editor") {
+    let registry = ModuleRegistry(services: .preview())
+    let page = NookPreset.listener.page
+    GridEditor(page: page, editor: LayoutEditor(pages: [page], maxColumns: 12, sizes: [:]), registry: registry,
+               theme: CrannyTheme(), apply: { _ in }, showOptions: { _ in })
+        .padding()
+        .frame(width: 620)
 }

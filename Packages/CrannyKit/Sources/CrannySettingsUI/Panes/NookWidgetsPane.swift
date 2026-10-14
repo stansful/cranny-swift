@@ -46,7 +46,11 @@ struct NookWidgetsPane: View {
                 Text(verbatim: LayoutRows.library.title)
             }
         }
-        .onAppear { stage?.show(page: pageID) }
+        .onAppear {
+            stage?.show(page: pageID)
+            stage?.setOpenMode(.editLayout)
+        }
+        .onDisappear { stage?.setOpenMode(.grid) }
         .onChange(of: pageID) { _, page in
             refusal = nil
             stage?.show(page: page)

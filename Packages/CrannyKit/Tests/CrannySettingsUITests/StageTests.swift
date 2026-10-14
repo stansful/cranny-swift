@@ -104,6 +104,19 @@ private let cast = StageCast(ongoing: [.nowPlaying, .timerRunning], available: [
     #expect(stage.model.open?.page == "page.focus" && stage.model.openColumns == 6)
 }
 
+@Test func layoutPaneEditsOnTheStageAndSavesCommits() {
+    let registry = ModuleRegistry(services: .preview())
+    let stage = StageController(registry: registry, state: .open)
+    stage.setOpenMode(.editLayout)
+    #expect(stage.model.open?.mode == .editLayout)
+    stage.setOpenMode(.palette)                                               // not a stage mode
+    #expect(stage.model.open?.mode == .editLayout)
+    stage.actions.commitLayout([NookPreset.minimal.page])
+    #expect(registry.services.settings[CoreSettings.pages] == [NookPreset.minimal.page])
+    stage.actions.setMode(.grid)
+    #expect(stage.model.open?.mode == .grid)
+}
+
 @Test func stageThemeComesFromTheLiveSettings() {
     let registry = ModuleRegistry(services: .preview())
     let stage = StageController(registry: registry, state: .open)

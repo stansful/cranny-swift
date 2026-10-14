@@ -27,8 +27,9 @@ public struct SettingsRootView: View {
         _navigator = State(initialValue: navigator)
         _resetAll = State(initialValue: ResetAllController(settings: registry.services.settings, app: registry.services.app))
         _stage = State(initialValue: StageController(
-            registry: registry, state: StageScript.initialState(for: pages.first { $0.id == navigator.selection })))
+            registry: registry, state: Self.stageState(for: pages.first { $0.id == navigator.selection })))
         _sidebarSelection = State(initialValue: .pane(navigator.selection))
+        _query = State(initialValue: SettingsQAOptions.search ?? "")
     }
 
     /// Shell panes + module panes, ordered by group then order (§11.1).
@@ -75,12 +76,17 @@ public struct SettingsRootView: View {
         }
         .onChange(of: navigator.selection, initial: true) { _, selection in
             if !Self.item(sidebarSelection, points: selection) { sidebarSelection = .pane(selection) }
-            stage.select(StageScript.initialState(for: pages.first { $0.id == selection }))
+            stage.select(Self.stageState(for: pages.first { $0.id == selection }))
             onPageChange?(selection)
         }
         .onChange(of: trimmed.isEmpty) { _, isEmpty in
             if isEmpty { sidebarSelection = .pane(navigator.selection) }
         }
+    }
+
+    /// The state the stage auto-selects for a pane (Debug QA may pin one, `SettingsQAOptions`).
+    private static func stageState(for page: SettingsPage?) -> PreviewStageState {
+        SettingsQAOptions.stageState ?? StageScript.initialState(for: page)
     }
 
     /// The sidebar item already shows `pane` (its own row, or a search hit inside it).

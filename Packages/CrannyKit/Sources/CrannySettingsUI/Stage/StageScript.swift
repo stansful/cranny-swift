@@ -51,8 +51,10 @@ struct StageStep: Equatable {
 }
 
 enum StageScript {
-    /// The scene of a picker state. `page` is the open page; the satellite shows only when enabled.
-    static func scene(for state: PreviewStageState, cast: StageCast, page: PageID, showsSatellite: Bool) -> StageScene {
+    /// The scene of a picker state. `page` and `mode` are the open page and its mode (Layout & Widgets edits the
+    /// layout on the stage); the satellite shows only when enabled.
+    static func scene(for state: PreviewStageState, cast: StageCast, page: PageID, mode: NookMode = .grid,
+                      showsSatellite: Bool) -> StageScene {
         let primary = cast.ongoing.first
         let satellite = showsSatellite && cast.ongoing.count > 1 ? cast.ongoing[1] : nil
         switch state {
@@ -65,7 +67,7 @@ enum StageScript {
             guard let primary else { return StageScene(phase: .idle, motion: .close) }
             return StageScene(phase: .peek, primary: primary, satellite: satellite, peekRows: [primary], motion: .peekIn)
         case .open:
-            return StageScene(phase: .open, open: OpenState(page: page, reason: .click), motion: .open)
+            return StageScene(phase: .open, open: OpenState(page: page, mode: mode, reason: .click), motion: .open)
         case .hud:
             guard cast.available.contains(.hud) else { return StageScene(phase: .idle, motion: .close) }
             return StageScene(phase: .compact, primary: .hud, motion: .hudIn)
