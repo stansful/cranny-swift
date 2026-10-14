@@ -54,7 +54,10 @@ private let log = Log.logger(.hud)
             permissions.status(.accessibility) == .granted
         }
         self.feedback = feedback
-        activity.adjust = { [weak self] kind, action in self?.handler.adjust(kind, action) }
+        activity.adjust = { [weak self] kind, action in
+            guard let handler = self?.handler else { return }
+            Task { await Self.adjust(handler, kind, action) }
+        }
     }
 
     /// From `registry.onLaunch`: follow the inputs of the tap config from now on.
@@ -260,6 +263,12 @@ private let log = Log.logger(.hud)
     /// DisplayServices may talk to the backlight daemon: read it off the main actor.
     @concurrent private static func readLevel(_ brightness: any DisplayBrightness) async -> Double? {
         brightness.readLevel()
+    }
+
+    /// VoiceOver Increase / Decrease / Mute touch the same devices as a key (CoreAudio, DisplayServices,
+    /// CoreBrightness): off the main actor too. The handler reports back through its sink like a key press.
+    @concurrent private static func adjust(_ handler: MediaKeyHandler, _ kind: HUDKind, _ action: LevelAction) async {
+        handler.adjust(kind, action)
     }
 
     // MARK: Visual QA (Debug builds only, `--qa-hud`)

@@ -2,10 +2,11 @@
 // (ARCHITECTURE.md §7.1). Returns true to consume the event, which suppresses both the system's change and its
 // HUD; Cranny then applies the change itself and reports it to the main actor through `sink`.
 //
-// Thread: called on the tap thread (`MediaKeyInterceptor`) and, for VoiceOver adjustments, on the main actor.
-// It must return within microseconds: it reads the config snapshot, calls CoreAudio / DisplayServices
-// (thread-safe C APIs) and never blocks on the main actor. Its own state (keys whose key-down was consumed,
-// the update counter) sits behind an unfair lock. Tests drive it with fakes; it never touches a real device there.
+// Thread: called on the tap thread (`MediaKeyInterceptor`) and, for VoiceOver adjustments, on a concurrent
+// executor (`HUDController.adjust`), never on the main actor. It must return within microseconds: it reads the
+// config snapshot, calls CoreAudio / DisplayServices (thread-safe C APIs) and never blocks on the main actor. Its
+// own state (keys whose key-down was consumed, the update counter) sits behind an unfair lock. Tests drive it with
+// fakes; it never touches a real device there.
 import Foundation
 import os
 
