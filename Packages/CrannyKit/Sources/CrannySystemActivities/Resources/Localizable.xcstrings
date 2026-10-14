@@ -1,6 +1,474 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ connected" : {
+      "comment" : "Bluetooth activity: VoiceOver label; %@ is the device name (Russian: “Подключено: …” avoids gender agreement)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключено: %@"
+          }
+        }
+      }
+    },
+    "%@ left" : {
+      "comment" : "Battery activities: time until the battery is empty; %@ is a short duration such as “3h 10m”",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Осталось %@"
+          }
+        }
+      }
+    },
+    "%@ until full" : {
+      "comment" : "Charging activity: peek subtitle; %@ is a short duration such as “1h 20m”",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ до полной зарядки"
+          }
+        }
+      }
+    },
+    "%@ · %@" : {
+      "comment" : "Low battery activity: peek subtitle; the first value is the battery level (“10%”), the second the time left or a status",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "Also shows keyboards, mice and headphones from other makers. Needs Bluetooth access." : {
+      "comment" : "Settings ▸ Live Activities ▸ Bluetooth devices: footnote under the toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Также показывает клавиатуры, мыши и наушники других производителей. Нужен доступ к Bluetooth."
+          }
+        }
+      }
+    },
+    "Battery level unknown" : {
+      "comment" : "Bluetooth activity: VoiceOver value when the device does not report its battery",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уровень заряда неизвестен"
+          }
+        }
+      }
+    },
+    "Bluetooth access is off for Cranny." : {
+      "comment" : "Settings ▸ Live Activities ▸ Bluetooth devices: shown when the option is on but access was denied",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доступ Cranny к Bluetooth выключен."
+          }
+        }
+      }
+    },
+    "Bluetooth device" : {
+      "comment" : "Bluetooth activity: generic device name (Demo mode hides the real name)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth-устройство"
+          }
+        }
+      }
+    },
+    "Bluetooth devices" : {
+      "comment" : "Settings ▸ Live Activities: row name of the activity shown when a Bluetooth accessory connects",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth-устройства"
+          }
+        }
+      }
+    },
+    "Calculating…" : {
+      "comment" : "Battery activities: peek subtitle while macOS still estimates the remaining time",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подсчёт…"
+          }
+        }
+      }
+    },
+    "Case" : {
+      "comment" : "Bluetooth activity: label of the charging case's battery gauge",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Футляр"
+          }
+        }
+      }
+    },
+    "Case %@" : {
+      "comment" : "Bluetooth activity: VoiceOver value of the charging case's battery; %@ is a level such as “84%”",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Футляр %@"
+          }
+        }
+      }
+    },
+    "Charging" : {
+      "comment" : "Charging activity: peek title while the Mac charges; also its row name in Settings ▸ Live Activities",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зарядка"
+          }
+        }
+      }
+    },
+    "Connected" : {
+      "comment" : "Bluetooth activity: peek subtitle under the device name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключено"
+          }
+        }
+      }
+    },
+    "Connected to power" : {
+      "comment" : "Charging activity: peek subtitle when the battery is full and the power adapter is connected",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Питание от сети"
+          }
+        }
+      }
+    },
+    "Earbuds" : {
+      "comment" : "Bluetooth activity: generic device name (Demo mode hides the real name)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Наушники"
+          }
+        }
+      }
+    },
+    "Final warning" : {
+      "comment" : "Settings ▸ Live Activities ▸ Low battery: picker for the lowest warning level",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Последнее предупреждение"
+          }
+        }
+      }
+    },
+    "First warning" : {
+      "comment" : "Settings ▸ Live Activities ▸ Low battery: picker for the higher warning level",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Первое предупреждение"
+          }
+        }
+      }
+    },
+    "Fully charged" : {
+      "comment" : "Charging activity: peek title when the battery is full on power",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Полностью заряжен"
+          }
+        }
+      }
+    },
+    "Game controller" : {
+      "comment" : "Bluetooth activity: generic device name (Demo mode hides the real name)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Игровой контроллер"
+          }
+        }
+      }
+    },
+    "Headphones" : {
+      "comment" : "Bluetooth activity: generic device name (Demo mode hides the real name)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Наушники"
+          }
+        }
+      }
+    },
+    "Keyboard" : {
+      "comment" : "Bluetooth activity: generic device name (Demo mode hides the real name)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Клавиатура"
+          }
+        }
+      }
+    },
+    "Left" : {
+      "comment" : "Bluetooth activity: label of the left earbud's battery gauge",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Левый"
+          }
+        }
+      }
+    },
+    "Left %@" : {
+      "comment" : "Bluetooth activity: VoiceOver value of the left earbud's battery; %@ is a level such as “84%”",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Левый %@"
+          }
+        }
+      }
+    },
+    "Low Power Mode is on" : {
+      "comment" : "Low battery activity: peek subtitle when Low Power Mode is already on (the button to it is then hidden)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Режим энергосбережения включён"
+          }
+        }
+      }
+    },
+    "Low Power Mode…" : {
+      "comment" : "Low battery activity: button that opens Battery settings (apps cannot switch Low Power Mode themselves)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Энергосбережение…"
+          }
+        }
+      }
+    },
+    "Low battery" : {
+      "comment" : "Low battery activity: peek title; also its row name in Settings ▸ Live Activities",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Низкий заряд"
+          }
+        }
+      }
+    },
+    "Mouse" : {
+      "comment" : "Bluetooth activity: generic device name (Demo mode hides the real name)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Мышь"
+          }
+        }
+      }
+    },
+    "Not charging" : {
+      "comment" : "Charging activity: peek subtitle when power is connected but the battery does not charge (charge limit, optimized charging)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не заряжается"
+          }
+        }
+      }
+    },
+    "Off" : {
+      "comment" : "Settings ▸ Live Activities ▸ Low battery: “First warning” picker value for no first warning",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выкл."
+          }
+        }
+      }
+    },
+    "On battery" : {
+      "comment" : "Charging activity: peek title right after the power adapter was disconnected",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "От аккумулятора"
+          }
+        }
+      }
+    },
+    "Open Battery Settings" : {
+      "comment" : "Low battery activity: VoiceOver action that opens Battery settings in System Settings",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть настройки аккумулятора"
+          }
+        }
+      }
+    },
+    "Open System Settings" : {
+      "comment" : "Settings ▸ Live Activities ▸ Bluetooth devices: button to the Bluetooth privacy settings",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть Системные настройки"
+          }
+        }
+      }
+    },
+    "Plugged in" : {
+      "comment" : "Charging activity: peek title when power is connected but the battery does not charge",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "От сети"
+          }
+        }
+      }
+    },
+    "Reset to Default" : {
+      "comment" : "Settings ▸ Live Activities: context menu item of a system activity option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вернуть значение по умолчанию"
+          }
+        }
+      }
+    },
+    "Right" : {
+      "comment" : "Bluetooth activity: label of the right earbud's battery gauge",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Правый"
+          }
+        }
+      }
+    },
+    "Right %@" : {
+      "comment" : "Bluetooth activity: VoiceOver value of the right earbud's battery; %@ is a level such as “84%”",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Правый %@"
+          }
+        }
+      }
+    },
+    "Show all Bluetooth devices" : {
+      "comment" : "Settings ▸ Live Activities ▸ Bluetooth devices: toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывать все Bluetooth-устройства"
+          }
+        }
+      }
+    },
+    "Shows every Bluetooth device that connects. Headphones and Magic accessories work without it." : {
+      "comment" : "Permissions pane and onboarding: why Cranny may ask for Bluetooth access",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывает каждое подключённое Bluetooth-устройство. Наушники и аксессуары Magic работают и без этого."
+          }
+        }
+      }
+    },
+    "Speaker" : {
+      "comment" : "Bluetooth activity: generic device name (Demo mode hides the real name)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Колонка"
+          }
+        }
+      }
+    },
+    "Stays until you connect power." : {
+      "comment" : "Settings ▸ Live Activities ▸ Low battery: footnote under “Final warning”",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Остаётся, пока не подключено питание."
+          }
+        }
+      }
+    },
+    "Trackpad" : {
+      "comment" : "Bluetooth activity: generic device name (Demo mode hides the real name)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Трекпад"
+          }
+        }
+      }
+    }
   },
   "version" : "1.0"
 }
