@@ -1,6 +1,276 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ is also set for %@." : {
+      "comment" : "Settings ▸ Keyboard: two Cranny shortcuts share keys; arguments are the keys and the other shortcut's name",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ is also set for %2$@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ уже назначено для «%2$@»."
+          }
+        }
+      }
+    },
+    "%@ left" : {
+      "comment" : "Settings preview stage: time left on the sample timer (peek row)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "осталось %@"
+          }
+        }
+      }
+    },
+    "%@ pt" : {
+      "comment" : "Settings: a length in typographic points with its sign, e.g. \"+2 pt\" (Notch fit, panel padding)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ пт"
+          }
+        }
+      }
+    },
+    "%@ · Room 4" : {
+      "comment" : "Settings preview stage: subtitle of the sample meeting; the argument is a time range",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · Комната 4"
+          }
+        }
+      }
+    },
+    "%lld cells" : {
+      "comment" : "Settings ▸ Layout & Widgets: a widget's width in grid cells (plural)",
+      "localizations" : {
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ячейка"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ячейки"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ячеек"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ячейки"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cell"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cells"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld cells left" : {
+      "comment" : "Settings ▸ Layout & Widgets: free cells on the page (plural)",
+      "localizations" : {
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Свободна %lld ячейка"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Свободно %lld ячейки"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Свободно %lld ячеек"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Свободно %lld ячейки"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cell left"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cells left"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld cells over; move a widget to another page." : {
+      "comment" : "Settings ▸ Layout & Widgets: a change would not fit; the argument is the number of extra cells (plural)",
+      "localizations" : {
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Не помещается %lld ячейка — перенесите виджет на другую страницу."
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Не помещаются %lld ячейки — перенесите виджет на другую страницу."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Не помещаются %lld ячеек — перенесите виджет на другую страницу."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Не помещаются %lld ячейки — перенесите виджет на другую страницу."
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cell over; move a widget to another page."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld cells over; move a widget to another page."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld–%lld cells" : {
+      "comment" : "Settings ▸ Layout & Widgets: the widths a widget allows; arguments are the minimum and maximum",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld–%2$lld cells"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld–%2$lld яч."
+          }
+        }
+      }
+    },
+    "A floating island does not pretend to be hardware. Each display can override this in General." : {
+      "comment" : "Settings ▸ Appearance: footnote of On displays without a notch",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Плавающий остров не притворяется частью экрана. Для каждого дисплея это можно изменить в разделе «Основные»."
+          }
+        }
+      }
+    },
+    "A second activity appears as a small circle beside the notch." : {
+      "comment" : "Settings ▸ Live Activities: footnote of Satellite",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вторая активность появляется маленьким кругом рядом с вырезом."
+          }
+        }
+      }
+    },
+    "A soft halo in the album's colour behind the artwork." : {
+      "comment" : "Settings ▸ Appearance: footnote of Album glow",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Мягкий ореол цвета альбома за обложкой."
+          }
+        }
+      }
+    },
+    "A soft pop when a file is caught and a tink when a to-do is done." : {
+      "comment" : "Settings ▸ General: footnote of UI sounds",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Мягкий щелчок, когда файл пойман, и звон, когда задача выполнена."
+          }
+        }
+      }
+    },
     "About" : {
       "comment" : "Settings sidebar: pane name",
       "localizations" : {
@@ -8,6 +278,237 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "О программе"
+          }
+        }
+      }
+    },
+    "Accent" : {
+      "comment" : "Settings ▸ Appearance: accent colour picker",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Акцент"
+          }
+        }
+      }
+    },
+    "Acknowledgements" : {
+      "comment" : "Settings ▸ About: section header",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Благодарности"
+          }
+        }
+      }
+    },
+    "Activate" : {
+      "comment" : "Settings ▸ Keyboard ▸ Inside Cranny: action (press the focused control)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нажать"
+          }
+        }
+      }
+    },
+    "Activities" : {
+      "comment" : "Settings ▸ General ▸ Displays: column header (live activities)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Активности"
+          }
+        }
+      }
+    },
+    "Activity" : {
+      "comment" : "Settings preview stage: state picker segment (a live activity in compact)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Активность"
+          }
+        }
+      }
+    },
+    "Add" : {
+      "comment" : "Settings ▸ Layout & Widgets: adds a widget to the page",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить"
+          }
+        }
+      }
+    },
+    "Add %@" : {
+      "comment" : "Settings ▸ Layout & Widgets: VoiceOver label of Add; the argument is a widget name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить «%@»"
+          }
+        }
+      }
+    },
+    "Add App" : {
+      "comment" : "Settings ▸ General ▸ Excluded apps: menu button",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить приложение"
+          }
+        }
+      }
+    },
+    "Add Page" : {
+      "comment" : "Settings ▸ Layout & Widgets: adds a user page",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить страницу"
+          }
+        }
+      }
+    },
+    "Add Widget" : {
+      "comment" : "Settings ▸ Layout & Widgets: opens the widget library",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить виджет"
+          }
+        }
+      }
+    },
+    "Add ⌘, ⌃ or ⌥" : {
+      "comment" : "Settings ▸ Keyboard: recorder hint after a key without modifiers",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавьте ⌘, ⌃ или ⌥"
+          }
+        }
+      }
+    },
+    "Album glow" : {
+      "comment" : "Settings ▸ Appearance: toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Свечение альбома"
+          }
+        }
+      }
+    },
+    "Alerts" : {
+      "comment" : "Settings ▸ Live Activities: priority class header (meeting soon, timer done…)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оповещения"
+          }
+        }
+      }
+    },
+    "Alerts and HUD only" : {
+      "comment" : "Settings ▸ General ▸ In full-screen apps: option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только оповещения и HUD"
+          }
+        }
+      }
+    },
+    "All displays" : {
+      "comment" : "Settings ▸ General ▸ Show on: option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Все дисплеи"
+          }
+        }
+      }
+    },
+    "All settings were reset." : {
+      "comment" : "Settings: banner after Reset All Settings",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Все настройки сброшены."
+          }
+        }
+      }
+    },
+    "All settings were reset. Undo is available for 10 seconds." : {
+      "comment" : "Settings: VoiceOver announcement after Reset All Settings",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Все настройки сброшены. Отменить можно в течение 10 секунд."
+          }
+        }
+      }
+    },
+    "Allow Cranny in System Settings ▸ Login Items to finish." : {
+      "comment" : "Settings ▸ General: footnote while the login item waits for approval",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы закончить, разрешите Cranny в Системных настройках ▸ Объекты входа."
+          }
+        }
+      }
+    },
+    "Also set in Live Activities." : {
+      "comment" : "Settings ▸ Gestures: footnote of Swipe up to dismiss",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Также настраивается в разделе «Активности»."
+          }
+        }
+      }
+    },
+    "Ambient light" : {
+      "comment" : "Settings ▸ Appearance: picker Off / Subtle / Vivid",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Фоновый свет"
+          }
+        }
+      }
+    },
+    "Another app already uses %@. Choose other keys." : {
+      "comment" : "Settings ▸ Keyboard: the shortcut could not be registered; the argument is the keys (⌃⌥N)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ уже использует другое приложение. Выберите другие клавиши."
           }
         }
       }
@@ -23,6 +524,292 @@
         }
       }
     },
+    "Application windows" : {
+      "comment" : "Settings ▸ Keyboard: macOS shortcut a Cranny shortcut collides with",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Окна приложения"
+          }
+        }
+      }
+    },
+    "Asks GitHub for new releases once a day. Nothing is downloaded or installed." : {
+      "comment" : "Settings ▸ General: footnote of Check for updates daily",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Раз в день спрашивает GitHub о новых версиях. Ничего не загружается и не устанавливается."
+          }
+        }
+      }
+    },
+    "Attached" : {
+      "comment" : "Settings: no-notch style",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прикреплённый"
+          }
+        }
+      }
+    },
+    "Aurora" : {
+      "comment" : "Settings ▸ Appearance ▸ Effect: option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сияние"
+          }
+        }
+      }
+    },
+    "Automatic" : {
+      "comment" : "Settings: option chosen automatically (a display style, the accent)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Автоматически"
+          }
+        }
+      }
+    },
+    "Automation: %@" : {
+      "comment" : "Settings ▸ Permissions: Apple Events permission for one app; the argument is the app's name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Автоматизация: %@"
+          }
+        }
+      }
+    },
+    "Behaviour" : {
+      "comment" : "Settings ▸ Live Activities: section header of the global rows",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поведение"
+          }
+        }
+      }
+    },
+    "Blue" : {
+      "comment" : "Settings ▸ Appearance ▸ Accent: swatch name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Синий"
+          }
+        }
+      }
+    },
+    "Built-in display" : {
+      "comment" : "Settings ▸ General ▸ Show on: option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Встроенный дисплей"
+          }
+        }
+      }
+    },
+    "Buttons" : {
+      "comment" : "Settings ▸ Appearance: picker Capsule / Rounded",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кнопки"
+          }
+        }
+      }
+    },
+    "Calendar" : {
+      "comment" : "Settings: the Calendar feature (glossary: Календарь)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Календарь"
+          }
+        }
+      }
+    },
+    "Calm" : {
+      "comment" : "Settings ▸ Appearance ▸ Motion: option (no bounce)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Спокойно"
+          }
+        }
+      }
+    },
+    "Cancel" : {
+      "comment" : "Settings: cancel button of a confirmation",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отменить"
+          }
+        }
+      }
+    },
+    "Capsule" : {
+      "comment" : "Settings ▸ Appearance ▸ Buttons: option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Капсула"
+          }
+        }
+      }
+    },
+    "Cards" : {
+      "comment" : "Settings ▸ Appearance ▸ Widgets: option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Карточки"
+          }
+        }
+      }
+    },
+    "Changed from the default." : {
+      "comment" : "Settings: VoiceOver hint of a row whose value differs from its default",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменено по сравнению со значением по умолчанию."
+          }
+        }
+      }
+    },
+    "Check Now" : {
+      "comment" : "Settings: button that checks for updates",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверить сейчас"
+          }
+        }
+      }
+    },
+    "Check for Updates" : {
+      "comment" : "Settings ▸ About: row and button",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверить обновления"
+          }
+        }
+      }
+    },
+    "Check for updates daily" : {
+      "comment" : "Settings ▸ General: toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверять обновления ежедневно"
+          }
+        }
+      }
+    },
+    "Checking…" : {
+      "comment" : "Settings: update check in progress",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверка…"
+          }
+        }
+      }
+    },
+    "Choose App…" : {
+      "comment" : "Settings ▸ General ▸ Excluded apps: opens a file panel in Applications",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбрать приложение…"
+          }
+        }
+      }
+    },
+    "Chosen displays" : {
+      "comment" : "Settings ▸ General ▸ Show on: option (a custom list)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбранные дисплеи"
+          }
+        }
+      }
+    },
+    "Click" : {
+      "comment" : "Settings ▸ General ▸ Open Cranny with: option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Щелчком"
+          }
+        }
+      }
+    },
+    "Click, then press the new keys. Esc cancels, Delete turns the shortcut off." : {
+      "comment" : "Settings ▸ Keyboard: tooltip of a shortcut recorder",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нажмите, затем нажмите новые клавиши. Esc — отмена, Delete — выключить сочетание."
+          }
+        }
+      }
+    },
+    "Close" : {
+      "comment" : "Settings ▸ Keyboard ▸ Inside Cranny: action",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрыть"
+          }
+        }
+      }
+    },
+    "Close after inactivity" : {
+      "comment" : "Settings ▸ General: timeout of the open panel",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрывать при бездействии"
+          }
+        }
+      }
+    },
     "Close when the pointer leaves" : {
       "comment" : "Settings ▸ General: toggle",
       "localizations" : {
@@ -34,6 +821,468 @@
         }
       }
     },
+    "Closed" : {
+      "comment" : "Settings preview stage: state picker segment",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрыт"
+          }
+        }
+      }
+    },
+    "Command palette" : {
+      "comment" : "Settings ▸ Keyboard ▸ Inside Cranny: action",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Палитра команд"
+          }
+        }
+      }
+    },
+    "Compact" : {
+      "comment" : "Settings ▸ Appearance ▸ Density: option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Плотно"
+          }
+        }
+      }
+    },
+    "Connect a display with a notch to fit Cranny to its camera housing." : {
+      "comment" : "Settings ▸ Appearance ▸ Notch fit: footer when no notched display is connected",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключите дисплей с вырезом, чтобы подогнать Cranny под корпус камеры."
+          }
+        }
+      }
+    },
+    "Connect a trackpad to use gestures. Every gesture also has a click or key." : {
+      "comment" : "Settings ▸ Gestures: footer when no trackpad is present",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключите трекпад, чтобы пользоваться жестами. У каждого жеста есть замена щелчком или клавишей."
+          }
+        }
+      }
+    },
+    "Corner radius" : {
+      "comment" : "Settings ▸ Appearance ▸ Notch fit: slider ±3 pt",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Радиус углов"
+          }
+        }
+      }
+    },
+    "Cranny asks for a permission only when you turn on a feature that needs it, and works without any of them." : {
+      "comment" : "Settings ▸ Permissions: footer",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny запрашивает разрешение, только когда вы включаете функцию, которой оно нужно, и работает без любого из них."
+          }
+        }
+      }
+    },
+    "Cranny is off on %@." : {
+      "comment" : "Settings preview stage: Cranny is turned off on this display; the argument is its name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На дисплее «%@» Cranny выключен."
+          }
+        }
+      }
+    },
+    "Cranny is off on this display." : {
+      "comment" : "Settings preview stage: Cranny is turned off on the previewed display",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На этом дисплее Cranny выключен."
+          }
+        }
+      }
+    },
+    "Cranny is up to date." : {
+      "comment" : "Settings: result of an update check",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У вас последняя версия Cranny."
+          }
+        }
+      }
+    },
+    "Cranny waits a moment before closing, and never closes while you type or drag." : {
+      "comment" : "Settings ▸ General: footnote of Close when the pointer leaves",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny закрывается не сразу и никогда — пока вы печатаете или перетаскиваете."
+          }
+        }
+      }
+    },
+    "Delay" : {
+      "comment" : "Settings ▸ General: delay before the idle handle hides (VoiceOver)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задержка"
+          }
+        }
+      }
+    },
+    "Demo mode" : {
+      "comment" : "Settings ▸ General: toggle (glossary: Демо-режим)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Демо-режим"
+          }
+        }
+      }
+    },
+    "Demo mode and sounds" : {
+      "comment" : "Settings ▸ General: section header",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Демо-режим и звуки"
+          }
+        }
+      }
+    },
+    "Denied" : {
+      "comment" : "Settings ▸ Permissions: status pill",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отказано"
+          }
+        }
+      }
+    },
+    "Density" : {
+      "comment" : "Settings ▸ Appearance: picker Compact / Standard / Roomy",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Плотность"
+          }
+        }
+      }
+    },
+    "Design review" : {
+      "comment" : "Settings preview stage: title of the sample meeting",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обзор дизайна"
+          }
+        }
+      }
+    },
+    "Dismiss" : {
+      "comment" : "Settings: close button of the Reset All banner (VoiceOver)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрыть"
+          }
+        }
+      }
+    },
+    "Display" : {
+      "comment" : "Settings ▸ General ▸ Displays: column header",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дисплей"
+          }
+        }
+      }
+    },
+    "Display with the pointer" : {
+      "comment" : "Settings ▸ General ▸ Show on: option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дисплей с указателем"
+          }
+        }
+      }
+    },
+    "Displays" : {
+      "comment" : "Settings ▸ General: per-display table (style, activities, peeks, HUD)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дисплеи"
+          }
+        }
+      }
+    },
+    "Displays without a notch" : {
+      "comment" : "Settings ▸ Appearance: section header",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дисплеи без выреза"
+          }
+        }
+      }
+    },
+    "Drag to reorder, drag the right edge to resize. ⌥← ⌥→ move the selected widget, ⌥⇧← ⌥⇧→ resize it." : {
+      "comment" : "Settings ▸ Layout & Widgets: footnote of the grid editor",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перетащите, чтобы поменять порядок, или потяните за правый край, чтобы изменить ширину. ⌥← ⌥→ двигают выбранный виджет, ⌥⇧← ⌥⇧→ меняют его ширину."
+          }
+        }
+      }
+    },
+    "Drag to set which activity wins when two are of the same kind." : {
+      "comment" : "Settings ▸ Live Activities: footer of the priority list",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перетащите, чтобы задать, какая из двух активностей одного рода важнее."
+          }
+        }
+      }
+    },
+    "Drop file" : {
+      "comment" : "Settings preview stage: Simulate chip",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Бросить файл"
+          }
+        }
+      }
+    },
+    "Edit layout" : {
+      "comment" : "Settings ▸ Keyboard ▸ Inside Cranny: action",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить раскладку"
+          }
+        }
+      }
+    },
+    "Effect" : {
+      "comment" : "Settings ▸ Appearance: picker Aurora / Motes / Tide",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Эффект"
+          }
+        }
+      }
+    },
+    "Every Cranny setting returns to its default. You can undo this for 10 seconds." : {
+      "comment" : "Settings ▸ General: Reset All confirmation message",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Все настройки Cranny вернутся к значениям по умолчанию. Отменить можно в течение 10 секунд."
+          }
+        }
+      }
+    },
+    "Every setting in this pane returns to its default. Notes, to-dos and tray files are not affected." : {
+      "comment" : "Settings: confirmation message for a pane reset",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Все настройки этого раздела вернутся к значениям по умолчанию. Заметки, задачи и файлы в лотке останутся."
+          }
+        }
+      }
+    },
+    "Exclude" : {
+      "comment" : "Settings ▸ General ▸ Excluded apps: file panel confirm button",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Исключить"
+          }
+        }
+      }
+    },
+    "Excluded apps" : {
+      "comment" : "Settings ▸ General: apps in front of which Cranny behaves as in full screen",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Исключённые приложения"
+          }
+        }
+      }
+    },
+    "Extra large" : {
+      "comment" : "Settings ▸ Appearance ▸ Text size: option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Очень крупный"
+          }
+        }
+      }
+    },
+    "Features" : {
+      "comment" : "Settings sidebar: group header (Media, Calendar, Shortcuts, Tray)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Функции"
+          }
+        }
+      }
+    },
+    "Feel It" : {
+      "comment" : "Settings ▸ Gestures: button that plays a haptic",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ощутить"
+          }
+        }
+      }
+    },
+    "Files" : {
+      "comment" : "Settings: the Files widget (mini shelf of the Tray)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файлы"
+          }
+        }
+      }
+    },
+    "Finder search window" : {
+      "comment" : "Settings ▸ Keyboard: macOS shortcut a Cranny shortcut collides with",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Окно поиска Finder"
+          }
+        }
+      }
+    },
+    "Fine-tunes the space around the widgets. Corners stay concentric." : {
+      "comment" : "Settings ▸ Appearance: footnote of Panel padding",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Точно настраивает отступ вокруг виджетов. Углы остаются концентричными."
+          }
+        }
+      }
+    },
+    "Flat with dividers" : {
+      "comment" : "Settings ▸ Appearance ▸ Widgets: option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Плоские с разделителями"
+          }
+        }
+      }
+    },
+    "Floating island" : {
+      "comment" : "Settings: no-notch style",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Плавающий остров"
+          }
+        }
+      }
+    },
+    "Fold away after" : {
+      "comment" : "Settings ▸ Live Activities: inactivity timeout of compact activities",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сворачивать через"
+          }
+        }
+      }
+    },
+    "Folds the activity back into the notch; the satellite stays." : {
+      "comment" : "Settings ▸ Live Activities: footnote of Fold away after",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Активность убирается обратно в вырез, спутник остаётся."
+          }
+        }
+      }
+    },
+    "For screen sharing: keeps Cranny open, shows it over full-screen apps and mutes its sounds." : {
+      "comment" : "Settings ▸ General: footnote of Demo mode",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Для показа экрана: Cranny остаётся открытым, виден поверх полноэкранных приложений и не издаёт звуков."
+          }
+        }
+      }
+    },
     "Free and open source under the MIT License." : {
       "comment" : "Settings ▸ About: licence line",
       "localizations" : {
@@ -41,6 +1290,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Бесплатное приложение с открытым исходным кодом по лицензии MIT."
+          }
+        }
+      }
+    },
+    "Full screen and apps" : {
+      "comment" : "Settings ▸ General: section header",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Полный экран и приложения"
           }
         }
       }
@@ -67,6 +1327,380 @@
         }
       }
     },
+    "Getting started" : {
+      "comment" : "Settings ▸ About: row label",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Начало работы"
+          }
+        }
+      }
+    },
+    "GitHub" : {
+      "comment" : "Settings ▸ About: link to the source code",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub"
+          }
+        }
+      }
+    },
+    "Glass island" : {
+      "comment" : "Settings ▸ Appearance: toggle (Liquid Glass, macOS 26+)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стеклянный остров"
+          }
+        }
+      }
+    },
+    "Go to page 1–5" : {
+      "comment" : "Settings ▸ Keyboard ▸ Inside Cranny: action",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перейти на страницу 1–5"
+          }
+        }
+      }
+    },
+    "Granted" : {
+      "comment" : "Settings ▸ Permissions: status pill",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешено"
+          }
+        }
+      }
+    },
+    "Grant…" : {
+      "comment" : "Settings ▸ Permissions: button that shows the system prompt",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешить…"
+          }
+        }
+      }
+    },
+    "Graphite" : {
+      "comment" : "Settings ▸ Appearance ▸ Accent: swatch name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Графитовый"
+          }
+        }
+      }
+    },
+    "Green" : {
+      "comment" : "Settings ▸ Appearance ▸ Accent: swatch name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зелёный"
+          }
+        }
+      }
+    },
+    "HUD" : {
+      "comment" : "Settings: the HUD (volume and brightness overlay) as a name or column header",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HUD"
+          }
+        }
+      }
+    },
+    "Handle" : {
+      "comment" : "Settings ▸ Appearance: picker Visible / Hidden until hover (no-notch displays)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ручка"
+          }
+        }
+      }
+    },
+    "Haptic feedback" : {
+      "comment" : "Settings ▸ Gestures: toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тактильный отклик"
+          }
+        }
+      }
+    },
+    "Help menu" : {
+      "comment" : "Settings ▸ Keyboard: macOS shortcut a Cranny shortcut collides with",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Меню «Справка»"
+          }
+        }
+      }
+    },
+    "Hidden until hover" : {
+      "comment" : "Settings ▸ Appearance ▸ Handle: option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скрыта до наведения"
+          }
+        }
+      }
+    },
+    "Hide" : {
+      "comment" : "Settings ▸ General ▸ In full-screen apps: option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скрывать"
+          }
+        }
+      }
+    },
+    "Hide calendar titles" : {
+      "comment" : "Settings ▸ General: Demo mode option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скрывать названия событий"
+          }
+        }
+      }
+    },
+    "Hide the handle when idle" : {
+      "comment" : "Settings ▸ General: toggle for displays without a notch",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скрывать ручку при бездействии"
+          }
+        }
+      }
+    },
+    "Hides an activity until its next change: a new song, the last minute, a meeting starting." : {
+      "comment" : "Settings ▸ Live Activities: footnote of Swipe up to dismiss",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скрывает активность до следующего изменения: новой песни, последней минуты, начала встречи."
+          }
+        }
+      }
+    },
+    "Higher needs less finger travel." : {
+      "comment" : "Settings ▸ Gestures: footnote of Sensitivity",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чем выше, тем короче движение пальцев."
+          }
+        }
+      }
+    },
+    "Hold Option to move across the notch without opening it." : {
+      "comment" : "Settings ▸ General: footnote of Hold ⌥ to pass over",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удерживайте Option, чтобы провести указатель через вырез, не открывая Cranny."
+          }
+        }
+      }
+    },
+    "Hold ⌘ in Cranny to see these next to each control." : {
+      "comment" : "Settings ▸ Keyboard: footer of the key reference",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удерживайте ⌘ в Cranny, чтобы увидеть их рядом с каждым элементом."
+          }
+        }
+      }
+    },
+    "Hold ⌥ to pass over" : {
+      "comment" : "Settings ▸ General: toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проходить мимо с ⌥"
+          }
+        }
+      }
+    },
+    "Home" : {
+      "comment" : "Settings ▸ Layout & Widgets: the built-in widget page (glossary: Главная)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Главная"
+          }
+        }
+      }
+    },
+    "Home and up to three pages of your own. Right-click a page to rename or remove it." : {
+      "comment" : "Settings ▸ Layout & Widgets: footnote of Pages",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Главная и до трёх ваших страниц. Щёлкните страницу правой кнопкой, чтобы переименовать или удалить её."
+          }
+        }
+      }
+    },
+    "Hover" : {
+      "comment" : "Settings ▸ General ▸ Open Cranny with: option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Наведением"
+          }
+        }
+      }
+    },
+    "Hover delay" : {
+      "comment" : "Settings ▸ General: how long the pointer rests before Cranny opens",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задержка наведения"
+          }
+        }
+      }
+    },
+    "How long a peek stays before it folds back." : {
+      "comment" : "Settings ▸ Live Activities: footnote of Peek duration",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сколько мини-просмотр остаётся на экране, прежде чем свернуться."
+          }
+        }
+      }
+    },
+    "How long the pointer rests on the notch before Cranny opens." : {
+      "comment" : "Settings ▸ General: footnote of Hover delay",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сколько указатель должен пробыть на вырезе, чтобы Cranny открылся."
+          }
+        }
+      }
+    },
+    "In Low Power Mode the light becomes a still glow." : {
+      "comment" : "Settings ▸ Appearance: footnote of Effect",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В режиме энергосбережения свет становится неподвижным свечением."
+          }
+        }
+      }
+    },
+    "In full-screen apps" : {
+      "comment" : "Settings ▸ General: picker Hide / Alerts and HUD only / Show",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В полноэкранных приложениях"
+          }
+        }
+      }
+    },
+    "Include pre-releases" : {
+      "comment" : "Settings ▸ General: toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Включая предварительные версии"
+          }
+        }
+      }
+    },
+    "Inside Cranny" : {
+      "comment" : "Settings ▸ Keyboard: section header of the key reference",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Внутри Cranny"
+          }
+        }
+      }
+    },
+    "Instant" : {
+      "comment" : "Settings: option with no delay or no animation (Hover delay, Motion)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Мгновенно"
+          }
+        }
+      }
+    },
+    "Invert direction" : {
+      "comment" : "Settings ▸ Gestures: toggle under Swipe sideways",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обратное направление"
+          }
+        }
+      }
+    },
+    "Keep open" : {
+      "comment" : "Settings ▸ Keyboard ▸ Inside Cranny: action (pin; glossary: Закрепить)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрепить"
+          }
+        }
+      }
+    },
     "Keyboard" : {
       "comment" : "Settings sidebar: pane name",
       "localizations" : {
@@ -74,6 +1708,61 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Клавиатура"
+          }
+        }
+      }
+    },
+    "Large" : {
+      "comment" : "Settings ▸ Appearance ▸ Text size: option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Крупный"
+          }
+        }
+      }
+    },
+    "Larger text also makes the widgets larger, so nothing is cut off." : {
+      "comment" : "Settings ▸ Appearance: footnote of Text size",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "С крупным текстом виджеты тоже становятся больше, чтобы ничего не обрезалось."
+          }
+        }
+      }
+    },
+    "Last checked %@" : {
+      "comment" : "Settings: time of the last update check; the argument is a relative date (\"yesterday\")",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Последняя проверка: %@"
+          }
+        }
+      }
+    },
+    "Launch at login" : {
+      "comment" : "Settings ▸ General: toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открывать при входе в систему"
+          }
+        }
+      }
+    },
+    "Layout" : {
+      "comment" : "Settings ▸ Layout & Widgets: the grid editor (glossary: раскладка)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Раскладка"
           }
         }
       }
@@ -89,6 +1778,61 @@
         }
       }
     },
+    "Layout of %@" : {
+      "comment" : "Settings ▸ Layout & Widgets: VoiceOver label of the grid editor; the argument is the page name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Раскладка страницы «%@»"
+          }
+        }
+      }
+    },
+    "Light" : {
+      "comment" : "Settings ▸ Appearance: section header (the ambient light layer)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Свет"
+          }
+        }
+      }
+    },
+    "Light in the colour of what is playing or happening, only while Cranny is open." : {
+      "comment" : "Settings ▸ Appearance: footnote of Ambient light",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Свет в цвет того, что играет или происходит, — только пока Cranny открыт."
+          }
+        }
+      }
+    },
+    "Liquid Glass" : {
+      "comment" : "Settings search: keyword for Glass island",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Liquid Glass"
+          }
+        }
+      }
+    },
+    "Liquid Glass for the floating island on displays without a notch." : {
+      "comment" : "Settings ▸ Appearance: footnote of Glass island",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Liquid Glass для плавающего острова на дисплеях без выреза."
+          }
+        }
+      }
+    },
     "Live Activities" : {
       "comment" : "Settings sidebar: pane name",
       "localizations" : {
@@ -100,13 +1844,668 @@
         }
       }
     },
-    "Nothing to set here yet." : {
-      "comment" : "Settings: placeholder pane",
+    "Lively" : {
+      "comment" : "Settings ▸ Appearance ▸ Motion: option (more bounce)",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Здесь пока нечего настраивать."
+            "value" : "Живо"
+          }
+        }
+      }
+    },
+    "MIT License" : {
+      "comment" : "Settings ▸ About: link to the licence",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Лицензия MIT"
+          }
+        }
+      }
+    },
+    "Make way for the menu bar" : {
+      "comment" : "Settings ▸ Live Activities: toggle (menu-bar courtesy)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уступать строке меню"
+          }
+        }
+      }
+    },
+    "Media" : {
+      "comment" : "Settings: the Media feature (widget, pane)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Медиа"
+          }
+        }
+      }
+    },
+    "Medium" : {
+      "comment" : "Settings ▸ Appearance ▸ Text size: option (the default)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Средний"
+          }
+        }
+      }
+    },
+    "Meeting" : {
+      "comment" : "Settings preview stage: Simulate chip",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Встреча"
+          }
+        }
+      }
+    },
+    "Meeting soon: %@" : {
+      "comment" : "Settings preview stage: VoiceOver label of the sample meeting; the argument is its title",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скоро встреча: %@"
+          }
+        }
+      }
+    },
+    "Mirror" : {
+      "comment" : "Settings: the Mirror widget (glossary: Зеркало)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зеркало"
+          }
+        }
+      }
+    },
+    "Mission Control" : {
+      "comment" : "Settings ▸ Keyboard: macOS shortcut a Cranny shortcut collides with",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mission Control"
+          }
+        }
+      }
+    },
+    "Monochrome" : {
+      "comment" : "Settings ▸ Appearance ▸ Accent: white only",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Монохромный"
+          }
+        }
+      }
+    },
+    "Motes" : {
+      "comment" : "Settings ▸ Appearance ▸ Effect: option (slow rising specks)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Искры"
+          }
+        }
+      }
+    },
+    "Motion" : {
+      "comment" : "Settings ▸ Appearance: picker Calm / Standard / Lively / Instant",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Движение"
+          }
+        }
+      }
+    },
+    "Move between spaces" : {
+      "comment" : "Settings ▸ Keyboard: macOS shortcut a Cranny shortcut collides with",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переход между пространствами"
+          }
+        }
+      }
+    },
+    "Move between widgets" : {
+      "comment" : "Settings ▸ Keyboard ▸ Inside Cranny: action",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переход между виджетами"
+          }
+        }
+      }
+    },
+    "Move down" : {
+      "comment" : "Settings ▸ Live Activities: VoiceOver action that lowers an activity",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ниже"
+          }
+        }
+      }
+    },
+    "Move left" : {
+      "comment" : "Settings ▸ Layout & Widgets: move a widget or a page one place left",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Влево"
+          }
+        }
+      }
+    },
+    "Move right" : {
+      "comment" : "Settings ▸ Layout & Widgets: move a widget or a page one place right",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вправо"
+          }
+        }
+      }
+    },
+    "Move up" : {
+      "comment" : "Settings ▸ Live Activities: VoiceOver action that raises an activity",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выше"
+          }
+        }
+      }
+    },
+    "Name" : {
+      "comment" : "Settings ▸ Layout & Widgets: page name field",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Название"
+          }
+        }
+      }
+    },
+    "Narrower" : {
+      "comment" : "Settings ▸ Layout & Widgets: make a widget one cell narrower",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уже"
+          }
+        }
+      }
+    },
+    "New text in notes and to-dos appears with a short reveal." : {
+      "comment" : "Settings ▸ Appearance: footnote of Typing effect",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новый текст в заметках и задачах появляется с коротким проявлением."
+          }
+        }
+      }
+    },
+    "Next page" : {
+      "comment" : "Settings ▸ Keyboard ▸ Inside Cranny: action",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Следующая страница"
+          }
+        }
+      }
+    },
+    "No feature has asked for a permission." : {
+      "comment" : "Settings ▸ Permissions: no module declared a permission",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ни одна функция пока не запрашивала разрешений."
+          }
+        }
+      }
+    },
+    "No live activities are available yet." : {
+      "comment" : "Settings ▸ Live Activities: no module registered one",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Активностей пока нет."
+          }
+        }
+      }
+    },
+    "No results" : {
+      "comment" : "Settings sidebar: the search found nothing",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ничего не найдено"
+          }
+        }
+      }
+    },
+    "No shortcuts are available." : {
+      "comment" : "Settings ▸ Keyboard: no module registered a shortcut",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сочетаний клавиш нет."
+          }
+        }
+      }
+    },
+    "No widgets are available yet." : {
+      "comment" : "Settings ▸ Layout & Widgets: no module registered a widget",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Виджетов пока нет."
+          }
+        }
+      }
+    },
+    "Not checked yet" : {
+      "comment" : "Settings: no update check has run",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ещё не проверялось"
+          }
+        }
+      }
+    },
+    "Not yet" : {
+      "comment" : "Settings ▸ Permissions: status pill (never asked)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ещё нет"
+          }
+        }
+      }
+    },
+    "Notch" : {
+      "comment" : "Settings sidebar: group header (Layout & Widgets, Live Activities, HUD, Gestures)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вырез"
+          }
+        }
+      }
+    },
+    "Notch fit" : {
+      "comment" : "Settings ▸ Appearance: section header",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подгонка выреза"
+          }
+        }
+      }
+    },
+    "Notch preview" : {
+      "comment" : "Settings preview stage: VoiceOver label",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Предпросмотр выреза"
+          }
+        }
+      }
+    },
+    "Notch width" : {
+      "comment" : "Settings ▸ Appearance ▸ Notch fit: slider ±10 pt",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ширина выреза"
+          }
+        }
+      }
+    },
+    "Notes" : {
+      "comment" : "Settings: the Notes feature (glossary: Заметки)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заметки"
+          }
+        }
+      }
+    },
+    "Notes, to-dos and tray files are kept." : {
+      "comment" : "Settings ▸ General: footnote of Reset All Settings",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заметки, задачи и файлы в лотке сохранятся."
+          }
+        }
+      }
+    },
+    "Now playing: %@ by %@" : {
+      "comment" : "Settings preview stage: VoiceOver label of the sample Now Playing activity; arguments are a song and an artist",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Now playing: %1$@ by %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сейчас играет: %1$@ — %2$@"
+          }
+        }
+      }
+    },
+    "Off" : {
+      "comment" : "Settings: option that turns something off (a timeout, a display)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выкл."
+          }
+        }
+      }
+    },
+    "On displays without a notch" : {
+      "comment" : "Settings ▸ Appearance: picker Floating island / Attached / Off",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На дисплеях без выреза"
+          }
+        }
+      }
+    },
+    "On displays without a notch, the handle fades out after this long without activity." : {
+      "comment" : "Settings ▸ General: footnote of Hide the handle when idle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На дисплеях без выреза ручка исчезает после такого времени без активности."
+          }
+        }
+      }
+    },
+    "On this page" : {
+      "comment" : "Settings ▸ Layout & Widgets: the widget is already on the page",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уже на странице"
+          }
+        }
+      }
+    },
+    "Ongoing" : {
+      "comment" : "Settings ▸ Live Activities: priority class header (now playing, timer…)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Текущие"
+          }
+        }
+      }
+    },
+    "Open" : {
+      "comment" : "Settings preview stage: state picker segment",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыт"
+          }
+        }
+      }
+    },
+    "Open Cranny with" : {
+      "comment" : "Settings ▸ General: picker Hover / Click / Shortcut only",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открывать Cranny"
+          }
+        }
+      }
+    },
+    "Open Login Items…" : {
+      "comment" : "Settings ▸ General: opens System Settings ▸ Login Items",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть «Объекты входа»…"
+          }
+        }
+      }
+    },
+    "Open Settings" : {
+      "comment" : "Settings ▸ Keyboard ▸ Inside Cranny: action",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть настройки"
+          }
+        }
+      }
+    },
+    "Open System Settings" : {
+      "comment" : "Settings ▸ Permissions: button that opens Privacy & Security",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть Системные настройки"
+          }
+        }
+      }
+    },
+    "Opening and closing" : {
+      "comment" : "Settings ▸ General: section header",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открытие и закрытие"
+          }
+        }
+      }
+    },
+    "Opening there needs a longer rest of the pointer." : {
+      "comment" : "Settings ▸ General: footnote of In full-screen apps",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Там для открытия указатель должен задержаться дольше."
+          }
+        }
+      }
+    },
+    "Options…" : {
+      "comment" : "Settings ▸ Layout & Widgets: opens a widget's options",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Параметры…"
+          }
+        }
+      }
+    },
+    "Orange" : {
+      "comment" : "Settings ▸ Appearance ▸ Accent: swatch name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оранжевый"
+          }
+        }
+      }
+    },
+    "Page %lld" : {
+      "comment" : "Settings ▸ Layout & Widgets: default name of a new page; the argument is its number",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Страница %lld"
+          }
+        }
+      }
+    },
+    "Pages" : {
+      "comment" : "Settings ▸ Layout & Widgets: the page tabs (Home and user pages)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Страницы"
+          }
+        }
+      }
+    },
+    "Panel" : {
+      "comment" : "Settings ▸ Appearance: section header (the open panel's surface)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Панель"
+          }
+        }
+      }
+    },
+    "Panel padding" : {
+      "comment" : "Settings ▸ Appearance: slider ±4 pt",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отступ панели"
+          }
+        }
+      }
+    },
+    "Passive" : {
+      "comment" : "Settings ▸ Live Activities: priority class header (paused media)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Фоновые"
+          }
+        }
+      }
+    },
+    "Peek" : {
+      "comment" : "Settings preview stage: state picker segment",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Мини-просмотр"
+          }
+        }
+      }
+    },
+    "Peek duration" : {
+      "comment" : "Settings ▸ Live Activities: slider (glossary: мини-просмотр)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Длительность мини-просмотра"
+          }
+        }
+      }
+    },
+    "Peek on change" : {
+      "comment" : "Settings ▸ Live Activities: per-activity toggle (glossary: мини-просмотр)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Мини-просмотр при изменении"
+          }
+        }
+      }
+    },
+    "Peeks" : {
+      "comment" : "Settings ▸ General ▸ Displays: column header",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Мини-просмотры"
+          }
+        }
+      }
+    },
+    "Peeks and alerts appear only on the display with the pointer." : {
+      "comment" : "Settings ▸ General: footnote of Show on",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Мини-просмотры и оповещения появляются только на дисплее с указателем."
           }
         }
       }
@@ -118,6 +2517,1024 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Разрешения"
+          }
+        }
+      }
+    },
+    "Pink" : {
+      "comment" : "Settings ▸ Appearance ▸ Accent: swatch name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Розовый"
+          }
+        }
+      }
+    },
+    "Playback progress as a thin line along the lower edge of the notch." : {
+      "comment" : "Settings ▸ Appearance: footnote of Progress rim",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ход воспроизведения тонкой линией по нижнему краю выреза."
+          }
+        }
+      }
+    },
+    "Plays this preview on your notch for 5 seconds." : {
+      "comment" : "Settings preview stage: tooltip of Show on Notch",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывает этот предпросмотр на вашем вырезе 5 секунд."
+          }
+        }
+      }
+    },
+    "Press to record new keys." : {
+      "comment" : "Settings ▸ Keyboard: VoiceOver hint of a shortcut recorder",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нажмите, чтобы записать новые клавиши."
+          }
+        }
+      }
+    },
+    "Preview" : {
+      "comment" : "Settings preview stage: label of the state picker (VoiceOver)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Предпросмотр"
+          }
+        }
+      }
+    },
+    "Progress rim" : {
+      "comment" : "Settings ▸ Appearance: toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Кромка прогресса"
+          }
+        }
+      }
+    },
+    "Purple" : {
+      "comment" : "Settings ▸ Appearance ▸ Accent: swatch name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Фиолетовый"
+          }
+        }
+      }
+    },
+    "Quick Apps" : {
+      "comment" : "Settings: the Quick Apps widget (glossary: Быстрые приложения)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Быстрые приложения"
+          }
+        }
+      }
+    },
+    "Quick peek on hover" : {
+      "comment" : "Settings ▸ Live Activities: toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Мини-просмотр при наведении"
+          }
+        }
+      }
+    },
+    "Record Shortcut" : {
+      "comment" : "Settings ▸ Keyboard: recorder without a shortcut",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Записать сочетание"
+          }
+        }
+      }
+    },
+    "Release notes" : {
+      "comment" : "Settings: link to the notes of an available update",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Что нового"
+          }
+        }
+      }
+    },
+    "Remove" : {
+      "comment" : "Settings ▸ Layout & Widgets: remove a widget from the page",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить"
+          }
+        }
+      }
+    },
+    "Remove %@" : {
+      "comment" : "Settings ▸ General ▸ Excluded apps: remove button (VoiceOver); the argument is an app name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить «%@»"
+          }
+        }
+      }
+    },
+    "Remove Page" : {
+      "comment" : "Settings ▸ Layout & Widgets: removes a user page (its widgets stay available)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить страницу"
+          }
+        }
+      }
+    },
+    "Rename" : {
+      "comment" : "Settings ▸ Layout & Widgets: confirm button of the rename alert",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переименовать"
+          }
+        }
+      }
+    },
+    "Rename Page" : {
+      "comment" : "Settings ▸ Layout & Widgets: rename alert title",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переименовать страницу"
+          }
+        }
+      }
+    },
+    "Rename…" : {
+      "comment" : "Settings ▸ Layout & Widgets: rename a page",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переименовать…"
+          }
+        }
+      }
+    },
+    "Replay Tutorial" : {
+      "comment" : "Settings ▸ About: button that starts the interactive tutorial",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пройти обучение снова"
+          }
+        }
+      }
+    },
+    "Reset" : {
+      "comment" : "Settings: confirm button of a pane reset",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сбросить"
+          }
+        }
+      }
+    },
+    "Reset %@ settings?" : {
+      "comment" : "Settings: confirmation title for a pane reset; the argument is the pane name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сбросить настройки раздела «%@»?"
+          }
+        }
+      }
+    },
+    "Reset %@…" : {
+      "comment" : "Settings: pane footer button; the argument is the pane name (\"Reset General…\")",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сбросить «%@»…"
+          }
+        }
+      }
+    },
+    "Reset All" : {
+      "comment" : "Settings ▸ General: Reset All confirmation button",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сбросить все"
+          }
+        }
+      }
+    },
+    "Reset All Settings…" : {
+      "comment" : "Settings ▸ General: destructive button",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сбросить все настройки…"
+          }
+        }
+      }
+    },
+    "Reset all settings?" : {
+      "comment" : "Settings ▸ General: Reset All confirmation title",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сбросить все настройки?"
+          }
+        }
+      }
+    },
+    "Reset to Default" : {
+      "comment" : "Settings: row context menu and VoiceOver action",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вернуть по умолчанию"
+          }
+        }
+      }
+    },
+    "Rest the pointer on an activity to see its details." : {
+      "comment" : "Settings ▸ Live Activities: footnote of Quick peek on hover",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задержите указатель на активности, чтобы увидеть подробности."
+          }
+        }
+      }
+    },
+    "Restricted" : {
+      "comment" : "Settings ▸ Permissions: status pill (blocked by a profile)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ограничено"
+          }
+        }
+      }
+    },
+    "Roomy" : {
+      "comment" : "Settings ▸ Appearance ▸ Density: option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Просторно"
+          }
+        }
+      }
+    },
+    "Rounded" : {
+      "comment" : "Settings ▸ Appearance ▸ Buttons: option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скруглённые"
+          }
+        }
+      }
+    },
+    "Satellite" : {
+      "comment" : "Settings ▸ Live Activities: toggle (a second activity in a small circle)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Спутник"
+          }
+        }
+      }
+    },
+    "Screenshots" : {
+      "comment" : "Settings ▸ Keyboard: macOS shortcut group a Cranny shortcut collides with",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снимки экрана"
+          }
+        }
+      }
+    },
+    "Search" : {
+      "comment" : "Settings sidebar: search field placeholder",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поиск"
+          }
+        }
+      }
+    },
+    "Sensitivity" : {
+      "comment" : "Settings ▸ Gestures: slider",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чувствительность"
+          }
+        }
+      }
+    },
+    "Settings" : {
+      "comment" : "Settings sidebar: header above the settings (rows) a search found",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки"
+          }
+        }
+      }
+    },
+    "Shortcut for %@" : {
+      "comment" : "Settings ▸ Keyboard: VoiceOver label of a shortcut recorder; the argument is the shortcut name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сочетание для «%@»"
+          }
+        }
+      }
+    },
+    "Shortcut only" : {
+      "comment" : "Settings ▸ General ▸ Open Cranny with: option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только сочетанием клавиш"
+          }
+        }
+      }
+    },
+    "Shortcuts" : {
+      "comment" : "Settings ▸ Keyboard: section header (global shortcuts)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сочетания клавиш"
+          }
+        }
+      }
+    },
+    "Show" : {
+      "comment" : "Settings ▸ General ▸ In full-screen apps: option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывать"
+          }
+        }
+      }
+    },
+    "Show Welcome" : {
+      "comment" : "Settings ▸ About: button that opens the welcome window",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать приветствие"
+          }
+        }
+      }
+    },
+    "Show dismissed activities again when they change" : {
+      "comment" : "Settings ▸ Live Activities: toggle (auto-unhide)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Снова показывать скрытые активности при изменении"
+          }
+        }
+      }
+    },
+    "Show menu bar icon" : {
+      "comment" : "Settings ▸ General: toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Значок в строке меню"
+          }
+        }
+      }
+    },
+    "Show on" : {
+      "comment" : "Settings ▸ General: which displays show Cranny",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывать на"
+          }
+        }
+      }
+    },
+    "Show on %@" : {
+      "comment" : "Settings ▸ General ▸ Displays: VoiceOver label of the custom-list checkbox; the argument is a display name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывать на «%@»"
+          }
+        }
+      }
+    },
+    "Show on Notch" : {
+      "comment" : "Settings preview stage: plays the preview on the real notch for 5 s",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать на вырезе"
+          }
+        }
+      }
+    },
+    "Show shortcuts" : {
+      "comment" : "Settings ▸ Keyboard ▸ Inside Cranny: action (hold ⌘)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать сочетания"
+          }
+        }
+      }
+    },
+    "Showed how to replace the system volume overlay so only one is ever shown." : {
+      "comment" : "Settings ▸ About ▸ Acknowledgements: what Cranny learned from volumeHUD",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показал, как заменить системный индикатор громкости, чтобы на экране всегда был только один."
+          }
+        }
+      }
+    },
+    "Showed that Now Playing can still be read from a helper hosted in the system's Perl." : {
+      "comment" : "Settings ▸ About ▸ Acknowledgements: what Cranny learned from mediaremote-adapter",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показал, что «Исполняется» всё ещё можно читать из помощника, запущенного в системном Perl."
+          }
+        }
+      }
+    },
+    "Simulate" : {
+      "comment" : "Settings preview stage: label before the Simulate chips",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Имитировать"
+          }
+        }
+      }
+    },
+    "Simulate %@" : {
+      "comment" : "Settings preview stage: VoiceOver label of a Simulate chip; the argument is the chip name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Имитировать: %@"
+          }
+        }
+      }
+    },
+    "Small" : {
+      "comment" : "Settings ▸ Appearance ▸ Text size: option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Мелкий"
+          }
+        }
+      }
+    },
+    "Song change" : {
+      "comment" : "Settings preview stage: Simulate chip",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Смена песни"
+          }
+        }
+      }
+    },
+    "Source code" : {
+      "comment" : "Settings ▸ About: row label",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Исходный код"
+          }
+        }
+      }
+    },
+    "Space" : {
+      "comment" : "Settings ▸ Keyboard: name of the space bar in a shortcut",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пробел"
+          }
+        }
+      }
+    },
+    "Spotlight" : {
+      "comment" : "Settings ▸ Keyboard: macOS shortcut a Cranny shortcut collides with",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spotlight"
+          }
+        }
+      }
+    },
+    "Standard" : {
+      "comment" : "Settings ▸ Appearance: the default option of a picker",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стандартно"
+          }
+        }
+      }
+    },
+    "Status: %@" : {
+      "comment" : "Settings ▸ Permissions: VoiceOver label of the status pill; the argument is the status",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Статус: %@"
+          }
+        }
+      }
+    },
+    "Studied for techniques only. Cranny includes no third-party code." : {
+      "comment" : "Settings ▸ About ▸ Acknowledgements: footer",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изучались только приёмы. В Cranny нет стороннего кода."
+          }
+        }
+      }
+    },
+    "Style" : {
+      "comment" : "Settings ▸ General ▸ Displays: column header",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стиль"
+          }
+        }
+      }
+    },
+    "Style of %@" : {
+      "comment" : "Settings ▸ General ▸ Displays: VoiceOver label; the argument is a display name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стиль дисплея «%@»"
+          }
+        }
+      }
+    },
+    "Subtle" : {
+      "comment" : "Settings ▸ Appearance ▸ Ambient light: option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Мягкий"
+          }
+        }
+      }
+    },
+    "Swipe down to open, up to close" : {
+      "comment" : "Settings ▸ Gestures: toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Смахнуть вниз — открыть, вверх — закрыть"
+          }
+        }
+      }
+    },
+    "Swipe sideways to change track" : {
+      "comment" : "Settings ▸ Gestures: toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Смахивание вбок меняет трек"
+          }
+        }
+      }
+    },
+    "Swipe up to dismiss" : {
+      "comment" : "Settings ▸ Live Activities and Gestures: toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Смахнуть вверх, чтобы скрыть"
+          }
+        }
+      }
+    },
+    "Swipes on the notch" : {
+      "comment" : "Settings ▸ Gestures: section header",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Смахивания на вырезе"
+          }
+        }
+      }
+    },
+    "Switch input source" : {
+      "comment" : "Settings ▸ Keyboard: macOS shortcut a Cranny shortcut collides with",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Смена источника ввода"
+          }
+        }
+      }
+    },
+    "Symbol" : {
+      "comment" : "Settings ▸ Layout & Widgets: submenu that picks a page's glyph",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Значок"
+          }
+        }
+      }
+    },
+    "System" : {
+      "comment" : "Settings ▸ Appearance ▸ Accent: the system accent colour",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Системный"
+          }
+        }
+      }
+    },
+    "Tea" : {
+      "comment" : "Settings preview stage: name of the sample timer",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чай"
+          }
+        }
+      }
+    },
+    "Teal" : {
+      "comment" : "Settings ▸ Appearance ▸ Accent: swatch name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Бирюзовый"
+          }
+        }
+      }
+    },
+    "Text size" : {
+      "comment" : "Settings ▸ Appearance: picker",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Размер текста"
+          }
+        }
+      }
+    },
+    "The accent colour chosen in System Settings." : {
+      "comment" : "Settings ▸ Appearance ▸ Accent: footnote for System",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цвет акцента из Системных настроек."
+          }
+        }
+      }
+    },
+    "The album's colour while music plays, otherwise the system accent." : {
+      "comment" : "Settings ▸ Appearance ▸ Accent: footnote for Automatic",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цвет альбома, пока играет музыка, иначе системный акцент."
+          }
+        }
+      }
+    },
+    "The open panel lets the desktop show through below the menu bar. Off with Reduce Transparency." : {
+      "comment" : "Settings ▸ Appearance: footnote of Translucent background",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сквозь открытую панель ниже строки меню виден рабочий стол. Выключено при уменьшении прозрачности."
+          }
+        }
+      }
+    },
+    "The tutorial runs on the real notch and takes about a minute." : {
+      "comment" : "Settings ▸ About: footnote of Getting started",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обучение проходит на настоящем вырезе и занимает около минуты."
+          }
+        }
+      }
+    },
+    "The wings step aside when the pointer heads for menu bar items next to them." : {
+      "comment" : "Settings ▸ Live Activities: footnote of Make way for the menu bar",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Крылья отходят, когда указатель направляется к соседним пунктам строки меню."
+          }
+        }
+      }
+    },
+    "These work in every app and need no special permission." : {
+      "comment" : "Settings ▸ Keyboard: footer of the shortcuts section",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Работают в любом приложении и не требуют особых разрешений."
+          }
+        }
+      }
+    },
+    "Tide" : {
+      "comment" : "Settings ▸ Appearance ▸ Effect: option (wave lines)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Прилив"
+          }
+        }
+      }
+    },
+    "Timer" : {
+      "comment" : "Settings: the Timer feature (widget, Simulate chip; glossary: Таймер)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Таймер"
+          }
+        }
+      }
+    },
+    "Timer: %@, %@ left" : {
+      "comment" : "Settings preview stage: VoiceOver label of the sample timer; arguments are its name and the time left",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Timer: %1$@, %2$@ left"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Таймер «%1$@»: осталось %2$@"
+          }
+        }
+      }
+    },
+    "To-dos" : {
+      "comment" : "Settings: the To-dos feature (glossary: Задачи)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задачи"
+          }
+        }
+      }
+    },
+    "Translucent background" : {
+      "comment" : "Settings ▸ Appearance: toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Полупрозрачный фон"
+          }
+        }
+      }
+    },
+    "Turn off %@" : {
+      "comment" : "Settings ▸ Keyboard: VoiceOver label of the clear button; the argument is the shortcut name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выключить «%@»"
+          }
+        }
+      }
+    },
+    "Two fingers left or right over the playing song." : {
+      "comment" : "Settings ▸ Gestures: footnote of Swipe sideways to change track",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Двумя пальцами влево или вправо над играющей песней."
+          }
+        }
+      }
+    },
+    "Type shortcut" : {
+      "comment" : "Settings ▸ Keyboard: recorder while it waits for keys",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нажмите сочетание"
+          }
+        }
+      }
+    },
+    "Type to capture" : {
+      "comment" : "Settings ▸ Keyboard: picker Notes / To-dos / Off",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ввод с клавиатуры"
+          }
+        }
+      }
+    },
+    "Typing effect" : {
+      "comment" : "Settings ▸ Appearance: toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Эффект набора"
+          }
+        }
+      }
+    },
+    "UI sounds" : {
+      "comment" : "Settings ▸ General: toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Звуки интерфейса"
+          }
+        }
+      }
+    },
+    "Underglow" : {
+      "comment" : "Settings ▸ Appearance: toggle (light below the open panel)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подсветка снизу"
+          }
+        }
+      }
+    },
+    "Undo" : {
+      "comment" : "Settings: banner button that restores the settings before Reset All",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отменить"
+          }
+        }
+      }
+    },
+    "Unknown" : {
+      "comment" : "Settings ▸ Permissions: status pill (macOS cannot tell yet)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Неизвестно"
+          }
+        }
+      }
+    },
+    "Updates" : {
+      "comment" : "Settings ▸ General: section header",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обновления"
+          }
+        }
+      }
+    },
+    "Used for progress, rings and toggles. Alerts keep their own colours." : {
+      "comment" : "Settings ▸ Appearance ▸ Accent: footnote for a swatch",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Для прогресса, колец и переключателей. Оповещения сохраняют свои цвета."
           }
         }
       }
@@ -135,6 +3552,738 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Версия %1$@ (%2$@)"
+          }
+        }
+      }
+    },
+    "Version %@ is available." : {
+      "comment" : "Settings: result of an update check; the argument is a version number",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доступна версия %@."
+          }
+        }
+      }
+    },
+    "Visible" : {
+      "comment" : "Settings ▸ Appearance ▸ Handle: option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Видна"
+          }
+        }
+      }
+    },
+    "Vivid" : {
+      "comment" : "Settings ▸ Appearance ▸ Ambient light: option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Яркий"
+          }
+        }
+      }
+    },
+    "Volume" : {
+      "comment" : "Settings preview stage: Simulate chip",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Громкость"
+          }
+        }
+      }
+    },
+    "Volume, %@" : {
+      "comment" : "Settings preview stage: VoiceOver label of the sample volume HUD; the argument is a percentage",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Громкость, %@"
+          }
+        }
+      }
+    },
+    "When hidden, open Cranny again from Finder or Spotlight to reach Settings." : {
+      "comment" : "Settings ▸ General: footnote of Show menu bar icon",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Если значок скрыт, откройте Cranny снова из Finder или Spotlight, чтобы попасть в настройки."
+          }
+        }
+      }
+    },
+    "When you open Cranny with the keyboard, just start typing to write a note or a to-do." : {
+      "comment" : "Settings ▸ Keyboard: footnote of Type to capture",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Если открыть Cranny с клавиатуры, можно сразу печатать — получится заметка или задача."
+          }
+        }
+      }
+    },
+    "While an excluded app is in front, Cranny acts as it does over full-screen apps." : {
+      "comment" : "Settings ▸ General: footnote of Excluded apps",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пока исключённое приложение впереди, Cranny ведёт себя как над полноэкранными приложениями."
+          }
+        }
+      }
+    },
+    "While you drag, the notch shows its outline so you can line it up with the camera housing. Saved for this display model." : {
+      "comment" : "Settings ▸ Appearance ▸ Notch fit: footer",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пока вы двигаете ползунок, вырез показывает свой контур, чтобы совместить его с корпусом камеры. Сохраняется для этой модели дисплея."
+          }
+        }
+      }
+    },
+    "White only. Alerts keep their own colours." : {
+      "comment" : "Settings ▸ Appearance ▸ Accent: footnote for Monochrome",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только белый. Оповещения сохраняют свои цвета."
+          }
+        }
+      }
+    },
+    "Wider" : {
+      "comment" : "Settings ▸ Layout & Widgets: make a widget one cell wider",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Шире"
+          }
+        }
+      }
+    },
+    "Widget library" : {
+      "comment" : "Settings ▸ Layout & Widgets: section header",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Библиотека виджетов"
+          }
+        }
+      }
+    },
+    "Widgets" : {
+      "comment" : "Settings ▸ Appearance: picker Cards / Flat",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Виджеты"
+          }
+        }
+      }
+    },
+    "With Reduce Motion turned on in System Settings, shapes fade instead of moving." : {
+      "comment" : "Settings ▸ Appearance: footnote of Motion",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Если в Системных настройках включено уменьшение движения, формы плавно проявляются вместо перемещения."
+          }
+        }
+      }
+    },
+    "With Vivid light, a glow spills onto the desktop under Cranny." : {
+      "comment" : "Settings ▸ Appearance: footnote of Underglow",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "При ярком свете сияние разливается по рабочему столу под Cranny."
+          }
+        }
+      }
+    },
+    "Yellow" : {
+      "comment" : "Settings ▸ Appearance ▸ Accent: swatch name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Жёлтый"
+          }
+        }
+      }
+    },
+    "You can add up to three pages." : {
+      "comment" : "Settings ▸ Layout & Widgets: the page limit is reached",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Можно добавить не больше трёх страниц."
+          }
+        }
+      }
+    },
+    "You feel it while a finger rests on a Force Touch trackpad." : {
+      "comment" : "Settings ▸ Gestures: footnote of Haptic feedback",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отклик ощущается, пока палец лежит на трекпаде Force Touch."
+          }
+        }
+      }
+    },
+    "add widget" : {
+      "comment" : "Settings search: keyword for the widget library",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "добавить виджет"
+          }
+        }
+      }
+    },
+    "airdrop" : {
+      "comment" : "Settings search: keyword that finds the Tray pane",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "airdrop"
+          }
+        }
+      }
+    },
+    "animation" : {
+      "comment" : "Settings search: keyword for Motion",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "анимация"
+          }
+        }
+      }
+    },
+    "aurora" : {
+      "comment" : "Settings search: keyword for the light effect",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "сияние"
+          }
+        }
+      }
+    },
+    "bounce" : {
+      "comment" : "Settings search: keyword for Motion",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "пружинистость"
+          }
+        }
+      }
+    },
+    "brightness" : {
+      "comment" : "Settings search: keyword that finds the HUD pane",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "яркость"
+          }
+        }
+      }
+    },
+    "calibrate" : {
+      "comment" : "Settings search: keyword for Notch fit",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "калибровка"
+          }
+        }
+      }
+    },
+    "colour" : {
+      "comment" : "Settings search: keyword for Accent",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "цвет"
+          }
+        }
+      }
+    },
+    "defaults" : {
+      "comment" : "Settings search: keyword for Reset All Settings",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "по умолчанию"
+          }
+        }
+      }
+    },
+    "display" : {
+      "comment" : "Settings search: keyword for the display settings",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "дисплей"
+          }
+        }
+      }
+    },
+    "dock" : {
+      "comment" : "Settings search: keyword that finds the Shortcuts pane (Quick Apps)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "dock"
+          }
+        }
+      }
+    },
+    "dwell" : {
+      "comment" : "Settings search: keyword for Hover delay",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "задержка"
+          }
+        }
+      }
+    },
+    "events" : {
+      "comment" : "Settings search: keyword that finds the Calendar pane",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "события"
+          }
+        }
+      }
+    },
+    "external monitor" : {
+      "comment" : "Settings search: keyword for the display settings",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "внешний монитор"
+          }
+        }
+      }
+    },
+    "files" : {
+      "comment" : "Settings search: keyword that finds the Tray pane",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "файлы"
+          }
+        }
+      }
+    },
+    "font" : {
+      "comment" : "Settings search: keyword for Text size",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "шрифт"
+          }
+        }
+      }
+    },
+    "glow" : {
+      "comment" : "Settings search: keyword for Ambient light",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "свечение"
+          }
+        }
+      }
+    },
+    "handle" : {
+      "comment" : "Settings search: keyword for the no-notch handle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ручка"
+          }
+        }
+      }
+    },
+    "hot key" : {
+      "comment" : "Settings search: keyword for global shortcuts",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "горячая клавиша"
+          }
+        }
+      }
+    },
+    "in %@" : {
+      "comment" : "Settings preview stage: compact countdown to the sample meeting; the argument is \"4m\" (keep it short)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@"
+          }
+        }
+      }
+    },
+    "island" : {
+      "comment" : "Settings search: keyword for the per-display style",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "остров"
+          }
+        }
+      }
+    },
+    "keyboard backlight" : {
+      "comment" : "Settings search: keyword that finds the HUD pane",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "подсветка клавиатуры"
+          }
+        }
+      }
+    },
+    "launcher" : {
+      "comment" : "Settings search: keyword that finds the Shortcuts pane (Quick Apps)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "запуск"
+          }
+        }
+      }
+    },
+    "licence" : {
+      "comment" : "Settings search: keyword for the licence and acknowledgements",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "лицензия"
+          }
+        }
+      }
+    },
+    "macOS also uses %@." : {
+      "comment" : "Settings ▸ Keyboard: a Cranny shortcut collides with an unnamed macOS shortcut; the argument is the keys",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ также использует macOS."
+          }
+        }
+      }
+    },
+    "macOS uses %@ for %@." : {
+      "comment" : "Settings ▸ Keyboard: a Cranny shortcut collides with a macOS shortcut; arguments are the keys and its name",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "macOS uses %1$@ for %2$@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS использует %1$@ для функции «%2$@»."
+          }
+        }
+      }
+    },
+    "meeting" : {
+      "comment" : "Settings search: keyword that finds the Calendar pane",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "встреча"
+          }
+        }
+      }
+    },
+    "music" : {
+      "comment" : "Settings search: keyword that finds the Media pane",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "музыка"
+          }
+        }
+      }
+    },
+    "now playing" : {
+      "comment" : "Settings search: keyword that finds the Media pane",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "исполняется"
+          }
+        }
+      }
+    },
+    "onboarding" : {
+      "comment" : "Settings search: keyword for Show Welcome",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "приветствие"
+          }
+        }
+      }
+    },
+    "option" : {
+      "comment" : "Settings search: keyword for Hold ⌥ to pass over",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "option"
+          }
+        }
+      }
+    },
+    "pipelines" : {
+      "comment" : "Settings search: keyword that finds the Tray pane",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "конвейеры"
+          }
+        }
+      }
+    },
+    "presentation" : {
+      "comment" : "Settings search: keyword for Demo mode",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "презентация"
+          }
+        }
+      }
+    },
+    "quick apps" : {
+      "comment" : "Settings search: keyword that finds the Shortcuts pane",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "быстрые приложения"
+          }
+        }
+      }
+    },
+    "reorder" : {
+      "comment" : "Settings search: keyword for the layout editor",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "порядок"
+          }
+        }
+      }
+    },
+    "resize" : {
+      "comment" : "Settings search: keyword for the layout editor",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "размер"
+          }
+        }
+      }
+    },
+    "screen" : {
+      "comment" : "Settings search: keyword for the display settings",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "экран"
+          }
+        }
+      }
+    },
+    "screen sharing" : {
+      "comment" : "Settings search: keyword for Demo mode",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "показ экрана"
+          }
+        }
+      }
+    },
+    "sound" : {
+      "comment" : "Settings search: keyword that finds the HUD pane",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "звук"
+          }
+        }
+      }
+    },
+    "startup" : {
+      "comment" : "Settings search: keyword for Launch at login",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "автозапуск"
+          }
+        }
+      }
+    },
+    "tabs" : {
+      "comment" : "Settings search: keyword for pages",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "вкладки"
+          }
+        }
+      }
+    },
+    "trackpad" : {
+      "comment" : "Settings search: keyword for gestures",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "трекпад"
+          }
+        }
+      }
+    },
+    "transparency" : {
+      "comment" : "Settings search: keyword for Translucent background",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "прозрачность"
+          }
+        }
+      }
+    },
+    "version" : {
+      "comment" : "Settings search: keyword for updates",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "версия"
+          }
+        }
+      }
+    },
+    "vibration" : {
+      "comment" : "Settings search: keyword for Haptic feedback",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "вибрация"
+          }
+        }
+      }
+    },
+    "video" : {
+      "comment" : "Settings search: keyword for the full-screen policy",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "видео"
+          }
+        }
+      }
+    },
+    "visualizer" : {
+      "comment" : "Settings search: keyword that finds the Media pane",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "визуализатор"
+          }
+        }
+      }
+    },
+    "volume" : {
+      "comment" : "Settings search: keyword that finds the HUD pane",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "громкость"
           }
         }
       }
