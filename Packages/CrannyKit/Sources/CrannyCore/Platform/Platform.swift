@@ -77,28 +77,53 @@ public nonisolated struct AppPaths: Sendable {
     }
 }
 
-/// Codable document on disk with atomic writes. Corrupt files are renamed aside and the default is used.
+/// A Codable document on disk with a default value, for caches and indexes that can be rebuilt (the update cache, the
+/// Tray index). Built on `JSONDocumentFile`: a missing file reads as the default; a corrupt one is set aside under a
+/// unique name and reads as the default; a file that exists but cannot be READ (permissions, I/O) also reads as the
+/// default, but then every `save` throws `JSONFileStoreError.unreadableFile` instead of replacing it. Saves are
+/// atomic and serialized by the actor in call order. Content the user made (notes, to-dos) uses `JSONDocumentFile`
+/// directly, which also has a synchronous write for `applicationWillTerminate`.
 public actor JSONFileStore<Value: Codable & Sendable> {
-    public let url: URL
+    /// The document's location.
+    public nonisolated var url: URL { file.url }
+    private let file: JSONDocumentFile<Value>
     private let defaultValue: Value
-    public init(url: URL, defaultValue: Value) { self.url = url; self.defaultValue = defaultValue }
+    private var revision = 0
+    private var unreadable = false
 
+    /// A store for `url` that reads as `defaultValue` until something is saved. No I/O happens here.
+    public init(url: URL, defaultValue: Value) {
+        self.file = JSONDocumentFile(url: url)
+        self.defaultValue = defaultValue
+    }
+
+    /// The saved value, or `defaultValue` (missing, corrupt or unreadable file; see the type's documentation).
     public func load() -> Value {
-        guard let data = try? Data(contentsOf: url) else { return defaultValue }
-        do { return try JSONDecoder().decode(Value.self, from: data) } catch {
-            let aside = url.appendingPathExtension("corrupt-\(Int(Date().timeIntervalSince1970))")
-            try? FileManager.default.moveItem(at: url, to: aside)
-            Log.logger(.storage).error("corrupt \(self.url.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
+        do {
+            switch try file.load() {
+            case .loaded(let value): unreadable = false; return value
+            case .missing, .corrupt: unreadable = false; return defaultValue
+            }
+        } catch {
+            unreadable = true
+            Log.logger(.storage).error("cannot read \(self.url.lastPathComponent, privacy: .public), keeping it: \(error.localizedDescription, privacy: .public)")
             return defaultValue
         }
     }
 
+    /// Writes `value` atomically. Throws `JSONFileStoreError.unreadableFile` after a `load()` that could not read an
+    /// existing file (it is kept, never replaced by a default), and any encoding or file-system error.
     public func save(_ value: Value) throws {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try encoder.encode(value).write(to: url, options: .atomic)
+        guard !unreadable else { throw JSONFileStoreError.unreadableFile(url) }
+        revision += 1
+        try file.write(value, revision: revision)
     }
+}
+
+/// Why a `JSONFileStore` did not save.
+public nonisolated enum JSONFileStoreError: Error, Equatable, Sendable {
+    /// The last `load()` found the file but could not read it; saving would replace it.
+    case unreadableFile(URL)
 }
 
 // MARK: - App info and versions
