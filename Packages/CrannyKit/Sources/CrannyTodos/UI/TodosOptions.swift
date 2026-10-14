@@ -1,7 +1,8 @@
 // CrannyTodos/UI/TodosOptions.swift — the widget's options popover (Settings ▸ Layout & Widgets and the card's ⋯
 // menu, DESIGN.md §11.1): "Hide completed", and "Delete completed" (undoable) so hidden checked to-dos never
-// pile up out of reach. System controls: the popover lives in ordinary windows as well as in the notch. The
-// Undo goes to the window under the popover (the panel or Settings), where ⌘Z is pressed after it closes.
+// pile up out of reach. System controls, with the Settings conventions (DESIGN.md §11.3: a small switch, as in
+// every widget's options): the popover lives in ordinary windows as well as in the notch. The Undo goes to the
+// window under the popover (the panel or Settings), where ⌘Z is pressed after it closes.
 import CrannyCore
 import SwiftUI
 
@@ -15,6 +16,8 @@ struct TodosOptions: View {
             Toggle(isOn: model.settings.binding(TodosSettings.hidesCompleted)) {
                 Text(TodosStrings.hideCompleted)
             }
+            .toggleStyle(.switch)                                // not the default checkbox
+            .controlSize(.small)
             Button(role: .destructive) {
                 // Undo on the window below, not on the popover's own undo manager, which goes away with it.
                 TodoUndo.deleteCompleted(model, hostedIn: anchor.window, fallback: undoManager)
