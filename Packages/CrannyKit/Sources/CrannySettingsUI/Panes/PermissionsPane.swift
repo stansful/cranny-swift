@@ -72,8 +72,12 @@ struct PermissionsPane: View {
         SettingsForm(.permissions) {
             Section {
                 if entries.isEmpty {
-                    Text("No feature has asked for a permission.", bundle: .module, comment: "Settings ▸ Permissions: no module declared a permission")
-                        .foregroundStyle(.secondary)
+                    Label {
+                        Text("No feature has asked for a permission.", bundle: .module, comment: "Settings ▸ Permissions: no module declared a permission")
+                    } icon: {
+                        Image(systemName: "hand.raised.fill").foregroundStyle(.secondary)
+                    }
+                    .foregroundStyle(.secondary)
                 }
                 ForEach(entries) { entry in
                     PermissionRow(entry: entry, permissions: registry.services.permissions)
