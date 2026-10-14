@@ -3,6 +3,7 @@
 // launch (`onboardingCompletedVersion == nil`, from a launch hook once every module has started) and from
 // "Show welcome". "Take the 1-minute tour" closes the window and asks `AppControl.startTutorial()`, so the app keeps
 // one `TutorialController` (the app services own it, WP16) for the welcome, the menu bar and Settings ▸ About.
+// The controller's decisions are pure (`WelcomeWindowPolicy`) and tested without windows.
 import AppKit
 import CrannyCore
 import CrannyOnboarding
@@ -92,12 +93,17 @@ private let log = Log.logger(.onboarding)
     func windowWillClose(_ notification: Notification) {
         // The close button before the end counts as "Skip setup": the welcome is not forced on the next launch and
         // stays available from Settings ▸ About.
-        if !hasFinished, !isVisualQA {
+        if WelcomeWindowPolicy.recordsCompletionOnClose(hasFinished: hasFinished, isVisualQA: isVisualQA) {
             registry.services.settings[CoreSettings.onboardingCompletedVersion] = AppInfo.current().version
         }
         window = nil
-        // Cooperative activation hand-back (ARCHITECTURE.md §5.9, as for Settings).
-        if let previousApp, !previousApp.isTerminated { previousApp.activate() }
+        // Cooperative activation hand-back (ARCHITECTURE.md §5.9), only while Cranny is still the active app: a
+        // close button clicked from another app, or a welcome that ends after the person moved on, takes nothing.
+        if let previousApp,
+           WelcomeWindowPolicy.handsBackActivation(isActive: NSApp.isActive, previousAppIsRunning: !previousApp.isTerminated) {
+            NSApp.yieldActivation(to: previousApp)
+            previousApp.activate(from: .current, options: [])
+        }
         previousApp = nil
     }
 
@@ -105,21 +111,31 @@ private let log = Log.logger(.onboarding)
         #if DEBUG
         let qa = QAHooks.Options(arguments: CommandLine.arguments)
         isVisualQA = !qa.isEmpty
-        if let name = qa.welcomeStep {
-            show(at: WelcomeStep(rawValue: name) ?? .hello)
-            if let path = qa.snapshotPath { snapshotForVisualQA(into: URL(fileURLWithPath: path)) }
+        OnboardingVisualQA.showsTipsAnyway = qa.welcomeStep != nil || qa.tutorialStep != nil
+        let launch = WelcomeWindowPolicy.launch(completedVersion: registry.services.settings[CoreSettings.onboardingCompletedVersion],
+                                                qaWelcomeStep: qa.welcomeStep, qaTutorialStep: qa.tutorialStep,
+                                                isVisualQA: isVisualQA)
+        #else
+        let launch = WelcomeWindowPolicy.launch(completedVersion: registry.services.settings[CoreSettings.onboardingCompletedVersion],
+                                                qaWelcomeStep: nil, qaTutorialStep: nil, isVisualQA: false)
+        #endif
+        switch launch {
+        case .nothing:
             return
-        }
-        if let step = qa.tutorialStep {
+        case .welcome(let step):
+            show(at: step)
+        case .tutorial(let step):
+            #if DEBUG
             let tutorial = TutorialController(registry: registry)
             visualQATutorial = tutorial
             tutorial.startForVisualQA(atStep: step)
-            if let path = qa.snapshotPath { snapshotForVisualQA(into: URL(fileURLWithPath: path)) }
-            return
+            #else
+            _ = step
+            #endif
         }
-        if isVisualQA { return }                  // QA screenshots never get the first-launch welcome on top
+        #if DEBUG
+        if let path = qa.snapshotPath { snapshotForVisualQA(into: URL(fileURLWithPath: path)) }
         #endif
-        if registry.services.settings[CoreSettings.onboardingCompletedVersion] == nil { show() }
     }
 
     #if DEBUG
@@ -147,4 +163,36 @@ private let log = Log.logger(.onboarding)
         }
     }
     #endif
+}
+
+/// `WelcomeWindowController`'s decisions (pure, tested in CrannyAppShellTests).
+enum WelcomeWindowPolicy {
+    /// What launch opens.
+    enum Launch: Equatable {
+        case nothing
+        /// The welcome at a step: the first launch (`.hello`), or a visual QA step.
+        case welcome(WelcomeStep)
+        /// Visual QA only: the tour at a 1-based step.
+        case tutorial(step: Int)
+    }
+
+    /// The welcome shows on first launch only (`onboardingCompletedVersion == nil`). Visual QA runs (`--qa-*`) show
+    /// exactly what they ask for and never get the first-launch welcome on top. An unknown QA step name shows step 1.
+    static func launch(completedVersion: String?, qaWelcomeStep: String?, qaTutorialStep: Int?, isVisualQA: Bool) -> Launch {
+        if let qaWelcomeStep { return .welcome(WelcomeStep(rawValue: qaWelcomeStep) ?? .hello) }
+        if let qaTutorialStep { return .tutorial(step: qaTutorialStep) }
+        if isVisualQA { return .nothing }
+        return completedVersion == nil ? .welcome(.hello) : .nothing
+    }
+
+    /// A close before the welcome reported how it ended (the close button) counts as "Skip setup" and records
+    /// completion; visual QA records nothing (every local build shares the defaults domain).
+    static func recordsCompletionOnClose(hasFinished: Bool, isVisualQA: Bool) -> Bool {
+        !hasFinished && !isVisualQA
+    }
+
+    /// Activation goes back to the app that was in front only while Cranny is still active (never steal focus).
+    static func handsBackActivation(isActive: Bool, previousAppIsRunning: Bool) -> Bool {
+        isActive && previousAppIsRunning
+    }
 }

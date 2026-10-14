@@ -1,4 +1,5 @@
 import CrannyCore
+import Foundation
 import Testing
 @testable import CrannyOnboarding
 
@@ -33,9 +34,12 @@ import Testing
         #expect(visited == plan.steps)
     }
 
-    @Test func progressLabelNamesBothNumbers() {
-        let label = ProgressDots.label(current: 2, count: 6)
-        #expect(label.contains("2") && label.contains("6"))
+    @Test func progressLabelReadsStepNOfCount() throws {
+        // English is the catalog's source: a bundle without translations falls back to the key.
+        #expect(ProgressDots.label(current: 2, count: 6, bundle: Bundle(for: BundleMarker.self)) == "Step 2 of 6")
+        let russian = try #require(Bundle.onboardingStrings("ru"))
+        #expect(ProgressDots.label(current: 2, count: 6, bundle: russian) == "Шаг 2 из 6")
+        #expect(ProgressDots.label(current: 6, count: 2, bundle: russian) == "Шаг 6 из 2")   // the numbers keep their order
     }
 }
 
@@ -85,3 +89,6 @@ import Testing
         #expect(CheatSheetEntry.sheet(openCranny: nil).count == 5)
     }
 }
+
+/// A class whose bundle (the test bundle) carries no onboarding strings.
+private final class BundleMarker {}

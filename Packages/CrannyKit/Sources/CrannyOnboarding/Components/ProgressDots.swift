@@ -26,8 +26,9 @@ struct ProgressDots: View {
         .accessibilityLabel(Text(Self.label(current: current, count: count)))
     }
 
-    static func label(current: Int, count: Int) -> String {
-        String(localized: "Step \(current) of \(count)", bundle: .module, comment: "Welcome: VoiceOver label of the progress dots")
+    /// "Step 2 of 6" (DESIGN.md §12.1); `bundle` picks a localization in tests.
+    static func label(current: Int, count: Int, bundle: Bundle = .module) -> String {
+        String(localized: "Step \(current) of \(count)", bundle: bundle, comment: "Welcome: VoiceOver label of the progress dots")
     }
 }
 

@@ -53,6 +53,13 @@ import SwiftUI
     func pressAction() { onAction?() }
 }
 
+extension Bundle {
+    /// Tests: this module's strings in one language (`"ru"`), or nil when the catalog has no such localization.
+    static func onboardingStrings(_ language: String) -> Bundle? {
+        Bundle.module.path(forResource: language, ofType: "lproj").flatMap(Bundle.init(path:))
+    }
+}
+
 /// Uses declared the way the feature modules declare them (calendar, HUD, media, devices), for previews.
 @MainActor func registerSamplePermissionUses(in registry: ModuleRegistry) {
     struct Calendar: FeatureModule {
