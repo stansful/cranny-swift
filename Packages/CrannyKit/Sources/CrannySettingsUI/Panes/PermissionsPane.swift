@@ -1,7 +1,8 @@
 // CrannySettingsUI/Panes/PermissionsPane.swift — Settings ▸ Permissions (DESIGN.md §11.1, ARCHITECTURE §3.12, §7.13): one row
 // per permission a module declared (`registry.permissionUses`), with a status pill (Granted / Not yet / Denied), the
 // one-line why, and Grant… or Open System Settings. Statuses are read with `PermissionsCenter` (never prompts) when the
-// pane appears and whenever the app becomes active; a system prompt appears only after a click on Grant….
+// pane appears and whenever the app becomes active; a system prompt appears only after a click on Grant…. An Automation
+// row is named after its app and shown only while that app is installed (`AutomationApps`).
 import AppKit
 import CrannyCore
 import Foundation
@@ -51,27 +52,47 @@ enum PermissionsRows {
         }
     }
 
-    static func title(_ kind: PermissionKind) -> String {
-        if case .automation(let bundleID) = kind {
-            return String(localized: "Automation: \(AppIdentityResolver.shared.identity(of: bundleID).name)", bundle: .module,
-                          comment: "Settings ▸ Permissions: Apple Events permission for one app; the argument is the app's name")
+    /// The row's title, or nil while the row is not shown: an Automation row is named after its app ("Automation:
+    /// Music") once the app is known to be installed, and never after its bundle identifier (§10.20 issue 11).
+    static func title(_ kind: PermissionKind, app: (String) -> AutomationApp) -> String? {
+        guard case .automation(let bundleID) = kind else { return kind.title }
+        return app(bundleID).name.map {
+            String(localized: "Automation: \($0)", bundle: .module,
+                   comment: "Settings ▸ Permissions: Apple Events permission for one app; the argument is the app's name (Music, Spotify)")
         }
-        return kind.title
     }
 
-    static func all(registry: ModuleRegistry) -> [SettingsRowInfo] {
-        PermissionEntry.entries(registry.permissionUses).map { SettingsRowInfo(.permissions, $0.id, title: title($0.kind)) }
+    /// The rows the pane shows, with their titles, in the design's order.
+    static func shown(_ entries: [PermissionEntry], app: (String) -> AutomationApp) -> [(entry: PermissionEntry, title: String)] {
+        entries.compactMap { entry in title(entry.kind, app: app).map { (entry, $0) } }
+    }
+
+    /// An Automation row still waits for its app's lookup.
+    static func isWaiting(_ entries: [PermissionEntry], app: (String) -> AutomationApp) -> Bool {
+        entries.contains { entry in
+            if case .automation(let bundleID) = entry.kind { return app(bundleID) == .pending }
+            return false
+        }
+    }
+
+    /// The search rows: exactly the rows the pane shows.
+    static func all(registry: ModuleRegistry, apps: AutomationApps = .shared) -> [SettingsRowInfo] {
+        shown(PermissionEntry.entries(registry.permissionUses), app: apps.app).map {
+            SettingsRowInfo(.permissions, $0.entry.id, title: $0.title)
+        }
     }
 }
 
 struct PermissionsPane: View {
     let registry: ModuleRegistry
+    private var apps: AutomationApps { .shared }
 
     var body: some View {
         let entries = PermissionEntry.entries(registry.permissionUses)
+        let rows = PermissionsRows.shown(entries, app: apps.app)
         SettingsForm(.permissions) {
             Section {
-                if entries.isEmpty {
+                if rows.isEmpty && !PermissionsRows.isWaiting(entries, app: apps.app) {
                     Label {
                         Text("No feature has asked for a permission.", bundle: .module, comment: "Settings ▸ Permissions: no module declared a permission")
                     } icon: {
@@ -79,8 +100,8 @@ struct PermissionsPane: View {
                     }
                     .foregroundStyle(.secondary)
                 }
-                ForEach(entries) { entry in
-                    PermissionRow(entry: entry, permissions: registry.services.permissions)
+                ForEach(rows, id: \.entry.id) { row in
+                    PermissionRow(entry: row.entry, title: row.title, permissions: registry.services.permissions)
                 }
             } footer: {
                 Text("Cranny asks for a permission only when you turn on a feature that needs it, and works without any of them.",
@@ -88,13 +109,20 @@ struct PermissionsPane: View {
                     .font(.footnote).foregroundStyle(.secondary)
             }
         }
-        .onAppear { registry.services.permissions.refresh() }
-        .onReceiveAppActivation { registry.services.permissions.refresh() }
+        .onAppear { refresh() }
+        .onReceiveAppActivation { refresh() }
+    }
+
+    /// Statuses and Automation apps may have changed while the pane was away (System Settings, an installer).
+    private func refresh() {
+        registry.services.permissions.refresh()
+        apps.refresh()
     }
 }
 
 private struct PermissionRow: View {
     let entry: PermissionEntry
+    let title: String
     let permissions: PermissionsCenter
     @State private var isRequesting = false
 
@@ -114,9 +142,9 @@ private struct PermissionRow: View {
                 }
             }
         } label: {
-            RowLabel(title: PermissionsRows.title(entry.kind), footnote: entry.reasons.joined(separator: " "))
+            RowLabel(title: title, footnote: entry.reasons.joined(separator: " "))
         }
-        .searchTarget(SettingsRowInfo(.permissions, entry.id, title: PermissionsRows.title(entry.kind)))
+        .searchTarget(SettingsRowInfo(.permissions, entry.id, title: title))
         .accessibilityElement(children: .contain)
     }
 
@@ -159,5 +187,7 @@ enum PermissionAction: Equatable {
     let registry = ModuleRegistry(services: .preview())
     registry.declare(.calendar, reason: "Show your events in Cranny. Cranny never edits or uploads them.")
     registry.declare(.accessibility, reason: "Replace the system volume and brightness overlay.")
+    registry.declare(.automation(bundleID: "com.apple.Music"), reason: "Read and control Music when the media helper can’t.")
+    registry.declare(.automation(bundleID: "com.example.not-installed"), reason: "Never shown: the app is not installed.")
     return PermissionsPane(registry: registry).frame(width: 650, height: 400)
 }

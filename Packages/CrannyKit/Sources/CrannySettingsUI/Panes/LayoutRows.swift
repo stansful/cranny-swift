@@ -22,8 +22,17 @@ enum LayoutRows {
 
     /// One row per registered widget (its library entry), so "calendar" finds Layout & Widgets.
     static func widget(_ id: WidgetID, title: String) -> SettingsRowInfo {
-        SettingsRowInfo(.nookAndWidgets, "widget.\(id.rawValue)", title: title)
+        SettingsRowInfo(.nookAndWidgets, "\(widgetRowName).\(id.rawValue)", title: title)
     }
+
+    /// The widget whose library entry `row` is ("nook.widget.notes.editor" → `notes.editor`); nil for other rows.
+    static func widgetID(inRow row: String) -> WidgetID? {
+        let prefix = "\(SettingsPageID.nookAndWidgets.rawValue).\(widgetRowName)."
+        guard row.hasPrefix(prefix), row.count > prefix.count else { return nil }
+        return WidgetID(String(row.dropFirst(prefix.count)))
+    }
+
+    private static let widgetRowName = "widget"
 
     static func all(registry: ModuleRegistry) -> [SettingsRowInfo] {
         [pages, layout, library] + registry.widgets.map { widget($0.id, title: $0.title) }

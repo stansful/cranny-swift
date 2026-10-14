@@ -1,7 +1,8 @@
 // CrannySettingsUI/Panes/NookWidgetsPane.swift — Settings ▸ Layout & Widgets (code id `nook`, DESIGN.md §11.1): pages,
 // the WYSIWYG grid editor of the selected page right under the stage (which shows that page live), and the widget
 // library with per-widget options. Every change writes `CoreSettings.pages` at once (D14); a change that would not
-// fit is refused with the overflow message and nothing is written.
+// fit is refused with the overflow message and nothing is written. Opened at a widget's library entry (search, a deep
+// link, Keyboard's capture warning), it shows a page that holds the widget or has room for it, so Add works there.
 import CrannyCore
 import CrannyNotchUI
 import Foundation
@@ -10,6 +11,7 @@ import SwiftUI
 struct NookWidgetsPane: View {
     let registry: ModuleRegistry
     @Environment(StageController.self) private var stage: StageController?
+    @Environment(SettingsNavigator.self) private var navigator: SettingsNavigator?
     @State private var selection: PageID?
     @State private var refusal: LayoutEditor.Refusal?
     @State private var optionsWidget: WidgetID?
@@ -47,10 +49,15 @@ struct NookWidgetsPane: View {
             }
         }
         .onAppear {
-            stage?.show(page: pageID)
+            let shown = requestedPage(current: pageID) ?? pageID
+            if shown != pageID { selection = shown }
+            stage?.show(page: shown)
             stage?.setOpenMode(.editLayout)
         }
         .onDisappear { stage?.setOpenMode(.grid) }
+        .onChange(of: navigator?.highlightSerial) {
+            if let page = requestedPage(current: pageID), page != pageID { selection = page }
+        }
         .onChange(of: pageID) { _, page in
             refusal = nil
             stage?.show(page: page)
@@ -58,18 +65,14 @@ struct NookWidgetsPane: View {
     }
 
     /// The editor over the live pages, at the stage's maximum width.
-    private var currentEditor: LayoutEditor {
-        let pages = settings[CoreSettings.pages]
-        let ids = Set(pages.flatMap { $0.items.map(\.widget) } + registry.widgets.map(\.id))
-        let sizes = Dictionary(uniqueKeysWithValues: ids.map { ($0, KnownWidgets.info($0, registry: registry).sizes) })
-        return LayoutEditor(pages: pages, maxColumns: maxColumns, sizes: sizes)
-    }
+    private var currentEditor: LayoutEditor { .live(registry: registry, stage: stage) }
 
-    private var maxColumns: Int {
-        stage?.model.layout.maxColumns
-            ?? NotchLayout(metrics: .reference, grid: NookGrid(density: settings[CoreSettings.density], textSize: settings[CoreSettings.textSize],
-                                                               style: settings[CoreSettings.widgetStyle],
-                                                               paddingTune: CGFloat(settings[CoreSettings.panelPaddingTune]))).maxColumns
+    /// A fresh request for a widget's library entry: the page that holds the widget or has room for it (nil: keep
+    /// the page shown).
+    private func requestedPage(current: PageID) -> PageID? {
+        guard let navigator, navigator.isHighlightFresh, let row = navigator.highlightedRow,
+              let widget = LayoutRows.widgetID(inRow: row) else { return nil }
+        return currentEditor.page(for: widget, preferring: current)
     }
 
     private var theme: CrannyTheme { stage?.model.theme ?? CrannyTheme() }
@@ -88,6 +91,23 @@ struct NookWidgetsPane: View {
         refusal = nil
         if editor.pages != settings[CoreSettings.pages] { settings[CoreSettings.pages] = editor.pages }
         return true
+    }
+}
+
+extension LayoutEditor {
+    /// The editor over the live pages (`CoreSettings.pages`) with each placed or registered widget's sizes, as wide
+    /// as the stage's display allows (`NotchLayout.maxColumns`; the reference display until the stage exists).
+    /// Layout & Widgets edits through it; Keyboard's capture warning asks it whether a widget has room.
+    static func live(registry: ModuleRegistry, stage: StageController?) -> LayoutEditor {
+        let settings = registry.services.settings
+        let pages = settings[CoreSettings.pages]
+        let ids = Set(pages.flatMap { $0.items.map(\.widget) } + registry.widgets.map(\.id))
+        let sizes = Dictionary(uniqueKeysWithValues: ids.map { ($0, KnownWidgets.info($0, registry: registry).sizes) })
+        let maxColumns = stage?.model.layout.maxColumns
+            ?? NotchLayout(metrics: .reference, grid: NookGrid(density: settings[CoreSettings.density], textSize: settings[CoreSettings.textSize],
+                                                               style: settings[CoreSettings.widgetStyle],
+                                                               paddingTune: CGFloat(settings[CoreSettings.panelPaddingTune]))).maxColumns
+        return LayoutEditor(pages: pages, maxColumns: maxColumns, sizes: sizes)
     }
 }
 

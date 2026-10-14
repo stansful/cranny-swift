@@ -1,6 +1,7 @@
-// CrannySettingsUI/Components/AppIdentity.swift — the icon view of an app row (the Excluded apps list, the Automation
-// rows of Permissions). Names and icons come from CrannyCore's `AppIdentityResolver`: looked up off the main actor,
-// once per app and session, and never for an app in a protected folder (no Files & Folders prompt from Settings).
+// CrannySettingsUI/Components/AppIdentity.swift — the icon view of an app row (the Excluded apps list). Names and icons
+// come from CrannyCore's `AppIdentityResolver`: looked up off the main actor, once per app and session, and never for
+// an app in a protected folder (no Files & Folders prompt from Settings). Permissions' Automation rows name their app
+// with `AutomationApps`, which also knows when an app is not installed.
 import AppKit
 import CrannyCore
 import Foundation

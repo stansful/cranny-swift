@@ -625,12 +625,12 @@
       }
     },
     "Automation: %@" : {
-      "comment" : "Settings ▸ Permissions: Apple Events permission for one app; the argument is the app's name",
+      "comment" : "Settings ▸ Permissions: Apple Events permission for one app; the argument is the app's name (Music, Spotify)",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Автоматизация: %@"
+            "value" : "Автоматизация: «%@»"
           }
         }
       }
@@ -2940,6 +2940,17 @@
         }
       }
     },
+    "Show in Layout & Widgets" : {
+      "comment" : "Settings ▸ Keyboard: button under the type-to-capture warning; opens Settings ▸ Layout & Widgets at that widget, or at its pages when a page has to be added first",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать в разделе «Раскладка и виджеты»"
+          }
+        }
+      }
+    },
     "Show menu bar icon" : {
       "comment" : "Settings ▸ General: toggle",
       "localizations" : {
@@ -3255,6 +3266,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Размер текста"
+          }
+        }
+      }
+    },
+    "The %@ widget isn’t on any page, so typing does nothing." : {
+      "comment" : "Settings ▸ Keyboard: warning under Type to capture when its widget is on no page; the argument is the widget's name (Notes, To-dos)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Виджета «%@» нет ни на одной странице, поэтому ввод с клавиатуры не сработает."
+          }
+        }
+      }
+    },
+    "The %@ widget isn’t on any page, so typing does nothing. No page has room for it; add a page first." : {
+      "comment" : "Settings ▸ Keyboard: warning under Type to capture when its widget is on no page and every page is too full for it; the argument is the widget's name (Notes, To-dos)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Виджета «%@» нет ни на одной странице, поэтому ввод с клавиатуры не сработает. На страницах для него нет места — сначала добавьте новую страницу."
           }
         }
       }

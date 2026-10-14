@@ -86,11 +86,12 @@ public struct SettingsRootView: View {
         }
     }
 
-    /// The index for a query: rebuilt only when the panes, the registered rows or a resolved app name change.
+    /// The index for a query: rebuilt only when the panes, the registered rows or an Automation app (its name, or
+    /// whether it is installed) change.
     private func searchIndex(_ pages: [SettingsPage]) -> SettingsSearchIndex {
         let signature = pages.map(\.id.rawValue)
             + [registry.shortcuts.count, registry.widgets.count, registry.activities.count, registry.permissionUses.count,
-               AppIdentityResolver.shared.resolvedCount].map(String.init)
+               AutomationApps.shared.revision].map(String.init)
         return session.searchIndex.index(pages: pages, signature: signature) { ShellPanes.rows(registry: registry) }
     }
 

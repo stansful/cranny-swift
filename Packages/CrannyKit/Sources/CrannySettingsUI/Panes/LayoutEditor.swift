@@ -1,7 +1,8 @@
 // CrannySettingsUI/Panes/LayoutEditor.swift — the pure model behind Settings ▸ Layout & Widgets (DESIGN.md §6.3, §6.6,
 // §11.1): pages (Home plus up to 3 user pages: add, rename, reorder, remove) and their widgets (add, remove, reorder,
-// resize in whole cells within each widget's sizes). A change that would make a page wider than the Nook's maximum
-// columns is refused with the overflow ("2 cells over"), never clipped: the Nook never scrolls sideways. Tested.
+// resize in whole cells within each widget's sizes), and which page a widget is on or has room on. A change that
+// would make a page wider than the Nook's maximum columns is refused with the overflow ("2 cells over"), never
+// clipped: the Nook never scrolls sideways. Tested.
 import CrannyCore
 import Foundation
 
@@ -85,6 +86,27 @@ struct LayoutEditor: Equatable {
 
     func cells(of widget: WidgetID, on page: PageID) -> Int? {
         self.page(page)?.items.first { $0.widget == widget }.map { sizes(of: widget).clamp($0.cells) }
+    }
+
+    // MARK: Finding a place
+
+    /// Some page has room for the widget's minimum width, so the library's Add can take it there.
+    func hasRoom(for widget: WidgetID) -> Bool {
+        pages.contains { fits(widget, on: $0.id) }
+    }
+
+    /// The page to show for `widget` (a search result or a deep link to its library entry, Keyboard's capture
+    /// warning): one that holds it, else one with room for its minimum width, so its Add works there. `current` wins
+    /// when it qualifies; nil when the widget is on no page and no page has room.
+    func page(for widget: WidgetID, preferring current: PageID) -> PageID? {
+        let holding = pages.filter { $0.items.contains { $0.widget == widget } }
+        let candidates = (holding.isEmpty ? pages.filter { fits(widget, on: $0.id) } : holding).map(\.id)
+        return candidates.contains(current) ? current : candidates.first
+    }
+
+    /// `page` has room for the widget's minimum width.
+    private func fits(_ widget: WidgetID, on page: PageID) -> Bool {
+        cellsLeft(on: page) >= sizes(of: widget).minimum
     }
 
     // MARK: Pages

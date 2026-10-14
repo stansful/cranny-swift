@@ -21,6 +21,11 @@ struct SettingsRowInfo: Identifiable, Hashable {
         self.title = title
         self.keywords = keywords
     }
+
+    /// The deep link that opens this row ("general#hoverDelay"; `SettingsNavigator.parse` reads it back).
+    var deepLink: SettingsPageID {
+        SettingsPageID("\(pane.rawValue)#\(id.dropFirst(pane.rawValue.count + 1))")
+    }
 }
 
 /// Layout constants of the Settings window (DESIGN.md §11). Settings is an ordinary window with system colours
