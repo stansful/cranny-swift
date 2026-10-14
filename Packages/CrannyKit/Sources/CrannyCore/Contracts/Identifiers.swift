@@ -134,6 +134,5 @@ public extension CrannyID where Tag == ShortcutTag {
 /// Matched-geometry identifiers shared across layers (compact slot → peek row → widget).
 public nonisolated enum MatchedID {
     public static let mediaArtwork = "media.artwork"
-    public static let mediaVisualizer = "media.visualizer"
     public static let timerRing = "timer.ring"
 }

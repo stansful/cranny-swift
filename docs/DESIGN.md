@@ -916,8 +916,6 @@ public nonisolated struct CrannyTheme: Equatable, Sendable {
     public var accentColor: Color { accent.color }
     public var accentContrast: Double { increaseContrast ? 7 : 4.5 }
     public var allowsUnderglow: Bool { effectiveAmbience == .vivid }
-    /// VoiceOver users get click-to-open automatically (hover is never the only way in).
-    public var opensOnHover: Bool { !voiceOverRunning }
 
     public func animation(_ k: CrannyMotion.Kind) -> Animation? {
         CrannyMotion.animation(k, personality: motion, reduceMotion: reduceMotion)
