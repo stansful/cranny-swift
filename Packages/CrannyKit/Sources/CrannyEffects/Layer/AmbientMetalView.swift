@@ -40,7 +40,11 @@ final class AmbientMetalNSView: NSView {
 
     /// Set by SwiftUI on every update.
     var state: AmbientLayerState? {
-        didSet { if state != oldValue { stateDidChange() } }
+        didSet {
+            guard state != oldValue else { return }
+            if state?.effect != oldValue?.effect { updateDrawableSize() }
+            stateDidChange()
+        }
     }
 
     // The frame loop. `nonisolated(unsafe)` only so `deinit` can cancel it; it is otherwise main-actor state.
@@ -118,9 +122,13 @@ final class AmbientMetalNSView: NSView {
         if isWindowVisible { drawNow() }
     }
 
-    private var scale: CGFloat { window?.backingScaleFactor ?? 2 }
+    /// Pixels per point of the drawable (1 for the soft aurora and halo, the display's scale otherwise).
+    private var scale: CGFloat {
+        AmbientRenderer.renderScale(for: state?.effect ?? .motes, displayScale: window?.backingScaleFactor ?? 2)
+    }
 
     private func updateDrawableSize() {
+        let scale = scale
         metalLayer.contentsScale = scale
         let size = CGSize(width: (bounds.width * scale).rounded(), height: (bounds.height * scale).rounded())
         if size.width >= 1, size.height >= 1, metalLayer.drawableSize != size { metalLayer.drawableSize = size }

@@ -161,3 +161,27 @@ func ambientLightNeverPassesTheCap(_ effect: AmbientEffect) throws {
         #expect(r.alpha(0, 0) < 0.02)
     }
 }
+
+/// GPU ≤ 1.5 ms per frame at the largest open size (DESIGN.md §5.6 rule 6): a 16″ open panel is ≈ 1000 × 300 pt on a
+/// 2× display, drawn at the layer's render scale for each effect.
+@Test(.enabled(if: shadersRun), arguments: AmbientEffect.allCases)
+func ambientFrameFitsTheGPUBudget(_ effect: AmbientEffect) throws {
+    let renderer = try #require(AmbientRenderer.shared)
+    let size = CGSize(width: 1000, height: 300)
+    let scale = AmbientRenderer.renderScale(for: effect, displayScale: 2)
+    let (w, h) = (Int(size.width * scale), Int(size.height * scale))
+    let uniforms = AmbientUniforms(state: layerState(effect, level: .vivid, energy: 1), size: size, scale: scale, time: 30,
+                                   date: Date())
+    _ = renderer.gpuTime(effect, uniforms: uniforms, width: w, height: h)                       // warm-up
+    let times = (0..<8).compactMap { _ in renderer.gpuTime(effect, uniforms: uniforms, width: w, height: h) }
+    let median = try #require(times.sorted().dropFirst(times.count / 2).first)
+    #expect(median <= 0.0015, "\(effect): \(median * 1000) ms per frame")
+}
+
+@Test func softLightRendersAtOnePixelPerPoint() {
+    #expect(AmbientRenderer.renderScale(for: .aurora, displayScale: 2) == 1)
+    #expect(AmbientRenderer.renderScale(for: .halo, displayScale: 2) == 1)
+    #expect(AmbientRenderer.renderScale(for: .motes, displayScale: 2) == 2)
+    #expect(AmbientRenderer.renderScale(for: .tide, displayScale: 2) == 2)
+    #expect(AmbientRenderer.renderScale(for: .aurora, displayScale: 1) == 1)
+}

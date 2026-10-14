@@ -51,6 +51,16 @@ private let log = Log.logger(.effects)
         }
     }
 
+    /// Pixels per point the layer renders `effect` at. The aurora and the halo are low-frequency light (their finest
+    /// structure is ≈ 10 pt), so they render at 1 pixel per point and Core Animation scales them up: a quarter of the
+    /// GPU work on Retina displays with no visible difference. Motes and tide lines need every pixel.
+    nonisolated static func renderScale(for effect: AmbientEffect, displayScale: CGFloat) -> CGFloat {
+        switch effect {
+        case .aurora, .halo: min(displayScale, 1)
+        case .motes, .tide: displayScale
+        }
+    }
+
     /// The pipeline of `effect`, built on first use (a few milliseconds from the precompiled library).
     func pipeline(for effect: AmbientEffect) -> (any MTLRenderPipelineState)? {
         if let pipeline = pipelines[effect] { return pipeline }
@@ -103,6 +113,20 @@ private let log = Log.logger(.effects)
             texture.getBytes(base, bytesPerRow: width * 4, from: MTLRegionMake2D(0, 0, width, height), mipmapLevel: 0)
         }
         return bytes
+    }
+
+    /// GPU seconds of one frame rendered offscreen at `width` × `height` pixels (the frame-time budget test).
+    func gpuTime(_ effect: AmbientEffect, uniforms: AmbientUniforms, width: Int, height: Int) -> Double? {
+        guard width > 0, height > 0, let pipeline = pipeline(for: effect) else { return nil }
+        let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: Self.pixelFormat, width: width,
+                                                                  height: height, mipmapped: false)
+        descriptor.usage = [.renderTarget]
+        descriptor.storageMode = .private
+        guard let texture = device.makeTexture(descriptor: descriptor), let buffer = queue.makeCommandBuffer(),
+              encode(pipeline, uniforms: uniforms, target: texture, into: buffer) else { return nil }
+        buffer.commit()
+        buffer.waitUntilCompleted()
+        return buffer.gpuEndTime - buffer.gpuStartTime
     }
 
     private func encode(_ pipeline: any MTLRenderPipelineState, uniforms: AmbientUniforms,
