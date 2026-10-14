@@ -139,9 +139,9 @@ public nonisolated enum PermissionStatus: String, Codable, Sendable {
         case .systemAudioRecording:
             break   // prompted by AudioDeviceStart in CrannyMedia; it reports back via `record`
         case .automation(let bundleID):
-            let generation = nextAutomationGeneration(bundleID)
             let answer = await automationProbe(bundleID, true)           // off the main actor: it blocks while asking
-            if automationGeneration[bundleID] == generation { update(kind, to: answer) }
+            _ = nextAutomationGeneration(bundleID)                       // the person's answer: queries begun before
+            update(kind, to: answer)                                     // it (during the prompt) are dropped
             return answer
         }
         let s = query(kind)

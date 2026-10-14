@@ -6,11 +6,13 @@ import Testing
 // kept per app, and asked again only on refresh, after a request or for a caller that needs a fresh answer. No test
 // queries TCC: every center here gets a recording probe.
 
-/// The answers a probe gives per app and every question it was asked (`ask` true = the request that may prompt).
+/// The answers a probe gives per app and every question it was asked (`ask` true = the request that may prompt; its
+/// answer is `promptAnswers`' when set: what the person chose).
 private actor AutomationAnswers {
     var answers: [String: PermissionStatus] = [:]
+    var promptAnswers: [String: PermissionStatus] = [:]
     private(set) var questions: [(bundleID: String, ask: Bool)] = []
-    /// While true, every question waits for `release()` (an answer still on its way).
+    /// While true, every question waits for `release()` / `releaseOldest()` (an answer still on its way).
     var holds = false
     private var waiting: [CheckedContinuation<Void, Never>] = []
 
@@ -19,17 +21,22 @@ private actor AutomationAnswers {
     /// The answer as it stood when the question was asked (a held answer lands late, unchanged).
     func answer(_ bundleID: String, ask: Bool) async -> PermissionStatus {
         questions.append((bundleID, ask))
-        let answer = answers[bundleID] ?? .unknown
+        let answer = (ask ? promptAnswers[bundleID] : nil) ?? answers[bundleID] ?? .unknown
         if holds { await withCheckedContinuation { waiting.append($0) } }
         return answer
     }
 
     func set(_ status: PermissionStatus, for bundleID: String) { answers[bundleID] = status }
+    func setPrompt(_ status: PermissionStatus, for bundleID: String) { promptAnswers[bundleID] = status }
     func hold(_ on: Bool) { holds = on }
     func release() {
         let all = waiting
         waiting.removeAll()
         for continuation in all { continuation.resume() }
+    }
+    func releaseOldest() {
+        guard !waiting.isEmpty else { return }
+        waiting.removeFirst().resume()
     }
     var count: Int { questions.count }
     var asks: [Bool] { questions.map(\.ask) }
@@ -101,6 +108,29 @@ private let spotify = "com.spotify.client"
     for _ in 0..<5 { await Task.yield() }
     try? await Task.sleep(for: .milliseconds(50))
     #expect(permissions.status(kind) == .granted)
+}
+
+/// A refresh while the prompt is up (Cranny became active) asks before the person answered: when its answer lands
+/// after the request's, it is dropped; the person's answer is kept.
+@MainActor @Test func aQueryDuringThePromptDoesNotOverwriteItsAnswer() async {
+    let answers = AutomationAnswers([music: .notDetermined])
+    let permissions = center(answers)
+    let kind = PermissionKind.automation(bundleID: music)
+    _ = permissions.knownStatus(kind)
+    await eventually { permissions.knownStatus(kind) != nil }
+    await answers.setPrompt(.granted, for: music)                   // the person will click Allow
+    await answers.hold(true)
+    let request = Task { await permissions.request(kind) }          // the prompt is up …
+    await eventually { await answers.count == 2 }
+    permissions.refresh()                                           // … Cranny becomes active and asks again
+    await eventually { await answers.count == 3 }
+    await answers.releaseOldest()                                   // the person's answer lands first …
+    #expect(await request.value == .granted)
+    #expect(permissions.status(kind) == .granted)
+    await answers.releaseOldest()                                   // … then the refresh's, asked before it
+    try? await Task.sleep(for: .milliseconds(50))
+    #expect(permissions.status(kind) == .granted)
+    #expect(await answers.asks == [false, true, false])
 }
 
 /// A denial a feature observed (an Apple Event refused with −1743) is kept even if an older query lands later;
