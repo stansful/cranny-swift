@@ -18,7 +18,8 @@ nonisolated struct NotchMachineState: Equatable {
     var surface: Surface = .closed
     var hover: Hover = .outside
     var pinned = false
-    /// `NotchControl.setHoldOpen` reasons plus the shell's own (`typing`, `menu`, `popover`, `drag`, `share`, §4.5).
+    /// `NotchControl.setHoldOpen` reasons plus the shell's own (`typing`, `menu`, `popover`, `drag`, `drop`,
+    /// `share`, §4.5).
     var holds: Set<String> = []
     /// Timers the reducer has scheduled and not yet cancelled (the view model runs one sleep per timer).
     var timers: Set<NotchTimer> = []
@@ -71,6 +72,9 @@ nonisolated struct NotchMachineState: Equatable {
     static let popoverHold = "popover"
     /// A file drag is in progress.
     static let dragHold = "drag"
+    /// Dropped file promises are still resolving: the zone that took the drop must stay on screen until the
+    /// payload is handed to it (the catch state's return waits too).
+    static let dropHold = "drop"
     /// A share or AirDrop sheet presented through `NotchControl`.
     static let shareHold = "share"
 }

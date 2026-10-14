@@ -330,6 +330,27 @@ private let pdf: [UTType] = [.pdf]
     #expect(!refusedFx.contains(.emit(.filesCaught(count: 0))) && refused.timers.contains(.catchEnd))
 }
 
+/// Dropped file promises resolve asynchronously: the `drop` hold keeps the panel (and the zone that takes the
+/// drop) until the payload is handed over; then the catch gulps and returns, the grid's grace resumes.
+@Test func droppedPromisesHoldThePanelUntilDelivered() {
+    var tray = idle
+    tray.acceptsFileDrags = true
+    let (caught, _) = run([.fileDragEntered(pdf), .pointerEntered], config: tray)
+    let (waiting, fx) = run([.hold(NotchMachineState.dropHold, true), .filesDropped(count: 1), .pointerLeft,
+                             .timerElapsed(.catchEnd)], from: caught, config: tray)
+    #expect(waiting.isCatching && fx.contains(.emit(.filesCaught(count: 1))))
+    #expect(!fx.contains(.schedule(.catchEnd, after: NotchMachine.catchGulp)) && !waiting.timers.contains(.catchEnd))
+    let (delivered, fx2) = run([.hold(NotchMachineState.dropHold, false)], from: waiting, config: tray)
+    #expect(fx2.contains(.schedule(.catchEnd, after: NotchMachine.catchGulp)))
+    #expect(run([.timerElapsed(.catchEnd)], from: delivered, config: tray).0.isClosed)
+
+    let (grid, _) = run([.fileDragEntered(pdf), .hold(NotchMachineState.dropHold, true), .filesDropped(count: 1), .pointerLeft],
+                        from: opened(tray), config: tray)
+    #expect(grid.isOpen && !grid.timers.contains(.grace))
+    let (released, fx3) = run([.hold(NotchMachineState.dropHold, false)], from: grid, config: tray)
+    #expect(fx3 == [.schedule(.grace, after: HoverIntent.closeGrace)] && released.isOpen)
+}
+
 @Test func aDragThatEndsOrLeavesReturnsAfterTheGrace() {
     var tray = idle
     tray.acceptsFileDrags = true

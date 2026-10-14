@@ -154,6 +154,12 @@ import SwiftUI
         scene.zones.dragEnded()
     }
 
+    /// The drag ended in a drop on this panel: the next drag starts outside the drag zone. The machine already
+    /// had `.filesDropped`, and the armed zone stays until the drop router hands the payload over.
+    func dropFinished() {
+        hover.resetDrag()
+    }
+
     // MARK: Appearance
 
     private struct Appearance: Equatable {

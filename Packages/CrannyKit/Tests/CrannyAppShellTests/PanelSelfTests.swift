@@ -20,6 +20,7 @@ import CrannyNotchUI
 import Foundation
 import SwiftUI
 import Testing
+import UniformTypeIdentifiers
 @testable import CrannyAppShell
 
 // MARK: - Configuration (R1 §3.1)
@@ -167,4 +168,24 @@ func keyboardFocusIsTakenAndHandedBack() throws {
     #expect(!controller.viewModel.state.holds.contains(NotchMachineState.typingHold))
     #expect(controller.panel.isVisible)                                         // orderOut + orderFrontRegardless
     #expect(NSWorkspace.shared.frontmostApplication?.processIdentifier == frontBefore)
+}
+
+/// A drop on one panel ends the drag everywhere: another panel the drag passed lets go of its `drag` hold and its
+/// enlarged drop zone (which would otherwise capture menu-bar clicks around its notch).
+@Test(.enabled(if: integration)) func aDropOnOnePanelEndsTheDragOnTheOthers() throws {
+    _ = NSApplication.shared
+    let screen = try #require(NSScreen.screens.first)
+    let registry = ModuleRegistry(services: .preview())
+    let overlay = OverlayCoordinator(registry: registry, environment: ShellEnvironment())
+    let dropping = NotchPanelController(screen: screen, key: "selftest.a", style: .floatingIsland, registry: registry)
+    let passed = NotchPanelController(screen: screen, key: "selftest.b", style: .floatingIsland, registry: registry)
+    defer { dropping.close(); passed.close() }
+    overlay.controllers = ["selftest.a": dropping, "selftest.b": passed]
+    passed.viewModel.send(.open(page: nil, focus: nil, reason: .programmatic))
+    passed.viewModel.send(.fileDragEntered([.pdf]))
+    #expect(passed.chrome.dropZone != nil && passed.viewModel.state.holds.contains(NotchMachineState.dragHold))
+    dropping.viewModel.send(.filesDropped(count: 1))
+    overlay.dropFinished(on: dropping)
+    #expect(passed.viewModel.state.fileDrag == nil && passed.viewModel.state.holds.isEmpty)
+    #expect(passed.chrome.dropZone == nil)
 }

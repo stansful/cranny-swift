@@ -66,15 +66,22 @@ nonisolated extension NotchReduction {
         guard s.fileDrag != nil else { return }
         s.fileDrag = nil
         s.holds.remove(NotchMachineState.dragHold)
-        if s.isCatching { schedule(.catchEnd, HoverIntent.closeGrace) } else { scheduleGraceIfLeft() }
+        if s.isCatching { scheduleCatchEnd(HoverIntent.closeGrace) } else { scheduleGraceIfLeft() }
     }
 
     mutating func filesDropped(_ count: Int) {
         s.fileDrag = nil
         s.holds.remove(NotchMachineState.dragHold)
         if count > 0 { fx += [.emit(.filesCaught(count: count)), .haptic(.generic), .playSound(.pop)] }
-        if s.isCatching { schedule(.catchEnd, count > 0 ? NotchMachine.catchGulp : HoverIntent.closeGrace) }
+        if s.isCatching { scheduleCatchEnd(count > 0 ? NotchMachine.catchGulp : HoverIntent.closeGrace) }
         else { scheduleGraceIfLeft() }
+    }
+
+    /// The catch state returns after `delay`, unless dropped promises are still resolving (the `drop` hold: the
+    /// return is scheduled when it is released).
+    mutating func scheduleCatchEnd(_ delay: TimeInterval) {
+        guard !s.holds.contains(NotchMachineState.dropHold) else { return }
+        schedule(.catchEnd, delay)
     }
 
     // MARK: Environment (§4.8, §4.9)

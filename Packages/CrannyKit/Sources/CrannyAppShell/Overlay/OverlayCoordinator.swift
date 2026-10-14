@@ -167,7 +167,7 @@ private let log = Log.logger(.overlay)
             guard let self, let controller else { return }
             self.didEmit(event, from: controller)
         }
-        controller.onDropFinished = { [weak self] in self?.drags.reset() }
+        controller.onDropFinished = { [weak self, weak controller] in self?.dropFinished(on: controller) }
         if isCalibrating { controller.setCalibrating(true) }
         return controller
     }
@@ -194,6 +194,16 @@ private let log = Log.logger(.overlay)
         for controller in controllers.values {
             controller.pointerMoved(to: point)
             if let contents = drags.current { controller.dragMoved(to: point, contents: contents) }
+        }
+    }
+
+    /// A drop on `source` ends the drag everywhere. The detector may never see the source's mouse-up, so it would
+    /// never report the end: every other panel the drag passed (its catch state, `drag` hold and enlarged drop zone)
+    /// lets go now. The dropping panel keeps its zones until the drop router has delivered the payload.
+    func dropFinished(on source: NotchPanelController?) {
+        drags.reset()
+        for controller in controllers.values {
+            if controller === source { controller.dropFinished() } else { controller.dragEnded() }
         }
     }
 

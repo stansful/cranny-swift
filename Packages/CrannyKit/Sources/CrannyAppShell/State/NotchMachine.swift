@@ -146,7 +146,7 @@ nonisolated struct NotchReduction {
             s.hover = .outside
         case .peek, .open:
             s.hover = .outside
-            if s.isCatching { schedule(.catchEnd, HoverIntent.closeGrace) } else { scheduleGraceIfLeft() }
+            if s.isCatching { scheduleCatchEnd(HoverIntent.closeGrace) } else { scheduleGraceIfLeft() }
         }
     }
 
@@ -236,7 +236,10 @@ nonisolated struct NotchReduction {
         if on {
             s.holds.insert(reason)
             cancel(.grace)
+            if reason == NotchMachineState.dropHold { cancel(.catchEnd) }        // the catch waits for the payload
         } else if s.holds.remove(reason) != nil {
+            // The dropped promises were handed over: the catch state gulps and returns.
+            if reason == NotchMachineState.dropHold, s.isCatching, s.fileDrag == nil { scheduleCatchEnd(NotchMachine.catchGulp) }
             scheduleGraceIfLeft()
         }
     }
@@ -280,6 +283,7 @@ nonisolated struct NotchReduction {
         case .catchEnd:
             guard var o = s.openState, case .catchFiles = o.mode else { return }
             guard s.fileDrag == nil || s.hover == .outside else { return }       // still dragging over it
+            guard !s.holds.contains(NotchMachineState.dropHold) else { return }  // promises still resolving
             s.holds.remove(NotchMachineState.dragHold)
             if s.pinned { o.mode = .grid; s.surface = .open(o) } else { close() }
         case .inactivity:
