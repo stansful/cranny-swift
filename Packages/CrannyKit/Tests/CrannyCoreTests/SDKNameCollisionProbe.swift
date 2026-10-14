@@ -108,6 +108,7 @@ private typealias ProbeNotchGeometry = NotchGeometry
 private typealias ProbeNotchLayout = NotchLayout
 private typealias ProbeNotchMetrics = NotchMetrics
 private typealias ProbeNotchPhase = NotchPhase
+private typealias ProbeNotchSelectionFocus = any NotchSelectionFocus
 private typealias ProbeNotchShape = NotchShape
 private typealias ProbeNotchZones = NotchZones
 private typealias ProbeNowPlaying = NowPlaying

@@ -1545,7 +1545,8 @@ nonisolated struct NotchMachineState: Equatable {
 
     // MARK: Shell-owned hold reasons (§4.5); module reasons are namespaced ("notes.editing").
 
-    /// The panel is key (opened by the hot key, a text field clicked, `requestKeyboardFocus`): §4.4 "panel not key".
+    /// The panel is key for typing (opened by the hot key, a text field clicked, `requestKeyboardFocus`): §4.4 "panel
+    /// not key". Key status for a selection (a Tray tile, `NotchSelectionFocus`) is not a hold (`KeyHold`).
     static let typingHold = "typing"
     /// An `NSMenu` is tracking (a context menu in the panel, the menu bar extra's menu).
     static let menuHold = "menu"
@@ -1608,7 +1609,7 @@ otherwise                             → .idle     (exact cutout; handle pill o
 | open(.grid) | file drag starts or enters the shape | — | unchanged: the grid stays so widget zones (Quick Apps "add app", AirDrop widget, Files shelf) can take the drop; unmatched drops fall back to `.trayKeep` → `services.tray.accept` | `zones.dragUpdated` arms widget zones |
 | open(.catchFiles) / open(.grid) | drop performed | — | catch: previous surface after the 0.25 s gulp; grid: unchanged | `zones.performDrop(fallback: .trayKeep)`, if false `await services.tray?.accept(payload)`; emit `.filesCaught(n)`, haptic `.generic`, delight `.gulp`, UI sound "Pop" if `uiSounds`; remove hit zone |
 | open(.catchFiles) | drag ends without drop / leaves zones | — | grace 0.30 s → previous surface | remove hit zone |
-| open / peek(.hover) | pointer leaves exit zone | `closeOnLeave`; not pinned; holds empty; panel not key; no drag; no menu | grace → **closed** | schedule grace |
+| open / peek(.hover) | pointer leaves exit zone | `closeOnLeave`; not pinned; holds empty; panel not key for typing (§4.10); no drag; no menu | grace → **closed** | schedule grace |
 | grace | pointer re-enters | — | cancel grace | — |
 | open | inactivity timeout | timeout > 0; not pinned; holds empty; pointer outside | closed | — |
 | open | Esc | palette → grid, edit → grid, focus → grid, else close | as described | close: `.relinquishKey` |
@@ -1626,7 +1627,7 @@ Every geometry change animates with DESIGN.md §4.1 springs (`open` grows with b
 
 ### 4.5 What holds the Nook open
 
-Pinned · Demo mode · panel is key (typing) · an `NSMenu` is tracking or an `NSPopover` is shown inside the panel (shell observes `NSMenu.didBeginTrackingNotification` / `didEndTrackingNotification` and `NSPopover.willShow/didClose` for windows owned by the panel) · a file drag is in progress · ⌘K palette or edit mode is active · any `setHoldOpen(true, reason:)` (Notes editing/focus, Mirror running a permission prompt, Tray pipeline progress sheet) · a share or AirDrop sheet presented by `NotchControl`.
+Pinned · Demo mode · panel is key for typing (not for a Tray selection, §4.10) · an `NSMenu` is tracking or an `NSPopover` is shown inside the panel (shell observes `NSMenu.didBeginTrackingNotification` / `didEndTrackingNotification` and `NSPopover.willShow/didClose` for windows owned by the panel) · a file drag is in progress · ⌘K palette or edit mode is active · any `setHoldOpen(true, reason:)` (Notes editing/focus, Mirror running a permission prompt, Tray pipeline progress sheet) · a share or AirDrop sheet presented by `NotchControl`.
 
 Since WP0 the panel's key status and NSMenu tracking are ordinary holds: `NotchPanelController` sends `.hold(NotchMachineState.typingHold, isKey)` on `didBecomeKey`/`didResignKey`, and `OverlayCoordinator` sends `.hold(NotchMachineState.menuHold, …)` while any `NSMenu` tracks (this covers the menu bar extra's menu). WP13 adds the popover, drag and sheet holds the same way.
 
@@ -1683,7 +1684,7 @@ Transient P0/P1 activities therefore take the wings and hand them back automatic
 
 ### 4.10 Keyboard and focus
 
-- The panel becomes key only when a text view is clicked (`becomesKeyOnlyIfNeeded`), when opened by the hot key, or via `requestKeyboardFocus()`. Programmatic `makeKey()` on the non-activating panel without activating the app is expected to work like a clicked text field [UNVERIFIED — WP13 confirms with the R1 interaction harness].
+- The panel becomes key only when a text view is clicked (`becomesKeyOnlyIfNeeded`), when opened by the hot key, via `requestKeyboardFocus()`, or via `NotchSelectionFocus.requestSelectionFocus()` (Core addition; a Tray tile click). Key status for typing is the `typing` hold (§4.5); key status for a selection is not, so the panel still closes on leave and the close hands key status back. It becomes a typing hold once a text view or field editor becomes first responder or `requestKeyboardFocus()` is called (`KeyHold` in the shell; DESIGN.md §3.6). Programmatic `makeKey()` on the non-activating panel without activating the app is expected to work like a clicked text field [UNVERIFIED — WP13 confirms with the R1 interaction harness].
 - On every close the shell calls `orderOut` + `orderFrontRegardless` if the panel is key, which returns key status to the previous app's window [VERIFIED R1].
 - Never use `NSApp.isActive` to decide who is frontmost (true while our panel is key); use `NSWorkspace.frontmostApplication` [VERIFIED R1].
 - In-Nook keys (DESIGN.md §16 keyboard map) are handled in NotchUI with `.onKeyPress`/`.keyboardShortcut` while the panel is key. WP0 handles only Esc, through a local `keyDown` monitor in `NotchPanelController` that sends `.escape`; WP12 moves the Esc chain into NotchUI with the other keys. Hold-⌘ hints: a local `flagsChanged` monitor (0.5 s) sets `NotchContext.showsCommandHints`. Type-to-capture: when opened by keyboard and nothing is focused, the first printable `keyDown` goes to `CaptureTarget.capture(_:)` of `CoreSettings.typeToCapture`, then focus moves to the returned widget.

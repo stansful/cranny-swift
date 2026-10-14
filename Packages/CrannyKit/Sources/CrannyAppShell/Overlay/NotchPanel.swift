@@ -13,6 +13,9 @@ final class NotchPanel: NSPanel {
     /// Esc (`cancelOperation`) that nothing in the panel handled, e.g. from a text field without its own Esc action
     /// (KeyboardRouter lets field editors see Esc first).
     var onCancel: (() -> Void)?
+    /// After every accepted first-responder change, with the new first responder (`FocusManager`: typing in a text
+    /// view or field holds the open panel).
+    var onFirstResponderChange: ((NSResponder?) -> Void)?
 
     init(frame: CGRect) {
         // .nonactivatingPanel MUST be in the init style mask (R1 gotcha 4).
@@ -38,6 +41,11 @@ final class NotchPanel: NSPanel {
     override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect { frameRect }
     override func cancelOperation(_ sender: Any?) {
         if let onCancel { onCancel() } else { super.cancelOperation(sender) }
+    }
+    override func makeFirstResponder(_ responder: NSResponder?) -> Bool {
+        let accepted = super.makeFirstResponder(responder)
+        if accepted { onFirstResponderChange?(firstResponder) }      // a text field's field editor, not the field
+        return accepted
     }
     override func sendEvent(_ event: NSEvent) {
         if event.type == .scrollWheel, let intercept = scrollInterceptor, intercept(event) { return }
