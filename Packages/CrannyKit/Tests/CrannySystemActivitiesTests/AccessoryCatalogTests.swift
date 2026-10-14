@@ -110,7 +110,8 @@ import Testing
 
     @Test @MainActor func everyGlyphExistsOnThisSystem() {
         for symbol in DeviceSymbols.allSymbols.union(["bolt.fill", "powerplug.fill", "battery.25percent", "battery.0percent",
-                                                      "exclamationmark", "checkmark.circle.fill"]) {
+                                                      "exclamationmark", "checkmark.circle.fill",
+                                                      "exclamationmark.triangle.fill"]) {
             #expect(NSImage(systemSymbolName: symbol, accessibilityDescription: nil) != nil, "missing \(symbol)")
         }
     }

@@ -52,3 +52,16 @@ nonisolated struct LowBatteryThresholds: Equatable, Sendable {
         LowBatteryThresholds(values.dropLast().filter { $0 > value } + [value])
     }
 }
+
+// MARK: - Settings rows (main actor, like the setting key they read)
+
+@MainActor extension LowBatteryThresholds {
+    /// The defaults of `SystemSettings.lowBatteryThresholds` (first warning 20 %, final 10 %).
+    static var defaults: LowBatteryThresholds { LowBatteryThresholds(SystemSettings.lowBatteryThresholds.defaultValue) }
+
+    /// "First warning" ▸ Reset to Default: restores that row only; the final warning keeps its value.
+    func resettingFirstWarning() -> LowBatteryThresholds { replacingFirstWarning(Self.defaults.firstWarning) }
+
+    /// "Final warning" ▸ Reset to Default: restores that row only (a first warning still above it is kept).
+    func resettingFinal() -> LowBatteryThresholds { Self.defaults.final.map(replacingFinal) ?? self }
+}

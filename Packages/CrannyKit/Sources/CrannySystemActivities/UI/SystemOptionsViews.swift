@@ -1,11 +1,14 @@
 // CrannySystemActivities/UI/SystemOptionsViews.swift — the module's rows in Settings ▸ Live Activities
 // (`registry.add(activity:…, options:)`): thresholds under Low battery, "Show all Bluetooth devices" under
 // Bluetooth devices (DESIGN.md §11.1). Settings is an ordinary window: system controls and colours, grouped-form
-// conventions of §11.3 (menu pickers, small switches, `.secondary` footnotes, accent dot + Reset to Default).
+// conventions of §11.3 (segmented pickers for ≤ 4 choices, menus otherwise, small switches, `.secondary`
+// footnotes, and per row an accent dot for a changed value and a Reset to Default that restores only that row).
 import CrannyCore
 import SwiftUI
 
-/// Low battery: "First warning" (Off, 15–50 %) and "Final warning" (5–20 %, stays until power is connected).
+/// Low battery: "First warning" (Off, 15–50 %: a menu) and "Final warning" (5–20 %: four choices, so a segmented
+/// picker; it stays until power is connected). Both rows edit the one `lowBatteryThresholds` key, but each row's
+/// dot and reset concern only its own value.
 struct LowBatteryOptionsView: View {
     static let firstWarningChoices = [15, 20, 25, 30, 40, 50]
     static let finalWarningChoices = [5, 10, 15, 20]
@@ -15,6 +18,7 @@ struct LowBatteryOptionsView: View {
     var body: some View {
         let key = SystemSettings.lowBatteryThresholds
         let thresholds = LowBatteryThresholds(settings[key])
+        let defaults = LowBatteryThresholds.defaults
         Group {
             Picker(selection: Binding(get: { thresholds.firstWarning ?? 0 },
                                       set: { settings[key] = thresholds.replacingFirstWarning($0 == 0 ? nil : $0).values })) {
@@ -23,7 +27,11 @@ struct LowBatteryOptionsView: View {
                     Text(verbatim: SystemCopy.percent(value)).tag(value)
                 }
             } label: {
-                OptionLabel(title: SystemCopy.firstWarning, isDefault: settings.isDefault(key))
+                OptionLabel(title: SystemCopy.firstWarning, isDefault: thresholds.firstWarning == defaults.firstWarning)
+            }
+            .pickerStyle(.menu)
+            .contextMenu {
+                ResetButton { settings[key] = thresholds.resettingFirstWarning().values }
             }
             Picker(selection: Binding(get: { thresholds.final ?? 10 },
                                       set: { settings[key] = thresholds.replacingFinal($0).values })) {
@@ -31,12 +39,13 @@ struct LowBatteryOptionsView: View {
                     Text(verbatim: SystemCopy.percent(value)).tag(value)
                 }
             } label: {
-                OptionLabel(title: SystemCopy.finalWarning, footnote: SystemCopy.finalWarningFootnote, isDefault: settings.isDefault(key))
+                OptionLabel(title: SystemCopy.finalWarning, footnote: SystemCopy.finalWarningFootnote,
+                            isDefault: thresholds.final == defaults.final)
             }
-        }
-        .pickerStyle(.menu)
-        .contextMenu {
-            Button { settings.reset(key) } label: { Text(verbatim: SystemCopy.resetToDefault) }
+            .pickerStyle(.segmented)
+            .contextMenu {
+                ResetButton { settings[key] = thresholds.resettingFinal().values }
+            }
         }
     }
 }
@@ -62,18 +71,30 @@ struct BluetoothOptionsView: View {
             .toggleStyle(.switch)
             .controlSize(.small)
             .contextMenu {
-                Button { settings.reset(key) } label: { Text(verbatim: SystemCopy.resetToDefault) }
+                ResetButton { settings.reset(key) }
             }
             if settings[key] && (status == .denied || status == .restricted) {
                 LabeledContent {
                     Button { permissions.openSystemSettings(.bluetooth) } label: { Text(verbatim: SystemCopy.openSystemSettings) }
                 } label: {
                     Label { Text(verbatim: SystemCopy.bluetoothAccessOff) } icon: {
-                        Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                        // The system's own warning sign: its multicolour rendering supplies the colours, adapting
+                        // to Light/Dark and Increase Contrast like the rest of the window (no literal colour).
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .symbolRenderingMode(.multicolor)
+                            .accessibilityHidden(true)
                     }
                 }
             }
         }
+    }
+}
+
+/// A row's context menu: Reset to Default (DESIGN.md §11.3).
+private struct ResetButton: View {
+    let reset: () -> Void
+    var body: some View {
+        Button(action: reset) { Text(verbatim: SystemCopy.resetToDefault) }
     }
 }
 

@@ -102,6 +102,17 @@ import Testing
         #expect(LowBatteryThresholds([40, 20, 10]).replacingFirstWarning(50).values == [50, 20, 10])
     }
 
+    @Test func eachSettingsRowResetsOnlyItsOwnValue() {
+        #expect(LowBatteryThresholds.defaults.values == [20, 10])
+        let edited = LowBatteryThresholds([30, 5])
+        #expect(edited.resettingFirstWarning().values == [20, 5])
+        #expect(edited.resettingFinal().values == [30, 10])
+        #expect(LowBatteryThresholds([10]).resettingFirstWarning().values == [20, 10])   // from "Off"
+        #expect(LowBatteryThresholds([20, 15]).resettingFinal().values == [20, 10])
+        // A final warning at 20 % leaves no room for a first warning at 20 %: it stays off.
+        #expect(LowBatteryThresholds([20]).resettingFirstWarning().values == [20])
+    }
+
     @Test func criticalOnlyOnBatteryAtOrBelowTheFinalWarning() {
         #expect(thresholds.isCritical(onBattery(10)))
         #expect(!thresholds.isCritical(onBattery(11)))
