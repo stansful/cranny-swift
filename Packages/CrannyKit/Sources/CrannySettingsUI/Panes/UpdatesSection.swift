@@ -19,7 +19,7 @@ struct LoginItemRow: View {
         .toggleStyle(.switch)
         .controlSize(.small)
         .disabled(isUnavailable(state))
-        .settingRow(GeneralRows.launchAtLogin, isDefault: true, reset: {})
+        .searchTarget(GeneralRows.launchAtLogin)   // SMAppService owns this state: nothing to reset
         if state == .requiresApproval {
             Button {
                 if let url = URL(string: "x-apple.systempreferences:com.apple.LoginItems-Settings.extension") {

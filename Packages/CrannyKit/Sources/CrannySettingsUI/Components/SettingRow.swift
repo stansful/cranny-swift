@@ -47,31 +47,48 @@ extension View {
     }
 
     /// Row conventions with explicit "is default" and "reset" (rows backed by several keys or a dictionary entry).
+    /// Rows with nothing to reset (an action, a state owned by the system) use `searchTarget(_:)` alone.
     func settingRow(_ info: SettingsRowInfo, isDefault: Bool, reset: @escaping @MainActor () -> Void) -> some View {
-        modifier(SettingRowModifier(info: info, isDefault: isDefault, reset: reset))
+        modifier(SettingRowModifier(info: info, isDefault: isDefault, reset: reset, menu: EmptyView()))
+    }
+
+    /// Row conventions plus `menu`: the row's own context-menu items, shown above "Reset to Default".
+    func settingRow<Menu: View>(_ info: SettingsRowInfo, isDefault: Bool, reset: @escaping @MainActor () -> Void,
+                                @ViewBuilder menu: () -> Menu) -> some View {
+        modifier(SettingRowModifier(info: info, isDefault: isDefault, reset: reset, menu: menu()))
     }
 }
 
-/// Context menu and VoiceOver action "Reset to Default", plus the search target.
-struct SettingRowModifier: ViewModifier {
+/// Context menu "Reset to Default" (disabled at the default) and the same VoiceOver action (offered only when there is
+/// something to reset), plus the search target.
+struct SettingRowModifier<Menu: View>: ViewModifier {
     let info: SettingsRowInfo
     let isDefault: Bool
     let reset: @MainActor () -> Void
+    let menu: Menu
 
     func body(content: Content) -> some View {
         content
             .searchTarget(info)
             .contextMenu {
-                Button(action: reset) {
-                    Text("Reset to Default", bundle: .module, comment: "Settings: row context menu and VoiceOver action")
+                if Menu.self != EmptyView.self {
+                    menu
+                    Divider()
                 }
-                .disabled(isDefault)
+                Button(action: reset) { Self.resetTitle }
+                    .disabled(isDefault)
             }
-            .accessibilityAction(named: Text("Reset to Default", bundle: .module, comment: "Settings: row context menu and VoiceOver action")) {
-                reset()
+            .accessibilityActions {
+                if !isDefault {
+                    Button(action: reset) { Self.resetTitle }
+                }
             }
             .accessibilityHint(isDefault ? Text(verbatim: "")
                                : Text("Changed from the default.", bundle: .module, comment: "Settings: VoiceOver hint of a row whose value differs from its default"))
+    }
+
+    private static var resetTitle: Text {
+        Text("Reset to Default", bundle: .module, comment: "Settings: row context menu and VoiceOver action")
     }
 }
 

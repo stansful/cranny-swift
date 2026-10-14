@@ -40,6 +40,23 @@ enum ActivityOrdering {
         }
     }
 
+    /// The order after dropping `dragged` on `target`'s row: it takes the target's place, within their class. Nil when
+    /// they are the same, in different classes, or not listed (a drop from elsewhere).
+    static func dropping(_ dragged: ActivityID, on target: ActivityID, in groups: [Group]) -> [ActivityID]? {
+        guard dragged != target,
+              let group = groups.first(where: { $0.kinds.contains { $0.id == target } }),
+              let from = group.kinds.firstIndex(where: { $0.id == dragged }),
+              let to = group.kinds.firstIndex(where: { $0.id == target }) else { return nil }
+        return moving(in: groups, priority: group.priority, from: IndexSet(integer: from), to: to > from ? to + 1 : to)
+    }
+
+    /// Whether `id` can move by `offset` places within its class (not past either end).
+    static func canShift(_ id: ActivityID, by offset: Int, in groups: [Group]) -> Bool {
+        guard let group = groups.first(where: { $0.kinds.contains { $0.id == id } }),
+              let index = group.kinds.firstIndex(where: { $0.id == id }) else { return false }
+        return group.kinds.indices.contains(index + offset) && offset != 0
+    }
+
     /// Moves one kind up (−1) or down (+1) within its class.
     static func shifting(_ id: ActivityID, by offset: Int, in groups: [Group]) -> [ActivityID] {
         guard let group = groups.first(where: { $0.kinds.contains { $0.id == id } }),

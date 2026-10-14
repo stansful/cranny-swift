@@ -1,7 +1,10 @@
 // CrannySettingsUI/Panes/LiveActivitiesPane.swift — Settings ▸ Live Activities (DESIGN.md §9, §11.1): a draggable priority
 // list (one section per class: alerts, ongoing, passive) with a switch per activity and, under it, "Peek on change" and
 // the activity's own options from its module (`RegisteredActivity.makeOptions`); then the global behaviour rows. The
-// stage above shows the compact state, so toggles and order are visible at once.
+// stage above shows the compact state, so toggles and order are visible at once. Reordering has a path for every input
+// (ARCHITECTURE §9.5): drag a row onto another of its class (`draggable` / `dropDestination`: a grouped `Form` is not a
+// `List` on recent macOS, so `onMove` would never fire), the row's context menu (Move up / Move down), ⌥↑ ⌥↓ on a
+// focused row, VoiceOver actions.
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -24,16 +27,12 @@ struct LiveActivitiesPane: View {
                     ForEach(group.kinds) { kind in
                         ActivityRow(kind: kind, registered: registry.activity(kind.id), settings: settings, groups: groups)
                     }
-                    .onMove { source, destination in
-                        settings[CoreSettings.activityOrder] = ActivityOrdering.moving(in: groups, priority: group.priority,
-                                                                                       from: source, to: destination)
-                    }
                 } header: {
                     Text(verbatim: Self.title(of: group.priority))
                 } footer: {
                     if group.priority == groups.first?.priority {
-                        Text("Drag to set which activity wins when two are of the same kind.", bundle: .module,
-                             comment: "Settings ▸ Live Activities: footer of the priority list")
+                        Text("Drag to set which activity wins when two are of the same kind, or use ⌥↑ and ⌥↓.", bundle: .module,
+                             comment: "Settings ▸ Live Activities: footer of the priority list (⌥↑ ⌥↓ move the focused activity)")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                 }
@@ -58,6 +57,8 @@ private struct ActivityRow: View {
     let registered: RegisteredActivity?
     let settings: SettingsStore
     let groups: [ActivityOrdering.Group]
+    /// Another row of this class is dragged over this one.
+    @State private var isDropTarget = false
 
     var body: some View {
         let preferences = settings[CoreSettings.activityPreferences]
@@ -92,15 +93,66 @@ private struct ActivityRow: View {
                 .disabled(!preference.isEnabled)
             }
         }
+        .background {
+            RoundedRectangle(cornerRadius: SettingsMetrics.dropTargetRadius, style: .continuous)
+                .fill(Color.accentColor.opacity(isDropTarget ? SettingsMetrics.dropTargetOpacity : 0))
+                .padding(.horizontal, -6)
+                .padding(.vertical, -3)
+                .allowsHitTesting(false)
+        }
+        // Drag: the dropped row takes this row's place (within one class; other drops are refused).
+        .draggable(kind.id.rawValue) {
+            Label {
+                Text(verbatim: kind.title)
+            } icon: {
+                SidebarIcon(symbol: kind.symbol, tint: .pink)
+            }
+            .padding(Space.s)
+        }
+        .dropDestination(for: String.self) { items, _ in
+            guard let raw = items.first,
+                  let order = ActivityOrdering.dropping(ActivityID(raw), on: kind.id, in: groups) else { return false }
+            settings[CoreSettings.activityOrder] = order
+            return true
+        } isTargeted: { targeted in
+            isDropTarget = targeted
+        }
         .settingRow(info, isDefault: isDefault) {
             settings[CoreSettings.activityPreferences][kind.id] = nil
+        } menu: {
+            Button { move(by: -1) } label: { Self.moveUpTitle }
+                .disabled(!canMove(by: -1))
+            Button { move(by: 1) } label: { Self.moveDownTitle }
+                .disabled(!canMove(by: 1))
         }
-        .accessibilityAction(named: Text("Move up", bundle: .module, comment: "Settings ▸ Live Activities: VoiceOver action that raises an activity")) {
-            settings[CoreSettings.activityOrder] = ActivityOrdering.shifting(kind.id, by: -1, in: groups)
+        // Keyboard: the row is a focus stop while keyboard navigation is on (no ring otherwise); ⌥↑ ⌥↓ reorder it.
+        .focusable(interactions: .activate)
+        .onKeyPress(keys: [.upArrow, .downArrow]) { press in
+            guard press.modifiers.contains(.option) else { return .ignored }
+            move(by: press.key == .upArrow ? -1 : 1)
+            return .handled
         }
-        .accessibilityAction(named: Text("Move down", bundle: .module, comment: "Settings ▸ Live Activities: VoiceOver action that lowers an activity")) {
-            settings[CoreSettings.activityOrder] = ActivityOrdering.shifting(kind.id, by: 1, in: groups)
+        .accessibilityActions {
+            if canMove(by: -1) { Button { move(by: -1) } label: { Self.moveUpTitle } }
+            if canMove(by: 1) { Button { move(by: 1) } label: { Self.moveDownTitle } }
         }
+    }
+
+    private static var moveUpTitle: Text {
+        Text("Move up", bundle: .module, comment: "Settings ▸ Live Activities: context menu item and VoiceOver action that raises an activity")
+    }
+    private static var moveDownTitle: Text {
+        Text("Move down", bundle: .module, comment: "Settings ▸ Live Activities: context menu item and VoiceOver action that lowers an activity")
+    }
+
+    /// Whether the kind can move one place up (−1) or down (+1) within its class.
+    private func canMove(by offset: Int) -> Bool {
+        ActivityOrdering.canShift(kind.id, by: offset, in: groups)
+    }
+
+    private func move(by offset: Int) {
+        guard canMove(by: offset) else { return }
+        settings[CoreSettings.activityOrder] = ActivityOrdering.shifting(kind.id, by: offset, in: groups)
     }
 
     private func binding(_ path: WritableKeyPath<ActivityPreference, Bool>) -> Binding<Bool> {

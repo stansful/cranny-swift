@@ -44,6 +44,9 @@ enum SettingsMetrics {
     /// Search highlight: the accent wash fades over 1 s (§11.3).
     static let highlightFade: Double = 1
     static let highlightOpacity: Double = 0.22
+    /// A row that a dragged row would replace (Live Activities): an accent wash.
+    static let dropTargetOpacity: Double = 0.14
+    static let dropTargetRadius: CGFloat = 6
     /// Reset All offers Undo for 10 s (§11.3, ARCHITECTURE D14).
     static let undoWindow: Duration = .seconds(10)
 }

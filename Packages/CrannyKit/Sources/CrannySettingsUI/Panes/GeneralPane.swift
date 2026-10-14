@@ -76,7 +76,7 @@ struct GeneralPane: View {
                 } label: {
                     Text(verbatim: GeneralRows.resetAll.title).foregroundStyle(.red)
                 }
-                .settingRow(GeneralRows.resetAll, isDefault: true, reset: {})
+                .searchTarget(GeneralRows.resetAll)
             } footer: {
                 Text("Notes, to-dos and tray files are kept.", bundle: .module, comment: "Settings ▸ General: footnote of Reset All Settings")
                     .font(.footnote)
