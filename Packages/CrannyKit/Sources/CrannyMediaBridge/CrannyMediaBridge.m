@@ -1,4 +1,5 @@
-// CrannyMediaBridge v3 — research PoC of the bridge proposed for Cranny.
+// CrannyMediaBridge v3 — Cranny's media helper (ARCHITECTURE.md §6.3), R2's verified bridge. Owned by the
+// Media package (WP1); the Swift client is CrannyMedia/Providers (BridgeConnection, BridgeMessage).
 // Original code (MIT, Cranny). Technique credit: ungive/mediaremote-adapter
 // (BSD-3) documented that /usr/bin/perl (identity com.apple.perl*) is admitted
 // by mediaremoted and can load a custom library via DynaLoader.
@@ -7,11 +8,13 @@
 //   stdout  newline-delimited JSON events:
 //           {"t":"hello","v":1,"pid":N}
 //           {"t":"state", ...}            (full snapshot, de-duplicated)
-//           {"t":"artwork","itemID":..,"mime":..,"data":base64}  (only on change)
-//           {"t":"ack"|"error"|"pong", ...}
+//           {"t":"artwork","itemID":..,"mime":..,"data":base64}  (only on change; artwork over
+//                                                     1 MB is re-encoded as a 1024-px JPEG, or skipped)
+//           {"t":"ack"|"error"|"pong", ...}           (exactly one ack or error per cmd/seek/shuffle/repeat line)
 //   stdin   one command per line:
 //           cmd <0-13> [expectPID] | seek <seconds> [expectPID]
-//           shuffle <1-3> | repeat <1-3> | refresh | ping | quit
+//           shuffle <1-3> | repeat <1-3> | refresh [state] | ping | quit
+//           ("refresh" re-sends the state and the artwork, "refresh state" only the state)
 //   lifetime: exits on stdin EOF, SIGPIPE, or when re-parented to launchd.
 //
 // Build (arm64 + x86_64, ad-hoc signed by the linker on arm64):
@@ -20,6 +23,7 @@
 //     -o libCrannyMediaBridge.dylib CrannyMediaBridge.m
 #import <AppKit/AppKit.h>
 #import <Foundation/Foundation.h>
+#import <ImageIO/ImageIO.h>
 #include <dlfcn.h>
 #include <math.h>
 #include <signal.h>
@@ -72,6 +76,33 @@ static id plain(id v) {
 
 static NSString *K(NSString *suffix) { return [@"kMRMediaRemoteNowPlayingInfo" stringByAppendingString:suffix]; }
 
+// Artwork travels base64-encoded in one JSON line, and Cranny drops lines over 8 MB. Large artwork (3000-px
+// podcast PNGs) is re-encoded here as a 1024-px JPEG; Cranny shows at most 512 px. nil = could not shrink it.
+// 4 MB of JPEG is 5.4 MB of base64, well under Cranny's limit.
+enum { kMaxArtworkBytes = 1 << 20, kMaxShrunkBytes = 4 << 20, kArtworkMaxPixels = 1024 };
+
+static NSData *shrunkArtwork(NSData *data) {
+    CGImageSourceRef source = CGImageSourceCreateWithData((__bridge CFDataRef)data, NULL);
+    if (!source) return nil;
+    NSDictionary *options = @{ (__bridge id)kCGImageSourceCreateThumbnailFromImageAlways: @YES,
+                               (__bridge id)kCGImageSourceThumbnailMaxPixelSize: @(kArtworkMaxPixels),
+                               (__bridge id)kCGImageSourceCreateThumbnailWithTransform: @YES };
+    CGImageRef thumbnail = CGImageSourceCreateThumbnailAtIndex(source, 0, (__bridge CFDictionaryRef)options);
+    CFRelease(source);
+    if (!thumbnail) return nil;
+    NSMutableData *jpeg = [NSMutableData data];
+    CGImageDestinationRef destination = CGImageDestinationCreateWithData((__bridge CFMutableDataRef)jpeg, CFSTR("public.jpeg"), 1, NULL);
+    BOOL ok = NO;
+    if (destination) {
+        NSDictionary *properties = @{ (__bridge id)kCGImageDestinationLossyCompressionQuality: @0.85 };
+        CGImageDestinationAddImage(destination, thumbnail, (__bridge CFDictionaryRef)properties);
+        ok = CGImageDestinationFinalize(destination);
+        CFRelease(destination);
+    }
+    CGImageRelease(thumbnail);
+    return ok && jpeg.length > 0 && jpeg.length <= kMaxShrunkBytes ? jpeg : nil;
+}
+
 static void snapshot(void) {
     MR.pid(gQ, ^(int pid) {
       MR.playing(gQ, ^(Boolean isPlaying) {
@@ -113,9 +144,17 @@ static void snapshot(void) {
                 NSString *artKey = [NSString stringWithFormat:@"%@|%@|%lu", s[@"itemID"], s[@"artworkID"], (unsigned long)art.length];
                 if (![artKey isEqualToString:gLastArtKey]) {
                     gLastArtKey = artKey;
-                    emit(@{ @"t": @"artwork", @"itemID": s[@"itemID"] ?: @"",
-                            @"mime": plain(info[K(@"ArtworkMIMEType")]) ?: @"",
-                            @"data": [art base64EncodedStringWithOptions:0] });
+                    id mime = plain(info[K(@"ArtworkMIMEType")]) ?: @"";
+                    if (art.length > kMaxArtworkBytes) {
+                        art = shrunkArtwork(art);
+                        mime = @"image/jpeg";
+                    }
+                    if (art) {
+                        emit(@{ @"t": @"artwork", @"itemID": s[@"itemID"] ?: @"", @"mime": mime,
+                                @"data": [art base64EncodedStringWithOptions:0] });
+                    } else {
+                        fprintf(stderr, "artwork could not be shrunk; skipped\n");
+                    }
                 }
             }
           });
@@ -144,7 +183,13 @@ static void handleLine(NSString *line) {
     int arg2 = p.count >= 3 ? p[2].intValue : 0;
     if ([verb isEqualToString:@"quit"]) exit(0);
     if ([verb isEqualToString:@"ping"]) { emit(@{ @"t": @"pong" }); return; }
-    if ([verb isEqualToString:@"refresh"]) { gLastState = nil; gLastArtKey = nil; snapshot(); return; }
+    if ([verb isEqualToString:@"refresh"]) {
+        // "refresh state" (Cranny's check after an unconfirmed command) leaves the artwork alone.
+        gLastState = nil;
+        if (!(p.count >= 2 && [p[1] isEqualToString:@"state"])) gLastArtKey = nil;
+        snapshot();
+        return;
+    }
     if ([verb isEqualToString:@"cmd"] && p.count >= 2) {
         int c = p[1].intValue;
         if (c < 0 || c > 13) { emit(@{ @"t": @"error", @"msg": @"bad command id" }); return; }
