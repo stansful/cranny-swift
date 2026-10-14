@@ -72,6 +72,7 @@ import Observation
     public var isDemoMode = false
     public var areLiveActivitiesPaused = false
     public var hasTrackpad = true
+    public var canPresentHUD = true
     public init() {}
 }
 
