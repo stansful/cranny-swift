@@ -148,9 +148,12 @@ private func policy(_ selection: DisplaySelection, _ perDisplay: [DisplayKey: Di
 
 #if DEBUG
 @Test func menuQAArgumentsParse() {
-    let o = QAHooks.Options(arguments: ["Cranny", "--qa-menu", "showOn", "--qa-demo", "on", "--qa-update-check"])
+    let o = MenuBarQA.Options(arguments: ["Cranny", "--qa-menu", "showOn", "--qa-demo", "on", "--qa-update-check",
+                                          "--qa-snapshot", "/tmp/shots", "--qa-snapshot-at", "1,3.5"])
     #expect(o.menu == .showOn && o.demo == true && o.updateCheck && !o.isEmpty)
-    #expect(QAHooks.Options(arguments: ["Cranny", "--qa-demo", "off"]).demo == false)
-    #expect(QAHooks.Options(arguments: ["Cranny", "--qa-menu", "sideways", "--qa-demo", "maybe"]).isEmpty)
+    #expect(o.snapshotDirectory == "/tmp/shots" && o.snapshotTimes == [1, 3.5])
+    #expect(MenuBarQA.Options(arguments: ["Cranny", "--qa-demo", "off"]).demo == false)
+    #expect(MenuBarQA.Options(arguments: ["Cranny", "--qa-menu", "sideways", "--qa-demo", "maybe"]).isEmpty)
+    #expect(MenuBarQA.Options(arguments: ["Cranny", "--qa-state", "open"]).isEmpty)                // the shell's own flags
 }
 #endif
