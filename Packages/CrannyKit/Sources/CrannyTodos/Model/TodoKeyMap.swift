@@ -6,7 +6,8 @@
 //     after a failed save, ↑ from the first row selects the header's save error, where ↩ / Space retry;
 // • the title editor (`TodoEditorCommand`, from the field editor's key bindings):
 //     ↩ next row · ⌫ on an empty row deletes it · ↑ ↓ edit the neighbour · ⌘↑ ⌘↓ reorder · Esc stop editing.
-// Anything else returns nil and travels on (Tab to the next widget, Esc to close).
+// Anything else returns nil and travels on (Tab to the next widget, Esc to close). Esc while editing never travels:
+// the shell's Esc chain must let the panel's first responder (the field editor) see it before closing (WP12/WP13).
 import AppKit
 import Foundation
 

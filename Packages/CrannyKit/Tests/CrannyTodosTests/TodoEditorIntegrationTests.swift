@@ -11,18 +11,36 @@ import Testing
 struct TodoEditorIntegrationTests {
     let services = CrannyServices.testing()
 
-    private func host(_ model: TodosModel) -> (NSWindow, NSHostingView<some View>) {
+    /// Records the keys nothing inside handled: they reached the end of the responder chain, where the shell's
+    /// Esc chain (WP12) closes the panel.
+    final class RecordingWindow: NSWindow {
+        var unhandledKeyCodes: [UInt16] = []
+        override func keyDown(with event: NSEvent) { unhandledKeyCodes.append(event.keyCode) }
+    }
+
+    private func host(_ model: TodosModel, isFocused: Bool = false) -> (RecordingWindow, NSHostingView<some View>) {
         let theme = CrannyTheme()
         let grid = theme.grid
         let view = TodosView(model: model, context: WidgetContext(
-            cells: 3, contentSize: CGSize(width: grid.width(cells: 3) - 24, height: grid.height - 24)))
+            cells: 3, contentSize: CGSize(width: grid.width(cells: 3) - 24, height: grid.height - 24), isFocused: isFocused))
             .crannyCard(cells: 3)
             .crannyThemeRoot(theme)
         let host = NSHostingView(rootView: view)
         host.frame = CGRect(origin: .zero, size: host.fittingSize)
-        let window = NSWindow(contentRect: host.frame, styleMask: .borderless, backing: .buffered, defer: false)
+        let window = RecordingWindow(contentRect: host.frame, styleMask: .borderless, backing: .buffered, defer: false)
         window.contentView = host
         return (window, host)
+    }
+
+    /// Esc as the keyboard sends it, dispatched in process (`NSWindow.sendEvent`; nothing reaches the system).
+    private func pressEscape(in window: NSWindow) throws {
+        for type in [NSEvent.EventType.keyDown, .keyUp] {
+            let event = try #require(NSEvent.keyEvent(with: type, location: .zero, modifierFlags: [], timestamp: 0,
+                                                       windowNumber: window.windowNumber, context: nil,
+                                                       characters: "\u{1B}", charactersIgnoringModifiers: "\u{1B}",
+                                                       isARepeat: false, keyCode: 53))
+            window.sendEvent(event)
+        }
     }
 
     /// Lets SwiftUI update and the editor focus itself (it does so on the next main-actor turn).
@@ -77,16 +95,22 @@ struct TodoEditorIntegrationTests {
         window.contentView = nil
     }
 
-    @Test func escapeStopsEditingAndSelectsTheRow() async throws {
+    /// The contract the shell's Esc chain relies on (DESIGN.md §16 "Esc closes, after leaving …"): while a title
+    /// is edited, Esc stops editing and goes no further; the next Esc is not the widget's and travels on to close.
+    @Test func escapeStopsEditingAndOnlyTheNextEscapeTravelsOn() async throws {
         let model = TodosModel.testing([Todo(title: "a")], services: services)
-        let (window, host) = host(model)
+        let (window, host) = host(model, isFocused: true)
         let a = model.items[0].id
         model.beginEditing(a)
         try await settle(host)
-        try #require(editor(window)).doCommand(by: #selector(NSResponder.cancelOperation(_:)))
+        #expect(editor(window) != nil)
+        try pressEscape(in: window)
         #expect(model.editingID == nil)
+        #expect(window.unhandledKeyCodes.isEmpty)               // consumed by the editor
         try await settle(host)
-        #expect(model.selectionRequest == nil)                 // the list took the request
+        #expect(model.selectionRequest == nil)                 // the list took the request: "a" is selected
+        try pressEscape(in: window)
+        #expect(window.unhandledKeyCodes == [53])               // not the list's: the shell may close now
         window.contentView = nil
     }
 
