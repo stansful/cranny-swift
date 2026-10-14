@@ -177,10 +177,10 @@ nonisolated enum UpdateFailure: Error, Equatable, Sendable {
             String(localized: "Update checks are not available in this build.", bundle: .module,
                    comment: "Update check: failure reason, no GitHub repository configured")
         case .repositoryNotFound:
-            String(localized: "GitHub couldn't find Cranny's releases. Try again later.", bundle: .module,
+            String(localized: "GitHub couldn’t find Cranny’s releases. Try again later.", bundle: .module,
                    comment: "Update check: failure reason, HTTP 404 (the configured repository does not exist)")
         case .offline:
-            String(localized: "GitHub couldn't be reached. Check your internet connection and try again.", bundle: .module,
+            String(localized: "GitHub couldn’t be reached. Check your internet connection and try again.", bundle: .module,
                    comment: "Update check: failure reason, network error")
         case .rateLimited:
             String(localized: "GitHub is limiting requests right now. Try again later.", bundle: .module,
@@ -189,7 +189,7 @@ nonisolated enum UpdateFailure: Error, Equatable, Sendable {
             String(localized: "GitHub answered with an error (\(status)). Try again later.", bundle: .module,
                    comment: "Update check: failure reason, other HTTP status; the number is the status code")
         case .unreadable, .badVersion:
-            String(localized: "The release information couldn't be read.", bundle: .module,
+            String(localized: "The release information couldn’t be read.", bundle: .module,
                    comment: "Update check: failure reason, unexpected response")
         }
     }

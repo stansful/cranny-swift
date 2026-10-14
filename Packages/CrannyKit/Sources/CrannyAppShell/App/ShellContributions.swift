@@ -143,7 +143,7 @@ struct ShellPane {
                                              comment: "⌘K: search words for Settings ▸ General, comma-separated"))),
             ShellPane(id: .appearance, title: String(localized: "Appearance", bundle: .module, comment: "⌘K: Settings pane name (as in the Settings sidebar)"),
                       symbol: "paintbrush.fill", group: .top, order: 1,
-                      keywords: split(String(localized: "accent, colour, text size, motion, ambient light, notch fit, density", bundle: .module,
+                      keywords: split(String(localized: "accent, color, text size, motion, ambient light, notch fit, density", bundle: .module,
                                              comment: "⌘K: search words for Settings ▸ Appearance, comma-separated"))),
             ShellPane(id: .keyboard, title: String(localized: "Keyboard", bundle: .module, comment: "⌘K: Settings pane name (as in the Settings sidebar)"),
                       symbol: "keyboard", group: .top, order: 2,
@@ -167,7 +167,7 @@ struct ShellPane {
                                              comment: "⌘K: search words for Settings ▸ Permissions, comma-separated"))),
             ShellPane(id: .about, title: String(localized: "About", bundle: .module, comment: "⌘K: Settings pane name (as in the Settings sidebar)"),
                       symbol: "info.circle.fill", group: .bottom, order: 1,
-                      keywords: split(String(localized: "version, updates, licence, acknowledgements", bundle: .module,
+                      keywords: split(String(localized: "version, updates, license, acknowledgments", bundle: .module,
                                              comment: "⌘K: search words for Settings ▸ About, comma-separated"))),
         ]
     }
