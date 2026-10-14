@@ -104,7 +104,8 @@ private let log = Log.logger(.hud)
             screenLocked: environment.isScreenLocked,
             displaysAsleep: environment.areDisplaysAsleep,
             fullScreenInFront: environment.isFullScreenInFront,
-            fullScreenPolicy: settings[CoreSettings.fullScreenPolicy])
+            fullScreenPolicy: settings[CoreSettings.fullScreenPolicy],
+            shellCanPresentHUD: environment.canPresentHUD)
     }
 
     private func apply(_ inputs: HUDTapConfig.Inputs) {

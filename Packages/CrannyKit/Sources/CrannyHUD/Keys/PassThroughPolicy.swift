@@ -15,7 +15,8 @@ nonisolated enum PassReason: String, Sendable, Equatable {
     case notOurKey
     /// The user turned this kind off (Settings ▸ HUD ▸ Volume / Brightness / Keyboard backlight).
     case kindDisabled
-    /// Locked, asleep, or a full-screen app is in front under "Hide everything": Cranny cannot show a HUD.
+    /// Locked, asleep, a full-screen app in front under "Hide everything", or no visible panel with the HUD on
+    /// the HUD's display (General ▸ Displays ▸ HUD off there): Cranny cannot show a HUD.
     case notPresentable
     /// ⌥ alone: macOS opens the matching System Settings pane.
     case optionOpensSettings
