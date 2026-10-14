@@ -216,3 +216,19 @@ final class AmbientMetalNSView: NSView {
         if renderer.draw(state.effect, uniforms: uniforms, in: metalLayer) { framesDrawn += 1 }
     }
 }
+
+// MARK: - Previews
+
+#Preview("Metal layer · aurora at 30 fps") {
+    Group {
+        if let renderer = AmbientRenderer.shared {
+            AmbientMetalLayer(state: AmbientLayerState(effect: .aurora, glows: AmbientPalette.afterglow.glows, energy: 0,
+                                                       level: .vivid, fill: 1, reveal: nil, rippleStart: nil,
+                                                       halo: .ambient, interval: 1.0 / 30, restingTime: 7.3),
+                              renderer: renderer)
+        }
+    }
+    .frame(width: 656, height: 170)
+    .background(.black)
+    .crannyThemeRoot(CrannyTheme())
+}

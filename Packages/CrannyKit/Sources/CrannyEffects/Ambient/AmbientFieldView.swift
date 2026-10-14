@@ -205,3 +205,28 @@ struct RippleDistortion: ViewModifier {
         }
     }
 }
+
+// MARK: - Previews
+
+#Preview("Ambient paths · layer, SwiftUI shader, fallback") {
+    VStack(spacing: Space.s) {
+        AmbientFieldView(effect: .aurora, palette: .afterglow, level: .vivid, energy: 0, fill: 1,
+                         budget: .previewRunning, restingTime: 7.3)
+        AmbientFieldView(effect: .aurora, palette: .afterglow, level: .vivid, energy: 0, fill: 1,
+                         budget: .previewRunning, restingTime: 7.3)
+            .environment(\.effectRendering, .inline)
+        AmbientFieldView(effect: .aurora, palette: .afterglow, level: .vivid, energy: 0, fill: 1,
+                         budget: .previewReduceMotion, restingTime: 7.3)
+    }
+    .frame(width: 656, height: 380)
+    .background(.black)
+    .crannyThemeRoot(CrannyTheme())
+}
+
+#Preview("Ambient fill · half risen") {
+    AmbientFieldView(effect: .tide, palette: .timer, level: .vivid, energy: 0.5, fill: 0.5, budget: .previewRunning,
+                     restingTime: 7.3)
+        .frame(width: 656, height: 170)
+        .background(.black)
+        .crannyThemeRoot(CrannyTheme())
+}

@@ -65,3 +65,16 @@ struct ReducedMoment<Content: View>: View {
     /// `ambientOut` lasts 0.2 s with and without Reduce Motion (DESIGN.md §4.1–§4.2).
     private static var fadeOut: Double { 0.2 }
 }
+
+// MARK: - Previews
+
+#Preview("Moment clock · 0.9 s") {
+    MomentClock(duration: 0.9, interval: 1.0 / 30, onFinished: nil) { elapsed in
+        Text(elapsed.formatted(.number.precision(.fractionLength(2))))
+            .crannyFont(.caption)
+            .foregroundStyle(CrannyTheme().palette.label)
+    }
+    .frame(width: 120, height: 40)
+    .background(.black)
+    .crannyThemeRoot(CrannyTheme())
+}
