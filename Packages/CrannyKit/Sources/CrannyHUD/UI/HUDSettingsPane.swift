@@ -156,7 +156,7 @@ struct HUDSettingsPane: View {
         return LabeledContent {
             HStack(spacing: 10) {
                 Slider(value: Binding(get: { seconds }, set: { settings[HUDSettings.duration] = ($0 * 10).rounded() / 10 }),
-                       in: HUDSettings.durationRange)
+                       in: HUDSettings.durationRange)          // a stepped slider would draw 23 ticks
                     .frame(minWidth: 160)
                     .accessibilityLabel(Text("Duration", bundle: .module, comment: "Settings ▸ HUD: how long the HUD stays"))
                     .accessibilityValue(Text(Self.durationText(seconds)))
