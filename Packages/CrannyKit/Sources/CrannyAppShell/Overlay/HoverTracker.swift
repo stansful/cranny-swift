@@ -1,8 +1,9 @@
 // CrannyAppShell/Overlay/HoverTracker.swift — geometric hover for one panel (ARCHITECTURE.md §4.3, §5.5,
 // DESIGN.md §3.6, §4.6). `HoverZones` is pure zone math in AppKit screen coordinates (bottom-left origin);
 // `HoverTracker` turns pointer positions into the machine's enter/leave and band inputs, only on change;
-// `MenuLinger` keeps a menu's region inside for the grace after a menu opened from the panel closes, `MenuTracking`
-// counts the NSMenu sessions and `PanelHover` is one panel's pointer, as the controller and the tests drive it (§4.5).
+// `MenuLinger` keeps the region a menu opened from the panel occupied inside while the pointer stays there after the
+// menu closes (ruling E3), `MenuTracking` counts the NSMenu sessions and `PanelHover` is one panel's pointer, as the
+// controller and the tests drive it (§4.5).
 // Zones reach above the screen's top edge, because the pointer's y can equal `frame.maxY` (R1 §2.5).
 import AppKit
 import CrannyCore
@@ -81,20 +82,23 @@ nonisolated struct HoverZones: Equatable, Sendable {
 
 /// A menu opened from the panel (a widget's menu such as Mirror's cameras, a context menu) hangs below it, so the
 /// pointer that picks an item is usually outside the exit zone when the menu closes, over a place that no longer shows
-/// anything. While the menu tracks, its `menu` hold keeps the panel. After it closes, the rect from the exit zone to
-/// where the pointer was (+14 pt) counts as inside for the close grace (`HoverIntent.closeGrace`): the grace does not
-/// start while the pointer is still where the menu hung. The region ends when that time is up (the owner calls
-/// `expire`), when the pointer leaves it or when it comes back to the panel; then the usual grace applies.
+/// anything. While the menu tracks, its `menu` hold keeps the panel. After it closes, the region the session's menus
+/// occupied — `extent`: their reach around where the session began, plus the 32-pt control allowance — counts as inside
+/// for as long as the pointer stays in it (design ruling E3): the close grace (`HoverIntent.closeGrace`) starts only
+/// when the pointer leaves the region. The region also ends when the pointer comes back to the panel or the panel no
+/// longer shows open; then the usual hover applies. Its owner checks it once `closeGrace` after the menu closed: a
+/// pointer it cannot read then ends the region (`expire`), so a region never outlives a pointer nobody can see.
 ///
 /// Only the menu's own region: a menu that did not begin with the pointer on the open (or peeking) panel — the menu bar
 /// extra's, a Settings pop-up — leaves nothing, and neither does one that ended with the pointer beyond the menus' own
-/// size from where it began (dismissed by a click elsewhere, Esc after the pointer moved away). Pure.
+/// size from where it began (dismissed by a click elsewhere, Esc after the pointer moved away) or one of unknown size.
+/// Pure.
 nonisolated struct MenuLinger: Equatable, Sendable {
     /// Where the pointer was when the tracking menu began on this panel; nil for a menu from elsewhere.
     private(set) var origin: CGPoint?
     /// The region that still counts as inside (screen coordinates), or nil.
     private(set) var region: CGRect?
-    /// Numbers the regions, so the expiry of an earlier one leaves a later one alone.
+    /// Numbers the regions, so the check of an earlier one leaves a later one alone.
     private(set) var serial = 0
 
     /// The tracking menu began with the pointer on this panel.
@@ -107,50 +111,53 @@ nonisolated struct MenuLinger: Equatable, Sendable {
     }
 
     /// The last menu stopped tracking with the pointer at `point`; `reach` is how far the session's menus extend
-    /// (`MenuTracking.reach`). Returns the serial of the region it recorded, for `expire` after the grace; nil when
-    /// it recorded none.
+    /// (`MenuTracking.reach`). Returns the serial of the region it recorded, for the owner's check after the grace;
+    /// nil when it recorded none.
     mutating func ended(at point: CGPoint, zones: HoverZones?, reach: CGSize) -> Int? {
         defer { origin = nil }
         region = nil
-        guard let origin, let zones, zones.expanded, !zones.hoverZone.contains(point),
-              Self.extent(from: origin, reach: reach).contains(point) else { return nil }
-        region = Self.region(from: zones.hoverZone, to: point)
+        guard let origin, let zones, zones.expanded, reach.width > 0, reach.height > 0 else { return nil }
+        let extent = Self.extent(from: origin, reach: reach)
+        guard !zones.hoverZone.contains(point), extent.contains(point) else { return nil }
+        region = extent
         serial += 1
         return serial
     }
 
     /// The pointer moved (after `HoverTracker.update` saw it with the region): the region ends once the pointer is
-    /// outside it, back inside the exit zone, or the panel no longer shows open.
+    /// outside it, back inside the exit zone, or the panel no longer shows open. Nothing else ends it while the pointer
+    /// can be read (ruling E3).
     mutating func pointerMoved(to point: CGPoint, zones: HoverZones?) {
         guard let current = region else { return }
         let stays = zones.map { $0.expanded && current.contains(point) && !$0.hoverZone.contains(point) } ?? false
         if !stays { region = nil }
     }
 
-    /// The grace after the menu closed is over. True when region `serial` was still there and has gone now (the owner
-    /// then re-reads the pointer, so a pointer still outside the exit zone starts the usual grace).
+    /// Whether region `serial` is still the one that counts (a later menu, the pointer leaving or the panel closing
+    /// may have replaced or ended it).
+    func isCurrent(_ serial: Int) -> Bool { serial == self.serial && region != nil }
+
+    /// Ends region `serial`: the owner's check after the grace could not read the pointer. True when it was still
+    /// there and has gone now (the owner then re-runs the last pointer position it saw, so a pointer outside the exit
+    /// zone starts the usual grace).
     mutating func expire(_ serial: Int) -> Bool {
-        guard serial == self.serial, region != nil else { return false }
+        guard isCurrent(serial) else { return false }
         region = nil
         return true
     }
 
-    /// The smallest rect holding the exit zone and the point, grown by the exit hysteresis.
-    static func region(from exit: CGRect, to point: CGPoint) -> CGRect {
-        let inflation = HoverIntent.exitInflation
-        return exit.union(CGRect(origin: point, size: .zero)).insetBy(dx: -inflation, dy: -inflation)
-    }
-
-    /// Where the menus of a session that began with the pointer at `origin` can be. A menu opens from the control
-    /// under the pointer (a pull-down below it, a context menu at the click, a pop-up over its button; any of them
-    /// flipped at the screen's edges, a submenu beside its item), so it lies within `reach` of that point in every
-    /// direction, plus the control itself (`controlSlack`).
+    /// Where the menus of a session that began with the pointer at `origin` can be, and so the region they occupied.
+    /// A menu opens from the control under the pointer (a pull-down below it, a context menu at the click, a pop-up
+    /// over its button; any of them flipped at the screen's edges, a submenu beside its item), so it lies within
+    /// `reach` of that point in every direction, plus the control itself (`controlSlack`). It holds the point where
+    /// the session began, on the panel, so the way back up to the panel never leaves it.
     static func extent(from origin: CGPoint, reach: CGSize) -> CGRect {
         CGRect(x: origin.x - reach.width, y: origin.y - reach.height, width: 2 * reach.width, height: 2 * reach.height)
             .insetBy(dx: -controlSlack, dy: -controlSlack)
     }
 
-    /// The control a menu hangs from, beside the point that opened it: a band control's height (DESIGN.md §2.3).
+    /// The control a menu hangs from, beside the point that opened it: a band control's height (DESIGN.md §2.3). The
+    /// "32-pt control allowance" of ruling E3.
     static let controlSlack: CGFloat = 32
 }
 
@@ -187,15 +194,15 @@ nonisolated struct MenuTracking: Equatable, Sendable {
 }
 
 /// The pointer as one panel sees it (§4.3, §4.5): `HoverTracker` turns positions into the machine's inputs and
-/// `MenuLinger` keeps a menu's region inside for the grace after it closed. `NotchPanelController` owns one and wires
-/// the closures to its panel; tests wire them to a reducer, so both run this code.
+/// `MenuLinger` keeps a menu's region inside while the pointer stays in it after the menu closed. `NotchPanelController`
+/// owns one and wires the closures to its panel; tests wire them to a reducer, so both run this code.
 @MainActor final class PanelHover {
     /// The panel's hover zones without a menu's region; nil while hidden.
     var zones: @MainActor () -> HoverZones? = { nil }
     /// Feeds the panel's machine.
     var send: @MainActor (NotchInput) -> Void = { _ in }
-    /// Where the pointer is now, read when a menu's region expires.
-    var pointer: @MainActor () -> CGPoint = { NSEvent.mouseLocation }
+    /// Where the pointer is now, read when a menu's region is checked after the grace; nil when it cannot be read.
+    var pointer: @MainActor () -> CGPoint? = { PanelHover.readPointer() }
     /// Runs the work once after the delay (one sleep, no polling). Tests run it by hand.
     var after: @MainActor (TimeInterval, @escaping @MainActor () -> Void) -> Void = { delay, work in
         Task { @MainActor in
@@ -206,6 +213,8 @@ nonisolated struct MenuTracking: Equatable, Sendable {
 
     private let tracker = HoverTracker()
     private(set) var linger = MenuLinger()
+    /// The last position the tracker saw (a pointer event, or the read at a menu's begin or end).
+    private var lastPoint: CGPoint?
 
     /// The zones the pointer is measured against, with a menu's region while it lasts.
     var hoverZones: HoverZones? {
@@ -218,6 +227,7 @@ nonisolated struct MenuTracking: Equatable, Sendable {
 
     /// A pointer move (and the re-read after a menu): enter/leave and band inputs on change.
     func moved(to point: CGPoint) {
+        lastPoint = point
         let zones = hoverZones
         for input in tracker.update(point, zones: zones) { send(input) }
         linger.pointerMoved(to: point, zones: zones)
@@ -237,18 +247,33 @@ nonisolated struct MenuTracking: Equatable, Sendable {
     }
 
     /// The last menu stopped tracking with the pointer at `point`. The machine learns where the pointer is now (the
-    /// tracker sees no events while a menu tracks), with the menu's region inside when it came from this panel; the
-    /// region expires after the close grace.
+    /// tracker sees no events while a menu tracks), with the menu's region inside when it came from this panel. The
+    /// region lasts while the pointer stays in it; it is checked once, after the close grace.
     func menuEnded(at point: CGPoint, reach: CGSize) {
         if let serial = linger.ended(at: point, zones: hoverZones, reach: reach) {
-            after(HoverIntent.closeGrace) { [weak self] in self?.expire(serial) }
+            after(HoverIntent.closeGrace) { [weak self] in self?.check(serial) }
         }
         moved(to: point)
     }
 
-    private func expire(_ serial: Int) {
-        guard linger.expire(serial) else { return }
-        moved(to: pointer())
+    /// The safety check `closeGrace` after the menu closed (ruling E3). A pointer that can be read decides as a move
+    /// does: still in the region (and the panel still open), the region stays and no grace starts; pointer events end
+    /// it when the pointer leaves. A pointer that cannot be read ends the region, and the last position seen decides
+    /// (outside the exit zone: the usual grace).
+    private func check(_ serial: Int) {
+        guard linger.isCurrent(serial) else { return }
+        if let point = pointer() {
+            moved(to: point)
+        } else if linger.expire(serial), let lastPoint {
+            moved(to: lastPoint)
+        }
+    }
+
+    /// `NSEvent.mouseLocation` when it lies on a connected display (edges included: the pointer's y can equal the
+    /// top edge, R1 §2.5); nil while it cannot be placed on one (displays reconfiguring or gone).
+    static func readPointer() -> CGPoint? {
+        let point = NSEvent.mouseLocation
+        return NSScreen.screens.contains { $0.frame.insetBy(dx: -1, dy: -1).contains(point) } ? point : nil
     }
 
     /// One NSMenu begin or end notification for every panel (`OverlayCoordinator`), in this order: at the first begin

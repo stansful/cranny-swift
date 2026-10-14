@@ -1,8 +1,8 @@
-// What a file drag and a tracking menu leave behind on a panel (ARCHITECTURE.md §4.4–§4.5, §10.20 issues 8 and 12):
-// a closed panel keeps no drag state or `drag` hold, and a menu opened from the panel does not close it the moment the
-// item it picked hung below the panel. The reducer is driven through the production pointer code: `PanelHover` (as
-// `NotchPanelController` wires it) and `PanelHover.menuTracking` (as `OverlayCoordinator` calls it). No windows, no
-// input.
+// What a file drag and a tracking menu leave behind on a panel (ARCHITECTURE.md §4.4–§4.5, §10.20 issues 8, 12 and
+// 25): a closed panel keeps no drag state or `drag` hold, and a menu opened from the panel keeps it open while the
+// pointer stays where the menu was (ruling E3). The reducer is driven through the production pointer code:
+// `PanelHover` (as `NotchPanelController` wires it) and `PanelHover.menuTracking` (as `OverlayCoordinator` calls it).
+// No windows, no input.
 import CoreGraphics
 import CrannyCore
 import CrannyNotchUI
@@ -89,16 +89,18 @@ private func run(_ inputs: [NotchInput], from start: NotchMachineState = NotchMa
     #expect(released.holds.isEmpty && fx.contains(.schedule(.grace, after: HoverIntent.closeGrace)))
 }
 
-// MARK: - Menus opened from the panel (issue 12)
+// MARK: - Menus opened from the panel (issues 12 and 25, ruling E3)
 
 /// Mirror's camera menu, 220 × 160 pt, opened from the camera button of a card in the lower row.
 private let cameraButton = CGPoint(x: 980, y: 860)
 private let cameraMenu = CGSize(width: 220, height: 160)
 /// Where the picked camera was: below the exit zone (y 768), within the menu.
 private let pickedItem = CGPoint(x: 1000, y: 720)
+/// Below the menu's region (its extent ends 160 + 32 pt below the camera button, at y 668).
+private let belowTheMenu = CGPoint(x: 1000, y: 600)
 
 /// One panel as `NotchPanelController` wires it: the production `PanelHover` on the open shape's zones, feeding the
-/// reducer. The close grace after a menu is run by hand (`graceAfterTheMenuRunsOut`).
+/// reducer. The check `closeGrace` after a menu is run by hand (`checkAfterTheGrace`).
 @MainActor private final class Panel {
     nonisolated static let screen = CGRect(x: 0, y: 0, width: 1512, height: 982)
     /// The open shape, top-centred (screen coordinates, bottom-left origin).
@@ -110,7 +112,9 @@ private let pickedItem = CGPoint(x: 1000, y: 720)
     let hover = PanelHover()
     /// Where the pointer is (what `NSEvent.mouseLocation` would say).
     var pointer = Panel.inside
-    private var expiries: [@MainActor () -> Void] = []
+    /// False: the pointer cannot be read (`PanelHover.readPointer` finds it on no display).
+    var pointerIsReadable = true
+    private var checks: [@MainActor () -> Void] = []
     private var time = 0.0
 
     init(state: NotchMachineState) {
@@ -120,10 +124,10 @@ private let pickedItem = CGPoint(x: 1000, y: 720)
                        expanded: self.state.isOpen || self.state.isPeeking)
         }
         hover.send = { [unowned self] input in self.send(input) }
-        hover.pointer = { [unowned self] in self.pointer }
+        hover.pointer = { [unowned self] in self.pointerIsReadable ? self.pointer : nil }
         hover.after = { [unowned self] delay, work in
             #expect(delay == HoverIntent.closeGrace)
-            self.expiries.append(work)
+            self.checks.append(work)
         }
     }
 
@@ -140,10 +144,10 @@ private let pickedItem = CGPoint(x: 1000, y: 720)
         hover.moved(to: point)
     }
 
-    /// The close grace after the menu closed has passed.
-    func graceAfterTheMenuRunsOut() {
-        let due = expiries
-        expiries = []
+    /// `closeGrace` has passed since the menu closed: the region's safety check runs.
+    func checkAfterTheGrace() {
+        let due = checks
+        checks = []
         for work in due { work() }
     }
 
@@ -189,9 +193,9 @@ private let pickedItem = CGPoint(x: 1000, y: 720)
     #expect(panel.state.isOpen && !panel.graceScheduled && panel.state.hover == .outside)
 }
 
-/// Mirror's camera menu: the camera picked hangs below the panel. For the grace after the menu closed, the place where
-/// it hung counts as inside: coming back up keeps the panel without a grace, and later leaves are ordinary ones.
-@MainActor @Test func aMenuFromThePanelKeepsItsRegionForTheGrace() {
+/// Mirror's camera menu: the camera picked hangs below the panel. After the menu closed, the place where it hung
+/// counts as inside: coming back up keeps the panel without a grace, and later leaves are ordinary ones.
+@MainActor @Test func aMenuFromThePanelKeepsItsRegion() {
     let panel = openPanel()
     let menus = MenuSession(panel)
     menus.began(at: cameraButton)
@@ -199,37 +203,79 @@ private let pickedItem = CGPoint(x: 1000, y: 720)
     #expect(panel.state.isOpen && panel.state.hover == .inside && !panel.graceScheduled)
     panel.move(to: CGPoint(x: 1000, y: 745))                 // back up toward the panel
     panel.move(to: Panel.inside)                             // inside again: the region has done its job
-    panel.graceAfterTheMenuRunsOut()                         // nothing left to expire
+    panel.checkAfterTheGrace()                               // nothing left to check
     #expect(!panel.graceScheduled && panel.state.hover == .inside && panel.hover.linger.region == nil)
     panel.move(to: pickedItem)                               // leaving the same way later is an ordinary leave
     #expect(panel.graceScheduled)
 }
 
-/// The region lasts the grace, not longer: a pointer that stays where the menu hung is read again when the grace is
-/// over and gets the usual grace from there; one that leaves the region gets it at once.
-@MainActor @Test func theMenusRegionEndsWithTheGraceOrWhenThePointerLeavesIt() {
+/// Ruling E3: the panel stays while the pointer rests where the menu was, past the grace and the safety check, and
+/// while it moves within that region; the grace starts when it leaves the region.
+@MainActor @Test func theMenusRegionLastsWhileThePointerStaysInIt() {
     let panel = openPanel()
     let menus = MenuSession(panel)
     menus.began(at: cameraButton)
     menus.ended(at: pickedItem)
     panel.move(to: CGPoint(x: 990, y: 725))                  // still where the menu was
-    #expect(!panel.graceScheduled)
-    panel.graceAfterTheMenuRunsOut()                         // 0.3 s after the menu closed
+    panel.checkAfterTheGrace()                               // 0.3 s after the menu closed: the pointer is still there
+    #expect(!panel.graceScheduled && panel.state.hover == .inside && panel.hover.linger.region != nil)
+    panel.move(to: CGPoint(x: 1180, y: 690))                 // anywhere the menu could have hung, any time later
+    panel.send(.timerElapsed(.grace))                        // a stale grace changes nothing either
+    #expect(panel.state.isOpen && !panel.graceScheduled && panel.state.hover == .inside)
+    panel.move(to: belowTheMenu)                             // out of the region: the usual grace
+    #expect(panel.graceScheduled && panel.state.hover == .outside && panel.hover.linger.region == nil)
+    panel.move(to: pickedItem)                               // the region is gone: back over it is still outside
+    #expect(panel.state.hover == .outside)
+    panel.send(.timerElapsed(.grace))
+    #expect(panel.state.isClosed)
+}
+
+/// A pointer that leaves the region before the safety check gets the grace at once; the check then finds nothing.
+@MainActor @Test func leavingTheRegionStartsTheGraceAtOnce() {
+    let panel = openPanel()
+    let menus = MenuSession(panel)
+    menus.began(at: cameraButton)
+    panel.move(to: pickedItem)                               // pointer events that arrived while it tracked
+    menus.ended(at: pickedItem)
+    #expect(panel.state.hover == .inside && !panel.graceScheduled)
+    panel.move(to: belowTheMenu)
+    #expect(panel.graceScheduled && panel.state.hover == .outside)
+    panel.clearEffects()
+    panel.checkAfterTheGrace()                               // the region had already gone
+    #expect(panel.effects.isEmpty)
+    panel.send(.timerElapsed(.grace))
+    #expect(panel.state.isClosed)
+}
+
+/// The safety expiry: a pointer that cannot be read when the check comes ends the region, and the last position seen
+/// (where the menu was, outside the exit zone) starts the usual grace.
+@MainActor @Test func anUnreadablePointerEndsTheRegionAtTheSafetyCheck() {
+    let panel = openPanel()
+    let menus = MenuSession(panel)
+    menus.began(at: cameraButton)
+    menus.ended(at: pickedItem)
+    #expect(!panel.graceScheduled && panel.hover.linger.region != nil)
+    panel.pointerIsReadable = false
+    panel.checkAfterTheGrace()
     #expect(panel.graceScheduled && panel.state.hover == .outside && panel.hover.linger.region == nil)
     panel.send(.timerElapsed(.grace))
     #expect(panel.state.isClosed)
+}
 
-    let second = openPanel()
-    let again = MenuSession(second)
-    again.began(at: cameraButton)
-    second.move(to: pickedItem)                              // pointer events that arrived while it tracked
-    again.ended(at: pickedItem)
-    #expect(second.state.hover == .inside && !second.graceScheduled)
-    second.move(to: CGPoint(x: 1000, y: 600))                // below the menu's region
-    #expect(second.graceScheduled && second.state.hover == .outside)
-    second.graceAfterTheMenuRunsOut()                        // the region had already gone
-    second.send(.timerElapsed(.grace))
-    #expect(second.state.isClosed)
+/// A panel that closed while the pointer rested in the region (Esc, the hot key) loses the region at the check, so
+/// opening it again later does not count the old menu's place as inside.
+@MainActor @Test func aPanelClosedMeanwhileLosesTheRegion() {
+    let panel = openPanel()
+    let menus = MenuSession(panel)
+    menus.began(at: cameraButton)
+    menus.ended(at: pickedItem)
+    panel.send(.escape)
+    #expect(panel.state.isClosed)
+    panel.checkAfterTheGrace()
+    #expect(panel.hover.linger.region == nil && panel.state.hover == .outside)
+    panel.send(.hotKey)
+    panel.move(to: pickedItem)
+    #expect(panel.state.isOpen && panel.state.hover == .outside)
 }
 
 /// Only where the menu could have been: a menu dismissed by a click far away (or with Esc after the pointer moved
@@ -308,7 +354,10 @@ private let pickedItem = CGPoint(x: 1000, y: 720)
     #expect(!tracking.isTracking && tracking.reach == .zero)
 }
 
-@Test func theMenuRegionSpansFromTheExitZoneToThePickedItem() throws {
+/// The region is where the session's menus could hang: their reach around the control that opened them, plus the
+/// 32-pt control allowance (`MenuLinger.extent`). It holds the picked item and the control, so the way back up to the
+/// panel stays inside, and nothing beyond the menus' size.
+@Test func theMenuRegionIsWhereTheMenusCouldHang() throws {
     let zones = HoverZones(shape: Panel.open, satellite: nil, wings: nil, screenFrame: Panel.screen, band: 32,
                            expanded: true)
     var linger = MenuLinger()
@@ -317,8 +366,11 @@ private let pickedItem = CGPoint(x: 1000, y: 720)
     let recorded = linger.ended(at: pickedItem, zones: zones, reach: cameraMenu)
     let serial = try #require(recorded)
     let region = try #require(linger.region)
-    #expect(region.contains(pickedItem) && region.contains(zones.hoverZone))
-    #expect(region.minY == pickedItem.y - HoverIntent.exitInflation)
+    let extent = MenuLinger.extent(from: cameraButton, reach: cameraMenu)
+    #expect(region == extent && region.contains(pickedItem) && region.contains(cameraButton))
+    #expect(region.minY == cameraButton.y - cameraMenu.height - MenuLinger.controlSlack)
+    #expect(region.maxX == cameraButton.x + cameraMenu.width + MenuLinger.controlSlack)
+    #expect(!region.contains(belowTheMenu) && !region.contains(CGPoint(x: 600, y: 720)))   // beyond the menu's size
     #expect(!linger.fromPanel)                                                // one menu, one region
 
     // It counts as inside only while the panel shows open (or peeks).
@@ -328,8 +380,8 @@ private let pickedItem = CGPoint(x: 1000, y: 720)
     withRegion.expanded = false
     #expect(!withRegion.contains(pickedItem))
 
-    // No region for an item picked inside the exit zone, a menu that began elsewhere or on a closed panel, or an end
-    // beyond the menu's reach from where it began.
+    // No region for an item picked inside the exit zone, a menu that began elsewhere or on a closed panel, a menu of
+    // unknown size (even within the control allowance), or an end beyond the menu's reach from where it began.
     var near = MenuLinger()
     near.began(at: cameraButton, zones: zones)
     #expect(near.ended(at: CGPoint(x: 1000, y: 775), zones: zones, reach: cameraMenu) == nil && near.region == nil)
@@ -341,19 +393,22 @@ private let pickedItem = CGPoint(x: 1000, y: 720)
     closedZones.expanded = false
     closed.began(at: cameraButton, zones: closedZones)
     #expect(closed.ended(at: pickedItem, zones: closedZones, reach: cameraMenu) == nil)
-    let extent = MenuLinger.extent(from: cameraButton, reach: cameraMenu)
+    var sizeless = MenuLinger()
+    let lowButton = CGPoint(x: 980, y: 790)                                   // a control at the panel's bottom
+    sizeless.began(at: lowButton, zones: zones)
+    #expect(sizeless.ended(at: CGPoint(x: 980, y: 760), zones: zones, reach: .zero) == nil)
     #expect(extent.contains(pickedItem) && !extent.contains(CGPoint(x: 100, y: 100)))
-    #expect(extent.minY == cameraButton.y - cameraMenu.height - MenuLinger.controlSlack)
     var beyond = MenuLinger()
     beyond.began(at: cameraButton, zones: zones)
     #expect(beyond.ended(at: CGPoint(x: extent.midX, y: extent.minY - 1), zones: zones, reach: cameraMenu) == nil)
 
-    // The region ends when the pointer leaves it, comes back inside, or the panel closes …
+    // The region ends when the pointer leaves it, comes back inside, or the panel closes; never by itself …
     var moving = linger
     moving.pointerMoved(to: CGPoint(x: 1000, y: 745), zones: withRegion.expandedCopy)
-    #expect(moving.region == region)
+    moving.pointerMoved(to: CGPoint(x: 1200, y: 680), zones: withRegion.expandedCopy)
+    #expect(moving.region == region && moving.isCurrent(serial))
     moving.pointerMoved(to: Panel.inside, zones: withRegion.expandedCopy)
-    #expect(moving.region == nil)
+    #expect(moving.region == nil && !moving.isCurrent(serial))
     var leaving = linger
     leaving.pointerMoved(to: CGPoint(x: 100, y: 300), zones: withRegion.expandedCopy)
     #expect(leaving.region == nil)
@@ -361,14 +416,15 @@ private let pickedItem = CGPoint(x: 1000, y: 720)
     closing.pointerMoved(to: pickedItem, zones: withRegion)                 // `expanded` is false: closed
     #expect(closing.region == nil)
 
-    // … and with its grace; an earlier region's expiry leaves a later one alone.
+    // … or when the safety check cannot read the pointer; an earlier region's check leaves a later one alone.
     var expiring = linger
     #expect(expiring.expire(serial) && expiring.region == nil && !expiring.expire(serial))
     var later = linger
     later.began(at: cameraButton, zones: zones)
     let laterRecorded = later.ended(at: pickedItem, zones: zones, reach: cameraMenu)
     let next = try #require(laterRecorded)
-    #expect(next == serial + 1 && !later.expire(serial) && later.region != nil && later.expire(next))
+    #expect(next == serial + 1 && !later.isCurrent(serial) && !later.expire(serial) && later.region != nil)
+    #expect(later.expire(next) && later.region == nil)
 }
 
 private extension HoverZones {
