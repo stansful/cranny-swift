@@ -2,6 +2,7 @@
 import CrannyCore
 import Darwin
 import Foundation
+import os
 import Testing
 @testable import CrannyMedia
 
@@ -24,9 +25,13 @@ import Testing
         let executable = URL(fileURLWithPath: "/tmp/build/debug/tool")
         let all = BridgeLocator.candidates(environment: ["CRANNY_MEDIA_BRIDGE": "/custom/lib.dylib"],
                                            privateFrameworks: frameworks, executable: executable)
-        #expect(all.map(\.path) == ["/custom/lib.dylib",
-                                    "/Applications/Cranny.app/Contents/Frameworks/libCrannyMediaBridge.dylib",
-                                    "/tmp/build/debug/libCrannyMediaBridge.dylib"])
+        let bundled = ["/Applications/Cranny.app/Contents/Frameworks/libCrannyMediaBridge.dylib",
+                       "/tmp/build/debug/libCrannyMediaBridge.dylib"]
+        #if DEBUG
+        #expect(all.map(\.path) == ["/custom/lib.dylib"] + bundled)        // integration tests point at a build
+        #else
+        #expect(all.map(\.path) == bundled)                                // Release: the launch environment is ignored
+        #endif
         #expect(BridgeLocator.candidates(environment: ["CRANNY_MEDIA_BRIDGE": ""], privateFrameworks: nil, executable: executable).count == 1)
         #expect(BridgeLocator.candidates(environment: [:], privateFrameworks: nil, executable: nil).isEmpty)
     }
@@ -61,6 +66,53 @@ import Testing
         setQuarantine(original)
         _ = BridgeLocator.locate(candidates: [original], copyDirectory: { copies })
         #expect(try Data(contentsOf: located) == Data("new build".utf8))
+    }
+
+    @Test func aLinkOrForeignLibraryInPlaceOfTheCopyIsReplaced() throws {
+        let dir = try tempDirectory(), copies = try tempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir); try? FileManager.default.removeItem(at: copies) }
+        let original = dir.appending(path: BridgeLocator.fileName)
+        let bytes = Data((0..<4096).map { UInt8($0 % 241) })
+        try bytes.write(to: original)
+        setQuarantine(original)
+        let copy = copies.appending(path: BridgeLocator.fileName)
+
+        // Same bytes, but through a link another process could repoint: replaced by a file Cranny wrote.
+        let elsewhere = dir.appending(path: "elsewhere.dylib")
+        try bytes.write(to: elsewhere)
+        try FileManager.default.createSymbolicLink(at: copy, withDestinationURL: elsewhere)
+        #expect(BridgeLocator.locate(candidates: [original], copyDirectory: { copies }) == copy)
+        #expect(try FileManager.default.attributesOfItem(atPath: copy.path)[.type] as? FileAttributeType == .typeRegular)
+        #expect(try Data(contentsOf: elsewhere) == bytes)                  // the link's target is left alone
+
+        // Another library planted in place of the copy.
+        try Data("planted".utf8).write(to: copy)
+        #expect(BridgeLocator.locate(candidates: [original], copyDirectory: { copies }) == copy)
+        #expect(try Data(contentsOf: copy) == bytes)
+    }
+
+    @MainActor @Test func everySpawnChecksTheCopyAgain() async throws {
+        // The supervisor restarts a helper after 0.5 / 2 / 8 s; each restart resolves the library again, so a copy
+        // swapped during the session (and the helper killed to force a restart) is never what perl loads.
+        let dir = try tempDirectory(), copies = try tempDirectory()
+        defer { try? FileManager.default.removeItem(at: dir); try? FileManager.default.removeItem(at: copies) }
+        let original = dir.appending(path: BridgeLocator.fileName)
+        let bytes = Data((0..<4096).map { UInt8($0 % 239) })
+        try bytes.write(to: original)
+        setQuarantine(original)
+        let lookups = OSAllocatedUnfairLock(initialState: 0)
+        let resolution = BridgeResolution(locate: { BridgeLocator.locate(candidates: [original], copyDirectory: { copies }) },
+                                          hosts: { lookups.withLock { $0 += 1 }; return [.perl] })
+
+        let first = try #require(await resolution.resolve().dylib)
+        #expect(first == copies.appending(path: BridgeLocator.fileName))
+        try Data("planted".utf8).write(to: first)
+
+        let second = await resolution.resolve()
+        #expect(second.dylib == first)
+        #expect(try Data(contentsOf: first) == bytes)
+        #expect(second.hosts == [.perl])
+        #expect(lookups.withLock { $0 } == 1)                             // interpreters: looked up once per launch
     }
 
     @Test func unquarantinedLibraryIsUsedInPlace() throws {
