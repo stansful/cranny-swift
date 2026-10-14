@@ -58,6 +58,10 @@ struct SnapshotGallery {
         let (hints, registry) = previewScene(.open)
         hints.context.showsCommandHints = true
         try write(hints, registry, name: "open-hints", in: dir)
+        let (flat, flatRegistry) = previewScene(.open)
+        flat.theme.widgetStyle = .flat
+        flat.layout = NotchLayout(metrics: .reference, grid: flat.theme.grid)          // the flat gutter widens the panel
+        try write(flat, flatRegistry, name: "open-flat", in: dir)
         let (pinned, pinnedRegistry) = previewScene(.open, metrics: PreviewDisplays.external)
         pinned.pinned = true
         try write(pinned, pinnedRegistry, name: "open-island-pinned", in: dir)

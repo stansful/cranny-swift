@@ -80,6 +80,7 @@ private struct CanvasBody: View {
         .opacity(surfaceOpacity)
         .animation(theme.animation(.contentSwap), value: surfaceOpacity)
         .modifier(GulpModifier(depth: $gulp))
+        .environment(\.notchSlotRevealDelay, ContentTiming.slotDelay(after: kind))
         .onChange(of: current) { _, new in previous = new }
     }
 
@@ -118,6 +119,7 @@ private struct CanvasBody: View {
                 .onTapGesture { actions.open() }
         case .compact, .peek:
             ActivityStack(model: model, registry: registry, actions: actions)
+                .transition(.crannyLeaving(theme))
         case .open:
             NookView(model: model, registry: registry, actions: actions)
                 .transition(.crannyLeaving(theme))

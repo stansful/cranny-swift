@@ -59,6 +59,13 @@ nonisolated enum ShapeMotion {
 nonisolated enum ContentTiming {
     /// Compact slot content grows out of the camera edge 0.08 s after the shape starts (`activityIn`).
     static let slotDelay: Double = 0.08
+    /// … and returns about 0.22 s into a close, when the shape is nearly back (DESIGN.md §4.3 "Close").
+    static let slotReturnDelay: Double = 0.22
+
+    /// The wing delay for a change of presentation.
+    static func slotDelay(after kind: CrannyMotion.Kind) -> Double {
+        kind == .close || kind == .peekOut ? slotReturnDelay : slotDelay
+    }
     /// Content waits until the shape is about 25 % open (`contentIn` already carries its 0.06 s delay).
     static let headerDelay: Double = 0.06
     /// Peek rows stagger 30 ms top to bottom (DESIGN.md §4.5).

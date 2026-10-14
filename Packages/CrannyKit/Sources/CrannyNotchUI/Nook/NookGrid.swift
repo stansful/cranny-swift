@@ -29,6 +29,7 @@ struct WidgetGridPage: View {
                     .focusEffectDisabled()
                     .focusSection()
                     .accessibilityRotorEntry(id: item.widget, in: rotor)
+                    .overlay(alignment: .trailing) { if index < items.count - 1 { FlatDivider() } }
                     .staggeredReveal(delay: Stagger.delay(ring: rings[index], reduceMotion: theme.reduceMotion))
             }
         }
@@ -45,6 +46,24 @@ struct WidgetGridPage: View {
 
     private func cells(of item: NookItem) -> Int {
         registry.widget(item.widget)?.sizes.clamp(item.cells) ?? max(item.cells, 1)
+    }
+}
+
+/// Flat widget style (DESIGN.md §6.3): a 1-px `hairline` divider in the middle of the doubled gutter, inset
+/// 10 pt at the top and bottom. Drawn on a card's trailing side; cards style draws nothing.
+private struct FlatDivider: View {
+    @Environment(\.cranny) private var theme
+    @Environment(\.displayScale) private var displayScale
+    var body: some View {
+        if theme.widgetStyle == .flat {
+            let width = StrokeWidth.hairline(displayScale)
+            Rectangle().fill(theme.palette.hairline)
+                .frame(width: width)
+                .padding(.vertical, 10)
+                .offset(x: (theme.grid.gutter + width) / 2)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        }
     }
 }
 

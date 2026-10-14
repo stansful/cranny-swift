@@ -88,6 +88,12 @@ private func kind(_ from: NotchPhase, _ to: NotchPhase, fromHUD: Bool = false, t
         #expect(Stagger.delay(ring: 3, reduceMotion: true) == 0)
     }
 
+    @Test func wingsGrowAfterTheShapeAndReturnLateOnClose() {
+        #expect(ContentTiming.slotDelay(after: .activityIn) == 0.08)
+        #expect(ContentTiming.slotDelay(after: .activitySwap) == 0.08)
+        #expect(ContentTiming.slotDelay(after: .close) == 0.22)                  // open → compact
+    }
+
     @Test func peekRowsThirtyMillisecondsTopToBottom() {
         #expect(ContentTiming.peekRowDelay(index: 0, reduceMotion: false) == 0)
         #expect(abs(ContentTiming.peekRowDelay(index: 2, reduceMotion: false) - 0.06) < 1e-9)

@@ -36,7 +36,7 @@ private struct CompactBand: View {
     var body: some View {
         let layout = model.layout
         if let id = model.primary, let activity = model.activity(id, in: registry) {
-            CompactRow(layout: layout, id: id, activity: activity, labelWidth: model.middleLabelWidth)
+            CompactRow(layout: layout, id: id, activity: activity, slot: model.primarySlot, labelWidth: model.middleLabelWidth)
                 .contentShape(Rectangle())
                 .onTapGesture { actions.activityTapped(id) }
                 .activityAccessibility(activity, id: id, open: { actions.activityTapped(id) },
@@ -47,25 +47,28 @@ private struct CompactBand: View {
     }
 }
 
-/// One compact row. The wings swap with `crannySlot` when the activity changes (content grows out of the
-/// camera edge 0.08 s after the shape starts, and leaves before it shrinks).
+/// One compact row. Wing content grows out of the camera edge 0.08 s after the shape starts (`crannySlot`'s
+/// look, played on appear so it also runs when the whole row appears) and leaves with `contentOut` before the
+/// shape shrinks; a new activity swaps in the same way.
 struct CompactRow: View {
     @Environment(\.cranny) private var theme
     let layout: NotchLayout
     let id: ActivityID
     let activity: any LiveActivity
+    /// `NotchSceneModel.primarySlot`: the wings match the shape the owner asked for, even for a frame in
+    /// which the activity's own `slot` has already changed.
+    let slot: SlotWidth
     /// `NotchSceneModel.middleLabelWidth` (0 = no label).
     var labelWidth: CGFloat = 0
 
     var body: some View {
-        let reduce = theme.reduceMotion
-        let slotIn = theme.contentIn(after: ContentTiming.slotDelay - 0.06)
-        CompactSlots(layout: layout, slot: activity.slot, label: labelWidth,
+        let leaving = AnyTransition.crannyLeaving(theme)
+        CompactSlots(layout: layout, slot: slot, label: labelWidth,
                      leading: {
                          activity.view(for: .compactLeading)
+                             .slotReveal(edge: .leading)
                              .id(id)
-                             .transition(.asymmetric(insertion: .crannySlot(edge: .leading, reduceMotion: reduce).animation(slotIn),
-                                                     removal: .opacity.animation(theme.animation(.contentOut))))
+                             .transition(leaving)
                      },
                      center: {
                          if labelWidth > 0, let label = activity.middleLabel, !layout.metrics.hasNotch {
@@ -74,13 +77,52 @@ struct CompactRow: View {
                      },
                      trailing: {
                          activity.view(for: .compactTrailing)
+                             .slotReveal(edge: .trailing)
                              .id(id)
-                             .transition(.asymmetric(insertion: .crannySlot(edge: .trailing, reduceMotion: reduce).animation(slotIn),
-                                                     removal: .opacity.animation(theme.animation(.contentOut))))
+                             .transition(leaving)
                      })
             .foregroundStyle(theme.palette.label)
             .lineLimit(1)
     }
+}
+
+/// `crannySlot` played once on appear: scale 0.6 → 1 anchored on the camera side, blur 4 → 0, opacity 0 → 1,
+/// 0.08 s after the shape starts (DESIGN.md §4.3 "Activity in"). Reduce Motion: opacity only.
+struct SlotReveal: ViewModifier {
+    @Environment(\.cranny) private var theme
+    @Environment(\.notchRendersFinalState) private var rendersFinalState
+    @Environment(\.notchSlotRevealDelay) private var delay
+    @State private var revealed = false
+    let edge: HorizontalEdge
+
+    func body(content: Content) -> some View {
+        let shown = revealed || rendersFinalState
+        let reduce = theme.reduceMotion
+        let anchor: UnitPoint = edge == .leading ? .trailing : .leading           // the camera side
+        content
+            .blur(radius: shown || reduce ? 0 : 4)
+            .scaleEffect(shown || reduce ? 1 : 0.6, anchor: anchor)
+            .opacity(shown ? 1 : 0)
+            .onAppear {
+                guard !revealed else { return }
+                if let animation = theme.contentIn(after: max(delay - ContentTiming.headerDelay, 0)) {
+                    withAnimation(animation) { revealed = true }
+                } else {
+                    revealed = true
+                }
+            }
+    }
+}
+
+extension EnvironmentValues {
+    /// When wing content starts growing after a change of presentation: 0.08 s after the shape (activity in),
+    /// 0.22 s when the panel closes back to compact (DESIGN.md §4.3 "Close"). Set by the canvas.
+    @Entry var notchSlotRevealDelay: Double = ContentTiming.slotDelay
+}
+
+extension View {
+    /// Wing content entering from the camera edge (see `SlotReveal`).
+    func slotReveal(edge: HorizontalEdge) -> some View { modifier(SlotReveal(edge: edge)) }
 }
 
 /// How a two-finger gesture in progress moves the content and the shape (DESIGN.md §4.4). The owner writes

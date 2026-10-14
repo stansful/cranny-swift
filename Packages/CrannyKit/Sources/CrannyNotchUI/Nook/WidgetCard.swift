@@ -41,17 +41,17 @@ struct WidgetCard: View {
                 if !isEditing && (hovered || showsKeyboardMenu) {
                     CardOverflowMenu(widget: item.widget, hasOptions: widget?.hasOptions ?? false, cells: cells,
                                      commands: commands, showOptions: { showsOptions = true })
+                        .popover(isPresented: $showsKeyboardMenu, arrowEdge: .bottom) {
+                            CardActionsList(widget: item.widget, hasOptions: widget?.hasOptions ?? false, cells: cells,
+                                            commands: commands, showOptions: { showsKeyboardMenu = false; showsOptions = true },
+                                            done: { showsKeyboardMenu = false })
+                        }
                         .padding(Space.xs)
                         .transition(.opacity.animation(theme.animation(.hover)))
                 }
             }
             .popover(isPresented: $showsOptions, arrowEdge: .bottom) {
                 if let widget { WidgetOptionsPopover(widget: widget) }
-            }
-            .popover(isPresented: $showsKeyboardMenu, arrowEdge: .bottom) {
-                CardActionsList(widget: item.widget, hasOptions: widget?.hasOptions ?? false, cells: cells, commands: commands,
-                                showOptions: { showsKeyboardMenu = false; showsOptions = true },
-                                done: { showsKeyboardMenu = false })
             }
             .crannyFocusRing(isFocused && (context.keyboardNavigation || context.openReason == .keyboard),
                              radius: theme.grid.cardRadius)
