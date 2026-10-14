@@ -12,6 +12,10 @@ public enum QuickAppsModule: FeatureModule {
     /// The module's settings namespace and owner tag (`.quickApps`).
     public static var id: ModuleID { .quickApps }
 
+    /// The feature's identity glyph: the widget (layout editor, widget library, onboarding presets) and its
+    /// Settings pane (DESIGN.md §14.1, §11). `app.dashed` stays the placeholder for a missing app or an empty widget.
+    static let symbol = "square.2.layers.3d.fill"
+
     /// Registers the widget, the Settings pane and the ⌘K provider; work starts in `registry.onLaunch`.
     public static func register(in registry: ModuleRegistry) {
         let model = QuickAppsModel(services: registry.services)
@@ -19,7 +23,7 @@ public enum QuickAppsModule: FeatureModule {
         registry.add(settingsPage: SettingsPage(
             id: .shortcuts,
             title: String(localized: "Shortcuts", bundle: .module, comment: "Settings sidebar: Quick Apps & Shortcuts pane name (Apple's Shortcuts app)"),
-            symbol: "square.2.layers.3d.fill", tint: .indigo, group: .features, order: 2,
+            symbol: symbol, tint: .indigo, group: .features, order: 2,
             keywords: searchKeywords, previewState: .open) { AnyView(ShortcutsSettingsPane(model: model)) })
         registry.add(commands: QuickAppsCommands(model: model))
         registry.onLaunch {

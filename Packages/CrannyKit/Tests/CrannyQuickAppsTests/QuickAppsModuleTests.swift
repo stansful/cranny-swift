@@ -18,7 +18,8 @@ import Testing
     registry.register(QuickAppsModule.self)
     let widget = try #require(registry.widget(.quickApps))
     #expect(widget.sizes == WidgetSizes(minimum: 1, preferred: 2, maximum: 6))
-    #expect(widget.symbol == "app.dashed")
+    #expect(widget.symbol == "square.2.layers.3d.fill")     // the feature's glyph, as on its Settings pane
+    #expect(widget.symbol != "app.dashed")                  // DESIGN.md §14.1: the placeholder (missing app, unknown widget)
     #expect(!widget.isFrameless)
     #expect(widget.hasOptions)
     #expect(!widget.title.isEmpty && !widget.summary.isEmpty)
@@ -31,6 +32,7 @@ import Testing
     #expect(page.group == .features)
     #expect(page.tint == .indigo)
     #expect(page.symbol == "square.2.layers.3d.fill")
+    #expect(page.symbol == registry.widget(.quickApps)?.symbol)
     #expect(page.namespaces == [.quickApps])
     #expect(page.previewState == .open)
     #expect(page.keywords.count >= 5)

@@ -57,7 +57,7 @@ import Testing
 
 @Test func curatedSymbolsExistAndAreNotRestricted() throws {
     #expect(Set(ShortcutAppearance.symbols).count == ShortcutAppearance.symbols.count)
-    for symbol in ShortcutAppearance.symbols + [ShortcutAppearance.fallbackSymbol, "app.dashed", "checkmark.circle.fill",
+    for symbol in ShortcutAppearance.symbols + [ShortcutAppearance.fallbackSymbol, QuickAppsModule.symbol, "app.dashed", "checkmark.circle.fill",
                                                  "exclamationmark", "plus", "xmark", "sparkles", "arrow.triangle.2.circlepath"] {
         #expect(NSImage(systemSymbolName: symbol, accessibilityDescription: nil) != nil, "\(symbol)")
     }

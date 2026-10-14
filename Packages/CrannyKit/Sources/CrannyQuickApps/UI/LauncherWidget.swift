@@ -12,7 +12,7 @@ final class LauncherWidget: NookWidget {
     var title: String {
         String(localized: "Quick Apps", bundle: .module, comment: "Quick Apps: widget name (widget library, VoiceOver container)")
     }
-    let symbol = "app.dashed"
+    let symbol = QuickAppsModule.symbol
     var summary: String {
         String(localized: "Open apps and run shortcuts in one click", bundle: .module, comment: "Widget library: Quick Apps description")
     }
