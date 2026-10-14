@@ -2,10 +2,10 @@
 # Command Line Tools: the scripts locate /Applications/Xcode*.app themselves.
 SHELL := /bin/bash
 
-.PHONY: help build debug run smoke dist check test strings strings-check copy-check probe probe-check icon list clean distclean
+.PHONY: help build debug run smoke dist check test strings strings-check copy-check l10n-check probe probe-check icon list clean distclean
 
 help:            ## Show this help
-	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
+	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
 
 build:           ## Release build, universal -> build/Cranny.app
 	@scripts/build.sh
@@ -31,12 +31,16 @@ test:            ## swift test for CrannyKit
 strings:         ## Sync String Catalogs with keys used in code
 	@scripts/sync-strings.sh
 
-strings-check:   ## Fail if String Catalogs are out of date or break the copy rules (CI)
+strings-check:   ## Fail if String Catalogs are out of date, break the copy rules or miss a shipped language (CI)
 	@CHECK=1 scripts/sync-strings.sh
 	@/usr/bin/python3 -I scripts/lint-copy.py
+	@/usr/bin/python3 -I scripts/l10n/validate.py --shipped
 
-copy-check:      ## Copy rules of every String Catalog only (no build; part of strings-check)
+copy-check:      ## Copy rules of every String Catalog, per language (no build; part of strings-check)
 	@/usr/bin/python3 -I scripts/lint-copy.py
+
+l10n-check:      ## Shipped languages complete + valid: scripts/l10n/validate.py --shipped (no build; part of strings-check)
+	@/usr/bin/python3 -I scripts/l10n/validate.py --shipped
 
 probe:           ## Regenerate the SDK name-collision probe after adding public CrannyCore types
 	@scripts/name-probe.sh

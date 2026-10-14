@@ -1,14 +1,24 @@
 #!/usr/bin/env python3
 """Copy rules for every String Catalog (docs/CONTRIBUTING.md, "Copy"). No Xcode needed.
 
-Checks the English text of every key (the key itself, or its English value when the key is an identifier
-or has a `defaultValue:`) and, for the denylist, the Russian text too:
+The rules apply per language. English, the source (every key: the key itself, or its English value when the key
+is an identifier or has a `defaultValue:`):
 
 - American English: no British spellings ("colour", "customise", "licence", ...).
-- Typographic punctuation: ' and " are written as ’ and “ ” (Russian uses « » and is not checked).
+- Typographic punctuation: ' and " are written as ’ and “ ” and three dots as one ….
 - System Settings is named by its pane ("Login Items in System Settings"), never by a ▸ path, because the
   path differs between macOS versions. Cranny's own "Settings ▸ Keyboard" paths are fine.
-- Clean room (ARCHITECTURE.md D20, §8.7 rule 8): no competitor product names in any language.
+
+Every other language a catalog holds (each must be in scripts/l10n/languages.json):
+
+- Typographic punctuation: no ASCII " or ' unless that language's quote style (languages.json "quoteStyle", as
+  macOS writes it: Arabic uses straight quotes) has them; one … instead of three dots.
+
+Every language, the source included:
+
+- Clean room (ARCHITECTURE.md D20, §8.7 rule 8): no competitor product names ("Nook", …).
+
+scripts/l10n/validate.py checks translations in depth (placeholders, plural forms, quote characters, "Cranny").
 
     python3 -I scripts/lint-copy.py                  # every catalog
     python3 -I scripts/lint-copy.py CrannyTimer App  # just these targets ("App" = App/InfoPlist.xcstrings)
@@ -68,6 +78,15 @@ BRITISH = {
 BRITISH_RE = [(re.compile(r"\b" + stem, re.IGNORECASE), us) for stem, us in BRITISH.items()]
 DENYLIST = re.compile(r"nook|alcove|atoll|boring\.notch", re.IGNORECASE)
 SETTINGS_PATH = re.compile(r"System Settings\s*▸")
+LANGUAGES = os.path.join(ROOT, "scripts/l10n/languages.json")
+
+
+def quote_styles():
+    """{language: set of ASCII quote characters its style allows} from scripts/l10n/languages.json."""
+    with open(LANGUAGES, encoding="utf-8") as handle:
+        table = json.load(handle)
+    return {entry["code"]: set("".join(entry["quoteStyle"]["primary"] + entry["quoteStyle"]["secondary"])) & {"'", '"'}
+            for entry in table}
 
 
 def catalogs(targets):
@@ -118,12 +137,25 @@ def problems_in(text):
         yield "straight apostrophe (use ’)"
     if '"' in text:
         yield "straight quotation mark (use “ ”)"
+    if "..." in text:
+        yield "three dots (use …)"
     if SETTINGS_PATH.search(text):
         yield "System Settings path (name the pane instead: “Login Items in System Settings”)"
 
 
+def translation_problems(text, language, allowed_ascii):
+    """The rules for a language other than English: typographic quotes in its style, one-character ellipsis."""
+    if "'" in text and "'" not in allowed_ascii:
+        yield f"straight apostrophe or quote ' in {language} (use ’ or the language’s quotes)"
+    if '"' in text and '"' not in allowed_ascii:
+        yield f"straight quotation mark \" in {language} (use the language’s quotes)"
+    if "..." in text:
+        yield f"three dots in {language} (use …)"
+
+
 def main(argv):
     problems = []
+    styles = quote_styles()
     for path in catalogs(argv[1:]):
         name = os.path.relpath(path, ROOT)
         with open(path, encoding="utf-8") as handle:
@@ -137,6 +169,19 @@ def main(argv):
                     if problem not in seen:
                         seen.add(problem)
                         problems.append(f"{name}: {json.dumps(key, ensure_ascii=False)}: {problem}")
+            for language, localization in sorted(entry.get("localizations", {}).items()):
+                if language == "en":
+                    continue
+                if language not in styles:
+                    problems.append(f"{name}: {json.dumps(key, ensure_ascii=False)}: language “{language}” is not in "
+                                    f"scripts/l10n/languages.json")
+                    continue
+                seen = set()
+                for text in values(localization):
+                    for problem in translation_problems(text, language, styles[language]):
+                        if problem not in seen:
+                            seen.add(problem)
+                            problems.append(f"{name}: {json.dumps(key, ensure_ascii=False)}: {problem}")
             for text in [key, *values(entry.get("localizations", {}))]:
                 match = DENYLIST.search(text)
                 if match:
