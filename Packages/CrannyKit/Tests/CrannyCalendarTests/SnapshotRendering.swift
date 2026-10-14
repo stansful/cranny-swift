@@ -33,8 +33,20 @@ import Testing
         }
         let empty = CalendarModel.sample(services: services, events: CalendarSamples.events(around: Date()).filter { $0.id == "sample.tomorrow" })
         try await render("widget-empty-3", CalendarWidgetView(model: empty, context: WidgetContext(cells: 3, contentSize: CGSize(width: 160, height: 96))).crannyCard(cells: 3))
+        try await render("widget-empty-2", CalendarWidgetView(model: empty, context: WidgetContext(cells: 2, contentSize: CGSize(width: 96, height: 96))).crannyCard(cells: 2))
+        // Only the meeting in progress (no "Meeting soon"): one featured row, the rest below it.
+        let live = CalendarModel.sample(services: services, events: CalendarSamples.events(around: Date()).filter { $0.id != "sample.standup" })
+        for cells in [3, 5] {
+            let context = WidgetContext(cells: cells, contentSize: CGSize(width: grid.width(cells: cells) - 24, height: 96))
+            try await render("widget-live-\(cells)", CalendarWidgetView(model: live, context: context).crannyCard(cells: cells))
+        }
         try await render("widget-error-3", CalendarErrorState(error: .unavailable, model: model).crannyCard(cells: 3))
         try await render("widget-hidden-3", AllCalendarsHiddenState(total: 3, model: model).crannyCard(cells: 3))
+        // Russian `Text` keys resolve from the environment locale (the longest Join word, "Подключиться").
+        for cells in 3...5 {
+            let context = WidgetContext(cells: cells, contentSize: CGSize(width: grid.width(cells: cells) - 24, height: 96))
+            try await render("widget-\(cells)-ru", widget.makeBody(context: context).crannyCard(cells: cells), locale: Locale(identifier: "ru"))
+        }
         services.settings[CalendarSettings.daysBehind] = 2
         services.settings[CalendarSettings.daysAhead] = 4
         try await render("widget-4-strip", widget.makeBody(context: WidgetContext(cells: 4, contentSize: CGSize(width: 224, height: 96))).crannyCard(cells: 4))
@@ -77,12 +89,13 @@ import Testing
             .padding(.trailing, 40)
     }
 
-    private func render(_ name: String, _ view: some View) async throws {
+    private func render(_ name: String, _ view: some View, locale: Locale? = nil) async throws {
         let root = view
             .padding(16)
             .background(Color(white: 0.16))
             .crannyThemeRoot(CrannyTheme())
             .environment(\.colorScheme, .dark)
+            .environment(\.locale, locale ?? .autoupdatingCurrent)
         let host = NSHostingView(rootView: root)
         host.appearance = NSAppearance(named: .darkAqua)
         let size = host.fittingSize

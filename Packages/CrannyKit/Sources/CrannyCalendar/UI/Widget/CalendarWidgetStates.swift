@@ -159,7 +159,10 @@ struct EmptyDayState: View {
         .accessibilityElement(children: .combine)
     }
 
-    private func tomorrowLine(_ event: EventSnapshot) -> String {
+    private func tomorrowLine(_ event: EventSnapshot) -> String { Self.tomorrowLine(event, redacted: redacted) }
+
+    /// "Tomorrow 10:00 · Planning" (also the 2-cell form's VoiceOver label).
+    static func tomorrowLine(_ event: EventSnapshot, redacted: Bool) -> String {
         let time = CalendarFormat.time(event.start), title = CalendarFormat.title(event, redacted: redacted)
         return String(localized: "Tomorrow \(time) · \(title)", bundle: .module, comment: "Calendar widget: tomorrow's first event under \"No more events today\"")
     }

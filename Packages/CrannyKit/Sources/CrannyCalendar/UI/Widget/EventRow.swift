@@ -1,7 +1,7 @@
 // CrannyCalendar/UI/Widget/EventRow.swift — one event in the widget (DESIGN.md §7.2). Ordinary rows are one
 // 18-pt line: calendar capsule · title (`caption`) · start time (`caption`, mono, secondary). The live or next
 // event is featured on two lines — title, then "Now · 12m left" / "In 4m" in the event colour — with Join when it
-// has a link. Today's ended events are tertiary and struck through (not dimmed alone, §16).
+// has a link; while one is live, the meeting "Meeting soon" announces is featured as well. Today's ended events are tertiary and struck through (not dimmed alone, §16).
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -40,8 +40,8 @@ struct EventRow: View {
                 .lineLimit(1)
                 .fixedSize()
         }
-        .frame(height: 18)
-        .rowChrome(hovered: hovered, context: context)
+        .frame(height: AgendaScroll.rowHeight)
+        .rowChrome(hovered: hovered, isSelected: context.isSelected, isKeyboardFocused: context.isKeyboardFocused)
         .onHover { hovered = $0 }
         .eventAccessibility(row: row, context: context)
     }
@@ -62,7 +62,7 @@ struct FeaturedEventRow: View {
             content(event: event, link: link, roomy: true)
             content(event: event, link: link, roomy: false)
         }
-        .rowChrome(hovered: hovered, context: context)
+        .rowChrome(hovered: hovered, isSelected: context.isSelected, isKeyboardFocused: context.isKeyboardFocused)
         .onHover { hovered = $0 }
         .eventAccessibility(row: row, context: context)
     }
@@ -100,18 +100,20 @@ struct FeaturedEventRow: View {
                     .fixedSize()
             }
         }
-        .frame(height: 32)
+        .frame(height: AgendaScroll.featuredHeight)
     }
 }
 
 // MARK: - Shared chrome
 
-private extension View {
+extension View {
     /// Hover / keyboard-selection well that bleeds 4 pt into the card padding, so marks stay aligned with the header.
-    func rowChrome(hovered: Bool, context: EventRowContext) -> some View {
-        modifier(RowChrome(hovered: hovered, context: context))
+    func rowChrome(hovered: Bool, isSelected: Bool, isKeyboardFocused: Bool) -> some View {
+        modifier(RowChrome(hovered: hovered, isSelected: isSelected, isKeyboardFocused: isKeyboardFocused))
     }
+}
 
+private extension View {
     func eventAccessibility(row: Agenda.Row, context: EventRowContext) -> some View {
         modifier(EventAccessibility(row: row, context: context))
     }
@@ -120,16 +122,17 @@ private extension View {
 private struct RowChrome: ViewModifier {
     @Environment(\.cranny) private var theme
     let hovered: Bool
-    let context: EventRowContext
+    let isSelected: Bool
+    let isKeyboardFocused: Bool
 
     func body(content: Content) -> some View {
         let shape = RoundedRectangle(cornerRadius: Radius.chip, style: .continuous)
-        let fill: Color = context.isSelected && context.isKeyboardFocused ? theme.palette.controlPressed
-            : hovered ? theme.palette.control : .clear
+        let selected = isSelected && isKeyboardFocused
+        let fill: Color = selected ? theme.palette.controlPressed : hovered ? theme.palette.control : .clear
         content
             .padding(.horizontal, Space.xs)
             .background(shape.fill(fill))
-            .crannyFocusRing(context.isSelected && context.isKeyboardFocused, radius: Radius.chip)
+            .crannyFocusRing(selected, radius: Radius.chip)
             .padding(.horizontal, -Space.xs)
             .contentShape(Rectangle())
             .animation(theme.animation(.hover), value: hovered)
@@ -193,11 +196,11 @@ private struct JoinAction: ViewModifier {
     let model = CalendarModel.sample(services: services)
     let now = model.scheduler.now
     let agenda = Agenda.make(events: model.store.events, day: EventWindow.day(offset: 0, from: now, calendar: .autoupdatingCurrent),
-                             now: now, isToday: true, showsPastToday: true)
+                             now: now, isToday: true, showsPastToday: true, soonID: model.scheduler.state.soon?.event.id)
     let context = EventRowContext(model: model, isToday: true, redacted: false, isSelected: false, isKeyboardFocused: false)
     VStack(alignment: .leading, spacing: 2) {
         ForEach(agenda.rows) { row in
-            if row.id == agenda.featuredID { FeaturedEventRow(row: row, context: context) } else { EventRow(row: row, context: context) }
+            if agenda.isFeatured(row) { FeaturedEventRow(row: row, context: context) } else { EventRow(row: row, context: context) }
         }
     }
     .crannyCard(cells: 3)

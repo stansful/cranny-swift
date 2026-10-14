@@ -77,3 +77,36 @@ nonisolated final class TestTime: @unchecked Sendable {
         try? await Task.sleep(for: .milliseconds(10))
     }
 }
+
+/// `AppControl` that records which Settings panes were opened.
+@MainActor @Observable final class RecordingAppControl: AppControl {
+    private(set) var openedSettings: [SettingsPageID?] = []
+    var loginItem: LoginItemState = .disabled
+    var update: UpdateState = .idle
+    func setLaunchAtLogin(_ enabled: Bool) {}
+    func checkForUpdates() {}
+    func shortcutState(_ id: ShortcutID) -> ShortcutState { .off }
+    func setShortcut(_ id: ShortcutID, _ combo: KeyCombo?) -> ShortcutState { .off }
+    func openSettings(_ page: SettingsPageID?) { openedSettings.append(page) }
+    func showWelcome() {}
+    func startTutorial() {}
+    func showOnNotch(_ state: PreviewStageState) {}
+    func resetAllSettings() {}
+    func quit() {}
+}
+
+/// A live model over `events` at `time` (Berlin calendar): fixture source, fake access, recording opener and app,
+/// a scheduler that never wakes on its own. No EventKit, no TCC, no wall clock.
+@MainActor func makeModel(_ events: [EventSnapshot], time: TestTime, services: CrannyServices = .preview(),
+                          access: FakeAccess = FakeAccess(.granted), app: RecordingAppControl = RecordingAppControl(),
+                          opener: RecordingOpener = RecordingOpener()) async -> CalendarModel {
+    let store = CalendarStore(source: FixtureEventSource(events: events), access: access, settings: services.settings,
+                              clock: time.clock, center: NotificationCenter(), workspaceCenter: NotificationCenter())
+    await store.reload()
+    let scheduler = MeetingScheduler(events: { store.events }, leadMinutes: { services.settings[CalendarSettings.leadMinutes] },
+                                     clock: time.clock, sleep: { _ in try await Task.sleep(for: .seconds(3600)) })
+    scheduler.replan()
+    let launcher = JoinLauncher(opener: opener, joinsInApp: { services.settings[CalendarSettings.joinsInApp] })
+    return CalendarModel(store: store, scheduler: scheduler, launcher: launcher, settings: services.settings,
+                         environment: services.environment, app: app, opener: opener)
+}

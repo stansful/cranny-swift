@@ -864,6 +864,17 @@
         }
       }
     },
+    "Tomorrow %@" : {
+      "comment" : "Calendar widget, 2 cells: start time of tomorrow's first event under \"No more events today\"",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Завтра в %@"
+          }
+        }
+      }
+    },
     "Tomorrow %@ · %@" : {
       "comment" : "Calendar widget: tomorrow's first event under \"No more events today\"",
       "localizations" : {

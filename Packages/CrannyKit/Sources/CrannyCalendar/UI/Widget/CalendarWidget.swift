@@ -66,95 +66,158 @@ struct CalendarWidgetView: View {
     }
 }
 
-/// Chooses the layout for the width and owns keyboard navigation.
+/// Chooses the layout for the width and owns keyboard navigation (DESIGN.md §7.2, §16): ↑ ↓ events, ↩ or Space
+/// open in Calendar, ⌘J join, ← → change day. With two columns (5 cells) ← → first move between the columns,
+/// then page; ↑ ↓ work in the column that holds the selection. At 2 cells ↑ ↓ ↩ work on the two rows shown.
 private struct CalendarAgendaLayout: View {
     @Environment(\.cranny) private var theme
     @FocusState private var focused: Bool
+    /// The keyboard's column (5 cells: 0 or 1) and the selected row in it. A multi-day event appears in both
+    /// columns with the same id, so the column is part of the selection.
+    @State private var column = 0
     @State private var selection: String?
     let model: CalendarModel
     let context: WidgetContext
 
     var body: some View {
         let redacted = context.redactsPersonalData || model.isRedacted
-        let showsPast = model.settings[CalendarSettings.showsPastEventsToday]
-        let now = model.scheduler.now
-        let calendar = model.store.clock.calendar()
-        let events = model.store.events
-        let offset = model.selectedOffset
-        let tomorrowFirst = Agenda.firstTimedEvent(in: events, day: EventWindow.day(offset: 1, from: now, calendar: calendar))
-        let agenda = { (dayOffset: Int) in
-            Agenda.make(events: events, day: EventWindow.day(offset: dayOffset, from: now, calendar: calendar), now: now,
-                        isToday: dayOffset == 0, showsPastToday: showsPast)
-        }
-        let primary = agenda(offset)
+        let layout = AgendaColumns(model: model, cells: context.cells)
+        let primary = layout.columns[0]
         Group {
-            if context.cells <= 2 {
-                MiniAgenda(agenda: agenda(0), model: model, redacted: redacted)
-            } else if context.cells >= 5, offset < model.dayRange.upperBound {
+            if layout.isMini {
+                MiniAgenda(agenda: primary, model: model, redacted: redacted, tomorrowFirst: layout.tomorrowFirst,
+                           selection: selected(in: 0), isKeyboardFocused: focused)
+            } else if layout.columns.count == 2 {
                 HStack(alignment: .top, spacing: Space.m) {
-                    DayAgenda(agenda: primary, model: model, redacted: redacted, tomorrowFirst: tomorrowFirst,
-                              selection: selection, isKeyboardFocused: focused) { EmptyView() }
+                    DayAgenda(agenda: primary, model: model, redacted: redacted, tomorrowFirst: layout.tomorrowFirst,
+                              selection: selected(in: 0), isKeyboardFocused: focused) { EmptyView() }
                     Rectangle().fill(theme.palette.hairline).frame(width: 1).padding(.vertical, Space.xxs)
-                    DayAgenda(agenda: agenda(offset + 1), model: model, redacted: redacted, tomorrowFirst: nil,
-                              selection: selection, isKeyboardFocused: focused) { DayPager(model: model) }
+                    DayAgenda(agenda: layout.columns[1], model: model, redacted: redacted, tomorrowFirst: nil,
+                              selection: selected(in: 1), isKeyboardFocused: focused) { DayPager(model: model, columns: 2) }
                 }
             } else {
-                DayAgenda(agenda: primary, model: model, redacted: redacted, tomorrowFirst: tomorrowFirst,
-                          selection: selection, isKeyboardFocused: focused) {
-                    if context.cells >= 4 { DayStrip(model: model, today: now) } else { DayPager(model: model) }
+                DayAgenda(agenda: primary, model: model, redacted: redacted, tomorrowFirst: layout.tomorrowFirst,
+                          selection: selected(in: 0), isKeyboardFocused: focused) {
+                    if context.cells >= 4 { DayStrip(model: model, today: model.scheduler.now) } else { DayPager(model: model) }
                 }
             }
         }
-        .animation(theme.animation(.tab), value: offset)              // ‹ ›, the strip and ← → change the day alike
-        .focusable(context.cells > 2)
+        .animation(theme.animation(.tab), value: layout.firstOffset)    // ‹ ›, the strip and ← → change the day alike
+        .focusable()
         .focused($focused)
         .focusEffectDisabled()
-        .onKeyPress(.upArrow) { move(-1, in: primary) }
-        .onKeyPress(.downArrow) { move(1, in: primary) }
-        .onKeyPress(.leftArrow) { changeDay(-1) }
-        .onKeyPress(.rightArrow) { changeDay(1) }
-        .onKeyPress(.return) { openSelection(in: primary) }
+        .onKeyPress(.upArrow) { move(-1, in: layout) }
+        .onKeyPress(.downArrow) { move(1, in: layout) }
+        .onKeyPress(.leftArrow) { sideways(-1, in: layout) }
+        .onKeyPress(.rightArrow) { sideways(1, in: layout) }
+        .onKeyPress(.return) { open(in: layout) }
+        .onKeyPress(.space) { open(in: layout) }
         .onKeyPress(characters: CharacterSet(charactersIn: "jJ")) { press in
             guard press.modifiers.contains(.command) else { return .ignored }
-            return joinSelection(in: primary)
+            return join(in: layout)
         }
         .onChange(of: focused) { _, isFocused in
-            if isFocused, selection == nil { selection = primary.featuredID ?? primary.rows.first?.id }
+            if isFocused, selection == nil { column = 0; selection = layout.entryRow(column: 0) }
         }
         // The shell focuses the widget (Tab, or opening from a meeting activity): take keyboard focus with it.
-        .onAppear { if context.isFocused && context.cells > 2 { focused = true } }
-        .onChange(of: context.isFocused) { _, isFocused in if context.cells > 2 { focused = isFocused } }
-        .onChange(of: offset) { _, _ in selection = nil }
+        .onAppear { if context.isFocused { focused = true } }
+        .onChange(of: context.isFocused) { _, isFocused in focused = isFocused }
+        // ‹ › or the strip changed the day under the selection: drop it unless the row is still there.
+        .onChange(of: layout.firstOffset) { _, _ in
+            if column >= layout.columns.count { column = 0 }
+            if layout.row(column: column, id: selection) == nil { selection = nil }
+        }
     }
+
+    private func selected(in index: Int) -> String? { column == index ? selection : nil }
 
     // MARK: Keyboard
 
-    private func move(_ step: Int, in agenda: Agenda) -> KeyPress.Result {
-        let ids = agenda.rows.map(\.id)
+    private func move(_ step: Int, in layout: AgendaColumns) -> KeyPress.Result {
+        let ids = layout.selectableRows(column).map(\.id)
         guard !ids.isEmpty else { return .ignored }
         let index = selection.flatMap(ids.firstIndex(of:)) ?? (step > 0 ? -1 : ids.count)
         selection = ids[min(max(index + step, 0), ids.count - 1)]
         return .handled
     }
 
-    private func changeDay(_ step: Int) -> KeyPress.Result {
-        let target = model.selectedOffset + step
-        guard model.dayRange.contains(target) else { return .ignored }
-        model.selectDay(target)
+    /// ← →: to the other column when there is one in that direction, else page the day(s).
+    private func sideways(_ step: Int, in layout: AgendaColumns) -> KeyPress.Result {
+        guard !layout.isMini else { return .ignored }
+        let target = column + step
+        if layout.columns.indices.contains(target) {
+            column = target
+            selection = layout.entryRow(column: target)
+            return .handled
+        }
+        let count = layout.columns.count
+        guard model.canPage(step, columns: count) else { return .ignored }
+        model.page(step, columns: count)
+        selection = AgendaColumns(model: model, cells: context.cells).entryRow(column: column)
         return .handled
     }
 
-    private func openSelection(in agenda: Agenda) -> KeyPress.Result {
-        guard let row = agenda.rows.first(where: { $0.id == selection }) ?? agenda.featured else { return .ignored }
+    private func open(in layout: AgendaColumns) -> KeyPress.Result {
+        guard let row = layout.row(column: column, id: selection) ?? layout.featured.first else { return .ignored }
         model.openInCalendar(row.event)
         return .handled
     }
 
-    private func joinSelection(in agenda: Agenda) -> KeyPress.Result {
-        let row = agenda.rows.first(where: { $0.id == selection && model.link(for: $0.event) != nil }) ?? agenda.featured
-        guard let event = row?.event, model.link(for: event) != nil else { return .ignored }
+    /// The selected row if it has a link, else the featured rows in order (the meeting in progress, then the one
+    /// starting soon): the first that can be joined.
+    private func join(in layout: AgendaColumns) -> KeyPress.Result {
+        let candidates = [layout.row(column: column, id: selection)].compactMap(\.self) + layout.featured
+        guard let event = candidates.first(where: { model.link(for: $0.event) != nil })?.event else { return .ignored }
         model.join(event)
         return .handled
+    }
+}
+
+/// The days the widget shows at its width and the rows the keyboard can reach.
+@MainActor struct AgendaColumns {
+    let isMini: Bool
+    let firstOffset: Int
+    let columns: [Agenda]
+    let tomorrowFirst: EventSnapshot?
+
+    init(model: CalendarModel, cells: Int) {
+        let now = model.scheduler.now
+        let calendar = model.store.clock.calendar()
+        let events = model.store.events
+        let showsPast = model.settings[CalendarSettings.showsPastEventsToday]
+        let soonID = model.scheduler.state.soon?.event.id
+        func agenda(_ offset: Int) -> Agenda {
+            Agenda.make(events: events, day: EventWindow.day(offset: offset, from: now, calendar: calendar), now: now,
+                        isToday: offset == 0, showsPastToday: showsPast, soonID: soonID)
+        }
+        isMini = cells <= 2
+        // Two columns need two days in the window; the pair is clamped so the second never leaves it.
+        let count = !isMini && cells >= 5 && model.dayRange.count >= 2 ? 2 : 1
+        let first = isMini ? 0 : model.firstShownOffset(columns: count)
+        firstOffset = first
+        columns = (0..<count).map { agenda(first + $0) }
+        tomorrowFirst = Agenda.firstTimedEvent(in: events, day: EventWindow.day(offset: 1, from: now, calendar: calendar))
+    }
+
+    /// The rows ↑ ↓ move through: the two shown at 2 cells, else the day's list.
+    func selectableRows(_ column: Int) -> [Agenda.Row] {
+        guard columns.indices.contains(column) else { return [] }
+        return isMini ? MiniAgenda.rows(columns[column]) : columns[column].rows
+    }
+
+    /// Today's featured rows (live, then soon), wherever today is shown.
+    var featured: [Agenda.Row] { columns.first(where: \.isToday)?.featured ?? [] }
+
+    /// Where the selection lands in a column: its first featured row, else its first row.
+    func entryRow(column: Int) -> String? {
+        let rows = selectableRows(column)
+        let featured = columns.indices.contains(column) ? columns[column].featuredIDs : []
+        return rows.first(where: { featured.contains($0.id) })?.id ?? rows.first?.id
+    }
+
+    func row(column: Int, id: String?) -> Agenda.Row? {
+        guard let id else { return nil }
+        return selectableRows(column).first { $0.id == id }
     }
 }
 

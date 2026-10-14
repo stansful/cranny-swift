@@ -1,6 +1,7 @@
 // CrannyCalendar/UI/Widget/DayHeader.swift — the widget's first line (DESIGN.md §7.2): weekday (`micro`, red for
-// today) + date (`headline`), and on the trailing side ‹ › (3 cells) or the day strip (≥ 4 cells). The header
-// is 16 pt tall; its 28-pt buttons overhang into the card padding so the list keeps its room.
+// today) + date (`headline`), "+N more" while the list below overflows, and on the trailing side ‹ › (3 cells) or
+// the day strip (≥ 4 cells). The header is 16 pt tall; its 28-pt buttons overhang into the card padding so the
+// list keeps its room. The date shortens ("14 October" → "14 Oct" → "14") to make room.
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -9,10 +10,14 @@ struct DayHeader<Trailing: View>: View {
     @Environment(\.cranny) private var theme
     let date: Date
     let isToday: Bool
+    /// Rows hidden below the list (nil = the list fits: no "+N more").
+    let more: Int?
+    let showMore: @MainActor () -> Void
     private let trailing: Trailing
 
-    init(date: Date, isToday: Bool, @ViewBuilder trailing: () -> Trailing) {
-        self.date = date; self.isToday = isToday; self.trailing = trailing()
+    init(date: Date, isToday: Bool, more: Int? = nil, showMore: @escaping @MainActor () -> Void = {},
+         @ViewBuilder trailing: () -> Trailing) {
+        self.date = date; self.isToday = isToday; self.more = more; self.showMore = showMore; self.trailing = trailing()
     }
 
     var body: some View {
@@ -32,6 +37,7 @@ struct DayHeader<Trailing: View>: View {
             .accessibilityLabel(Text(CalendarFormat.fullDate(date)))
             .accessibilityAddTraits(.isHeader)
             Spacer(minLength: 0)
+            if let more { MoreEventsButton(count: more, action: showMore) }
             trailing
         }
         .frame(height: 16)
@@ -45,18 +51,20 @@ struct DayHeader<Trailing: View>: View {
     }
 }
 
-/// ‹ › within days behind / ahead. Hidden when the window is a single day.
+/// ‹ › within days behind / ahead. Hidden when there is nowhere to page (a single day, or 5 cells showing the
+/// whole two-day window). `columns`: days shown side by side; paging moves them together.
 struct DayPager: View {
     let model: CalendarModel
+    var columns = 1
 
     var body: some View {
-        let range = model.dayRange, offset = model.selectedOffset
-        if range.count > 1 {
+        let back = model.canPage(-1, columns: columns), forward = model.canPage(1, columns: columns)
+        if back || forward {
             HStack(spacing: 0) {
                 pagerButton("chevron.left", label: String(localized: "Previous day", bundle: .module, comment: "Calendar widget: page to the previous day (button label)"),
-                            enabled: offset > range.lowerBound) { model.selectDay(offset - 1) }
+                            enabled: back) { model.page(-1, columns: columns) }
                 pagerButton("chevron.right", label: String(localized: "Next day", bundle: .module, comment: "Calendar widget: page to the next day (button label)"),
-                            enabled: offset < range.upperBound) { model.selectDay(offset + 1) }
+                            enabled: forward) { model.page(1, columns: columns) }
             }
             .frame(height: 16)
         }

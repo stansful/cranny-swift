@@ -15,6 +15,9 @@ struct DayAgenda<Trailing: View>: View {
     let selection: String?
     let isKeyboardFocused: Bool
     private let trailing: Trailing
+    /// The list's "+N more", shown in the header line (nil while the list fits).
+    @State private var hiddenBelow: Int?
+    @State private var revealRequest = 0
 
     init(agenda: Agenda, model: CalendarModel, redacted: Bool, tomorrowFirst: EventSnapshot?, selection: String?,
          isKeyboardFocused: Bool, @ViewBuilder trailing: () -> Trailing) {
@@ -23,27 +26,40 @@ struct DayAgenda<Trailing: View>: View {
     }
 
     var body: some View {
+        let showsList = !(agenda.isEmptyToday || agenda.isEmpty)
         VStack(alignment: .leading, spacing: Space.s) {
-            DayHeader(date: agenda.day.start, isToday: agenda.isToday) { trailing }
-            if agenda.isEmptyToday || agenda.isEmpty {
-                EmptyDayState(isToday: agenda.isToday, tomorrowFirst: tomorrowFirst, redacted: redacted)
+            DayHeader(date: agenda.day.start, isToday: agenda.isToday, more: showsList ? hiddenBelow : nil,
+                      showMore: { revealRequest += 1 }) { trailing }
+            if showsList {
+                AgendaList(agenda: agenda, model: model, redacted: redacted, selection: selection, isKeyboardFocused: isKeyboardFocused,
+                           hiddenBelow: $hiddenBelow, revealRequest: revealRequest)
             } else {
-                AgendaList(agenda: agenda, model: model, redacted: redacted, selection: selection, isKeyboardFocused: isKeyboardFocused)
+                EmptyDayState(isToday: agenda.isToday, tomorrowFirst: tomorrowFirst, redacted: redacted)
             }
         }
     }
 }
 
-/// 2 cells: "TUE / 14" and the next two events of today (start times only, no Join).
+/// 2 cells: "TUE / 14" and the next two events of today (start times only, no Join); when nothing is left,
+/// "No more events today" and tomorrow's first start time (DESIGN.md §7.2 empty state).
 struct MiniAgenda: View {
     @Environment(\.cranny) private var theme
     let agenda: Agenda
     let model: CalendarModel
     let redacted: Bool
+    let tomorrowFirst: EventSnapshot?
+    /// The keyboard selection (↑ ↓), drawn only while the widget has keyboard focus.
+    var selection: String?
+    var isKeyboardFocused = false
+
+    /// The rows shown (and reachable with ↑ ↓): the live or next events, at most two.
+    static func rows(_ agenda: Agenda) -> [Agenda.Row] {
+        Array(agenda.rows.filter { $0.role == .live || $0.role == .next || $0.role == .upcoming }.prefix(2))
+    }
 
     var body: some View {
         let p = theme.palette
-        let upcoming = agenda.rows.filter { $0.role == .live || $0.role == .next || $0.role == .upcoming }.prefix(2)
+        let upcoming = Self.rows(agenda)
         VStack(alignment: .leading, spacing: 0) {
             Text(CalendarFormat.weekday(agenda.day.start))
                 .crannyFont(.micro)
@@ -53,13 +69,22 @@ struct MiniAgenda: View {
                 .foregroundStyle(p.label)
             Spacer(minLength: Space.xs)
             if upcoming.isEmpty {
-                Text("No more events today", bundle: .module, comment: "Calendar widget: empty state for the rest of today")
-                    .crannyFont(.caption)
-                    .foregroundStyle(p.tertiaryLabel)
-                    .lineLimit(2)
+                VStack(alignment: .leading, spacing: Space.xxs) {
+                    Text("No more events today", bundle: .module, comment: "Calendar widget: empty state for the rest of today")
+                        .crannyFont(.caption)
+                        .foregroundStyle(p.secondaryLabel)
+                        .lineLimit(2)
+                    if let tomorrowFirst {
+                        TomorrowLine(event: tomorrowFirst, redacted: redacted)
+                    }
+                }
+                .accessibilityElement(children: .combine)
             } else {
                 VStack(alignment: .leading, spacing: Space.xxs) {
-                    ForEach(Array(upcoming)) { row in MiniRow(row: row, model: model, redacted: redacted) }
+                    ForEach(upcoming) { row in
+                        MiniRow(row: row, model: model, redacted: redacted,
+                                isSelected: selection == row.id, isKeyboardFocused: isKeyboardFocused)
+                    }
                 }
             }
         }
@@ -68,11 +93,37 @@ struct MiniAgenda: View {
     }
 }
 
+/// "Tomorrow 10:00" in tertiary under the 2-cell empty state: the time only fits 96 pt; the title is in the
+/// tooltip and VoiceOver.
+private struct TomorrowLine: View {
+    @Environment(\.cranny) private var theme
+    let event: EventSnapshot
+    let redacted: Bool
+
+    var body: some View {
+        let time = CalendarFormat.time(event.start)
+        HStack(spacing: Space.xs) {
+            CalendarMark(color: event.color, height: 12, dimmed: true)
+            Text("Tomorrow \(time)", bundle: .module, comment: "Calendar widget, 2 cells: start time of tomorrow's first event under \"No more events today\"")
+                .crannyFont(.caption)
+                .foregroundStyle(theme.palette.tertiaryLabel)
+                .lineLimit(1)
+                .minimumScaleFactor(0.9)
+        }
+        .help(CalendarFormat.subtitle(event, link: nil, redacted: redacted))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(EmptyDayState.tomorrowLine(event, redacted: redacted)))
+    }
+}
+
 private struct MiniRow: View {
     @Environment(\.cranny) private var theme
+    @State private var hovered = false
     let row: Agenda.Row
     let model: CalendarModel
     let redacted: Bool
+    let isSelected: Bool
+    let isKeyboardFocused: Bool
 
     var body: some View {
         let p = theme.palette
@@ -88,9 +139,11 @@ private struct MiniRow: View {
                 .crannyFont(.caption)
                 .foregroundStyle(p.label)
                 .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(height: 16)
-        .contentShape(Rectangle())
+        .rowChrome(hovered: hovered, isSelected: isSelected, isKeyboardFocused: isKeyboardFocused)
+        .onHover { hovered = $0 }
         .onTapGesture { model.openInCalendar(event) }
         .help(CalendarFormat.subtitle(event, link: model.link(for: event), redacted: redacted))
         .accessibilityElement(children: .combine)
@@ -105,7 +158,7 @@ private struct MiniRow: View {
     let now = model.scheduler.now
     let agenda = Agenda.make(events: model.store.events, day: EventWindow.day(offset: 0, from: now, calendar: .autoupdatingCurrent),
                              now: now, isToday: true, showsPastToday: true)
-    MiniAgenda(agenda: agenda, model: model, redacted: false)
+    MiniAgenda(agenda: agenda, model: model, redacted: false, tomorrowFirst: nil)
         .crannyCard(cells: 2)
         .padding()
         .background(.black)

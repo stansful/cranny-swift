@@ -48,7 +48,27 @@ import Observation
     }
 
     /// `dayOffset` clamped to `dayRange` (settings may have shrunk the window).
-    var selectedOffset: Int { min(max(dayOffset, dayRange.lowerBound), dayRange.upperBound) }
+    var selectedOffset: Int { firstShownOffset(columns: 1) }
+
+    /// The first day shown when `columns` days sit side by side (5 cells: the day and the next), clamped so the
+    /// last column stays inside the window. Paging moves both columns.
+    func firstShownOffset(columns: Int) -> Int {
+        let range = dayRange
+        let upper = max(range.upperBound - (columns - 1), range.lowerBound)
+        return min(max(dayOffset, range.lowerBound), upper)
+    }
+
+    /// Whether paging by `step` days keeps every column inside the window (‹ › enabled, ← → handled).
+    func canPage(_ step: Int, columns: Int = 1) -> Bool {
+        let first = firstShownOffset(columns: columns) + step
+        return first >= dayRange.lowerBound && first + columns - 1 <= dayRange.upperBound
+    }
+
+    /// Pages by `step` days (‹ ›, ← →); nothing when that would leave the window.
+    func page(_ step: Int, columns: Int = 1) {
+        guard canPage(step, columns: columns) else { return }
+        dayOffset = firstShownOffset(columns: columns) + step
+    }
 
     /// The meeting ⌘K "Join next meeting" opens: the one in progress, else the next one today, if it has a link.
     var nextJoinable: (event: EventSnapshot, link: MeetingLink)? {
