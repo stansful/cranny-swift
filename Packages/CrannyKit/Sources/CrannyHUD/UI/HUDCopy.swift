@@ -27,6 +27,19 @@ nonisolated extension HUDKind {
     }
 }
 
+nonisolated extension HUDDisplay {
+    /// The glyph the HUD draws. Mute wins over an output-device glyph: `speaker.slash.fill` is how the HUD says
+    /// "muted" (DESIGN.md §10), and under Differentiate Without Color the bar's colour must not be the only sign (§16).
+    var symbolName: String {
+        isMuted ? kind.symbol(level: level, muted: true) : deviceGlyph ?? kind.symbol(level: level, muted: false)
+    }
+
+    /// The speaker's waves fill with the level; device glyphs, the muted speaker and the other kinds have none.
+    var symbolVariableValue: Double? {
+        deviceGlyph == nil || isMuted ? kind.variableValue(level: level, muted: isMuted) : nil
+    }
+}
+
 nonisolated enum HUDCopy {
     /// "62 %" in the user's locale.
     static func percentText(_ level: Double) -> String {

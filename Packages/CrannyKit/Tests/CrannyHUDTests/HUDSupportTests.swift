@@ -88,6 +88,20 @@ private let allowedSymbols: Set<String> = [
         }
     }
 
+    @Test func muteWinsOverTheDeviceGlyph() {
+        var display = HUDDisplay(kind: .volume, level: 0.62, deviceGlyph: "airpodspro")
+        #expect(display.symbolName == "airpodspro")
+        #expect(display.symbolVariableValue == nil)
+        display.isMuted = true
+        #expect(display.symbolName == "speaker.slash.fill")
+        #expect(display.symbolVariableValue == nil)
+        display.deviceGlyph = nil
+        display.isMuted = false
+        #expect(display.symbolName == "speaker.wave.3.fill")
+        #expect(display.symbolVariableValue == 0.62)
+        #expect(HUDDisplay(kind: .brightness, level: 0.75).symbolName == "sun.max.fill")
+    }
+
     @Test func onlyTheSpeakerFillsWithTheLevel() {
         #expect(HUDKind.volume.variableValue(level: 0.62, muted: false) == 0.62)
         #expect(HUDKind.volume.variableValue(level: 0.62, muted: true) == nil)

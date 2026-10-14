@@ -119,6 +119,74 @@ import Testing
         #expect(next.session?.revision == state.session?.revision)  // not a press: no new revision
     }
 
+    @Test func muteWinsOverADeviceGlyph() throws {
+        let changed = HUDPresentation.observe(observation(changed: true), state: HUDPresentationState(), now: t0, showsOutputDevice: true)
+        let (muted, _) = receive(update(1, muted: true), changed)                   // mute is the first key after AirPods
+        let mutedDisplay = try #require(muted.session?.display)
+        #expect(mutedDisplay.symbolName == "speaker.slash.fill")
+        #expect(mutedDisplay.deviceGlyph == nil)
+        #expect(mutedDisplay.glyphBounce == 0)                                       // no bounce on the slash …
+        #expect(muted.pendingDeviceGlyph == "airpodspro")                            // … the device waits
+        let (unmuted, _) = receive(update(2, level: 0.5625), muted, at: 0.3)         // volume up unmutes, same session
+        let unmutedDisplay = try #require(unmuted.session?.display)
+        #expect(unmutedDisplay.symbolName == "airpodspro")
+        #expect(unmutedDisplay.glyphBounce == 1)
+        #expect(unmuted.pendingDeviceGlyph == nil)
+        let (mutedAgain, _) = receive(update(3, level: 0.5625, muted: true), unmuted, at: 0.6)
+        #expect(mutedAgain.session?.display.symbolName == "speaker.slash.fill")    // mute wins inside the session too
+        #expect(mutedAgain.session?.display.symbolVariableValue == nil)
+    }
+
+    @Test func aDeviceChangeWhileMutedWaitsForUnmute() throws {
+        let (state, _) = receive(update(1, muted: true))
+        let changed = HUDPresentation.observe(observation(muted: true, changed: true), state: state,
+                                              now: t0.addingTimeInterval(0.2), showsOutputDevice: true)
+        #expect(changed.session?.display.symbolName == "speaker.slash.fill")
+        #expect(changed.session?.display.glyphBounce == 0)
+        #expect(changed.pendingDeviceGlyph == "airpodspro")
+        let unmuted = HUDPresentation.observe(observation(muted: false, changed: false), state: changed,
+                                              now: t0.addingTimeInterval(0.4), showsOutputDevice: true)
+        let display = try #require(unmuted.session?.display)
+        #expect(display.symbolName == "airpodspro")
+        #expect(display.glyphBounce == 1)
+    }
+
+    @Test func aDeviceChangeToBuiltInSpeakersDropsTheOldGlyph() {
+        let (state, _) = receive(update(1, level: 0.75))
+        let airPods = HUDPresentation.observe(observation(changed: true), state: state, now: t0.addingTimeInterval(0.2),
+                                              showsOutputDevice: true)
+        #expect(airPods.session?.display.deviceGlyph == "airpodspro")
+        let speakers = HUDPresentation.observe(observation(glyph: "MacBook Pro Speakers", transport: 0x626C_746E /* 'bltn' */,
+                                                           changed: true),
+                                               state: airPods, now: t0.addingTimeInterval(0.4), showsOutputDevice: true)
+        #expect(speakers.session?.display.deviceGlyph == nil)
+        #expect(speakers.session?.display.symbolName == "speaker.wave.3.fill")
+        #expect(speakers.session?.display.glyphBounce == 1)                         // no bounce for the plain speaker
+    }
+
+    /// The views replay an animation on ANY change of its trigger, a drop to 0 included (a stray bump or bounce).
+    @Test func animationTriggersNeverGoBack() throws {
+        let device = HUDPresentation.observe(observation(changed: true), state: HUDPresentationState(), now: t0, showsOutputDevice: true)
+        let (volume, _) = receive(update(1, level: 1, limit: .pressedPast(.top)), device)
+        #expect(volume.session?.display.bumpSerial == 1)
+        #expect(volume.session?.display.glyphBounce == 1)
+        let (brightness, _) = receive(update(2, .brightness, level: 0.5), volume, at: 0.3)     // kind switch, still visible
+        #expect(brightness.session?.display.bumpSerial == 1)
+        #expect(brightness.session?.display.glyphBounce == 1)
+        let (later, _) = receive(update(3, level: 0.5), brightness, at: 0.3 + duration + 1)   // a new session
+        #expect(later.session?.display.bumpSerial == 1)
+        #expect(later.session?.display.glyphBounce == 1)
+        let (bumped, _) = receive(update(4, level: 0, limit: .pressedPast(.bottom)), later, at: 0.3 + duration + 1.2)
+        #expect(bumped.session?.display.bumpSerial == 2)
+        var previous = (bump: 0, bounce: 0)
+        for state in [device, volume, brightness, later, bumped] {
+            let display = state.session?.display
+            #expect((display?.bumpSerial ?? previous.bump) >= previous.bump)
+            #expect((display?.glyphBounce ?? previous.bounce) >= previous.bounce)
+            previous = (display?.bumpSerial ?? previous.bump, display?.glyphBounce ?? previous.bounce)
+        }
+    }
+
     @Test func outputDeviceGlyphsCanBeTurnedOff() {
         let state = HUDPresentation.observe(observation(changed: true), state: HUDPresentationState(), now: t0, showsOutputDevice: false)
         #expect(state.pendingDeviceGlyph == nil)

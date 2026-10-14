@@ -17,10 +17,13 @@ nonisolated struct HUDDisplay: Sendable, Equatable {
     var showsFineTicks: Bool = false
     /// Edge of the last "pressed past the end" bump; `bumpSerial` replays it once per press.
     var bumpEdge: LevelEdge = .top
+    /// Animation trigger of the 2-pt bump. A view replays on ANY change, so it comes from the ever-growing
+    /// `HUDPresentationState.bumpSerial` and never goes back (not even when a new display starts).
     var bumpSerial: Int = 0
-    /// The output device's glyph instead of the speaker (first volume HUD after a device change).
+    /// The output device's glyph instead of the speaker (first unmuted volume HUD after a device change).
+    /// Mute still shows `speaker.slash.fill` (`symbolName`).
     var deviceGlyph: String?
-    /// Plays one `.bounce` on the glyph per increment.
+    /// Plays one `.bounce` on the glyph per increment; like `bumpSerial`, it only ever grows.
     var glyphBounce: Int = 0
 
     var percent: Int { LevelStepper.percent(level) }
@@ -54,8 +57,12 @@ nonisolated struct HUDPresentationState: Sendable, Equatable {
     var session: HUDSession?
     /// Revisions keep counting across sessions (a new HUD must look like a change to the arbiter).
     var revision = 0
-    /// The glyph of an output device that became default since the last volume HUD.
+    /// The glyph of an output device that became default and has not been shown yet.
     var pendingDeviceGlyph: String?
+    /// The views' animation triggers (`HUDDisplay.bumpSerial`, `.glyphBounce`). They only grow, across kinds and
+    /// sessions: `keyframeAnimator(trigger:)` and `symbolEffect(_:value:)` replay on a reset to 0 as well.
+    var bumpSerial = 0
+    var glyphBounce = 0
 }
 
 nonisolated enum HUDPresentation {
@@ -67,22 +74,19 @@ nonisolated enum HUDPresentation {
         if let live, update.sequence <= live.sequence { return (state, []) }       // stale, reordered
 
         let continues = live?.display.kind == update.kind
-        var display = continues ? live?.display ?? HUDDisplay(kind: update.kind, level: update.level)
-                                : HUDDisplay(kind: update.kind, level: update.level)
+        var display = (continues ? live?.display : nil) ?? HUDDisplay(kind: update.kind, level: update.level)
         display.level = update.level
         display.isMuted = update.kind == .volume && update.isMuted
         display.showsFineTicks = display.showsFineTicks || update.isFineStep
-        if !continues, update.kind == .volume, let glyph = state.pendingDeviceGlyph {
-            display.deviceGlyph = glyph
-            display.glyphBounce += 1
-            state.pendingDeviceGlyph = nil
-        }
 
         var effects: [HUDEffect] = []
         if case .pressedPast(let edge)? = update.limit {
             display.bumpEdge = edge
-            display.bumpSerial += 1
+            state.bumpSerial += 1
         }
+        showPendingDeviceGlyph(on: &display, state: &state)
+        display.bumpSerial = state.bumpSerial
+        display.glyphBounce = state.glyphBounce
         if let limit = update.limit, !(update.isRepeat && limit == .pressedPast(limit.edge)) {
             effects.append(.levelChangeHaptic)                    // no second detent while a key is held at the end
         }
@@ -100,19 +104,29 @@ nonisolated enum HUDPresentation {
     static func observe(_ observation: VolumeObservation, state: HUDPresentationState, now: Date,
                         showsOutputDevice: Bool) -> HUDPresentationState {
         var state = state
-        let glyph = showsOutputDevice && observation.deviceChanged ? observation.device.glyph : nil
+        if observation.deviceChanged {
+            state.pendingDeviceGlyph = showsOutputDevice ? observation.device.glyph : nil
+        }
         guard var session = state.session, session.isVisible(at: now), session.display.kind == .volume else {
-            if observation.deviceChanged { state.pendingDeviceGlyph = glyph }
             return state
         }
         if let level = observation.level { session.display.level = LevelStepper.clamp(level) }
         session.display.isMuted = observation.isMuted
-        if observation.deviceChanged {
-            session.display.deviceGlyph = glyph
-            if glyph != nil { session.display.glyphBounce += 1 }
-        }
+        if observation.deviceChanged { session.display.deviceGlyph = nil }     // the old device's glyph is wrong now
+        showPendingDeviceGlyph(on: &session.display, state: &state)
+        session.display.glyphBounce = state.glyphBounce
         state.session = session
         return state
+    }
+
+    /// A new output device's glyph goes onto the first UNMUTED volume HUD, with one bounce. While muted it waits:
+    /// mute shows `speaker.slash.fill` (DESIGN.md §10), and with Differentiate Without Color the bar's colour must
+    /// not be the only sign of it (§16).
+    private static func showPendingDeviceGlyph(on display: inout HUDDisplay, state: inout HUDPresentationState) {
+        guard display.kind == .volume, !display.isMuted, let glyph = state.pendingDeviceGlyph else { return }
+        display.deviceGlyph = glyph
+        state.glyphBounce += 1
+        state.pendingDeviceGlyph = nil
     }
 
     /// A polled brightness level while a brightness HUD is visible (the only allowed polling, 2 Hz, §9.2).
