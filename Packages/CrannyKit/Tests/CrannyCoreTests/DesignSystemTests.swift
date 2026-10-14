@@ -12,7 +12,8 @@ import Testing
     }
 
     /// A button's hit area is its own frame, so a chip or link is clickable over 28 × 24 only if the style makes the
-    /// button that large (a frame added outside the `Button` does not widen it; see `chipTakesClicksOutsideItsCapsule`).
+    /// button that large (a frame added outside the `Button` does not widen it; see
+    /// `smallControlsTakeClicksAroundTheirVisual`).
     @Test func chipsAndLinksAreAtLeastTheNookHitTarget() {
         for title in ["+1", "Clear", "Show your events"] {
             for style in [CrannyChipButtonStyle(), CrannyChipButtonStyle(tint: .red, prominent: true)] {
