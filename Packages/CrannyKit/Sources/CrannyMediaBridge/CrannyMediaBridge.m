@@ -94,7 +94,7 @@ static NSString *K(NSString *suffix) { return [@"kMRMediaRemoteNowPlayingInfo" s
 // AppKit is loaded the first time (on the main thread, which runs the run loop), so the resident helper does not map
 // AppKit and the ≈ 40 images it pulls in for a fallback that most sessions never need.
 @protocol CrannyRunningApplicationClass
-+ (nullable id)runningApplicationWithProcessIdentifier:(pid_t)pid;
++ (id)runningApplicationWithProcessIdentifier:(pid_t)pid;
 @end
 
 static NSString *bundleIDOfProcess(pid_t pid) {
