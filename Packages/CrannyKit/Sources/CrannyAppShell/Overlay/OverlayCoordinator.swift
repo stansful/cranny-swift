@@ -130,8 +130,13 @@ private let log = Log.logger(.overlay)
     /// pointer's. Dropped while Live Activities are paused, the screen is locked or asleep, or that display's
     /// panel is hidden. `duration` > 2.6 s only for "Show on Notch" and visual QA.
     func showFlash(symbol: String, label: String, duration: TimeInterval, on display: DisplayKey? = nil) {
-        guard !environment.areLiveActivitiesPaused, !environment.isScreenLocked, !environment.areDisplaysAsleep,
-              let target = display.flatMap({ controllers[$0] }) ?? pointerController ?? primaryController,
+        guard !environment.areLiveActivitiesPaused, !environment.isScreenLocked, !environment.areDisplaysAsleep else { return }
+        presentFlash(symbol: symbol, label: label, duration: duration, on: display)
+    }
+
+    /// Puts the flash on one display without the pause/lock policy (visual QA forces states on any screen).
+    private func presentFlash(symbol: String, label: String, duration: TimeInterval, on display: DisplayKey?) {
+        guard let target = display.flatMap({ controllers[$0] }) ?? pointerController ?? primaryController,
               target.viewModel.state.hidden == nil else { return }
         flashDisplay = target.key
         notchControl.flashActivity.show(symbol: symbol, label: label, duration: duration)
@@ -146,9 +151,9 @@ private let log = Log.logger(.overlay)
         case .closed:
             controller.viewModel.send(.close)
         case .compact:
-            showFlash(symbol: "hand.wave.fill", label: QAHooks.sampleLabel, duration: 3600, on: controller.key)
+            presentFlash(symbol: "hand.wave.fill", label: QAHooks.sampleLabel, duration: 3600, on: controller.key)
         case .peek:
-            showFlash(symbol: "hand.wave.fill", label: QAHooks.sampleLabel, duration: 3600, on: controller.key)
+            presentFlash(symbol: "hand.wave.fill", label: QAHooks.sampleLabel, duration: 3600, on: controller.key)
             controller.viewModel.send(.autoPeek(.flash, until: .infinity))
         case .open:
             controller.viewModel.send(.open(page: page, focus: nil, reason: .programmatic))
