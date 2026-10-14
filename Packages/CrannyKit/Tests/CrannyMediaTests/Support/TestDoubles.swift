@@ -49,8 +49,10 @@ import UniformTypeIdentifiers
     for _ in 0..<rounds { await Task.yield() }
 }
 
-/// Waits (in real time, briefly) until `condition` holds — for work that hops off the main actor (artwork decode).
-@MainActor func eventually(timeout: Duration = .seconds(2), _ condition: () -> Bool) async -> Bool {
+/// Waits in real time until `condition` holds — for work that hops off the main actor (artwork decode). Returns as
+/// soon as it holds; the generous bound only decides how long a failing test waits. A short one flakes: while the
+/// suite starts, parallel tests can keep the main actor busy for seconds, and this loop runs on it.
+@MainActor func eventually(timeout: Duration = .seconds(30), _ condition: () -> Bool) async -> Bool {
     let deadline = ContinuousClock.now + timeout
     while ContinuousClock.now < deadline {
         if condition() { return true }

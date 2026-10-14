@@ -276,19 +276,24 @@ private enum Payload {
         #expect(answers == (0..<20).map { .value(ScriptValue(text: "\($0)")) })
     }
 
-    @Test @MainActor func aHungScriptDoesNotBlockTheMainActor() async {
+    /// No real-time bound depends on the main actor (it can be busy for seconds while the suite starts): the test
+    /// waits for the script's own signal, and the 30-s gate and the time limit only end a failing run.
+    @Test(.timeLimit(.minutes(1))) nonisolated func aHungScriptDoesNotBlockTheMainActor() async {
         let gate = DispatchSemaphore(value: 0)
-        let state = OSAllocatedUnfairLock(initialState: (started: false, finished: false, onMain: false))
+        let state = OSAllocatedUnfairLock(initialState: (finished: false, onMain: false))
+        let (started, didStart) = AsyncStream.makeStream(of: Void.self)
         let runner = SerialAppleScriptRunner(label: "test.applescript.hang") { _ in
-            state.withLock { $0.started = true; $0.onMain = Thread.isMainThread }
-            _ = gate.wait(timeout: .now() + 5)              // a player that does not answer (bounded: no test hang)
+            state.withLock { $0.onMain = Thread.isMainThread }
+            didStart.yield()
+            _ = gate.wait(timeout: .now() + 30)             // a player that does not answer (bounded: no test hang)
             state.withLock { $0.finished = true }
             return .failed(code: -1712)
         }
-        let task = Task { await runner.run(PlayerScript(bundleID: "x", body: "player position")) }
-        #expect(await eventually { state.withLock { $0.started } })
-        for _ in 0..<50 { await Task.yield() }              // the main actor keeps running while the script waits
-        #expect(state.withLock { !$0.finished && !$0.onMain })
+        // Submitted from the main actor, as the session does.
+        let task = Task { @MainActor in await runner.run(PlayerScript(bundleID: "x", body: "player position")) }
+        for await _ in started { break }                    // the script now blocks its thread
+        await MainActor.run {}                              // a main-actor job runs meanwhile; had the script held the
+        #expect(state.withLock { !$0.finished && !$0.onMain })   // main actor, it would have run after the gate's 30 s
         gate.signal()
         #expect(await task.value == .failed(code: -1712))
     }
