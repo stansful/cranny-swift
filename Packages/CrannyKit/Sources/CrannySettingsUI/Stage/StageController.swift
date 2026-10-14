@@ -5,7 +5,9 @@
 // stage with the real motion tokens. Simulate chips play one short script; nothing loops.
 //
 // Energy: it observes settings only between `start()` and `stop()` (the stage is on screen), and the scripts are
-// sleeps to deadlines. The view drops the canvas while the window is occluded.
+// sleeps to deadlines. A settings change computes the appearance once (the observed value is applied), and the
+// scene's properties are written only when they change, so the canvas re-renders only for a real difference. The view
+// drops the canvas while the window is occluded.
 import AppKit
 import CrannyCore
 import CrannyNotchUI
@@ -66,8 +68,8 @@ import SwiftUI
         lastMotion = settings[CoreSettings.motion]
         chooseScreen()
         applyAppearance(animated: false)
-        tokens.append(observe({ [weak self] in self?.appearanceInputs() }) { [weak self] _ in
-            self?.applyAppearance(animated: true)
+        tokens.append(observe({ [weak self] in self?.appearanceInputs() }) { [weak self] appearance in
+            self?.applyAppearance(appearance, animated: true)
         })
         tokens.append(observe({ [weak self] in self?.castInputs() }) { [weak self] _ in
             self?.refreshScene(animated: true)
@@ -192,7 +194,8 @@ import SwiftUI
             context.openReason = scene.open?.reason
             if context != model.context { model.context = context }
         }
-        model.ambient = ambientPalette(primary: scene.primary)
+        let ambient = ambientPalette(primary: scene.primary)
+        if model.ambient != ambient { model.ambient = ambient }
         if let delight = scene.delight, allowsDelight(reduceMotion: reduceMotion) {
             model.delight = delight
             model.delightSerial += 1

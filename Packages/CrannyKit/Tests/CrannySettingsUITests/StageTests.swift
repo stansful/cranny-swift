@@ -3,6 +3,7 @@ import CoreGraphics
 import CrannyCore
 import CrannyNotchUI
 import Foundation
+import Observation
 import SwiftUI
 import Testing
 import UniformTypeIdentifiers
@@ -173,6 +174,27 @@ private let cast = StageCast(ongoing: [.nowPlaying, .timerRunning], available: [
     #expect(stage.model.openColumns == StageScript.openColumns(items: NookPreset.minimal.page.items, sizes: { registry.widget($0)?.sizes },
                                                                maxColumns: stage.model.layout.maxColumns))
     #expect(stage.model.openColumns != 10)
+    stage.stop()
+}
+
+/// Whether an observed property was written (set from Observation's `onChange`, on the writer's thread).
+nonisolated private final class WriteFlag: @unchecked Sendable { var written = false }
+
+/// Re-applying the same scene leaves the ambient light alone (its readers, the canvas and the light layer, are not
+/// re-rendered), and a settings change reaches the stage through its observed appearance.
+@Test func theStageWritesOnlyWhatChanged() async {
+    let registry = ModuleRegistry(services: .preview())
+    let stage = StageController(registry: registry, state: .open)
+    let ambient = WriteFlag()
+    withObservationTracking { _ = stage.model.ambient } onChange: { ambient.written = true }
+    stage.select(.open)                                                         // the same state, the same light
+    stage.refreshScene(animated: false)
+    #expect(!ambient.written)
+
+    stage.start()
+    registry.services.settings[CoreSettings.density] = .roomy
+    for _ in 0..<3000 where stage.model.theme.density != .roomy { try? await Task.sleep(for: .milliseconds(10)) }
+    #expect(stage.model.theme.density == .roomy && stage.model.layout.grid.density == .roomy)
     stage.stop()
 }
 

@@ -2,7 +2,8 @@
 // read ONLY when the file lies outside the folders macOS protects with a Files & Folders prompt
 // (`ProtectedLocations`): reading those from Settings would raise a privacy prompt nobody asked for
 // (ARCHITECTURE §10.15); the stage then shows the neutral gradient. Decoding happens off the main actor into a
-// small thumbnail, cached per URL for the session.
+// small thumbnail (about 2 MB). Only the last one is kept, for its URL: reopening the stage on the same wallpaper
+// needs no decode, and a changed wallpaper replaces it instead of adding one per URL for the rest of the session.
 import AppKit
 import CoreGraphics
 import CrannyCore
@@ -21,14 +22,15 @@ enum WallpaperSource {
 
     // MARK: Loading
 
-    @MainActor private static var cache: [URL: Miniature] = [:]
+    /// The last miniature decoded, with its wallpaper's URL.
+    @MainActor private static var last: (url: URL, miniature: Miniature)?
 
     /// The miniature of the wallpaper on `screen`, or nil (unsafe location, unreadable or a video wallpaper).
     @MainActor static func miniature(for screen: NSScreen, maxPixelSize: Int = 960) async -> Miniature? {
         guard let url = NSWorkspace.shared.desktopImageURL(for: screen) else { return nil }
-        if let cached = cache[url] { return cached }
+        if let last, last.url == url { return last.miniature }
         let miniature = await decode(url, maxPixelSize: maxPixelSize)
-        if let miniature { cache[url] = miniature }
+        if let miniature { last = (url, miniature) }
         return miniature
     }
 

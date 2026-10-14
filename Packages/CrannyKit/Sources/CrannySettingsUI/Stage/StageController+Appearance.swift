@@ -49,9 +49,11 @@ extension StageController {
                                satellite: settings[CoreSettings.satellite], pages: settings[CoreSettings.pages])
     }
 
-    /// Applies theme and layout; a change animates the shape with the `resize` token of the NEW theme.
-    func applyAppearance(animated: Bool) {
-        let appearance = appearanceInputs()
+    /// Applies theme and layout; a change animates the shape with the `resize` token of the NEW theme. `given` is the
+    /// value an observation just computed (each computation measures the display and resolves the theme), so it is
+    /// not computed twice; nil computes it.
+    func applyAppearance(_ given: StageAppearance? = nil, animated: Bool) {
+        let appearance = given ?? appearanceInputs()
         let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
         let animation = animated ? CrannyMotion.animation(.resize, personality: appearance.theme.motion, reduceMotion: reduceMotion) : nil
         withAnimation(animation) {
