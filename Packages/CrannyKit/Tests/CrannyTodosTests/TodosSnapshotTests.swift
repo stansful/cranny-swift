@@ -80,6 +80,9 @@ struct TodosSnapshotTests {
         var hints = NotchContext()
         hints.showsCommandHints = true
         try await write(card(fixture(), cells: 3, isFocused: true).environment(\.notchContext, hints), "14-command-hints")
+        let firstDraft = TodosModel.testing([])
+        firstDraft.beginNew(after: nil)                          // the first to-do: no "All done" in the header
+        try await write(card(firstDraft, cells: 3), "15-first-draft")
     }
 
     @Test func rowsAndMoments() async throws {

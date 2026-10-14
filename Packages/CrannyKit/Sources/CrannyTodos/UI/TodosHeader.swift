@@ -1,5 +1,6 @@
-// CrannyTodos/UI/TodosHeader.swift — "To-dos" (`eyebrow`) + "3 left" (`caption`, tertiary) (DESIGN.md §7.6).
-// At 2 cells the count is left out (§6.7). While ⌘ is held and the widget has the keyboard, the count makes
+// CrannyTodos/UI/TodosHeader.swift — "To-dos" (`eyebrow`) + "3 left" (`caption`, tertiary) (DESIGN.md §7.6);
+// "All done" only once something is checked, nothing while the first to-do is still a blank draft. At 2 cells
+// the count is left out (§6.7). While ⌘ is held and the widget has the keyboard, the count makes
 // room for the widget's key caps (§6.5). After a failed save a `danger` "!" sits before the count; clicking it
 // retries (it is also the only place the failure shows, with a tooltip and a VoiceOver label).
 import CrannyCore
@@ -8,7 +9,7 @@ import SwiftUI
 struct TodosHeader: View {
     @Environment(\.cranny) private var theme
     @Environment(\.notchContext) private var notchContext
-    let remaining: Int
+    let count: TodoHeaderCount
     let showsCount: Bool
     let saveFailed: Bool
     let metrics: TodoMetrics
@@ -44,13 +45,13 @@ struct TodosHeader: View {
                     KeyCap("⌘↑↓")
                 }
                 .transition(.opacity)
-            } else if showsCount {
-                Text(remaining == 0 ? TodosStrings.allDone : TodosStrings.remaining(remaining))
+            } else if showsCount, let text = count.text {
+                Text(text)
                     .crannyFont(.caption)
                     .foregroundStyle(p.tertiaryLabel)
                     .lineLimit(1)
-                    .contentTransition(theme.reduceMotion ? .opacity : .numericText(value: Double(remaining)))
-                    .animation(theme.animation(.contentSwap), value: remaining)
+                    .contentTransition(theme.reduceMotion ? .opacity : .numericText(value: Double(count.value)))
+                    .animation(theme.animation(.contentSwap), value: count)
             }
         }
         .frame(height: metrics.headerHeight)
@@ -60,9 +61,9 @@ struct TodosHeader: View {
 
 #Preview("Header") {
     VStack(spacing: Space.l) {
-        TodosHeader(remaining: 3, showsCount: true, saveFailed: false, metrics: TodoMetrics(textSize: .standard)) {}
-        TodosHeader(remaining: 0, showsCount: true, saveFailed: true, metrics: TodoMetrics(textSize: .standard)) {}
-        TodosHeader(remaining: 3, showsCount: false, saveFailed: false, metrics: TodoMetrics(textSize: .standard)) {}
+        TodosHeader(count: .remaining(3), showsCount: true, saveFailed: false, metrics: TodoMetrics(textSize: .standard)) {}
+        TodosHeader(count: .allDone, showsCount: true, saveFailed: true, metrics: TodoMetrics(textSize: .standard)) {}
+        TodosHeader(count: .remaining(3), showsCount: false, saveFailed: false, metrics: TodoMetrics(textSize: .standard)) {}
     }
     .frame(width: 160)
     .padding(Space.l)

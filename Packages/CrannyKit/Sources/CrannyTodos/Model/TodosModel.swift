@@ -83,6 +83,8 @@ private let log = Log.logger(.todos)
     var visibleItems: [Todo] { store.list.visible(hidesCompleted: hidesCompleted, lingering: lingering) }
     var remainingCount: Int { store.list.remainingCount }
     var completedCount: Int { store.list.completedCount }
+    /// The header's "3 left" / "All done" / nothing.
+    var headerCount: TodoHeaderCount { store.list.headerCount }
     func item(_ id: Todo.ID) -> Todo? { store.list.item(id) }
     private var visibleIDs: [Todo.ID] { visibleItems.map(\.id) }
 

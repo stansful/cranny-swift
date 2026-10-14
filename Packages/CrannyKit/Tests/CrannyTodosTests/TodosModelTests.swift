@@ -93,6 +93,18 @@ struct TodosModelTests {
         #expect(visibleTitles(model) == ["b", "c"])
     }
 
+    @Test func theFirstDraftIsNotAllDone() {
+        let model = model([])
+        let id = model.beginNew(after: nil)                       // empty state → "New to-do", ⌘K, type-to-capture
+        #expect(model.headerCount == TodoHeaderCount.none)
+        model.setTitle("buy milk", for: id)
+        #expect(model.headerCount == .remaining(1))
+        model.toggle(id)
+        #expect(model.headerCount == .allDone)
+        model.beginNew(after: nil)                                // a new draft after everything was done
+        #expect(model.headerCount == .allDone)
+    }
+
     @Test func blankDraftsCannotBeChecked() {
         let model = model([])
         let id = model.beginNew(after: nil)

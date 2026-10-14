@@ -21,6 +21,11 @@ struct TodosView: View {
         return own.isEmpty ? TodosModel.sampleTodos() : own
     }
 
+    private var headerCount: TodoHeaderCount {
+        guard context.isPreview else { return model.headerCount }
+        return TodoHeaderCount(remaining: items.count(where: { !$0.isDone }), completed: items.count(where: \.isDone))
+    }
+
     private var content: Content {
         if context.isPreview { return .list }
         switch model.store.phase {
@@ -36,7 +41,7 @@ struct TodosView: View {
             switch content {
             case .list:
                 VStack(alignment: .leading, spacing: Space.xs) {
-                    TodosHeader(remaining: context.isPreview ? items.count(where: { !$0.isDone }) : model.remainingCount,
+                    TodosHeader(count: headerCount,
                                 showsCount: context.cells >= 3, saveFailed: model.store.saveFailed && !isReadOnly,
                                 metrics: metrics, isFocusedWidget: context.isFocused) { model.store.retrySave() }
                     TodoListView(model: model, items: items, metrics: metrics,

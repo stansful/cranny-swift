@@ -120,6 +120,19 @@ struct TodoListTests {
         #expect(titles(list) == ["a", "c"])
     }
 
+    @Test func headerCountSaysAllDoneOnlyOnceSomethingIsDone() {
+        #expect(TodoHeaderCount(remaining: 3, completed: 0) == .remaining(3))
+        #expect(TodoHeaderCount(remaining: 1, completed: 5) == .remaining(1))
+        #expect(TodoHeaderCount(remaining: 0, completed: 2) == .allDone)
+        #expect(TodoHeaderCount(remaining: 0, completed: 0) == TodoHeaderCount.none)
+        #expect(TodoHeaderCount.none.text == nil)
+        #expect(TodoHeaderCount.allDone.text == TodosStrings.allDone)
+        #expect(TodoHeaderCount.remaining(3).text == TodosStrings.remaining(3))
+        // The first to-do, still a blank draft: nothing is done, so no "All done".
+        #expect(TodoList(todos("")).headerCount == TodoHeaderCount.none)
+        #expect(TodoList(todos(" ", "a")).headerCount == .remaining(1))
+    }
+
     @Test func neighbourNavigation() {
         let ids = [UUID(), UUID(), UUID()]
         #expect(TodoList.neighbor(of: ids[1], .up, in: ids) == ids[0])
