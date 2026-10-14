@@ -41,6 +41,11 @@ extension NotesModel {
         if pendingDeletion != nil { cancelDelete() }
     }
 
+    /// The Nook opened (`NotchEvent.opened`): after a failed save, try again now (one attempt per opening).
+    func panelOpened() {
+        if saveFailed { retrySave() }
+    }
+
     /// The panel closed (`NotchEvent.closed`): a focus request that no editor took (the widget was on another
     /// page) must not make the panel key the next time it opens by hover.
     func panelClosed() {

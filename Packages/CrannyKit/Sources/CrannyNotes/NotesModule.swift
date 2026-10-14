@@ -25,7 +25,11 @@ public enum NotesModule: FeatureModule {
         })
         registry.onLaunch {
             services.notch.addEventObserver { event in
-                if case .closed = event { model.panelClosed() }
+                switch event {
+                case .opened: model.panelOpened()
+                case .closed: model.panelClosed()
+                default: break
+                }
             }
             await model.load()
             #if DEBUG

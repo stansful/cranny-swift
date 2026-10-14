@@ -22,12 +22,11 @@ struct NotesHeader: View {
             NoteListMenu(model: model, entry: entry)
             Spacer(minLength: Space.xs)
             if model.saveFailed {
-                Image(systemName: "exclamationmark")
-                    .crannyFont(.caption)
-                    .foregroundStyle(theme.palette.danger)
-                    .frame(width: HitTarget.nook.width, height: HitTarget.nook.height)
-                    .help(NotesStrings.saveFailed)
-                    .accessibilityLabel(Text(NotesStrings.saveFailed))
+                // The automatic retries stop after a few minutes; a click (or the next edit) tries again.
+                HeaderButton(symbol: "exclamationmark", label: NotesStrings.saveFailed, tint: theme.palette.danger) {
+                    model.retrySave()
+                }
+                .accessibilityHint(Text(NotesStrings.tryAgain))
             }
             HeaderButton(symbol: "chevron.left.forwardslash.chevron.right", label: NotesStrings.codeMode,
                          isOn: entry.mode == .code, shortcut: KeyboardShortcut("/", modifiers: .command)) {
@@ -70,6 +69,8 @@ struct HeaderButton: View {
     let symbol: String
     let label: String
     var isOn = false
+    /// A glyph colour other than the default (`danger` for the save warning).
+    var tint: Color?
     /// Works while the panel is key, also when the editor is not first responder.
     var shortcut: KeyboardShortcut?
     let action: () -> Void
@@ -77,7 +78,7 @@ struct HeaderButton: View {
     var body: some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .foregroundStyle(isOn ? theme.accentColor : theme.palette.secondaryLabel)
+                .foregroundStyle(tint ?? (isOn ? theme.accentColor : theme.palette.secondaryLabel))
         }
         .keyboardShortcut(shortcut)
         .buttonStyle(CrannyIconButtonStyle(isOn ? .filled : .plain, size: HitTarget.nook.height))

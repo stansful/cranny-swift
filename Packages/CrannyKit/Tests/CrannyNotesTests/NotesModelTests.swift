@@ -1,6 +1,7 @@
 // NotesModel with `CrannyServices.preview()` (temporary paths, in-memory settings, recording notch double).
 import CrannyCore
 import Foundation
+import os
 import Testing
 @testable import CrannyNotes
 
@@ -183,6 +184,57 @@ import Testing
         #expect(model.makeChangeSet() == nil)                                   // nothing left pending
     }
 
+    /// A save handed to its task but not yet written when the app quits: the flush writes it (review of WP5).
+    @Test func flushWritesSavesThatAreStillInFlight() async throws {
+        let model = await loadedModel()
+        let id = model.newNote()
+        model.setText("typed, autosave started", for: id)
+        let inFlight = model.saveNow()                                          // queued, has not run yet
+        model.flush()                                                           // quit before it runs
+        let afterQuit = try NotesStore(paths: services.paths).loadNow()
+        #expect(afterQuit.notes.first { $0.id == id }?.text == "typed, autosave started")
+        #expect(afterQuit.notes.contains { $0.id == id })                       // listed in the index too
+        await inFlight?.value                                                   // the late write changes nothing
+        #expect(try NotesStore(paths: services.paths).loadNow().notes.first { $0.id == id }?.text == "typed, autosave started")
+    }
+
+    @Test func savesReachTheDiskInOrder() async throws {
+        let model = await loadedModel()
+        let first = model.newNote(text: "first")
+        let firstSave = model.saveNow()
+        let second = model.newNote(text: "second")
+        let secondSave = model.saveNow()
+        #expect(model.savesInFlight.count == 2)
+        await secondSave?.value
+        #expect(model.savesInFlight.isEmpty)                                    // the second waited for the first
+        await firstSave?.value
+        let reloaded = try NotesStore(paths: services.paths).loadNow()
+        #expect(reloaded.notes.map(\.id) == [second, first])
+        #expect(reloaded.recovered == 0)
+    }
+
+    @Test func failedSavesBackOffAndThenWaitForTheUser() async throws {
+        let model = await loadedModel()
+        let delays = DelayRecorder()
+        model.retrySleep = { try await delays.sleep($0) }
+        _ = model.newNote(text: "precious")
+        model.autosave.cancel()                                                 // only the saves below
+        let notesPath = services.paths.root.appending(path: "notes")
+        try FileManager.default.removeItem(at: notesPath)
+        try Data("blocker".utf8).write(to: notesPath)                           // every save fails
+        model.saveNow()
+        try await waitUntil { model.consecutiveSaveFailures == 4 && model.savesInFlight.isEmpty }
+        #expect(delays.recorded == [.seconds(5), .seconds(30), .seconds(120)])  // then no more automatic retries
+        #expect(model.saveFailed)
+        for _ in 0..<50 { await Task.yield() }
+        #expect(model.consecutiveSaveFailures == 4)
+        try FileManager.default.removeItem(at: notesPath)
+        model.panelOpened()                                                     // opening the Nook tries again
+        try await waitUntil { !model.saveFailed }
+        #expect(try NotesStore(paths: services.paths).loadNow().notes.first?.text == "precious")
+        #expect(model.consecutiveSaveFailures == 0)
+    }
+
     @Test func anUnreadableIndexShowsTheErrorAndIsNotOverwritten() async throws {
         let store = NotesStore(paths: services.paths)
         let kept = Note(title: "Kept title", text: "x", mode: .code, language: .swift)
@@ -307,4 +359,11 @@ import Testing
         #expect(model.selectedID == id)
         #expect(model.focusRequested)
     }
+}
+
+/// Records the retry delays a model asks for and returns at once (the backoff runs through in a few turns).
+private final class DelayRecorder: Sendable {
+    private let state = OSAllocatedUnfairLock(initialState: [Duration]())
+    var recorded: [Duration] { state.withLock { $0 } }
+    @Sendable func sleep(_ duration: Duration) async throws { state.withLock { $0.append(duration) } }
 }

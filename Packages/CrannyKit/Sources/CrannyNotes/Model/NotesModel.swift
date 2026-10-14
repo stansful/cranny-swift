@@ -61,6 +61,14 @@ private let log = Log.logger(.notes)
     @ObservationIgnored var selections: [UUID: NSRange] = [:]
     @ObservationIgnored var retryTask: Task<Void, Never>?
     @ObservationIgnored lazy var autosave = CoalescingScheduler { [weak self] in self?.saveNow() }
+    /// Change sets handed to a save that has not finished; `flush()` writes them again (NotesModel+Saving.swift).
+    @ObservationIgnored var savesInFlight: [Int: NotesChangeSet] = [:]
+    /// The last save started; each save waits for the previous one, so revisions reach the disk in order.
+    @ObservationIgnored var lastSave: Task<Void, Never>?
+    /// Failed saves in a row (retry backoff); 0 after a success.
+    @ObservationIgnored var consecutiveSaveFailures = 0
+    /// The wait before an automatic retry (tests record the delays instead of waiting).
+    @ObservationIgnored var retrySleep: @Sendable (Duration) async throws -> Void = { try await Task.sleep(for: $0) }
     /// Notes whose text changed since "Automatic" last looked at them.
     @ObservationIgnored var undetectedNotes = Set<UUID>()
     @ObservationIgnored lazy var languageDetection = CoalescingScheduler(delay: Self.detectionDelay) { [weak self] in
