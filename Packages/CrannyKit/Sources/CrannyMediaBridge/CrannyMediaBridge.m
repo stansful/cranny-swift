@@ -15,7 +15,8 @@
 //           cmd <0-13> [expectPID] | seek <seconds> [expectPID]
 //           shuffle <1-3> | repeat <1-3> | refresh [state] | ping | quit
 //           ("refresh" re-sends the state and the artwork, "refresh state" only the state)
-//   lifetime: exits on stdin EOF, SIGPIPE, or when re-parented to launchd.
+//   lifetime: exits on stdin EOF, SIGPIPE, or when the host process exits (re-parented to launchd).
+//           Event-driven only: no periodic timer, no polling (the debounce is one-shot per notification).
 //
 // Build (arm64 + x86_64, ad-hoc signed by the linker on arm64):
 //   clang -dynamiclib -fobjc-arc -fvisibility=hidden -arch arm64 -arch x86_64 \
@@ -263,12 +264,18 @@ void cranny_bridge_main(void) {
     });
     dispatch_resume(in);
 
-    // Belt and braces: if the host is SIGKILLed and stdin somehow stays open
-    // (e.g. a leaked descriptor), notice re-parenting to launchd.
-    dispatch_source_t orphan = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, gQ);
-    dispatch_source_set_timer(orphan, dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC), 5 * NSEC_PER_SEC, NSEC_PER_SEC);
-    dispatch_source_set_event_handler(orphan, ^{ if (getppid() == 1) exit(0); });
-    dispatch_resume(orphan);
+    // Belt and braces: if the host is SIGKILLed and stdin somehow stays open (e.g. a leaked
+    // descriptor), exit when the host process exits. A kqueue process-exit source, not a timer:
+    // the helper lives as long as Cranny and must not wake up while nothing plays (ARCHITECTURE §9.2).
+    pid_t host = getppid();
+    if (host <= 1) exit(0);  // already re-parented to launchd: the host is gone
+    dispatch_source_t hostExit = dispatch_source_create(DISPATCH_SOURCE_TYPE_PROC, (uintptr_t)host, DISPATCH_PROC_EXIT, gQ);
+    if (hostExit) {
+        dispatch_source_set_event_handler(hostExit, ^{ exit(0); });
+        dispatch_resume(hostExit);
+    }
+    // The host may have died between getppid() and arming the source; re-parenting tells.
+    if (getppid() != host) exit(0);
 
     emit(@{ @"t": @"hello", @"v": @1, @"pid": @(getpid()) });
     dispatch_async(gQ, ^{ snapshot(); });
