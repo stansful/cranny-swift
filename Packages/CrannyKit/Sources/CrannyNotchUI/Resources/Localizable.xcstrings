@@ -422,7 +422,7 @@
         }
       }
     },
-    "Edit Layout…" : {
+    "Edit layout…" : {
       "comment" : "Widget card menu: enters the layout editor (⌘E)",
       "localizations" : {
         "ru" : {
