@@ -15,6 +15,12 @@ LOG="$BUILD_DIR/logs/build-$CONFIGURATION.log"
 mkdir -p "$BUILD_DIR/logs"
 
 overrides=(ARCHS="$ARCHS" ONLY_ACTIVE_ARCH=NO)
+if [[ "$CONFIGURATION" == Release ]]; then
+  # Strip like an archive does: no local symbols or debug-map stabs (they hold the builder's absolute
+  # paths) in the shipped binaries; the dSYM next to the app keeps everything for symbolication.
+  # Xcode strips before signing; the bridge dylib keeps its exported `_cranny_bridge_main` (non-global style).
+  overrides+=(DEPLOYMENT_POSTPROCESSING=YES STRIP_INSTALLED_PRODUCT=YES)
+fi
 if [[ -n "${SIGN_IDENTITY:-}" ]]; then
   # Distribution signing (maintainers only). Secure timestamp is required for notarization.
   overrides+=(CODE_SIGN_IDENTITY="$SIGN_IDENTITY" DEVELOPMENT_TEAM="${TEAM_ID:?TEAM_ID is required with SIGN_IDENTITY}"
@@ -44,6 +50,14 @@ ditto "$PRODUCT" "$BUILD_DIR/Cranny.app"
 
 APP="$BUILD_DIR/Cranny.app"
 codesign --verify --deep --strict "$APP" || die "code signature verification failed"
+if [[ "$CONFIGURATION" == Release ]]; then
+  # Shipped binaries must not carry debug-map stabs (absolute paths of the build machine). An incremental
+  # build over products made before stripping was enabled can keep an old copy: start clean then.
+  for binary in "$APP/Contents/MacOS/Cranny" "$APP"/Contents/Frameworks/*.dylib; do
+    stabs="$(nm -ap "$binary" 2>/dev/null | grep -cE ' (SO|OSO) ' || true)"
+    [[ "$stabs" == 0 ]] || die "$binary is not stripped (stale build products?); run \`make clean\` and build again"
+  done
+fi
 log "Built $APP"
 log "  version $(plist_value "$APP" CFBundleShortVersionString) ($(plist_value "$APP" CFBundleVersion))"
 log "  $(lipo -archs "$APP/Contents/MacOS/Cranny" | sed 's/^/archs: /')"
