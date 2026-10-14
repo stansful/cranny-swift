@@ -48,7 +48,7 @@ import SwiftUI
         guard let np = service.nowPlaying else { return nil }
         guard np.isPlaying else { return MediaStrings.paused }
         guard let duration = np.duration else { return MediaStrings.live }
-        return MediaStrings.timeLeft(duration - np.position(at: service.clock.now))
+        return MediaStrings.timeLeft(TimeInterval(PlaybackTime(position: np.position(at: service.clock.now), duration: duration).remaining))
     }
 
     /// Transport actions only when the provider can control the player (a read-only source offers "Open in …").

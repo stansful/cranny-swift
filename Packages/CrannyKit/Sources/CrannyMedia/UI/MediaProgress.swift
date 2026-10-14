@@ -2,8 +2,8 @@
 // horizontally to seek (`.levelChange` haptic at every 10 %), ← / → ±10 s while focused (⌘← / ⌘→ pass through to
 // the widget: previous / next), VoiceOver adjustable.
 // Energy (open issue 2, ARCHITECTURE.md §10.1): the position is interpolated from the provider's anchor
-// (`NowPlaying.position(at:)`) once per second by `EffectClock(minimumInterval: 1)`, only while playing and on
-// screen — never a display-rate TimelineView, never polling MediaRemote.
+// (`NowPlaying.position(at:)`) once per second of playback by `PlaybackTicker` (one sleep per tick, aligned to the
+// track's seconds), only while playing and on screen — never a display-rate TimelineView, never polling MediaRemote.
 import CrannyCore
 import SwiftUI
 
@@ -24,7 +24,7 @@ struct MediaProgress: View {
     var body: some View {
         if let np = service.nowPlaying {
             if let duration = np.duration {
-                EffectClock(minimumInterval: np.isPlaying ? 1 : nil) { date in
+                PlaybackTicker(nowPlaying: np) { date in
                     let position = preview.map { $0 * duration } ?? np.position(at: date)
                     content(position: position, duration: duration)
                         // One step per second, no glide: an animated bar would redraw at display rate.
@@ -40,46 +40,47 @@ struct MediaProgress: View {
     }
 
     @ViewBuilder private func content(position: TimeInterval, duration: TimeInterval) -> some View {
+        let time = PlaybackTime(position: position, duration: duration)
         switch style {
         case .hairline:
             LevelBar(value: position / duration, tint: theme.accentColor, thickness: 2)
                 .accessibilityHidden(true)
         case .inline:
             HStack(spacing: Space.m) {
-                elapsedLabel(position)
-                scrubber(position: position, duration: duration)
-                remainingLabel(position, duration)
+                elapsedLabel(time)
+                scrubber(position: position, duration: duration, time: time)
+                remainingLabel(time)
             }
         case .stacked:
             VStack(spacing: 0) {
-                scrubber(position: position, duration: duration)
+                scrubber(position: position, duration: duration, time: time)
                 HStack {
-                    elapsedLabel(position)
+                    elapsedLabel(time)
                     Spacer(minLength: Space.m)
-                    remainingLabel(position, duration)
+                    remainingLabel(time)
                 }
                 .padding(.top, -Space.m)                 // under the 4-pt bar of the 24-pt hit target
             }
         }
     }
 
-    private func elapsedLabel(_ position: TimeInterval) -> some View {
-        Text(verbatim: MediaStrings.clock(position))
+    private func elapsedLabel(_ time: PlaybackTime) -> some View {
+        Text(verbatim: MediaStrings.clock(TimeInterval(time.elapsed)))
             .crannyFont(.caption).foregroundStyle(theme.palette.tertiaryLabel)
             .fixedSize()
             .accessibilityHidden(true)
     }
 
-    private func remainingLabel(_ position: TimeInterval, _ duration: TimeInterval) -> some View {
-        Text(verbatim: "\u{2212}" + MediaStrings.clock(duration - position))
+    private func remainingLabel(_ time: PlaybackTime) -> some View {
+        Text(verbatim: "\u{2212}" + MediaStrings.clock(TimeInterval(time.remaining)))
             .crannyFont(.caption).foregroundStyle(theme.palette.tertiaryLabel)
             .fixedSize()
             .accessibilityHidden(true)
     }
 
-    private func scrubber(position: TimeInterval, duration: TimeInterval) -> some View {
+    private func scrubber(position: TimeInterval, duration: TimeInterval, time: PlaybackTime) -> some View {
         Scrubber(value: position / duration, step: min(10 / duration, 1), label: MediaStrings.playbackPosition,
-                 valueDescription: MediaStrings.timeLeft(duration - position)) { fraction in
+                 valueDescription: MediaStrings.timeLeft(TimeInterval(time.remaining))) { fraction in
             seek(to: fraction * duration)
         }
         .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { width = max($0, 1) }
@@ -123,7 +124,9 @@ struct MediaProgress: View {
         lastDecile = nil
     }
 
-    /// Two-finger horizontal scroll over the scrubber: the bar's width spans the whole track.
+    /// Two-finger horizontal scroll over the scrubber: the bar's width spans the whole track. Core's `SwipeTracker`
+    /// reports the end of a short scroll as `.cancelled` ("released below the threshold") and a long one as
+    /// `.committed`, so both seek to the previewed position; it has no separate "the system cancelled" signal.
     private func scroll(_ update: SwipeUpdate, position: TimeInterval, duration: TimeInterval) {
         let start = scrollStart ?? position / duration
         switch update {
