@@ -71,9 +71,6 @@ struct EditorStyle: Equatable {
         let font = Font.system(size: fontSize, weight: weight, design: mode == .code ? .monospaced : .default)
         return kind == .comment || kind == .emphasis ? font.italic() : font
     }
-
-    /// Fixed line height, the glyphs centred in it (TextKit puts extra line height above the text).
-    func baselineOffset(for font: NSFont) -> CGFloat { max(0, (lineHeight - (font.ascender - font.descender)) / 2) }
 }
 
 /// The attribute dictionaries for one `EditorStyle`, built once per style change.
@@ -95,8 +92,8 @@ struct EditorStyle: Equatable {
         }
         func attributes(_ kind: SyntaxKind?) -> [NSAttributedString.Key: Any] {
             let font = style.nsFont(for: kind)
-            return [.font: font, .foregroundColor: style.nsColor(for: kind), .paragraphStyle: paragraph,
-                    .baselineOffset: style.baselineOffset(for: font)]
+            // No `.baselineOffset`: TextKit 2 subtracts it from a fixed line height (17 became 16.3).
+            return [.font: font, .foregroundColor: style.nsColor(for: kind), .paragraphStyle: paragraph]
         }
         base = attributes(nil)
         byKind = Dictionary(uniqueKeysWithValues: SyntaxKind.allCases.map { ($0, attributes($0)) })

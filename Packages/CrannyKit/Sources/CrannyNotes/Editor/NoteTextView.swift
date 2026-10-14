@@ -30,3 +30,12 @@ struct NoteTextView: NSViewRepresentable {
         coordinator.dismantle()
     }
 }
+
+#Preview("Editor · Swift") {
+    let model = NotesModel.preview([Note(title: "build.swift", text: "import SwiftUI\n\nlet retries = 3 // flaky CI\n", mode: .code)])
+    NotesPreviewFrame(width: 224) {
+        NoteTextView(model: model, entry: model.entries[0], typingEffect: true, showsLineNumbers: true,
+                     focusRequested: false, externalRevision: 0)
+            .frame(height: 64)
+    }
+}

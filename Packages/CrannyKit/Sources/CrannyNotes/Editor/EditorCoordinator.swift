@@ -49,7 +49,7 @@ struct EditorConfiguration: Equatable {
         textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         textView.textContainer?.widthTracksTextView = true
         textView.textContainer?.lineFragmentPadding = 0
-        textView.textContainerInset = NSSize(width: 0, height: Space.xxs)
+        textView.textContainerInset = .zero                                     // lines start at the editor's top
         textView.focusRingType = .none
         textView.usesFindBar = false
         textView.usesRuler = false
@@ -66,6 +66,8 @@ struct EditorConfiguration: Equatable {
         typingEffect.attach(to: textView)
 
         let scroll = NSScrollView()
+        scroll.clipsToBounds = true                                              // macOS 14+ views draw outside by default
+        scroll.contentView.clipsToBounds = true
         scroll.drawsBackground = false
         scroll.contentView.drawsBackground = false
         scroll.borderType = .noBorder
@@ -122,6 +124,16 @@ struct EditorConfiguration: Equatable {
         textView.setAccessibilityLabel(new.entry.title)
         updateRuler(visible: new.showsLineNumbers && new.entry.mode == .code)
         if new.focusRequested { Task { @MainActor [weak self] in self?.focusNow() } }
+        applyQAHooks()
+    }
+
+    /// Visual QA (`--qa-notes typing`): freeze the typing effect once the editor is in a window.
+    private func applyQAHooks() {
+        #if DEBUG
+        if NotesQAHooks.freezesTypingEffect && textView?.window != nil && typingEffect.state.isIdle {
+            typingEffect.freezeForQA()
+        }
+        #endif
     }
 
     private func applyChrome(_ style: EditorStyle, to textView: NotesTextView) {
@@ -151,10 +163,11 @@ struct EditorConfiguration: Equatable {
         isLoadingText = false
         tokens = []
         let length = storage.length
-        let saved = model.selections[id] ?? NSRange(location: length, length: 0)
+        // Where the caret was in this session, else the start, so a note opens showing its first lines.
+        let saved = model.selections[id] ?? NSRange(location: 0, length: 0)
         let selection = NSMaxRange(saved) <= length ? saved : NSRange(location: length, length: 0)
         textView.setSelectedRange(selection)
-        textView.scrollRangeToVisible(selection)
+        if selection.location == 0 { textView.scroll(.zero) } else { textView.scrollRangeToVisible(selection) }
         ruler?.textDidChange()
     }
 
@@ -206,6 +219,7 @@ struct EditorConfiguration: Equatable {
 
     private func windowChanged() {
         if configuration?.focusRequested == true { focusNow() }
+        applyQAHooks()
     }
 
     /// Makes the panel key (without activating the app) and the editor first responder, caret where it was.
@@ -256,7 +270,11 @@ struct EditorConfiguration: Equatable {
             textStorage.setAttributes(attributes.base, range: editedRange)
             return
         }
-        let detected = configuration.entry.language ?? LanguageDetector.detect(title: configuration.entry.title, text: text)
+        // Detection reads only the start of the note (characters; ×2 covers UTF-16 surrogate pairs): an edit
+        // further down keeps the language it had.
+        let detected = configuration.entry.language
+            ?? (editedRange.location >= 2 * LanguageDetector.sampleLength && !tokens.isEmpty
+                ? language : LanguageDetector.detect(title: configuration.entry.title, text: text))
         let fresh = SyntaxHighlighter.tokens(in: text, language: detected)
         let span = detected == language
             ? SyntaxHighlighter.changedRange(old: tokens, new: fresh, edited: editedRange, delta: delta, length: textStorage.length)

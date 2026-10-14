@@ -20,8 +20,15 @@ public enum NotesModule: FeatureModule {
             model.capture(characters)
         })
         registry.add(shortcut: GlobalShortcut(id: .newNote, title: NotesStrings.newNote) { model.createAndReveal() })
-        registry.add(commands: NotesCommands(model: model))
-        registry.onLaunch { await model.load() }
+        registry.add(commands: NotesCommands(model: model) {
+            services.environment.isDemoMode && services.settings[CoreSettings.demoRedactsCalendar]
+        })
+        registry.onLaunch {
+            await model.load()
+            #if DEBUG
+            NotesQAHooks.apply(to: model)
+            #endif
+        }
         registry.onTerminate { model.flush() }
     }
 }

@@ -15,6 +15,8 @@ struct NotesWidgetView: View {
     private var isLive: Bool { !context.isPreview && !context.isEditingLayout && !context.redactsPersonalData }
     /// ≥ 6 cells (and focus mode): the note list sidebar and line numbers (DESIGN.md §6.7).
     private var isWide: Bool { context.cells >= 6 }
+    /// One cell at 6–7 cells; two from 8 cells and in focus mode, where one cell would cut every title short.
+    private var sidebarCells: Int { context.cells >= 8 || context.rows >= 3 ? 2 : 1 }
 
     var body: some View {
         content
@@ -53,7 +55,7 @@ struct NotesWidgetView: View {
 
     private func editor(_ entry: NotesModel.Entry) -> some View {
         VStack(alignment: .leading, spacing: Space.xs) {
-            NotesHeader(model: model, entry: entry)
+            NotesHeader(model: model, entry: entry, showsFocusButton: context.cells >= 4 || context.rows >= 3)
             if model.pendingDeletion == entry.id {
                 DeleteConfirmationView(model: model, title: entry.title)
                     .transition(.opacity)
@@ -61,7 +63,7 @@ struct NotesWidgetView: View {
                 HStack(alignment: .top, spacing: theme.grid.gutter) {
                     if isWide {
                         NoteSidebar(model: model)
-                            .frame(width: theme.grid.width(cells: 1))
+                            .frame(width: theme.grid.width(cells: sidebarCells))
                         Rectangle().fill(theme.palette.hairline)
                             .frame(width: StrokeWidth.hairline(displayScale))
                             .accessibilityHidden(true)
@@ -78,6 +80,7 @@ struct NotesWidgetView: View {
         return NoteTextView(model: model, entry: entry, typingEffect: settings[CoreSettings.typingEffect],
                             showsLineNumbers: isWide, focusRequested: model.focusRequested,
                             externalRevision: model.externalRevision)
+            .modifier(WholeLines(lineHeight: style.lineHeight))
             .overlay(alignment: .topLeading) {
                 if model.emptyNotes.contains(entry.id) {
                     Text(NotesStrings.placeholder)
@@ -89,6 +92,19 @@ struct NotesWidgetView: View {
                         .accessibilityHidden(true)
                 }
             }
+    }
+}
+
+/// Gives the editor a whole number of lines (code lines are 16 pt in a 68-pt area): it never ends on the tops
+/// of letters, and the spare points stay empty below the last line.
+private struct WholeLines: ViewModifier {
+    let lineHeight: CGFloat
+
+    func body(content: Content) -> some View {
+        GeometryReader { proxy in
+            let lines = max((proxy.size.height / max(lineHeight, 1)).rounded(.down), 1)
+            content.frame(width: proxy.size.width, height: min(lines * lineHeight, proxy.size.height), alignment: .top)
+        }
     }
 }
 

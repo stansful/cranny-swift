@@ -61,6 +61,18 @@ import Testing
     }
 }
 
+@Test func demoRedactionKeepsNoteTitlesOutOfThePalette() {
+    let services = CrannyServices.preview()
+    let model = NotesModel(settings: services.settings, notch: services.notch, store: NotesStore(paths: services.paths))
+    model.adoptLoadedNotes([Note(title: "Salary review", mode: .plain)])
+    var redacts = true
+    let commands = NotesCommands(model: model) { redacts }
+    #expect(commands.commands(matching: "").map(\.title) == [NotesStrings.newNote])
+    #expect(commands.commands(matching: "salary").isEmpty)
+    redacts = false
+    #expect(commands.commands(matching: "salary").count == 1)
+}
+
 @Suite("Editor keys") struct NoteKeyCommandTests {
     private func command(_ characters: String, _ keyCode: UInt16, shift: Bool = false, option: Bool = false,
                          control: Bool = false, command: Bool = true) -> NoteKeyCommand? {

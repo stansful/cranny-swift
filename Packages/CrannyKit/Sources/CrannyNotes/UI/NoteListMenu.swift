@@ -26,6 +26,7 @@ struct NoteListMenu: View {
                 Button(NotesStrings.previousNote) { model.selectNext(false) }
                 Button(NotesStrings.nextNote) { model.selectNext(true) }
             }
+            Button(model.isFocusPresented ? NotesStrings.exitFocusMode : NotesStrings.focusMode) { model.toggleFocusMode() }
             Divider()
             modeSection
             Divider()
@@ -35,7 +36,8 @@ struct NoteListMenu: View {
                 .crannyFont(.caption)
                 .foregroundStyle(theme.palette.tertiaryLabel)
         }
-        .menuStyle(.borderlessButton)
+        .menuStyle(.button)
+        .buttonStyle(.plain)
         .menuIndicator(.hidden)
         .fixedSize()
         .frame(width: HitTarget.nook.width, height: HitTarget.nook.height)
@@ -72,4 +74,9 @@ struct NoteListMenu: View {
               let detected = LanguageDetector.detect(title: note.title, text: note.text) else { return NotesStrings.automatic }
         return NotesStrings.automatic(detected.displayName)
     }
+}
+
+#Preview("Note list button") {
+    let model = NotesModel.preview()
+    NotesPreviewFrame(width: 60) { NoteListMenu(model: model, entry: model.entries[0]) }
 }

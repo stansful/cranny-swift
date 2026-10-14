@@ -16,6 +16,7 @@ final class LineNumberRuler: NSRulerView {
         self.textView = textView
         super.init(scrollView: scrollView, orientation: .verticalRuler)
         clientView = nil
+        clipsToBounds = true                                                    // macOS 14+ views draw outside by default
         reservedThicknessForMarkers = 0
         reservedThicknessForAccessoryView = 0
     }

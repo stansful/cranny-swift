@@ -37,7 +37,8 @@ import Testing
         let (_, textView) = try editor(showing: entry)
         #expect(textView.textLayoutManager != nil)                              // TextKit 2
         #expect(textView.string == "hello")
-        #expect(textView.selectedRange() == NSRange(location: 5, length: 0))    // caret at the end
+        #expect(textView.selectedRange() == NSRange(location: 0, length: 0))    // opens at the top
+        textView.setSelectedRange(NSRange(location: 5, length: 0))
         textView.insertText(" world", replacementRange: textView.selectedRange())
         #expect(model.text(of: entry.id) == "hello world")
         #expect(textView.textLayoutManager != nil)                              // never fell back to TextKit 1

@@ -5,14 +5,20 @@ import Foundation
 
 final class NotesCommands: PaletteCommandProvider {
     private let model: NotesModel
+    private let redactsTitles: @MainActor () -> Bool
 
-    init(model: NotesModel) { self.model = model }
+    /// `redactsTitles`: demo mode with redaction on; note titles are personal and stay out of the palette.
+    init(model: NotesModel, redactsTitles: @escaping @MainActor () -> Bool = { false }) {
+        self.model = model
+        self.redactsTitles = redactsTitles
+    }
 
     func commands(matching query: String) -> [PaletteCommand] {
         let kind = NotesStrings.notes
         var result = [PaletteCommand(id: "notes.new", title: NotesStrings.newNote, kind: kind, symbol: "plus",
                                      keywords: [kind]) { [model] in model.createAndReveal() }]
-        for entry in model.entries {
+        let entries = redactsTitles() ? [] : model.entries
+        for entry in entries {
             let id = entry.id
             result.append(PaletteCommand(id: CommandID("notes.open.\(id.uuidString)"), title: NotesStrings.open(entry.title),
                                          kind: kind, symbol: "note.text", keywords: [entry.title]) { [model] in model.open(id) })

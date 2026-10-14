@@ -31,10 +31,7 @@ struct NotesPreviewHost: View {
     init(cells: Int, sample: NotesSample?) {
         self.cells = cells
         self.sample = sample
-        let services = CrannyServices.preview()
-        let model = NotesModel(settings: services.settings, notch: services.notch, store: NotesStore(paths: services.paths))
-        model.adoptLoadedNotes(sample.map { [$0.note, NotesSample.groceries.note] } ?? [])
-        _model = State(initialValue: model)
+        _model = State(initialValue: NotesModel.preview(sample.map { [$0.note, NotesSample.groceries.note] } ?? []))
     }
 
     var body: some View {
@@ -47,5 +44,28 @@ struct NotesPreviewHost: View {
             .padding()
             .background(.black)
             .crannyThemeRoot(theme)
+    }
+}
+
+extension NotesModel {
+    /// A model on `CrannyServices.preview()` showing `notes` as loaded (previews only).
+    static func preview(_ notes: [Note] = [NotesSample.deploy.note, NotesSample.groceries.note]) -> NotesModel {
+        let services = CrannyServices.preview()
+        let model = NotesModel(settings: services.settings, notch: services.notch, store: NotesStore(paths: services.paths))
+        model.adoptLoadedNotes(notes)
+        return model
+    }
+}
+
+/// Black, themed, padded: the frame every Notes preview sits in.
+struct NotesPreviewFrame<Content: View>: View {
+    let width: CGFloat
+    @ViewBuilder let content: Content
+    var body: some View {
+        content
+            .frame(width: width)
+            .padding()
+            .background(.black)
+            .crannyThemeRoot(CrannyTheme())
     }
 }

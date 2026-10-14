@@ -26,7 +26,7 @@ struct DeleteConfirmationView: View {
                     .buttonStyle(CrannyChipButtonStyle())
                     .frame(minWidth: HitTarget.nook.width, minHeight: HitTarget.nook.height)
                     .contentShape(Rectangle())
-                Button(role: .destructive) { model.confirmDelete() } label: { Text(NotesStrings.delete) }
+                Button { model.confirmDelete() } label: { Text(NotesStrings.delete) }
                     .buttonStyle(CrannyChipButtonStyle(tint: p.danger, prominent: true))
                     .frame(minWidth: HitTarget.nook.width, minHeight: HitTarget.nook.height)
                     .contentShape(Rectangle())
@@ -34,5 +34,11 @@ struct DeleteConfirmationView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .accessibilityElement(children: .contain)
+    }
+}
+
+#Preview("Delete confirmation") {
+    NotesPreviewFrame(width: 224) {
+        DeleteConfirmationView(model: NotesModel.preview(), title: "deploy.md").frame(height: 68)
     }
 }

@@ -9,6 +9,8 @@ struct NotesHeader: View {
     @Environment(\.cranny) private var theme
     let model: NotesModel
     let entry: NotesModel.Entry
+    /// At 3 cells the title needs the room; focus mode stays in the ⌄ menu and on ⌘↩.
+    var showsFocusButton = true
 
     var body: some View {
         HStack(spacing: 0) {
@@ -30,11 +32,13 @@ struct NotesHeader: View {
             HeaderButton(symbol: "chevron.left.forwardslash.chevron.right", label: NotesStrings.codeMode,
                          isOn: entry.mode == .code) { model.toggleCodeMode() }
                 .keyboardShortcut("/", modifiers: .command)
-            HeaderButton(symbol: model.isFocusPresented ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right",
-                         label: model.isFocusPresented ? NotesStrings.exitFocusMode : NotesStrings.focusMode) {
-                model.toggleFocusMode()
+            if showsFocusButton {
+                HeaderButton(symbol: model.isFocusPresented ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right",
+                             label: model.isFocusPresented ? NotesStrings.exitFocusMode : NotesStrings.focusMode) {
+                    model.toggleFocusMode()
+                }
+                .keyboardShortcut(.return, modifiers: .command)
             }
-            .keyboardShortcut(.return, modifiers: .command)
             HeaderButton(symbol: "plus", label: NotesStrings.newNote) { model.newNote() }
                 .keyboardShortcut("n", modifiers: .command)
         }
@@ -110,4 +114,15 @@ private struct RenameField: View {
                 isFocused = true
             }
     }
+}
+
+#Preview("Header · code note") {
+    let model = NotesModel.preview()
+    NotesPreviewFrame(width: 224) { NotesHeader(model: model, entry: model.entries[0]) }
+}
+
+#Preview("Header · 3 cells, save failed") {
+    let model = NotesModel.preview()
+    let _ = model.saveFailed = true
+    NotesPreviewFrame(width: 160) { NotesHeader(model: model, entry: model.entries[1], showsFocusButton: false) }
 }

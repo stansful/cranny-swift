@@ -142,6 +142,7 @@ private let log = Log.logger(.notes)
         documents[note.id] = note
         entries.insert(Self.entry(note), at: 0)
         if text.isEmpty { emptyNotes.insert(note.id) }
+        selections[note.id] = NSRange(location: (text as NSString).length, length: 0)   // typing continues after it
         renamingID = nil
         pendingDeletion = nil
         select(note.id)

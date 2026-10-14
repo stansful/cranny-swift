@@ -62,6 +62,20 @@ import QuartzCore
         displayLink = nil
     }
 
+    #if DEBUG
+    /// Visual QA (`--qa-notes typing`): the last characters drawn at every stage of settling, frozen in time.
+    func freezeForQA() {
+        guard isEnabled, let length = textView?.textStorage?.length, length > 0 else { return }
+        let frozen = now()
+        let count = min(8, length)
+        for k in 0..<count {
+            state.typed(NSRange(location: length - count + k, length: 1), at: frozen - 0.28 + Double(k) * 0.04)
+        }
+        now = { frozen }
+        step()
+    }
+    #endif
+
     // MARK: Private
 
     private func startLink() {

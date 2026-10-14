@@ -27,7 +27,8 @@ struct NotePreviewView: View {
                 PreviewGlyph(symbol: "chevron.down", tint: theme.palette.tertiaryLabel)
                 Spacer(minLength: Space.xs)
                 PreviewGlyph(symbol: "chevron.left.forwardslash.chevron.right",
-                             tint: note.mode == .code ? theme.accentColor : theme.palette.secondaryLabel)
+                             tint: note.mode == .code ? theme.accentColor : theme.palette.secondaryLabel,
+                             isOn: note.mode == .code)
                 PreviewGlyph(symbol: "arrow.up.left.and.arrow.down.right", tint: theme.palette.secondaryLabel)
                 PreviewGlyph(symbol: "plus", tint: theme.palette.secondaryLabel)
             }
@@ -62,12 +63,16 @@ struct NotePreviewView: View {
 
 /// A header glyph without a button (stages are not interactive).
 private struct PreviewGlyph: View {
+    @Environment(\.cranny) private var theme
     let symbol: String
     let tint: Color
+    var isOn = false
     var body: some View {
         Image(systemName: symbol)
-            .crannyFont(.caption)
+            .font(.system(size: (HitTarget.nook.height * 0.48).rounded(), weight: .semibold))   // as CrannyIconButtonStyle
             .foregroundStyle(tint)
+            .frame(width: HitTarget.nook.height, height: HitTarget.nook.height)
+            .background { if isOn { CrannyButtonShape(theme.buttonShape).fill(theme.palette.control) } }
             .frame(width: HitTarget.nook.width, height: HitTarget.nook.height)
             .accessibilityHidden(true)
     }
@@ -92,4 +97,12 @@ struct RedactedNoteView: View {
         .accessibilityElement()
         .accessibilityLabel(Text(NotesStrings.notes))
     }
+}
+
+#Preview("Stage card · code") {
+    NotesPreviewFrame(width: 224) { NotePreviewView(note: NotePreviewView.sample).frame(height: 96) }
+}
+
+#Preview("Demo redaction") {
+    NotesPreviewFrame(width: 224) { RedactedNoteView().frame(height: 96) }
 }

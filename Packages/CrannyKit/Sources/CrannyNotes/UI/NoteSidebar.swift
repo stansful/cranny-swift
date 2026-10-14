@@ -48,3 +48,7 @@ private struct SidebarRow: View {
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
+
+#Preview("Note list sidebar") {
+    NotesPreviewFrame(width: 120) { NoteSidebar(model: NotesModel.preview()).frame(height: 96) }
+}
