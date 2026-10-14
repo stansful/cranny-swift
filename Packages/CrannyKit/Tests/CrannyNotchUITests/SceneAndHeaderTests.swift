@@ -91,6 +91,19 @@ private let notch = NotchLayout(metrics: .reference)
         #expect(abs(islandFrame.midY - 15) < 0.01)                         // in the pill (inset 3, row 24)
     }
 
+    @Test func satelliteClickTargetIsABandTarget() {
+        for layout in [notch, island, attached] {
+            let compact = layout.compact(.short)
+            let canvas = CGRect(origin: .zero, size: layout.canvasSize)
+            let bubble = layout.satelliteFrame(beside: compact, in: canvas)
+            let hit = SatelliteMetrics.hitFrame(beside: compact, layout: layout, in: canvas)
+            #expect(hit.width >= HitTarget.band.width && hit.height >= HitTarget.band.height)     // ≥ 32 × 24
+            #expect(hit.contains(bubble))
+            #expect(abs(hit.midX - bubble.midX) < 0.001 && abs(hit.midY - bubble.midY) < 0.001)
+            #expect(SatelliteMetrics.hitSize(layout: layout) == hit.size)
+        }
+    }
+
     @Test func openContentIsLaidOutAtTheFinalSize() {
         let model = NotchSceneModel(layout: notch, theme: CrannyTheme())
         model.phase = .open

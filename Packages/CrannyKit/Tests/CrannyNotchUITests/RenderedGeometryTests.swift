@@ -79,6 +79,25 @@ private func earWidth(body: CGFloat, ear: CGFloat, y: CGFloat = 0.25) -> CGFloat
         #expect(near(probe.rowWidth(atPoint: 120), 784))
     }
 
+    /// The Ø 24 bubble sits 6 pt beyond the compact body, centred in the band (its click target is larger).
+    @Test func satelliteBubble() throws {
+        let (model, registry) = scene(.compact) { $0.satellite = .timerRunning }
+        let probe = try #require(Snapshot.probe(model, registry))
+        let compact = model.geometry
+        let canvas = CGRect(origin: .zero, size: model.layout.canvasSize)
+        let bubble = model.layout.satelliteFrame(beside: compact, in: canvas)
+        // Its centre column (beyond the body): dark from the bubble's top to its bottom (the glyph sits inside).
+        let column = Int(bubble.midX * probe.scale)
+        let top = try #require((0..<probe.height).first { probe.isDark(x: column, y: $0) })
+        let bottom = try #require((0..<probe.height).last { probe.isDark(x: column, y: $0) })
+        #expect(near(CGFloat(bottom - top + 1) / probe.scale, 24, 1))
+        #expect(near(CGFloat(top + bottom + 1) / 2 / probe.scale, bubble.midY, 1))
+        // Nothing is drawn right of the bubble.
+        let band = 0..<Int(model.layout.band * probe.scale)
+        let rightmost = try #require(band.compactMap { y in (0..<probe.width).last { probe.isDark(x: $0, y: y) } }.max())
+        #expect(near(CGFloat(rightmost + 1) / probe.scale, bubble.maxX, 1))
+    }
+
     @Test func hiddenDrawsNothing() throws {
         let (model, registry) = scene(.hidden)
         #expect(Snapshot.probe(model, registry)?.hasDarkPixels == false)

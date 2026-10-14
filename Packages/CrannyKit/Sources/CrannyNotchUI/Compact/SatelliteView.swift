@@ -1,7 +1,8 @@
 // CrannyNotchUI/Compact/SatelliteView.swift — the second concurrent activity (DESIGN.md §9.4): a Ø 24u black
 // bubble 6u beyond the compact shape's trailing edge, vertically centred in the band, showing the activity's
 // `minimal()` glyph. It buds off the shape with the `satellite` spring; in Standard and Lively a liquid neck
-// joins the two for the first 0.38 s (§4.3, §5.5). Click swaps it with the primary; VoiceOver can dismiss it.
+// joins the two for the first 0.38 s (§4.3, §5.5). Click swaps it with the primary (a ≥ 32 × 24 target,
+// `SatelliteMetrics`); VoiceOver can dismiss it.
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -20,6 +21,7 @@ struct SatelliteView: View {
     var body: some View {
         let d = NotchLayout.satelliteDiameter * layout.u
         let frame = SatellitePlacement.frame(layout: layout, compact: compact)
+        let hit = SatelliteMetrics.hitSize(layout: layout)
         let travel = SatellitePlacement.budTravel(layout: layout, compact: compact)
         let budded = budded || rendersFinalState
         let showsNeck = !theme.reduceMotion && (theme.motion == .standard || theme.motion == .lively)
@@ -40,19 +42,40 @@ struct SatelliteView: View {
                         .frame(width: d * 0.75, height: d * 0.75)
                         .opacity(budded ? 1 : 0)
                 }
-                .contentShape(Circle())
+                // A band control: the click target is padded beyond the bubble to ≥ 32 × 24 (DESIGN.md §2.3).
+                .frame(width: hit.width, height: hit.height)
+                .contentShape(Rectangle())
                 .onTapGesture { actions.satelliteTapped() }
                 .offset(x: budded || !showsNeck ? 0 : -travel)
                 .opacity(budded || showsNeck ? 1 : 0)
                 .activityAccessibility(activity, id: id, open: actions.satelliteTapped, dismiss: { actions.dismissActivity(id) },
                                        openTitle: Text("Show", bundle: .module, comment: "Satellite: VoiceOver action that swaps it with the activity in the notch"))
         }
-        .frame(width: d, height: d)
-        .offset(x: frame.midX, y: frame.minY)
+        .frame(width: hit.width, height: hit.height)
+        .offset(x: frame.midX, y: frame.midY - hit.height / 2)
         .onAppear {
             guard !self.budded else { return }
             if let animation = theme.animation(.satellite) { withAnimation(animation) { self.budded = true } } else { self.budded = true }
         }
+    }
+}
+
+/// The satellite's click target, for the shell's interactive rect (the panel passes clicks through everywhere
+/// else). The Ø 24u bubble is a band control, so its target is padded to at least 32 × 24 (DESIGN.md §2.3,
+/// ARCHITECTURE.md §9.5) around the same centre.
+public enum SatelliteMetrics {
+    /// Width and height of the click target on this display: ≥ 32 × 24 and never smaller than the bubble.
+    public static func hitSize(layout: NotchLayout) -> CGSize {
+        let d = NotchLayout.satelliteDiameter * layout.u
+        return CGSize(width: max(d, HitTarget.band.width), height: max(d, HitTarget.band.height))
+    }
+
+    /// The click target beside `compact` in `canvas` coordinates (the same frame the satellite is drawn around:
+    /// `NotchLayout.satelliteFrame(beside:in:)`, padded to `hitSize`).
+    public static func hitFrame(beside compact: NotchGeometry, layout: NotchLayout, in canvas: CGRect) -> CGRect {
+        let bubble = layout.satelliteFrame(beside: compact, in: canvas)
+        let size = hitSize(layout: layout)
+        return CGRect(x: bubble.midX - size.width / 2, y: bubble.midY - size.height / 2, width: size.width, height: size.height)
     }
 }
 
