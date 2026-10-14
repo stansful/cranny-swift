@@ -129,15 +129,42 @@ private let resize = ShortcutEntry(id: "5C1B1E0B-2B7A-4E59-8D3B-7A0C1F3E2D02", n
     h.model.stop()
 }
 
-@Test func demoModeAnnouncesNoShortcutName() async {
-    let h = ModelHarness(apps: [], shortcuts: [morning], cli: FakeCLI(listing: shortcutListFixture))
+@Test(arguments: [false, true]) func demoModeAnnouncesNoShortcutName(failed: Bool) async {
+    let h = ModelHarness(apps: [], shortcuts: [morning],
+                         cli: FakeCLI(listing: shortcutListFixture, failing: failed ? [morning.id] : []))
     await h.model.start()
     h.environment.isDemoMode = true
     h.model.toggleRun(morning)
     #expect(await waitUntil { h.announced.messages.count == 1 })
-    #expect(h.announced.messages.first?.contains("Morning") == false)
+    // Its own sentence, not the named one with the neutral name in it (that would say "shortcut" twice in Russian).
+    #expect(h.announced.messages == [failed ? "Shortcut failed" : "Shortcut finished"])
     #expect(h.model.publicName(of: morning) == QuickAppsModel.neutralShortcutName)
     h.model.stop()
+}
+
+@Test func outsideDemoModeTheResultNamesTheShortcut() {
+    let h = ModelHarness(apps: [], shortcuts: [morning])
+    #expect(h.model.resultAnnouncement(of: morning, failed: false) == "Morning routine finished")
+    #expect(h.model.resultAnnouncement(of: morning, failed: true) == "Morning routine failed")
+}
+
+@Test(arguments: [false, true]) func russianResultAnnouncementsSayShortcutOnce(demo: Bool) throws {
+    // VoiceOver reads these in Russian: «Быстрая команда «Утро» выполнена», and in Demo mode a sentence of its own,
+    // never «Быстрая команда «Быстрая команда» выполнена».
+    let path = try #require(Bundle.module.path(forResource: "ru", ofType: "lproj"))
+    let russian = try #require(Bundle(path: path))
+    let entry = ShortcutEntry(id: morning.id, name: "Утро")
+    let h = ModelHarness(apps: [], shortcuts: [entry])
+    h.environment.isDemoMode = demo
+    let finished = h.model.resultAnnouncement(of: entry, failed: false, bundle: russian)
+    let failed = h.model.resultAnnouncement(of: entry, failed: true, bundle: russian)
+    if demo {
+        #expect(finished == "Быстрая команда выполнена")
+        #expect(failed == "Быстрая команда завершилась с ошибкой")
+    } else {
+        #expect(finished == "Быстрая команда «Утро» выполнена")
+        #expect(failed == "Быстрая команда «Утро» завершилась с ошибкой")
+    }
 }
 
 // MARK: - Announcements are for runs the user started (DESIGN.md §16)
