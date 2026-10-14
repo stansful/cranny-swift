@@ -7,7 +7,8 @@ import CrannyCore
 public enum TimerSettings {
     /// Preset durations in SECONDS, in display order (widget chips, ⌘K). At most `maximumPresets` are shown.
     public static let presets = SettingKey<[Int]>(.timer, "presets", default: [60, 300, 600, 1500])
-    /// The system alert sound played when a timer finishes (`NSSound(named:)`); nil = no sound. Muted in Demo mode.
+    /// The system alert sound played when a timer finishes (`NSSound(named:)`); nil = no sound. Muted in Demo mode;
+    /// plays while Live Activities are paused (an alarm the user set, DESIGN.md §9.2).
     public static let sound = SettingKey<String?>(.timer, "sound", default: "Glass")
     /// Peek the running timer when one minute is left.
     public static let peeksAtOneMinute = SettingKey<Bool>(.timer, "peeksAtOneMinute", default: true)
