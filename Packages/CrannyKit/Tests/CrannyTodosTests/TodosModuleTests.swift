@@ -57,6 +57,7 @@ struct TodosModuleTests {
         for name in ["checklist", "circle", "checkmark.circle.fill", "plus", "exclamationmark"] {
             #expect(NSImage(systemSymbolName: name, accessibilityDescription: nil) != nil, "\(name)")
         }
+        #expect(TodoMetrics.symbolWeight == .medium)                // "medium in the Nook"
     }
 
     /// Every catalog key (the test fails if one has no Russian).

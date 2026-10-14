@@ -15,7 +15,7 @@ struct NewTodoRow: View {
         Button(action: action) {
             HStack(spacing: Space.m) {
                 Image(systemName: "plus")
-                    .font(.system(size: metrics.plusGlyph, weight: .semibold))
+                    .font(.system(size: metrics.glyph, weight: TodoMetrics.symbolWeight))
                     .frame(width: metrics.circle, height: metrics.circle)
                 Text(TodosStrings.newTodo)
                     .crannyFont(.body)

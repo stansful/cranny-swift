@@ -21,9 +21,10 @@ struct TodoMetrics: Equatable {
     var headerHeight: CGFloat { (16 * scale).rounded() }
     /// The fade at the bottom of a list that scrolls (the same 12 pt as Calendar, DESIGN.md §7.2).
     var fade: CGFloat { Space.l }
-    /// The `plus` glyph of the "New to-do" row.
-    var plusGlyph: CGFloat { (11 * scale).rounded() }
-
+    /// Symbols in a row or the header (`plus` of "New to-do", the save error's `exclamationmark`).
+    var glyph: CGFloat { (11 * scale).rounded() }
+    /// DESIGN.md §14.1: symbols are medium in the Nook (semibold only at 13 pt in the band).
+    static let symbolWeight: Font.Weight = .medium
 }
 
 extension View {

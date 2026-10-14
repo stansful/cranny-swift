@@ -29,7 +29,7 @@ struct TodosHeader: View {
             if saveFailed {
                 Button(action: retrySave) {
                     Image(systemName: "exclamationmark")
-                        .font(.system(size: metrics.plusGlyph, weight: .bold))
+                        .font(.system(size: metrics.glyph, weight: TodoMetrics.symbolWeight))
                         .foregroundStyle(p.danger)
                         .frame(width: metrics.circle, height: metrics.headerHeight)
                         .todoHitArea(CGSize(width: metrics.circle, height: metrics.headerHeight))
