@@ -169,6 +169,54 @@ private func kind(_ from: NotchPhase, _ to: NotchPhase, fromHUD: Bool = false, t
     }
 }
 
+/// A swipe-down open starts the open spring at the fingers' speed (DESIGN.md §4.4).
+@Suite("Swipe-down open velocity (DESIGN.md §4.4)") struct OpenVelocityTests {
+    private let layout = NotchLayout(metrics: .reference)
+
+    private func theme(_ motion: MotionPersonality = .standard, reduceMotion: Bool = false) -> CrannyTheme {
+        var t = CrannyTheme()
+        t.motion = motion
+        t.reduceMotion = reduceMotion
+        return t
+    }
+
+    @Test func theFingersSpeedBecomesAShareOfTheTravelPerSecond() {
+        #expect(ShapeMotion.relativeVelocity(640, travel: 160) == 4)
+        #expect(ShapeMotion.relativeVelocity(5000, travel: 160) == ShapeMotion.maximumCarry)    // a flick never throws it
+        #expect(ShapeMotion.relativeVelocity(0, travel: 160) == nil)
+        #expect(ShapeMotion.relativeVelocity(-300, travel: 160) == nil)
+        #expect(ShapeMotion.relativeVelocity(640, travel: 0.5) == nil)                           // nothing to travel
+    }
+
+    @Test func theOpenSpringStartsWithTheVelocity() {
+        let from = layout.closed, to = layout.open(columns: 10)
+        let travel = to.bottom - from.bottom
+        let velocity = 4 * travel
+        #expect(ShapeMotion.openAnimation(velocity: velocity, from: from, to: to, theme: theme())
+                == .interpolatingSpring(duration: 0.42, bounce: 0.14, initialVelocity: 4))
+        // The personality scales the bounce as for every spring: Calm lands without overshoot, Lively bounces more.
+        #expect(ShapeMotion.openAnimation(velocity: velocity, from: from, to: to, theme: theme(.calm))
+                == .interpolatingSpring(duration: 0.42, bounce: 0, initialVelocity: 4))
+        #expect(ShapeMotion.openAnimation(velocity: velocity, from: from, to: to, theme: theme(.lively))
+                == .interpolatingSpring(duration: 0.42, bounce: 0.14 * 1.5, initialVelocity: 4))
+    }
+
+    @Test func reduceMotionAndInstantIgnoreIt() {
+        let from = layout.compact(.short), to = layout.open(columns: 10)
+        let reduced = theme(reduceMotion: true)
+        #expect(ShapeMotion.openAnimation(velocity: 900, from: from, to: to, theme: reduced)
+                == ShapeMotion.animation(.open, theme: reduced))                // the dissolve at the final size
+        #expect(ShapeMotion.openAnimation(velocity: 900, from: from, to: to, theme: theme(.instant)) == nil)
+        #expect(ShapeMotion.openAnimation(velocity: 0, from: from, to: to, theme: theme())
+                == ShapeMotion.animation(.open, theme: theme()))
+    }
+
+    @Test func theOpenStateCarriesItOnlyWhenGiven() {
+        #expect(OpenState(page: .nook, reason: .click).gestureVelocity == 0)
+        #expect(OpenState(page: .nook, reason: .swipe, gestureVelocity: 640).gestureVelocity == 640)
+    }
+}
+
 /// The charge sweep runs along the lower outline of the shape (`LowerRim.outline`), inside it.
 @Suite("Charge sweep outline (DESIGN.md §5.1, §5.5)") struct ChargeSweepOutlineTests {
     @Test(arguments: [NotchLayout(metrics: .reference).compact(.short),

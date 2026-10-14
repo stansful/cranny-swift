@@ -10,14 +10,14 @@ import UniformTypeIdentifiers
 nonisolated extension NotchReduction {
     // MARK: Swipes (§4.4, DESIGN.md §4.4)
 
-    mutating func swipe(_ direction: SwipeDirection, over target: SwipeTarget) {
+    mutating func swipe(_ direction: SwipeDirection, over target: SwipeTarget, velocity: CGFloat = 0) {
         guard !s.blocksInput else { return }
         let compact = NotchMachine.compactIsVisible(s, config: config)
         switch (s.surface, direction, target) {
         case (.closed, .down, .shape):
             guard config.swipeOpenClose else { return }
             fx.append(.haptic(.alignment))
-            open(page: nil, focus: nil, reason: .swipe)
+            open(page: nil, focus: nil, reason: .swipe, velocity: velocity)        // "carrying the gesture velocity"
         case (.open, .up, .header):
             guard config.swipeOpenClose else { return }
             fx.append(.haptic(.alignment))

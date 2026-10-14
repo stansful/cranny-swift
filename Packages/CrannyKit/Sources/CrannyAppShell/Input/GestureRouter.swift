@@ -65,9 +65,10 @@ import Foundation
         switch tracker.handle(sample) {
         case .tracking(let axis, let translation)?:
             viewModel.setGestureTranslation(rubberBand(axis, translation))
-        case .committed(let direction, _)?:
+        case .committed(let direction, let velocity)?:
             viewModel.setGestureTranslation(.zero)
-            viewModel.send(.swipe(direction, target: target))
+            // The fingers' speed rides along: a swipe down opens with it (DESIGN.md §4.4).
+            viewModel.send(.swipe(direction, target: target, velocity: velocity))
         case .cancelled?:
             viewModel.setGestureTranslation(.zero)
         case nil:

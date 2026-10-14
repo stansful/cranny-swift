@@ -56,6 +56,33 @@ nonisolated enum ShapeMotion {
         let delay = delay(for: kind, reduceMotion: theme.reduceMotion)
         return theme.animation(kind).map { delay > 0 ? $0.delay(delay) : $0 }
     }
+
+    // MARK: A swipe-down open carries the gesture's velocity (DESIGN.md §4.4)
+
+    /// The open spring of a swipe-down open: the `open` token (its duration, its bounce scaled by the personality,
+    /// so Calm still lands without overshoot) started at the fingers' speed, as a share of the distance the bottom
+    /// edge travels per second. Reduce Motion (a dissolve at the final size) and Instant ignore the velocity, and so
+    /// does an open with no travel to carry it over.
+    static func openAnimation(velocity: CGFloat, from: NotchGeometry, to: NotchGeometry, theme: CrannyTheme) -> Animation? {
+        guard !theme.reduceMotion, theme.motion != .instant,
+              let initial = relativeVelocity(velocity, travel: to.bottom - from.bottom),
+              case .spring(let duration, let bounce) = CrannyMotion.spec(.open).curve else {
+            return animation(.open, theme: theme)
+        }
+        return .interpolatingSpring(duration: duration, bounce: min(bounce * theme.motion.bounceScale, 0.35),
+                                    initialVelocity: initial)
+    }
+
+    /// The fingers' speed (pt/s) as the spring's initial velocity (shares of the change per second), at most
+    /// `maximumCarry`; nil when there is nothing to carry (no speed, or under a point of travel).
+    static func relativeVelocity(_ velocity: CGFloat, travel: CGFloat) -> Double? {
+        guard velocity > 0, travel >= 1 else { return nil }
+        return min(Double(velocity / travel), maximumCarry)
+    }
+
+    /// A flick never throws the shape: at 8 shares per second the `open` spring overshoots about 0.7 % (Lively
+    /// 2.2 %, Calm none) instead of 0.5 % from rest, and a fast flick still settles in the token's time.
+    static let maximumCarry: Double = 8
 }
 
 /// Timings of content around a shape change (DESIGN.md §4.3).

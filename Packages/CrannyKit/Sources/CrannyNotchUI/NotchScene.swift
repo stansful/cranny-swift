@@ -32,9 +32,14 @@ public nonisolated struct OpenState: Equatable, Sendable {
     public var mode: NookMode
     /// What opened the panel (keyboard opens show the focus ring at once).
     public var reason: OpenReason
+    /// The fingers' speed (pt/s, downward) when a two-finger swipe opened the panel, else 0. The open spring starts
+    /// with it, so the shape keeps moving with the fingers instead of starting from rest (DESIGN.md §4.4); Reduce
+    /// Motion and Instant ignore it.
+    public var gestureVelocity: CGFloat
     /// Creates an open state; `mode` defaults to the grid.
-    public init(page: PageID, focus: WidgetID? = nil, mode: NookMode = .grid, reason: OpenReason) {
+    public init(page: PageID, focus: WidgetID? = nil, mode: NookMode = .grid, reason: OpenReason, gestureVelocity: CGFloat = 0) {
         self.page = page; self.focus = focus; self.mode = mode; self.reason = reason
+        self.gestureVelocity = gestureVelocity
     }
 }
 
