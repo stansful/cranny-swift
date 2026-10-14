@@ -8,7 +8,9 @@ import SwiftUI
 ///
 /// Energy: the per-second tick is NOT animated. A `.numericText` roll every second (DESIGN.md §7.7) was measured at
 /// 20–27 % CPU with the open panel on screen (each roll re-renders the panel at the display rate for 0.3 s), against
-/// 0.3 % for a plain swap. The digits roll only when the timer itself jumps (start, +1 min, scroll, resume).
+/// 0.3 % for a plain swap. The digits roll only when the timer itself jumps (start, +1 min, scroll, resume) — and
+/// never inside the pulse window: there the pulse's animation carried each second's change, so the roll played
+/// every second again (8.6–8.7 % CPU with the open panel; 1.1–2.0 % without the roll, the pulse itself included).
 struct TimerDigits: View {
     @Environment(\.cranny) private var theme
     let state: TimerState
@@ -26,7 +28,7 @@ struct TimerDigits: View {
                 .crannyFont(style)
                 .lineLimit(1)
                 .foregroundStyle(color(pulsing: pulsing, lastMinute: state.isInLastMinute(at: now)))
-                .contentTransition(theme.reduceMotion ? .opacity : .numericText(countsDown: true))
+                .contentTransition(Self.transition(pulsing: pulsing, reduceMotion: theme.reduceMotion))
                 .animation(rolls ? theme.animation(.contentSwap) : nil, value: state)          // jumps only, never ticks
                 .phaseAnimator([false, true], trigger: Self.pulseTrigger(seconds: seconds, pulsing: pulsing)) { content, up in
                     content.scaleEffect(Self.pulseScale(up: up, pulsing: pulsing, animates: pulses))
@@ -51,6 +53,12 @@ struct TimerDigits: View {
     static func pulseTrigger(seconds: Int, pulsing: Bool) -> Int {
         if pulsing { return seconds }
         return seconds > Int(TimerLimits.pulseWindow) ? -1 : 1
+    }
+
+    /// How a change of the digits is drawn: a roll for jumps, none in the pulse window (see the energy note above).
+    static func transition(pulsing: Bool, reduceMotion: Bool) -> ContentTransition {
+        if pulsing { return .identity }
+        return reduceMotion ? .opacity : .numericText(countsDown: true)
     }
 
     /// The digits' scale in one phase of a pulse: up only while the run is in its last 10 s NOW, so a trigger change

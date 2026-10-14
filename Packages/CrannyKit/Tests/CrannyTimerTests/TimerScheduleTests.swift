@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import SwiftUI
 import Testing
 @testable import CrannyTimer
 
@@ -112,6 +113,14 @@ import Testing
         #expect(visiblePulses([(running, shows7), (added, shows7)].map { (state: $0.0, now: $0.1) }) == 0)
         #expect(TimerDigits.pulseScale(up: true, pulsing: true, animates: false) == 1)   // Calm, Instant, Reduce Motion
         #expect(TimerDigits.pulseScale(up: false, pulsing: true, animates: true) == 1)
+    }
+
+    @Test func theDigitsNeverRollInsideThePulseWindow() {
+        // The pulse's animation would carry each second's change and roll the digits every second (≈ 8 % CPU).
+        #expect(TimerDigits.transition(pulsing: true, reduceMotion: false) == .identity)
+        #expect(TimerDigits.transition(pulsing: true, reduceMotion: true) == .identity)
+        #expect(TimerDigits.transition(pulsing: false, reduceMotion: false) == .numericText(countsDown: true))
+        #expect(TimerDigits.transition(pulsing: false, reduceMotion: true) == .opacity)
     }
 }
 
