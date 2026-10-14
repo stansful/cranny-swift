@@ -18,7 +18,8 @@ private let log = Log.logger(.mirror)
 
     /// Called after a refresh that changed something (the model re-resolves its camera).
     @ObservationIgnored var onChange: (@MainActor () -> Void)?
-    @ObservationIgnored private let discovery: any CameraDiscovering
+    /// Internal (not private) so tests can check which discovery the live module uses.
+    @ObservationIgnored let discovery: any CameraDiscovering
     @ObservationIgnored private var isWatching = false
     @ObservationIgnored private var refreshTask: Task<Void, Never>?
     @ObservationIgnored private var refreshAgain = false

@@ -11,12 +11,14 @@ public enum MirrorModule: FeatureModule {
     /// Contributes the widget and declares the camera permission. Observers start in `onLaunch`; the camera is
     /// released in `onTerminate`.
     public static func register(in registry: ModuleRegistry) {
-        let services = registry.services
-        let model = makeModel(services)
+        contribute(to: registry, model: makeModel(registry.services), sleep: SystemSleepObserver())
+    }
+
+    /// The contributions and the lifecycle wiring (tests pass a model on fakes and a private notification center).
+    static func contribute(to registry: ModuleRegistry, model: MirrorModel, sleep: SystemSleepObserver) {
         registry.add(widget: MirrorWidget(model: model))
         registry.declare(.camera, reason: MirrorCopy.permissionReason)
 
-        let sleep = SystemSleepObserver()
         registry.onLaunch {
             model.activate()
             sleep.start { model.halt(.systemSleep) }

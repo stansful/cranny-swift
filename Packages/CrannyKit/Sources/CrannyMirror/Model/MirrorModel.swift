@@ -21,8 +21,9 @@ private let log = Log.logger(.mirror)
     /// The camera list (observable: the toolbar menu and the options follow hot-plug).
     let catalog: CameraCatalog
 
-    @ObservationIgnored private let controller: any CameraControlling
-    @ObservationIgnored private let authorization: any CameraAuthorizing
+    /// Internal (not private) so tests can check which parts the live module uses.
+    @ObservationIgnored let controller: any CameraControlling
+    @ObservationIgnored let authorization: any CameraAuthorizing
     @ObservationIgnored private let settings: SettingsStore
     @ObservationIgnored private let notch: any NotchControl
     @ObservationIgnored private let environment: any SystemEnvironment
@@ -114,9 +115,12 @@ private let log = Log.logger(.mirror)
 
     // MARK: Widget views
 
-    /// A live widget (not a preview, not in layout editing) appeared in the open panel.
-    func viewAppeared(_ id: UUID) {
-        visibleViews.insert(id)
+    /// A widget view appeared, or its context changed. Only a live view counts as visible (the real open panel:
+    /// not a Settings or onboarding stage, a `#Preview` or layout editing, `MirrorVisibility.isLive`); a view
+    /// that stops being live counts as gone, which stops the camera if it was the last one.
+    func viewAppeared(_ id: UUID, context: WidgetContext) {
+        guard MirrorVisibility.isLive(context) else { return viewDisappeared(id) }
+        guard visibleViews.insert(id).inserted else { return }
         catalog.activate()
         authorization.refresh(force: false)
         #if DEBUG
@@ -124,7 +128,7 @@ private let log = Log.logger(.mirror)
         #endif
     }
 
-    /// A live widget left the screen (panel closed, page changed, layout editing began).
+    /// A widget view left the screen (panel closed, page changed, layout editing began).
     func viewDisappeared(_ id: UUID) {
         guard visibleViews.remove(id) != nil else { return }
         if visibleViews.isEmpty { halt(.hidden) }

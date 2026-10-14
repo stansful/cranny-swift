@@ -61,11 +61,10 @@ struct MirrorWidgetView: View {
         .onHover { isHovered = $0 }
         .animation(theme.animation(presentation.showsFeed ? .contentIn : .contentOut), value: presentation.showsFeed)
         .animation(theme.animation(.hover), value: showsToolbar)
-        .onAppear { if isLive { model.viewAppeared(viewID) } }
+        // The model decides what counts as visible (only a live context, `MirrorModel.viewAppeared`).
+        .onAppear { model.viewAppeared(viewID, context: context) }
         .onDisappear { model.viewDisappeared(viewID) }
-        .onChange(of: isLive) { _, live in
-            if live { model.viewAppeared(viewID) } else { model.viewDisappeared(viewID) }
-        }
+        .onChange(of: isLive) { model.viewAppeared(viewID, context: context) }
     }
 
     /// The whole card is one button (Fitts: the largest possible target), and one VoiceOver element:

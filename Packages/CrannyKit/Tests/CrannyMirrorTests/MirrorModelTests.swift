@@ -45,13 +45,31 @@ import Testing
     @Test func previewsAndLayoutEditingNeverRunTheCamera() async {
         // Stage, onboarding and #Preview contexts never register as visible, so a click cannot start anything.
         let size = CGSize(width: 120, height: 120)
-        #expect(!MirrorVisibility.isLive(WidgetContext(cells: 2, contentSize: size, isPreview: true)))
-        #expect(!MirrorVisibility.isLive(WidgetContext(cells: 2, contentSize: size, isEditingLayout: true)))
-        #expect(MirrorVisibility.isLive(WidgetContext(cells: 2, contentSize: size)))
+        let preview = WidgetContext(cells: 2, contentSize: size, isPreview: true)
+        let editing = WidgetContext(cells: 2, contentSize: size, isEditingLayout: true)
+        #expect(!MirrorVisibility.isLive(preview))
+        #expect(!MirrorVisibility.isLive(editing))
+        #expect(MirrorVisibility.isLive(MirrorHarness.live))
         let h = MirrorHarness()
         #expect(h.model.presentation(isLive: false) == MirrorPresentation(message: MirrorCopy.previewCamera))
+        // The views report every appearance; the model ignores the ones that are not live.
+        h.model.viewAppeared(UUID(), context: preview)
+        h.model.viewAppeared(UUID(), context: editing)
+        #expect(!h.model.isEligible)
         await h.model.tap()
         #expect(h.controller.starts.isEmpty)
+        #expect(h.discovery.enumerations == 0)        // a stage never even lists the cameras
+        #expect(!h.discovery.isWatching)
+    }
+
+    @Test func enteringLayoutEditingStopsTheCamera() async {
+        // The same view's context changes from live to editing (⌘E): it no longer counts as visible.
+        let h = MirrorHarness()
+        let id = await h.run()
+        h.model.viewAppeared(id, context: WidgetContext(cells: 2, contentSize: MirrorHarness.live.contentSize, isEditingLayout: true))
+        #expect(h.controller.stops == 1)
+        #expect(h.model.phase == .off)
+        #expect(!h.model.isEligible)
     }
 
     @Test func aSecondClickTurnsItOff() async {
@@ -105,20 +123,7 @@ import Testing
         #expect(h.model.phase == .off)
     }
 
-    @Test func stopsOnSystemSleepAndTermination() async {
-        let h = MirrorHarness()
-        await h.run()
-        h.model.halt(.systemSleep)
-        #expect(h.controller.stops == 1)
-        await h.model.tap()
-        h.controller.send(.started(deviceID: Cameras.builtIn.id))
-        h.model.shutdown()
-        #expect(h.controller.stops == 2)
-        #expect(!h.discovery.isWatching)
-        // After shutdown the notch observer is gone: nothing reacts any more.
-        h.notch.emit(.closed)
-        #expect(h.controller.stops == 2)
-    }
+    // System sleep and termination go through the module's wiring: MirrorModuleTests.
 
     @Test func aLockedScreenRefusesClicks() async {
         let h = MirrorHarness()

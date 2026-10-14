@@ -77,20 +77,22 @@ final class FakeDiscovery: CameraDiscovering {
     let authorization: FakeAuthorization
     let model: MirrorModel
 
-    init(_ status: PermissionStatus = .granted, cameras: CameraSnapshot = Cameras.two) {
+    init(_ status: PermissionStatus = .granted, cameras: CameraSnapshot = Cameras.two, activated: Bool = true) {
         settings = CrannyServices.preview().settings
         discovery = FakeDiscovery(cameras)
         authorization = FakeAuthorization(status)
         model = MirrorModel(settings: settings, notch: notch, environment: environment,
                             catalog: CameraCatalog(discovery: discovery), controller: controller,
                             authorization: authorization)
-        model.activate()
+        if activated { model.activate() }
     }
 
+    /// The context of the widget in the real open panel.
+    static let live = WidgetContext(cells: 2, contentSize: CGSize(width: 120, height: 120))
+
     /// A live widget appears in the open panel and the camera list has loaded.
-    @discardableResult func show() async -> UUID {
-        let id = UUID()
-        model.viewAppeared(id)
+    @discardableResult func show(_ id: UUID = UUID()) async -> UUID {
+        model.viewAppeared(id, context: Self.live)
         await model.catalog.ensureLoaded()
         return id
     }
