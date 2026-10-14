@@ -73,12 +73,15 @@ private struct CanvasBody: View {
             // once the compact inactivity timeout has collapsed them (`.idle`).
             if model.phase == .compact || model.phase == .idle, let id = model.satellite,
                let activity = model.activity(id, in: registry) {
-                SatelliteView(id: id, activity: activity, layout: model.layout, compact: shown, actions: actions)
+                SatelliteView(id: id, activity: activity, layout: model.layout, compact: shown, actions: actions,
+                              budget: momentBudget)
                     .id(id)
                     .transition(.opacity.animation(theme.animation(.contentOut)))
             }
-            if let delight, delight.moment == .emberBurst {
-                EmberBurstView(playback: delight, frameInterval: delightInterval)
+            // Timer done: CrannyEffects' ember burst fans out under the shape's bottom edge (one view per serial).
+            if let delight, delight.moment == .emberBurst, DelightPlayback.isSeen(momentBudget) {
+                EmberBurst(level: theme.effectiveAmbience, budget: momentBudget)
+                    .id(delight.serial)
                     .offset(y: shown.bottom)
             }
         }
@@ -154,8 +157,10 @@ private struct CanvasBody: View {
 
     /// The progress rim (Appearance ▸ Progress rim, Now Playing in compact) and the charge sweep.
     @ViewBuilder private func rim(_ geometry: NotchGeometry) -> some View {
-        if let delight, delight.moment == .chargeSweep, model.phase == .compact || model.phase == .peek {
-            ChargeSweepRim(geometry: geometry, playback: delight, frameInterval: delightInterval)
+        if let delight, delight.moment == .chargeSweep, model.phase == .compact || model.phase == .peek,
+           DelightPlayback.isSeen(momentBudget) {
+            ChargeSweepRim(geometry: geometry, budget: momentBudget)
+                .id(delight.serial)
         } else if model.phase == .compact, model.primary == .nowPlaying, registry.services.settings[CoreSettings.progressRim],
                   let source = registry.services.nowPlaying {
             PlaybackRim(geometry: geometry, source: source, isOnScreen: budget.onScreen)
@@ -182,8 +187,13 @@ private struct CanvasBody: View {
                                                    reduceMotion: false)
     }
 
-    /// One-shot moments' frame interval (`DelightPlayback.frameInterval`): nil while nobody can see them.
-    private var delightInterval: Double? { DelightPlayback.frameInterval(budget) }
+    /// The budget of the one-shot moments drawn on the canvas (ember burst, charge sweep, satellite neck): their
+    /// path (Reduce Motion and Instant draw the static variant, Low Power the SwiftUI design) and frame rate.
+    private var momentBudget: EffectBudget {
+        var moment = budget
+        moment.reduceMotion = theme.reduceMotion || theme.motion == .instant
+        return moment
+    }
 
     /// Hidden = alpha 0 (click-through). The handle on displays without a notch may be "Hidden until hover".
     private var surfaceOpacity: Double {

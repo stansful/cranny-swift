@@ -2,6 +2,7 @@
 import CrannyCore
 import Foundation
 import SwiftUI
+import CrannyEffects
 import Testing
 @testable import CrannyNotchUI
 
@@ -130,56 +131,78 @@ private func kind(_ from: NotchPhase, _ to: NotchPhase, fromHUD: Bool = false, t
         #expect(!DelightPlayback.shouldPlay(moment: .emberBurst, serial: 1, lastPlayed: 5))
     }
 
-    @Test func lifetimesAreAtMostOneSecond() {
+    @MainActor @Test func lifetimesAreAtMostOneSecondAndMatchCrannyEffects() {
         for moment in DelightMoment.allCases { #expect(DelightPlayback.lifetime(of: moment) <= 1.0) }
-        #expect(DelightPlayback.lifetime(of: .emberBurst) == 0.9)
+        // The playback lives exactly as long as the CrannyEffects view that draws it.
+        #expect(DelightPlayback.lifetime(of: .emberBurst) == EmberBurst.duration)
+        #expect(DelightPlayback.lifetime(of: .chargeSweep) == ChargeSweep.duration)
+        #expect(DelightPlayback.lifetime(of: .firstLight) == FirstLight<EmptyView>.duration)
         #expect(DelightPlayback.lifetime(of: .songRipple) == 0.6)
         #expect(DelightPlayback.lifetime(of: .gulp) == 0.25)
-        let start = Date(timeIntervalSinceReferenceDate: 100)
-        let playback = DelightPlayback(moment: .chargeSweep, serial: 1, startedAt: start)
-        #expect(abs(playback.progress(at: start.addingTimeInterval(0.4)) - 0.5) < 1e-6)
-        #expect(playback.progress(at: start.addingTimeInterval(5)) == 1)
         #expect(Gulp.swallow + Gulp.recover == 0.25 && Gulp.depth == 3)
     }
 
-    @Test func momentsRunAtTheBudgetRateAndPauseWhenUnseen() {
-        func budget(onScreen: Bool = true, lowPower: Bool = false, fullScreen: Bool = false, battery: Bool = false) -> EffectBudget {
-            EffectBudget(isOpen: false, onScreen: onScreen, lowPower: lowPower, fullScreenFront: fullScreen,
-                         reduceMotion: true, onBattery: battery)
+    @Test func momentsAreDrawnOnlyWhereSomeoneSeesThem() {
+        func budget(onScreen: Bool = true, lowPower: Bool = false, fullScreen: Bool = false, open: Bool = false) -> EffectBudget {
+            EffectBudget(isOpen: open, onScreen: onScreen, lowPower: lowPower, fullScreenFront: fullScreen,
+                         reduceMotion: false, onBattery: false)
         }
-        #expect(DelightPlayback.frameInterval(budget()) == 1.0 / 30)                  // compact too (not only open)
-        #expect(DelightPlayback.frameInterval(budget(battery: true)) == 1.0 / 20)
-        #expect(DelightPlayback.frameInterval(budget(lowPower: true)) == 1.0 / 30)    // the SwiftUI design still plays
-        #expect(DelightPlayback.frameInterval(budget(onScreen: false)) == nil)        // covered, locked, asleep
-        #expect(DelightPlayback.frameInterval(budget(fullScreen: true)) == nil)
+        #expect(DelightPlayback.isSeen(budget()))                             // compact too (not only open)
+        #expect(DelightPlayback.isSeen(budget(lowPower: true)))               // the SwiftUI design still plays
+        #expect(!DelightPlayback.isSeen(budget(onScreen: false)))             // covered, locked, asleep
+        #expect(!DelightPlayback.isSeen(budget(fullScreen: true, open: true)))
+    }
+}
+
+/// The charge sweep runs along the lower outline of the shape (`LowerRim.outline`), inside it.
+@Suite("Charge sweep outline (DESIGN.md §5.1, §5.5)") struct ChargeSweepOutlineTests {
+    @Test(arguments: [NotchLayout(metrics: .reference).compact(.short),
+                      NotchLayout(metrics: NotchMetrics(hasNotch: false, notchWidth: 0, bandHeight: 30, screenWidth: 1920),
+                                  noNotchStyle: .floatingIsland).compact(.medium)])                        // a floating island
+    func leadingToTrailingInsideTheShape(geometry g: NotchGeometry) throws {
+        let canvas = CGRect(x: 0, y: 0, width: 480, height: 80)
+        let outline = LowerRim.outline(g, in: canvas)
+        let shape = NotchShape(g).path(in: canvas)
+        let points = samples(of: outline)
+        let first = try #require(points.first), last = try #require(points.last)
+        // From the leading side at the body's middle to the trailing side's middle …
+        #expect(abs(first.x - (canvas.midX - g.bodyWidth / 2 + StrokeWidth.rim / 2)) < 0.01)
+        #expect(abs(last.x - (canvas.midX + g.bodyWidth / 2 - StrokeWidth.rim / 2)) < 0.01)
+        #expect(abs(first.y - (g.topInset + g.height / 2)) < 0.01 && abs(last.y - first.y) < 0.01)
+        // … left to right (x never goes back), along the bottom, and half a rim inside the shape everywhere.
+        #expect(zip(points, points.dropFirst()).allSatisfy { $1.x >= $0.x - 0.001 })
+        #expect(abs((points.map(\.y).max() ?? 0) - (g.bottom - StrokeWidth.rim / 2)) < 0.01)
+        for p in points {
+            #expect(shape.contains(p), "\(p) is outside the shape")
+        }
     }
 
-    @Test func embersAreStatelessFanDownAndDie() {
-        let size = EmberBurstView.size
-        let a = EmberField.ember(7, time: 0.3, size: size, stopCount: 3)
-        #expect(a == EmberField.ember(7, time: 0.3, size: size, stopCount: 3))          // pure function of time + seed
-        var alive = 0
-        for i in 0..<EmberField.count {
-            if let e = EmberField.ember(i, time: 0.25, size: size, stopCount: 3) {
-                alive += 1
-                #expect(e.position.y > 0)                                              // below the shape's edge
-                #expect(abs(e.position.x - size.width / 2) <= e.position.y * tan(75 * .pi / 180) + 1)   // within ±75°
-                #expect((0...1).contains(e.alpha))
-                #expect((1.2...2.6).contains(e.radius) && (0..<3).contains(e.stop))
+    @Test func noOutlineForAShapeTooSmallToHaveOne() {
+        #expect(LowerRim.outline(.zero, in: CGRect(x: 0, y: 0, width: 100, height: 40)).isEmpty)
+    }
+
+    /// The path's end points and its curves sampled 8 times each.
+    private func samples(of path: Path) -> [CGPoint] {
+        var points: [CGPoint] = [], current = CGPoint.zero
+        path.forEach { element in
+            switch element {
+            case .move(let p), .line(let p):
+                points.append(p); current = p
+            case .curve(let p, let c1, let c2):
+                for i in 1...8 {
+                    let t = CGFloat(i) / 8, u = 1 - t
+                    let x = u * u * u * current.x + 3 * u * u * t * c1.x + 3 * u * t * t * c2.x + t * t * t * p.x
+                    let y = u * u * u * current.y + 3 * u * u * t * c1.y + 3 * u * t * t * c2.y + t * t * t * p.y
+                    points.append(CGPoint(x: x, y: y))
+                }
+                current = p
+            case .quadCurve(let p, _):
+                points.append(p); current = p
+            case .closeSubpath:
+                break
             }
         }
-        #expect(alive == EmberField.count)
-        #expect((0..<EmberField.count).allSatisfy { EmberField.ember($0, time: 0.95, size: size, stopCount: 3) == nil })
-    }
-
-    @Test func chargeSweepHeadTravelsLeadingToTrailing() {
-        #expect(abs(ChargeSweepProfile.head(progress: 0) - -0.1) < 1e-9)
-        #expect(abs(ChargeSweepProfile.head(progress: 1) - 1.1) < 1e-9)
-        #expect(ChargeSweepProfile.light(at: 0.5, progress: 0.5) > 0.99)               // the head
-        #expect(ChargeSweepProfile.light(at: 0.9, progress: 0.5) < 0.01)               // ahead of it: dark
-        let tail = ChargeSweepProfile.light(at: 0.35, progress: 0.5)
-        #expect(tail > 0.05 && tail < 0.5)                                             // a fading tail behind it
-        #expect(ChargeSweepProfile.stops(progress: 0.3).count == 25)
+        return points
     }
 }
 

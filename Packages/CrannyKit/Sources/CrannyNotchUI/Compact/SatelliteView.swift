@@ -1,9 +1,10 @@
 // CrannyNotchUI/Compact/SatelliteView.swift — the second concurrent activity (DESIGN.md §9.4): a Ø 24u black
 // bubble 6u beyond the compact shape's trailing edge, vertically centred in the band, showing the activity's
-// `minimal()` glyph. It buds off the shape with the `satellite` spring; in Standard and Lively a liquid neck
-// joins the two for the first 0.38 s (§4.3, §5.5). Click swaps it with the primary (a ≥ 32 × 24 target,
-// `SatelliteMetrics`); VoiceOver can dismiss it.
+// `minimal()` glyph. It buds off the shape with the `satellite` spring; in Standard and Lively CrannyEffects'
+// `LiquidNeck` joins the two for the first 0.38 s (§4.3, §5.5). Click swaps it with the primary (a ≥ 32 × 24
+// target, `SatelliteMetrics`); VoiceOver can dismiss it.
 import CrannyCore
+import CrannyEffects
 import Foundation
 import SwiftUI
 
@@ -16,6 +17,8 @@ struct SatelliteView: View {
     /// The compact shape the bubble buds from (its current width).
     let compact: NotchGeometry
     let actions: NotchUIActions
+    /// The canvas's budget for moments: which path draws the neck (shader, Canvas fallback).
+    let budget: EffectBudget
     @State private var budded = false
 
     var body: some View {
@@ -27,8 +30,8 @@ struct SatelliteView: View {
         let showsNeck = !theme.reduceMotion && (theme.motion == .standard || theme.motion == .lively)
         ZStack {
             if showsNeck {
-                LiquidNeckFallback(progress: budded ? 1 : 0, reach: 7, bubble: d, travel: travel, bandHeight: layout.rowHeight,
-                                   cornerRadius: compact.bottomRadius)
+                SatelliteNeck(progress: budded ? 1 : 0, bubble: d, travel: travel, bandHeight: layout.rowHeight,
+                              cornerRadius: compact.bottomRadius, budget: budget)
                     .frame(width: travel + d, height: layout.rowHeight)
                     .offset(x: -travel / 2)
                     .allowsHitTesting(false)
@@ -95,16 +98,17 @@ nonisolated enum SatellitePlacement {
     }
 }
 
-/// Fallback of the `liquidNeck` shader (DESIGN.md §5.6): the body's trailing end and the bubble, blurred
-/// and alpha-thresholded, so two shapes closer than ≈ 2 · reach merge with a concave neck that thins and snaps.
-/// Animatable: SwiftUI redraws it only while the `satellite` spring runs (no clock).
-private struct LiquidNeckFallback: View, Animatable {
+/// The satellite split (DESIGN.md §5.5): CrannyEffects' `LiquidNeck` over the strip from the body's trailing end to
+/// the bubble, both drawn black under the real ones, so the two join with a concave neck that thins and snaps.
+/// Animatable: the `satellite` spring drives `progress` frame by frame (no clock), and once the bubble has landed
+/// nothing is drawn.
+struct SatelliteNeck: View, Animatable {
     var progress: Double
-    let reach: CGFloat
     let bubble: CGFloat
     let travel: CGFloat
     let bandHeight: CGFloat
     let cornerRadius: CGFloat
+    let budget: EffectBudget
 
     nonisolated var animatableData: Double {
         get { progress }
@@ -112,25 +116,26 @@ private struct LiquidNeckFallback: View, Animatable {
     }
 
     var body: some View {
-        let r = reach * CGFloat(1 - smoothstep(0.7, 1, progress))
-        Canvas(opaque: false) { context, size in
-            guard r > 0.2 else { return }
-            context.addFilter(.alphaThreshold(min: 0.5, color: .black))
-            context.addFilter(.blur(radius: r))
-            context.drawLayer { layer in
-                // The body's trailing end: a band-tall stub at the leading edge of this view, under the real body.
-                layer.fill(Path(roundedRect: CGRect(x: 0, y: 0, width: bubble, height: bandHeight),
-                                cornerRadius: min(cornerRadius, bandHeight / 2), style: .continuous), with: .color(.black))
-                let x = travel * CGFloat(progress)
-                layer.fill(Path(ellipseIn: CGRect(x: x, y: (bandHeight - bubble) / 2, width: bubble, height: bubble)), with: .color(.black))
-            }
+        if progress < 1 {
+            LiquidNeck(progress: progress, budget: budget) { bodies }
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
         }
-        .opacity(progress < 1 ? 1 : 0)
     }
 
-    private func smoothstep(_ a: Double, _ b: Double, _ x: Double) -> Double {
-        let t = min(max((x - a) / (b - a), 0), 1)
-        return t * t * (3 - 2 * t)
+    /// The body's trailing end (a band-tall stub at the leading edge of this view, under the real body) and the
+    /// bubble on its way out.
+    private var bodies: some View {
+        ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: min(cornerRadius, bandHeight / 2), style: .continuous)
+                .fill(.black)
+                .frame(width: bubble, height: bandHeight)
+            Circle()
+                .fill(.black)
+                .frame(width: bubble, height: bubble)
+                .offset(x: travel * CGFloat(progress), y: (bandHeight - bubble) / 2)
+        }
+        .frame(width: travel + bubble, height: bandHeight, alignment: .topLeading)
     }
 }
 

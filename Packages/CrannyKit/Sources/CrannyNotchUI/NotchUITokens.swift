@@ -38,17 +38,11 @@ extension View {
     func notchGlyph(_ glyph: NotchGlyph) -> some View { font(glyph.font) }
 }
 
-/// Curves of the one-shot delights (DESIGN.md §5.5–§5.6). They play only when the owner allows a delight (never
-/// under Instant), and the Reduce Motion variants use `fade`.
+/// Curves of the gulp (DESIGN.md §5.5), the one delight that is NotchUI's own shape motion; CrannyEffects times the
+/// others. It plays only when the owner allows a delight (never under Instant) and not under Reduce Motion.
 nonisolated enum DelightMotion {
-    /// The song-change energy ripple: energy + 0.5 · (1 − t/lifetime)², decaying fast then slow.
-    static func ripple(lifetime: Double) -> Animation { .timingCurve(0.33, 0.67, 0.67, 1, duration: lifetime) }
-    /// First light: the light fills outward from the camera over the moment's lifetime.
-    static func firstLight(lifetime: Double) -> Animation { .easeOut(duration: lifetime) }
     /// The gulp: the bottom edge rises 3 pt in 0.07 s …
     static let gulpSwallow = Animation.easeIn(duration: Gulp.swallow)
     /// … and lands back over the rest of the 0.25-s moment, without bounce (it shrinks toward the hardware).
     static let gulpRecover = Animation.spring(duration: Gulp.recover, bounce: 0)
-    /// Reduce Motion variants (static ember glow, instant rim): colour only, fading out over the lifetime.
-    static func fade(lifetime: Double) -> Animation { .easeIn(duration: lifetime) }
 }
