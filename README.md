@@ -6,7 +6,7 @@ you're moving, the volume — glanceable when closed, a full set of widgets when
 Free and open source (MIT), no account, no analytics.
 
 > **Status: 0.1.0, the first complete build.** Every feature below is implemented, reviewed and covered by about
-> 1,700 unit tests, and `make dist` produces a universal app. So far it has run only on macOS 27 on an external
+> 1,760 unit tests, and `make dist` produces a universal app. So far it has run only on macOS 27 on an external
 > display, and nobody has used it with real input yet — see [Known limitations](#known-limitations).
 
 ## Features
@@ -88,7 +88,7 @@ of them. You can review everything in **Settings ▸ Permissions**.
 | Accessibility | You enable "Replace the system HUD", or allow it in the Welcome window | Intercepting the volume (and, if you turn them on, brightness) keys so only Cranny's HUD shows |
 | Calendars | You click "Show your events" in the Calendar widget, or allow it in the Welcome window | Showing upcoming events and meeting links (read-only) |
 | Camera | You first click the Mirror widget | The camera preview; video is never recorded |
-| Automation (Music, Spotify) | You enable the Apple Events fallback for media | Controlling those apps when the system media source is unavailable |
+| Automation (Music, Spotify; only the ones installed) | You enable the Apple Events fallback for media | Reading and controlling those apps when the system media source is unavailable |
 | System Audio Recording | You choose the "Live" visualizer | Animating the visualizer from audio levels; audio is never recorded or stored |
 | Bluetooth | You enable "Show all Bluetooth devices" | Listing every connected device with its battery |
 | Files and Folders | Possibly, when the Tray is set to link to originals instead of copying them, or saves a pipeline result next to a file in Desktop, Documents or Downloads (by default it keeps copies) | Reading the originals and writing results there |
@@ -122,8 +122,8 @@ for most of the automated QA). So far:
   visualizer), Automation and Bluetooth paths, and Launch at login, have not been exercised with a granted
   permission. Brightness and keyboard-backlight HUDs stay off by default for this reason.
 - **No real player control** was tried, and **VoiceOver** has not been run through the app.
-- **Energy** was measured only on a Debug build (about 2–3 % CPU with the light running); the Instruments check on a
-  120-Hz MacBook is still to do.
+- **Energy** was measured only on a Debug build (about 2–5 % CPU with the light running, depending on the display
+  setup); the Instruments check on a 120-Hz MacBook is still to do.
 - Builds are **ad-hoc signed and not notarized**; the **update check is off** until releases are published.
 
 The checklists for these runs are [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §11.2 and

@@ -60,12 +60,19 @@ self-signed "Cranny Dev" code-signing certificate (Keychain Access ▸ Certifica
 ## Visual QA hooks (Debug builds only)
 
 Debug builds accept launch arguments that force a state without any input, so you can capture every
-presentation from a script. No hook posts input, touches the user's data or asks for a permission, and they are
+presentation from a script. No hook posts input or asks for a permission, and they are
 compiled out of Release builds (`#if DEBUG`) except the two effect switches marked "also Release". Arguments
 that start with `--qa-` are read from the command line (parsed by CrannyCore's `LaunchArguments`); `-Cranny…`
 switches are `UserDefaults` arguments (`-Key value`). Each owner documents its hooks at the top of the file named in
-its heading. Run the app for QA with an isolated home (`CFFIXED_USER_HOME=<temp dir>`), so a run never writes your
-real `~/Library` (preferences, timer state, tray files).
+its heading. Run the app for QA with an isolated home (`CFFIXED_USER_HOME=<temp dir>`), so a run keeps its files
+(timer state, tray files, notes) out of your real `~/Library`.
+
+**The isolated home does not isolate settings.** On macOS 27 Cranny's preferences still go to your real
+`~/Library/Preferences/app.cranny.Cranny.plist`, also with `__CFPREFERENCES_AVOID_DAEMON=1` (ARCHITECTURE.md §10.20
+#29). Seed the settings a run needs through the `UserDefaults` argument domain, which is never written to disk: the
+key is `-cranny.<module>.<name>` and the value is the setting's JSON as plist data (`-cranny.general.demoMode
+'<74727565>'` is `true`). Hooks that change a setting change your real one: `--qa-demo`, and `--qa-pause` (end a pause
+run with a `--qa-pause resume` run). Compare `defaults read app.cranny.Cranny` before and after a QA session.
 
 ```sh
 scripts/run.sh -- --qa-state open --qa-page nook --qa-exit-after 8
@@ -101,9 +108,11 @@ scripts/run.sh -- --qa-state open --qa-page nook --qa-calendar sample --qa-snaps
 | `--qa-snapshot <file.png>` | 3 s after launch, renders the primary panel's canvas offscreen (final state, on mid-grey) to that PNG (CrannyNotchUI). |
 | `--qa-snapshot <dir>` [`--qa-snapshot-at 1,3.5`] | Renders every window of the app (menus, Settings, the status item) into `<dir>` at those seconds; with `--qa-welcome` or `--qa-tutorial`, the welcome windows after 3 s. A path ending in `.png` is the canvas snapshot above. |
 | `--qa-menu main\|pause\|showOn` | Opens the menu bar item's menu, or one of its submenus, after 1.5 s. A menu cannot be rendered by code, so its rows (title, ✓, disabled) are written to `qa-trace.txt` in the `--qa-snapshot` folder. |
-| `--qa-demo on\|off` | Turns Demo mode on or off after 1 s. |
+| `--qa-demo on\|off` | Turns Demo mode on or off after 1 s (this writes the real setting; see above). |
 | `--qa-update-check` | Runs "Check for Updates…" as the menu does. |
 | `--qa-open-cranny <seconds>` | Runs the menu's "Open Cranny" after that many seconds. |
+| `--qa-pause oneHour\|untilTomorrow\|untilResumed\|resume` | After 1.5 s, runs that Pause Live Activities choice as the menu does, so its confirmation shows (`resume`: a silent one-hour pause, then Resume). With `--qa-state closed --qa-snapshot <file.png>` the snapshot shows the wing and the peek row; with `--qa-state open`, the confirmation in the open header. It writes `activities.pausedUntil` into your real preferences (see above): finish with a `resume` run. |
+| `--qa-show-tutorial` | Runs the menu's "Show Tutorial" after 1 s, so `--qa-menu main` shows Skip Tutorial. |
 | `--qa-welcome hello\|openIt\|gestures\|preset\|permissions\|done` | Shows the Welcome window at that step; records nothing. |
 | `--qa-tutorial <n>` | Starts the interactive tutorial at step n (1-based); records nothing. |
 
@@ -203,8 +212,9 @@ Package test processes resolve English for `String(localized:)`; the suites that
 ## Manual checks (each release)
 
 Some things only a person at a Mac can check: real input, a hardware notch, permission prompts. The hardware
-checklist is ARCHITECTURE.md §11.2 (items 11–12 cover permissions and the Tray's selection focus), and what is still
-unverified is listed in ARCHITECTURE.md §10.20. Also check:
+checklist is ARCHITECTURE.md §11.2 (item 2 covers menus from the panel; items 11–13 cover permissions, the Tray's
+selection focus and the Pause Live Activities confirmation), and what is still unverified is listed in
+ARCHITECTURE.md §10.20. Also check:
 
 - **Live visualizer permission.** The app ships no microphone entitlement (`device.audio-input`) and no
   `NSMicrophoneUsageDescription`: the Core Audio process tap is "System Audio Recording", which needs only
@@ -293,6 +303,9 @@ need hardware or prompts are opt-in (`CRANNY_INTEGRATION=1`) and never run in CI
 (`Overlay/`), run `CRANNY_INTEGRATION=1 swift test --scratch-path .build-test --filter panelOnScreen`: it
 shows a panel for a few seconds and re-checks R1's facts (layer 26, per-pixel pass-through, no activation)
 through window-server queries, without posting input. The other opt-in suites are listed under Opt-in tests.
+Never bound main-actor scheduling with a short real-time wait: parallel suites can keep the main actor busy for 2–3 s
+while a suite starts. Wait for a signal instead, or use a generous bound (CrannyMedia's `eventually` defaults to 30 s
+and returns as soon as its condition holds).
 
 **Settings in tests and previews.** `CrannyServices.preview()` keeps its settings in memory; anything else that
 needs a `UserDefaults` takes `InMemoryDefaults()` (CrannyCore). Never create a `UserDefaults(suiteName:)` in a test,

@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| Status | **v1.0, adopted** (2026-10-14); aligned with ARCHITECTURE.md by the review of the same day, amended for the Metal decision (ARCHITECTURE D13: §5.6, Appendix B.2), synced with the repo after WP0 (effect clock, shipped shader files, icon), and synced after phases B and C with the refinements the implementation made and the review approved (ARCHITECTURE.md §10 "As built"; still-open questions are ARCHITECTURE.md §10.20). See ARCHITECTURE.md's "Changelog". This file is the single source of truth for every pixel, colour and animation in Cranny. |
+| Status | **v1.0, adopted** (2026-10-14); aligned with ARCHITECTURE.md by the review of the same day, amended for the Metal decision (ARCHITECTURE D13: §5.6, Appendix B.2), synced with the repo after WP0 (effect clock, shipped shader files, icon), synced after phases B and C with the refinements the implementation made and the review approved (ARCHITECTURE.md §10 "As built"), and synced after phase D with the design owner's rulings R1–R5 (§4.4, §4.6, §5.5, §7.3, §9.2, §10, §13, §16) and the fixes that followed them. Still-open questions are ARCHITECTURE.md §10.20. See ARCHITECTURE.md's "Changelog". This file is the single source of truth for every pixel, colour and animation in Cranny. |
 | Applies to | The notch surfaces (closed, compact, peek, HUD, open Nook, Tray), Settings, onboarding and the tutorial, the menu bar extra, the app icon. |
 | Platform | Deployment target macOS 14.0. Newer APIs (`MeshGradient`, `TextRenderer` 15+; Liquid Glass 26+) only behind `#available`, always with a designed fallback. |
 | Code | Every Swift block in this file is copied verbatim from a scratch package that builds with **zero errors and zero warnings** under Swift 6 / macOS 14 / the four CrannyKit upcoming features, with **both** default isolations (nonisolated and `MainActor`). See Appendix C. |
@@ -668,7 +668,7 @@ public extension View {
   - dashed drop zone 1.5 with dash [5, 4]; focus ring 2;
   - scrubber 4 (6 while hovered or dragged), HUD bar 6;
   - rings: 2.5 in the band, 5 in widgets.
-- **Hit targets:** at least 28 × 24 inside the Nook and 32 × 24 for embedded controls in the band. The macOS minimum is 20. A button's hit area is its own frame, so a smaller visual (the 22-pt chip, a text link) gets its room inside the button style (`CrannyChipButtonStyle`, `CrannyLinkButtonStyle`) or its label; a frame or content shape added outside a `Button` or `Menu` does not widen it.
+- **Hit targets:** at least 28 × 24 inside the Nook and 32 × 24 for embedded controls in the band. The macOS minimum is 20. A button's hit area is its own frame, so a smaller visual (the 22-pt chip, a 24-pt icon button's well, a text link) gets its room inside the button style (`CrannyChipButtonStyle`, `CrannyIconButtonStyle`, `CrannyLinkButtonStyle`) or its label; a frame or content shape added outside a `Button` or `Menu` does not widen it. An icon button whose well is smaller than 28 × 24 (the Timer's ring buttons, the Notes header) draws the well centred in a button of at least 28 × 24 that takes clicks over its whole frame; 28- and 32-pt icon buttons keep their size and their shaped hit area.
 - **Elevation:**
   - none for closed and compact (a shadow would reveal the seam);
   - peek: two layers (22 % r 1.5 y 1, and 28 % r 14 y 6);
@@ -1393,9 +1393,9 @@ Overshoot in points: `open` 0.5 % of a 472-pt widening is about 2.4 pt, and `act
 | Setting | Effect |
 |---|---|
 | **Standard** (default) | The table above |
-| **Calm** | Every bounce × 0: everything is critically damped. Effects still run. |
+| **Calm** | Every bounce × 0: everything is critically damped. Effects still run; delight moments play their reduced variants (§5.5). |
 | **Lively** | Bounce × 1.5, capped at 0.35. Anything that lands is still 0. |
-| **Instant** | No animation at all (`nil`), even without Reduce Motion |
+| **Instant** | No animation at all (`nil`), even without Reduce Motion; no delight moments (§5.5) |
 | **Reduce Motion** (system) | `open`, `close` and `resize` **do not travel**: old and new shapes cross-fade at their final sizes (easeInOut 0.20). For a resize only the outlines cross-fade; the content stays in place, so keyboard focus and VoiceOver survive. Small morphs (activity, peek, HUD, satellite) keep morphing, with easeInOut 0.18 and no bounce. The hover breath and HUD level animation are off. Content transitions are opacity only. No stagger, marquee, typing effect, pulse, ember or neck. The light layer **freezes on a resting frame**: the colour stays, the movement goes. Rubber-banding stays (it is direct manipulation) but releases without overshoot. |
 
 ```swift
@@ -1542,19 +1542,14 @@ public nonisolated enum CrannyMotion {
         return .interpolatingSpring(duration: 0.40, bounce: 0.14, initialVelocity: v)
     }
 
-    /// Curves of the one-shot delights (DESIGN.md §5.5–§5.6). They play only when the owner allows a delight
-    /// (never under Instant); the Reduce Motion variants use `fade`.
+    /// The gulp, the one delight that is shape motion (DESIGN.md §5.5: a file caught). Never under Instant; under
+    /// Calm and Reduce Motion its variant is "no gulp, the haptic stays". The other moments (first light, song change,
+    /// timer done, charger connected) and their Calm / Reduce Motion variants are timed by CrannyEffects.
     public nonisolated enum Delight {
-        /// The song-change energy ripple: energy + 0.5 · (1 − t/lifetime)², decaying fast then slow.
-        public static func ripple(lifetime: Double) -> Animation { .timingCurve(0.33, 0.67, 0.67, 1, duration: lifetime) }
-        /// First light: the light fills outward from the camera over the moment's lifetime.
-        public static func firstLight(lifetime: Double) -> Animation { .easeOut(duration: lifetime) }
-        /// The gulp (a file caught): the bottom edge rises `gulpDepth` in `gulpSwallowDuration` …
+        /// The bottom edge rises `gulpDepth` in `gulpSwallowDuration` …
         public static let gulpSwallow = Animation.easeIn(duration: gulpSwallowDuration)
         /// … and lands back over the rest of the 0.25-s moment, without bounce (it shrinks toward the hardware).
         public static let gulpRecover = Animation.spring(duration: gulpRecoverDuration, bounce: 0)
-        /// Reduce Motion variants (static ember glow, instant rim): colour only, fading out over the lifetime.
-        public static func fade(lifetime: Double) -> Animation { .easeIn(duration: lifetime) }
 
         /// How far the gulp lifts the shape's bottom edge (pt).
         public static let gulpDepth: CGFloat = 3
@@ -1682,7 +1677,7 @@ These are two-finger trackpad scrolls over the shape, using precise deltas only.
 | Gesture | Where | Live feedback | Commit | Result |
 |---|---|---|---|---|
 | Horizontal swipe | compact Now Playing, a peek row (the one under the fingers), the Media artwork or title | Content follows `rubberBand(dx, 24)`; the next/previous glyph fades in at the leading edge | 40 pt or 400 pt/s | Next/previous track (*Invert* setting); the old artwork slides out 24 pt and the new one blur-replaces in; `.alignment` haptic at the threshold |
-| Swipe **down** | closed, compact | Shape height + `rubberBand(dy, 20)` | 24 pt or 300 pt/s | Open, carrying the gesture velocity (`CrannyMotion.release`) |
+| Swipe **down** | closed, compact | Shape height + `rubberBand(dy, 20)` | 24 pt or 300 pt/s | Open, carrying the gesture velocity: the `open` spring (its bounce scaled by the motion personality, so Calm lands without overshoot) starts at the fingers' speed as a share of the bottom edge's travel per second, at most 8 per second (overshoot ≈ 0.7 %, Lively 2.2 %); Reduce Motion (a dissolve) and Instant ignore it |
 | Swipe **up** | open | The shape follows, up to −20 | 18 pt | Close |
 | Swipe **up** | compact, peek | Content lifts by the rubber-banded distance | 18 pt | **Dismiss** the activity under the fingers (on a peek with several rows, that row) until its next meaningful change (auto-unhide) |
 | Swipe **up** | closed handle (no notch) | | 18 pt | Hide the handle until the next activity |
@@ -1704,6 +1699,9 @@ breath ──leave──▶ closed (hoverOut)
 compact ──dwell 180 ms──▶ peek ──click──▶ open, focused on the related widget
 open ──leave exit zone (+14 pt)──▶ grace 300 ms ──▶ closed / compact
 grace ──re-enter──▶ open
+open ──a menu opened from the panel closes with the pointer where it hung
+       (within the menus' own size of where it opened, +32 pt)──▶ the region from the exit zone to the pointer
+       (+14 pt) counts as inside for 300 ms; then, or when the pointer leaves it or comes back, the usual grace 300 ms
 open ──holds open: pinned · typing · dragging · a drop still arriving · menu/popover/sheet open · palette, edit or focus mode · Demo──▶ never auto-closes
 open ──Tray tile clicked (key for the selection only)──▶ still closes on leave after the grace (§3.6)
 open ──inactivity timeout (off by default; 5–60 s)──▶ close
@@ -1711,6 +1709,8 @@ file drag within proximity ──▶ open straight to the Tray catch state (no d
 full-screen Space ──▶ dwell ≥ 400 ms
 VoiceOver running ──▶ hover never opens; click, shortcut or VO action does
 ```
+
+**Menus from the panel:** while a menu tracks, the panel is held open. A menu that hangs below the panel (Mirror's camera menu, a card's ⋯ menu) leaves its region inside for one grace after it closes, so the pointer that picked an item is not already "outside". A menu from elsewhere (the menu bar extra, a Settings pop-up), or one dismissed by a click far from where it opened, leaves nothing, and the usual grace starts at once.
 
 **Menu-bar courtesy:** while the pointer is in the band within 24 pt *beside* the compact wings (reaching for a menu or status item under them), the wings retract with `activityOut` and return 1.5 s after the pointer leaves the band. Pointer moves along the rest of the menu bar, or on another display's menu bar, do nothing. A pointer inside the hover zone is never courtesy, so while a satellite shows (it sits in the right-hand strip) courtesy works only on the left. The HUD ignores courtesy.
 
@@ -1726,7 +1726,7 @@ VoiceOver running ──▶ hover never opens; click, shortcut or VO action does
 | Open | Light layer ≤ 30 fps on AC, 20 fps on battery, timed by `EffectClock` (CrannyCore), which wakes only at that rate. `TimelineView(.animation(minimumInterval:))` and `.periodic` are not used for effects: they keep SwiftUI redrawing at the display's refresh rate (ARCHITECTURE §9.2) |
 | Low Power Mode, `thermalState ≥ .serious` | Light becomes a static halo (0 fps) |
 | Full-screen app in front, panel occluded, Reduce Motion | Paused (Reduce Motion keeps a frozen frame) |
-| **Targets** | Activity Monitor Energy Impact < 1.0 idle; open plus aurora ≤ 3 % CPU; no hitches at 120 Hz. Measured with Instruments before each release. Open plus aurora cost ≈ 5–10 % at WP0 on a 240-Hz display; since the light draws through its own Metal layer (§5.6) a Debug build measures 1.5–2.6 % with effects forced on. The Instruments run on a 120-Hz MacBook is still due (ARCHITECTURE §10.20). |
+| **Targets** | Activity Monitor Energy Impact < 1.0 idle; open plus aurora ≤ 3 % CPU; no hitches at 120 Hz. Measured with Instruments before each release. Open plus aurora cost ≈ 5–10 % at WP0 on a 240-Hz display; since the light draws through its own Metal layer (§5.6) a Debug build measures 1.5–2.6 % with effects forced on (phase C, floating island; after phase D the attached notch shape on the same Mac measured 4.0–5.0 %, the same as before phase D). The Instruments run on a 120-Hz MacBook is still due (ARCHITECTURE §10.20). |
 
 ---
 
@@ -1779,7 +1779,7 @@ All effects are pure functions of time, palette, energy and intensity. They hold
 
 ### 5.5 Delight moments
 
-All are original and capped: at most one plays at a time; none play in full screen, while the panel is covered, while the screen is locked or while Live Activities are paused; and none play under Calm, Instant or Reduce Motion unless noted. (Today the shell vetoes every moment it schedules under Calm, Instant and Reduce Motion, so the Calm / Reduce Motion variants below for First light, Timer done and Charger connected do not play: ARCHITECTURE §10.20 issue 2.)
+All are original and capped: at most one plays at a time; none play in full screen, while the panel is covered, while the screen is locked or while Live Activities are paused; and none play under Motion ▸ Instant. Under Calm and under Reduce Motion each moment plays its variant from the last column instead (design ruling R2): First light fades in statically, Timer done shows the static ember glow, Charger connected lights the rim at once and the satellite split fades. Song change (colour only, carried by the palette cross-fade) and File caught (no gulp; the haptic stays) draw no moment then, so they are not scheduled and never keep the stage from a moment that shows. The ambient light is not a moment: under Calm it keeps moving.
 
 **Who triggers what** (ARCHITECTURE §3.6, §4.6 step 7): feature modules cannot import `CrannyEffects`, so an activity only *names* its moment (`LiveActivity.delight`: Timer done → `.emberBurst`, Charging → `.chargeSweep`); the shell adds `.songRipple`, `.firstLight` and `.gulp`, applies the caps above, and CrannyNotchUI draws the moment from `CrannyEffects`. The to-do check and its Lively motes are drawn inside the To-dos widget; the drop, satellite neck and HUD bump are motion owned by NotchUI and the HUD.
 
@@ -1919,6 +1919,7 @@ Since ARCHITECTURE D13, the light is drawn by SwiftUI **stitchable** Metal funct
   - ⌕ Command palette (⌘K), 📌 Pin (`pin` / `pin.fill`; pinned shows a `control` well), ⚙︎ Settings (⌘,).
   - Plain icon buttons, drawn at 28 pt with 13-pt semibold glyphs inside a 32 × 28 hit area (the band's 32 × 24 minimum, §2.3); their shape follows Appearance ▸ Buttons.
 - **Centre:** the camera zone (N + 16) stays empty. On displays without a notch it shows the time and date.
+- **Takeovers:** while a HUD leads (§10) or the Pause Live Activities confirmation shows (§9.2), its views replace the tabs and actions for its lifetime (`contentSwap`), left and right of the camera zone. The open shape never changes.
 
 ### 6.3 Grid
 
@@ -2042,10 +2043,10 @@ Each widget is a VoiceOver container named after itself and a keyboard `focusSec
 - **App tiles:** 56-pt cells holding a 36-pt app icon (`NSWorkspace.icon(forFile:)`).
   - Hover: a `control` well (r 12) and a `.help` name.
   - Running apps get a 4-pt `secondaryLabel` dot under the icon, Dock-style.
-- **Shortcut tiles:** a 36-pt continuous squircle (r 9) in the shortcut's colour, or a stable hue hashed from its name, with its SF Symbol glyph or first letter (17 pt, white). *(The build draws a 29-pt body, r 6.5, with a 16-pt glyph to match the visible size of app icons; the ruling is open, ARCHITECTURE §10.20 issue 1.)* The symbol comes from a curated list of SF Symbols (user content, so outside §14.1, each checked to exist and not be restricted).
+- **Shortcut tiles:** a 29-pt continuous squircle (r 6.5) centred in the 36-pt icon cell, in the shortcut's colour or a stable hue hashed from its name, with its SF Symbol glyph or first letter (16 pt, white). macOS app icons carry transparent padding inside their 36-pt image, so the 29-pt body matches their visible size and a column of apps and shortcuts reads as one size (design ruling R1). The symbol comes from a curated list of SF Symbols (user content, so outside §14.1, each checked to exist and not be restricted).
   - Runs via `shortcuts run`.
   - While running: a 2.5-pt progress ring (≤ 8 fps, from the effect budget). Success: a check with `.symbolEffect(.bounce)`. Failure: a `danger` badge with a tooltip.
-  - A result that no tile on screen shows (the shortcut sits in "+N", or its page isn't showing) flashes Done or Failed in the notch.
+  - A result that no tile on screen shows (the shortcut sits in "+N", its page isn't showing, or it ran from ⌘K) flashes Done or Failed in the notch and is announced to VoiceOver (§16). Only runs the user started report anything; a run the user stopped reports nothing.
 - **Overflow:** the Nook never scrolls, so tiles that don't fit go into a trailing **"+N"** tile whose menu (dropping down under the tile) lists them, with the combined run state of the shortcuts it holds.
 - **Launching** an app closes the panel like a menu, except when the panel is pinned or in Demo mode. Demo mode hides shortcut names everywhere (tiles, tooltips, menus, ⌘K, VoiceOver).
 - **Editing:**
@@ -2208,7 +2209,9 @@ When a file drag enters the proximity zone (§3.6), the shape opens straight to 
 - **Embedded controls** (Join, ⏯ in peek) are directly clickable. Hit areas are ≥ 32 × 24, padded beyond the glyph, with a hover `control` fill and a press scale. Compact has at most **one** interactive control (Join).
 - **Swipe up** dismisses the activity until its next meaningful change: a new track, the last minute of a timer, a meeting starting.
 - **Inactivity timeout** (Live Activities settings, 0 = never) collapses compact to closed but keeps the satellite.
-- **Pause Live Activities** (menu bar extra): for 1 hour · until tomorrow · until resumed. It silences activities, peeks and delight moments; the HUD still works.
+- **Pause Live Activities** (menu bar extra, the Pause activities shortcut, ⌘K): for 1 hour · until tomorrow · until resumed. It silences activities, peeks and delight moments; the HUD still works.
+  - **The Timer's done sound still plays** (design ruling R4): it is an alarm the user set. The Timer done activity itself follows the pause (no wings, no peek, no ember). Demo mode still mutes the sound (§14.3).
+  - **Every pause or resume the user asks for confirms itself** (ruling R5), from the menu, the shortcut or ⌘K and for any duration, on the pointer's display, although activities are paused. The wings show `pause.fill` or `play.fill` with a short word, "Paused" / "Resumed" («Пауза» / «Активны»: the wing holds 72u at the `compact` style, which «Возобновлены» overflows). Where that display shows peeks, a peek row spells out the sentence for the peek duration: "Live Activities paused for 1 hour" / "Live Activities paused until tomorrow" / "Live Activities paused" / "Live Activities resumed" («Активности приостановлены на 1 час» / «… до завтра» / «Активности приостановлены» / «Активности возобновлены»); the menu's status line uses the same sentences. While that display's panel is open, the confirmation takes the header row for the same time, as the HUD does (§10): the glyph left of the camera, the sentence right of it when it fits that side on one line, else the word, also when another alert leads. VoiceOver hears the sentence (§16). A pause that ends by itself, Reset All and Undo are not confirmed. Whether the wings should carry the sentence rather than the word is still open (ARCHITECTURE §10.20).
 
 ### 9.3 Peek anatomy
 
@@ -2222,7 +2225,7 @@ Peek is 380–460 pt wide (425 on a 14″) and always has the keyline and `Eleva
 
 - **Priority:**
   - **P0** HUD: transient; pre-empts everything for 1.5 s, then restores.
-  - **P1** alerts: meeting soon, timer done, low battery, device connected, charging, song-change peek. Each peeks once, on the pointer's display only (or the primary display's panel when the pointer's display shows no Cranny). A confirmation flash ("Hi", "Path copied") is P1 too but never peeks and is never announced.
+  - **P1** alerts: meeting soon, timer done, low battery, device connected, charging, song-change peek. Each peeks once, on the pointer's display only (or the primary display's panel when the pointer's display shows no Cranny). A confirmation flash ("Hi", "Path copied") is P1 too but never peeks and is never announced; the Pause Live Activities confirmation is the exception (§9.2).
   - **P2** ongoing: meeting in progress, timer running, Now Playing.
   - **P3** passive: paused media.
 - **One ongoing activity:** compact.
@@ -2256,7 +2259,7 @@ Peek is 380–460 pt wide (425 on a 14″) and always has the keyline and `Eleva
 - **Sound:** if "Play feedback when volume is changed" is on in macOS, Cranny plays the same system feedback.
 - **VoiceOver:** "Volume, 62 percent" is posted once the value settles (0.5 s), only while VoiceOver runs.
 - **Full screen:** the HUD is allowed under the default full-screen policy.
-- **While the panel is open:** the HUD's leading and trailing views take the header row, left and right of the camera, replacing tabs and actions with `contentSwap` for the HUD's lifetime. The open geometry never changes (ARCHITECTURE §4.11).
+- **While the panel is open:** the HUD's leading and trailing views take the header row, left and right of the camera, replacing tabs and actions with `contentSwap` for the HUD's lifetime. The open geometry never changes (ARCHITECTURE §4.11). The Pause Live Activities confirmation (§9.2) takes the header the same way; a HUD that leads wins over it.
 
 ---
 
@@ -2273,8 +2276,8 @@ Peek is 380–460 pt wide (425 on a 14″) and always has the keyline and `Eleva
 |---|---|---|---|
 | — | **General** | `gearshape.fill` / gray | Launch at login (`SMAppService.mainApp`) · **Show on** (built-in / with the pointer / all / chosen displays; the last chosen display cannot be unchecked) + a **per-display table**: style Automatic · Island · Attached · Off, Activities, Peeks, HUD · **Open Cranny with** Hover / Click / Shortcut only · Hover delay (Instant 0 · **Short 120 ms** · Standard 220 · Long 450) · Hold ⌥ to pass over · Close when the pointer leaves (+ grace) · Close after inactivity (Never, 5–60 s) · Hide when idle (no-notch handle, after 3–60 s, default 10) · In full-screen apps (Hide / **Alerts & HUD only** / Show) · Excluded apps · **Demo mode** (+ redact calendar titles) · UI sounds (off) · Show menu bar icon · Updates: check daily via GitHub Releases, Check Now, include pre-releases · **Reset All Settings…** |
 | — | **Appearance** | `paintbrush.fill` / purple | Accent (Automatic / System / swatches / Monochrome) · Text size · **Motion** (Calm / Standard / Lively / Instant) · **Ambient light** (Off / Subtle / Vivid) + Effect (Aurora / Motes / Tide) · Album glow · Underglow · Progress rim · Translucent background · Glass island (26+) · Buttons (Capsule / Rounded) · Widgets (Cards / Flat with dividers) · Density + panel padding ±4 · **Notch fit** (width ±10, radius ±3, live outline) · On displays without a notch (Floating island / Attached / Off) + handle (Visible / Hidden until hover) · Typing effect |
-| — | **Keyboard** | `keyboard` / indigo | Shortcut recorders: **Open Cranny ⌃⌥N** (on), Open Tray, New note, Start timer, Toggle pin, Pause activities (off by default) · type-to-capture target (Notes / To-dos / Off) · read-only in-panel reference (the same data as the hold-⌘ overlay). Conflicts are flagged inline: registration failures, plus a best-effort match against the enabled system shortcuts (`com.apple.symbolichotkeys`). |
-| Notch | **Layout & Widgets** | `square.grid.2x2.fill` / blue | **Grid editor on the preview stage** (§6.6) · pages (add, rename, reorder, up to 3 user pages; a "…" menu after "+" holds Rename, Symbol, Move left/right and Remove Page for mouse, keyboard and VoiceOver) · widget library ("+", with one-line descriptions) · per-widget options in a popover: Calendar days behind/ahead and past events, Mirror camera and mirroring, Notes typing effect and default mode, To-dos hide completed, Timer presets and sound, Media visualizer in the widget |
+| — | **Keyboard** | `keyboard` / indigo | Shortcut recorders: **Open Cranny ⌃⌥N** (on), Open Tray, New note, Start timer, Toggle pin, Pause activities (off by default) · type-to-capture target (Notes / To-dos / Off), with an inline warning while that widget is on no page ("The Notes widget isn’t on any page, so typing does nothing.", plus "No page has room for it; add a page first." when no page can take it): the text above a **Show in Layout & Widgets** button, which opens that pane at the widget's library entry on a page with room for it, or at Pages · read-only in-panel reference (the same data as the hold-⌘ overlay). Conflicts are flagged inline: registration failures, plus a best-effort match against the enabled system shortcuts (`com.apple.symbolichotkeys`). |
+| Notch | **Layout & Widgets** | `square.grid.2x2.fill` / blue | **Grid editor on the preview stage** (§6.6) · pages (add, rename, reorder, up to 3 user pages; a "…" menu after "+" holds Rename, Symbol, Move left/right and Remove Page for mouse, keyboard and VoiceOver) · widget library ("+", with one-line descriptions) · per-widget options in a popover: Calendar days behind/ahead and past events, Mirror camera and mirroring, Notes typing effect and default mode, To-dos hide completed, Timer presets and sound, Media visualizer in the widget · opening the pane at a widget (the Keyboard warning, search, a deep link) shows a page that holds the widget or has room for it, so its Add works |
 | Notch | **Live Activities** | `capsule.tophalf.filled` / pink | A **draggable priority list** (a dropped row takes the target's place within its priority class; also Move up / Move down in the row's menu, ⌥↑ / ⌥↓ and VoiceOver actions) with a toggle per activity and, under each, the activity's own options supplied by its module: peek on change (per activity) · meeting lead time (1–30 min, default 5) and show while in an event (elapsed / remaining) under the meeting rows · hide paused media after N s under Now Playing · peek at one minute left under Timer · thresholds under Low battery · "Show all Bluetooth devices" under Bluetooth. Global rows: peek duration · swipe up to dismiss · auto-unhide · quick peek on hover · satellite · Fold away after (compact inactivity; Never, …) · menu-bar courtesy |
 | Notch | **HUD** | `speaker.wave.2.fill` / teal | Replace the system HUD (needs Accessibility; status pill + why; a row when the HUD is off in Live Activities, §10) · **Show the HUD for** Volume / Brightness / Keyboard backlight (the last two off by default) · **Style**: Colors (Mono / Accent / Semantic) · Show value · Show output device · Duration · a warning when a known HUD app competes |
 | Notch | **Gestures** | `hand.draw.fill` / orange | Swipe sideways to change track (+ Invert) · Swipe down to open, up to close · Swipe up to dismiss an activity · Sensitivity · **Haptic feedback** + "Feel it" test button |
@@ -2282,7 +2285,7 @@ Peek is 380–460 pt wide (425 on a 14″) and always has the keyline and `Eleva
 | Features | **Calendar** | `calendar` / red | Calendars (a checkbox list with colours; the Birthdays calendar's box shows birthdays) · days behind / ahead · today's past events · meeting-link providers (the 10 of §7.2) · open meetings in the app or the browser · without access: "Permissions…" (never a prompt) |
 | Features | **Shortcuts** | `square.2.layers.3d.fill` / indigo | One list of every tile in launcher order (apps and Shortcuts.app shortcuts; add, search, reorder with Move Up/Down, drag from Finder or the Dock; Customize… for symbol and color) · tile labels |
 | Features | **Tray** | `tray.full.fill` / green | Retention · max items · dropping on the notch opens the Tray · AirDrop zone · **pinned pipelines** (Drop zone 1–3) · **pipeline editor** (a chain builder: steps, reorder, a preview of the output name) · defaults: JPEG quality, max dimension, output location, zip naming |
-| — | **Permissions** | `hand.raised.fill` / blue | Calendar · Camera · Accessibility · Automation (per media app) · Bluetooth · System Audio Recording (optional): a status pill (Granted / Not yet / Denied) + a one-line why + Grant… or Open System Settings |
+| — | **Permissions** | `hand.raised.fill` / blue | Calendar · Camera · Accessibility · Automation (per installed media app, named as Finder names it; an app that is not installed has no row) · Bluetooth · System Audio Recording (optional): a status pill (Granted / Not yet / Denied) + a one-line why + Grant… or Open System Settings |
 | — | **About** | `info.circle.fill` / gray | The live icon · version · Check for Updates · release notes · GitHub · MIT licence · acknowledgements · **Replay tutorial** · Show welcome |
 
 ### 11.2 The live preview stage (the signature of Settings)
@@ -2321,7 +2324,7 @@ Peek is 380–460 pt wide (425 on a 14″) and always has the keyline and `Eleva
 | 2 · Open it your way | Three option cards: **Hover** (with delay presets), **Click**, **Shortcut only** (⌃⌥N). A click-through coach mark around the real notch whose sentence follows the chosen mode ("Rest the pointer here, or press ⌃⌥N." / "Click the notch, or press ⌃⌥N" / "Press the shortcut"). | Detects the *actual* opening of the real notch: ✓ (green, `.bounce`) per method; Continue enables after one |
 | 3 · Gestures | Only if a trackpad is present. A practice notch on the stage with live rubber-banding and haptics. | Pull down to open; swipe sideways (skipped if nothing plays) |
 | 4 · Pick a starting layout | Preset cards, each a true-proportion static miniature with one glyph per widget (the stage above shows the live panel for the picked preset): **Listener** (Media 5 · Calendar 3 · Apps 2, the default), **Maker** (Notes 4 · To-dos 3 · Timer 2 · Shortcuts 1), **Meetings** (Calendar 4 · Mirror 2 · Timer 2 · Apps 2), **Minimal** (Media 4, HUD) | Pick one; the stage updates |
-| 5 · Permissions, only for what you chose | Rows for the features the preset needs, all **off**: Calendar, Accessibility (HUD), Automation (media apps), Bluetooth. Automation and Bluetooth serve off-by-default switches (the Apple Events fallback, all Bluetooth devices), so their rows appear only while that switch is on; the switch asks itself when it is turned on. Each row says why and what Cranny does *not* do. Camera is never asked here; Mirror asks on first use. | Allow triggers the system prompt then and there; "Later" is fine |
+| 5 · Permissions, only for what you chose | Rows for the features the preset needs, all **off**: Calendar, Accessibility (HUD), Automation (installed media apps), Bluetooth. Automation and Bluetooth serve off-by-default switches (the Apple Events fallback, all Bluetooth devices), so their rows appear only while that switch is on; the switch asks itself when it is turned on. Each row says why and what Cranny does *not* do. Camera is never asked here; Mirror asks on first use. | Allow triggers the system prompt then and there; "Later" is fine |
 | 6 · You're set | Launch at login (on) · Check for updates (on) · a cheat sheet of 6 keys | **Take the 1-minute tutorial** (primary) · Done (opens the Nook once) |
 
 ### 12.2 Interactive tutorial (in the real notch)
@@ -2335,7 +2338,7 @@ Peek is 380–460 pt wide (425 on a 14″) and always has the keyline and `Eleva
   5. "Pin it with 📌, then press Esc"
   - Steps 4 and 5 need the panel to be key: the tutorial asks for keyboard focus when the panel opens by any route (or is pinned). While the panel is closed their bubbles say "Open Cranny, then …".
 - **Visibility:** the bubble and the coach mark show only under a real shape, and hide whenever the notch hides (locked screen, sleeping displays, Live Activities paused, a full-screen app in front unless the full-screen policy is Show all or Demo mode is on). The step they wait for is kept.
-- **Ways out:** **Skip tutorial** on the bubble, the same command in ⌘K while it runs, and a step that waits 3 minutes ends the tutorial (with a VoiceOver announcement; nothing is recorded). Esc is not an exit: it is step 5's action and the notch's close key.
+- **Ways out:** **Skip tutorial** on the bubble, and while it runs the same command in ⌘K and **Skip Tutorial** in the menu bar extra (§13); a step that waits 3 minutes ends the tutorial (with a VoiceOver announcement; nothing is recorded). Esc is not an exit: it is step 5's action and the notch's close key.
 - **Step 1** follows the open mode: Hover "Rest the pointer on the notch, or press ⌃⌥N"; Click "Click the notch, or press ⌃⌥N"; Shortcut only "Press the shortcut" + key cap; no shortcut set "Click the notch".
 - Replayable from the menu bar extra and from Settings ▸ About.
 
@@ -2358,11 +2361,12 @@ Peek is 380–460 pt wide (425 on a 14″) and always has the keyline and `Eleva
   Settings…                        ⌘,     (Button → AppControl.openSettings; no SwiftUI Settings scene)
   Check for Updates…               ("Checking for Updates…", "Update Available: Cranny x.y.z…")
   Show Tutorial
+  Skip Tutorial                    (only while the tutorial runs)
   ───────────
   About Cranny
   Quit Cranny                      ⌘Q
   ```
-- **Behaviour:** Open Cranny only opens (with a panel already open it opens again on the pointer's display with keyboard focus); only ⌃⌥N toggles. Show On ▸ lists "Display with the Pointer" with two or more displays, disables the last shown display's row, and turning on a display styled Off makes it Automatic (notched) or Floating island. **About Cranny** and **Check for Updates…** open Settings ▸ About, where the result shows inline; there is no alert. "Until Tomorrow" ends at the next local midnight.
+- **Behaviour:** Open Cranny only opens (with a panel already open it opens again on the pointer's display with keyboard focus); only ⌃⌥N toggles. Show On ▸ lists "Display with the Pointer" with two or more displays, disables the last shown display's row, and turning on a display styled Off makes it Automatic (notched) or Floating island. **About Cranny** and **Check for Updates…** open Settings ▸ About, where the result shows inline; there is no alert. "Until Tomorrow" ends at the next local midnight. Each pause and Resume confirms itself in the notch and to VoiceOver (§9.2). **Skip Tutorial** ends the tutorial like the bubble's Skip tutorial, without recording it as completed.
 - **Hide menu bar icon** (General): if the icon is hidden, launching the app again from Finder or Spotlight opens Settings, so nobody gets locked out.
 
 ---
@@ -2410,7 +2414,7 @@ Haptics use `NSHapticFeedbackManager.defaultPerformer.perform(_, performanceTime
 ### 14.3 Sound
 
 **None by default; Cranny ships no audio files.**
-- **Timer finished:** a user-chosen *system* alert sound (`NSSound(named:)`) or None. The picker shows each sound under its System Settings ▸ Sound name, in both languages, sorted by that name (the file "Glass" shows as "Crystal" / «Кристалл»); the setting stores the file name.
+- **Timer finished:** a user-chosen *system* alert sound (`NSSound(named:)`) or None. The picker shows each sound under its System Settings ▸ Sound name, in both languages, sorted by that name (the file "Glass" shows as "Crystal" / «Кристалл»); the setting stores the file name. It plays even while Live Activities are paused (§9.2, ruling R4).
 - **HUD:** mirrors the system's "Play feedback when volume is changed".
 - **UI sounds** (General ▸ UI sounds, `general.uiSounds`, off by default): "Pop" when a file is caught and "Tink" when a to-do is completed (both system sounds, played by name; never copied into the app).
 - Demo mode mutes everything.
@@ -2515,10 +2519,10 @@ A build script could render 16–1024 px for an `AppIcon.appiconset`; it is need
 - **Widgets** are containers; a **"Widgets" rotor** jumps between them.
 - **Adjustable elements:** the scrubber (±10 s), the timer (±1 min) and the HUD level (`accessibilityAdjustableAction`). Tabs carry `.isSelected`.
 - **Decorative layers** (light, halos, visualizer, satellite neck, key caps) are `accessibilityHidden`.
-- **Announcements** (`AccessibilityNotification.Announcement`):
-  - Only P1 alerts (timer done, meeting in 1 minute, device connected, low battery) and pipeline completion. The tutorial also announces its steps (§12.2). (The build additionally announces a shortcut result that no tile shows; that waits for a ruling, ARCHITECTURE §10.20 issue 3.)
-  - Rate-limited to one per 10 s across the whole app.
-  - Layout changes: resizing or removing a card (editor or ⋯ menu) is announced.
+- **Announcements** (`AccessibilityNotification.Announcement`; alerts, results and the pause confirmation go through `services.announcer`):
+  - **Alerts and results:** P1 alerts (timer done, meeting in 1 minute, device connected, low battery), pipeline completion, and the result of a Shortcuts run the user started when no tile on screen shows it (it sits in "+N", its page isn't showing, or it ran from ⌘K; design ruling R3): "Morning finished" / "Morning failed" («Быстрая команда «Утро» выполнена» / «… завершилась с ошибкой»). In Demo mode the result names no shortcut: "Shortcut finished" / "Shortcut failed" («Быстрая команда выполнена» / «Быстрая команда завершилась с ошибкой»). Nothing runs a shortcut by itself, and a run the user stopped says nothing. The tutorial also announces its steps (§12.2).
+  - Alerts and results are rate-limited to one per 10 s across the whole app; one that comes too soon is dropped, not queued (the notch still shows it).
+  - **Feedback**, the direct answer to the user's own action, is never rate-limited and does not count against the limit: layout changes (resizing or removing a card, from the editor or the ⋯ menu), Settings' Undo, and the confirmation of Pause Live Activities and Resume (the sentence of §9.2).
   - HUD values are announced only on settle, and only while VoiceOver runs.
 
 **Keyboard map**
@@ -2759,7 +2763,10 @@ struct FocusRingModifier: ViewModifier {
 
 // MARK: - Buttons
 
-/// Icon button used everywhere in the notch. `.prominent` = the ONE primary action per card.
+/// Icon button used everywhere in the notch. `.prominent` = the ONE primary action per card. A well smaller than
+/// `HitTarget.nook` (the Timer's 24-pt ring buttons, Notes' header) is drawn centred in a button of at least 28 × 24
+/// that takes clicks over its whole frame, as `CrannyChipButtonStyle` does (DESIGN.md §2.3, §16): a frame or content
+/// shape added outside a `Button` does not widen it.
 public struct CrannyIconButtonStyle: ButtonStyle {
     public enum Role: Sendable { case plain, filled, prominent }
     public var role: Role
@@ -2781,12 +2788,14 @@ public struct CrannyIconButtonStyle: ButtonStyle {
             case .filled: configuration.isPressed ? p.controlPressed : hovered ? p.controlHover : p.control
             case .plain: configuration.isPressed ? p.controlPressed : hovered ? p.control : .clear
             }
+            let widened = size < HitTarget.nook.width || size < HitTarget.nook.height
             configuration.label
                 .font(.system(size: (size * 0.48).rounded(), weight: .semibold))
                 .foregroundStyle(role == .prominent ? p.onProminent : p.label)
                 .frame(width: size, height: size)
                 .background(CrannyButtonShape(theme.buttonShape).fill(fill))
-                .contentShape(CrannyButtonShape(theme.buttonShape))
+                .frame(minWidth: HitTarget.nook.width, minHeight: HitTarget.nook.height)
+                .contentShape(widened ? AnyShape(Rectangle()) : AnyShape(CrannyButtonShape(theme.buttonShape)))
                 .scaleEffect(configuration.isPressed && !theme.reduceMotion ? 0.94 : 1)
                 .opacity(enabled ? (configuration.isPressed && theme.reduceMotion ? 0.7 : 1) : 0.4)
                 .onHover { hovered = $0 }
@@ -3412,4 +3421,5 @@ The remaining functions of §5.6. Each goes in its own file with the usual three
 | Metal shaders (App. B.2, §5.6; 2026-10-14) | `CrannyShaders.h`, `Dither.metal`, `Aurora.metal`, `ShaderEffects.swift`, the aurora branch and the tests compiled inside a copy of the CrannyKit layout, with `CrannyEffects` built under **both** default isolations and 0 compiler warnings, and passed `swift test`. The universal Release app embeds `CrannyKit_CrannyEffects.bundle/Contents/Resources/default.metallib`, and `ShaderEffects.unavailabilityReason()` is nil inside the app. `ImageRenderer` renders of `auroraField` (+ dither) at 880 × 260 pt: top 40 % alpha 0; peak 0.36 / 0.64 against caps 0.45 / 0.80; curtains visibly tall and three-stop. The other seven signatures compile and render with stub bodies. A missing function or wrong argument count renders transparent, silently (hence `requiredFunctions` + per-function render tests). One comment line of B.1 was updated ("SwiftUI path…"); no code changed. |
 | WP0 in the repo (2026-10-14) | The design-system files (`Color`, `Typography`, `Layout`, `Motion`, `Notch`, `Theme`, `Components`, `AmbientPalette`), `CrannyShaders.h`, `Dither.metal`, `Aurora.metal`, `ShaderEffects.swift` (+ `auroraField` in `requiredFunctions`) and the B.2 tests are byte-identical to this document; `AuroraField.swift` differs from B.1 only as described there. `make check`: 0 warnings; 67 tests pass, including the `auroraField` render test (top 40 % black, peak alpha under the cap). actool compiled the WP0 icon (`fill-specializations` + two rendered layers) into `Assets.car` and `AppIcon.icns`. Energy: the open panel with the aurora costs ≈ 5–10 % CPU on a 240-Hz display with `EffectClock` (11.4 % with `TimelineView` at 30 fps), so §4.7's ≤ 3 % is not met yet (ARCHITECTURE Appendix C). Screenshots were captured by window id with the screen locked, so the light shows its resting frame. |
 | Phases B and C in the repo (2026-10-14) | The design-system listings of §2–§4 and App. A are still byte-identical to their files after phase C (checked file by file). The refinements recorded in this sync are each covered by the owning package's tests (ARCHITECTURE §10 "As built"): e.g. `SlotFitTests` (Bluetooth `medium` slot), `FeaturedRowTests` (Calendar Join layouts, en/ru, every text size and density), `MirrorResourceTests` (chip titles fit), `LightLayerTests` (Effect setting renders aurora, motes and tide), `TimerSoundNameTests`, `TerminologyTests` and `CopyGlossaryTests` (Russian terms), `SymbolTests` (§14.1 against `CrannySymbol` and the system catalogue). Visual checks used in-process snapshots only (the display was asleep); hardware, real input and VoiceOver are open (ARCHITECTURE §10.20). |
+| Phase D in the repo (2026-10-14) | The §4.2 `Motion.swift` and App. A `Components.swift` listings were resynced after `b3beeac` (the unused delight curves `ripple`, `firstLight` and `fade` removed; `Delight` holds only the gulp) and `8920c06` (`CrannyIconButtonStyle` widens wells smaller than 28 × 24); every design-system listing is byte-identical to its file again (checked file by file). The rulings are covered by the owning packages' tests: R2 by `ActivityArbiterTests` and `ChoreographyTests` (reduced variants scheduled and drawn), R3 by `QuickAppsModelTests` (only user runs report; the Demo-mode sentences in English and Russian), R4 by `TimerModelTests` (the sound plays while paused, not in Demo mode), R5 by `PauseConfirmationTests` (the wing words fit the wing at notch units 0.8–1.25 in both languages; the open header) and `SceneAndHeaderTests` (header takeover, pixel test at the 632-pt and 481-pt headers); the swipe velocity by `OpenVelocityTests`. In-process snapshots (`--qa-pause`, `--qa-state`, `--qa-menu`, `-CrannyQASnapshot`) were checked by eye. Real input, hardware and VoiceOver remain open (ARCHITECTURE §10.20). |
 | Not verified here | Real notch radii and widths on each MacBook model (this Mac runs in clamshell mode with an external display). The closed radius 0.30·band and the 0.5-pt inset are starting values; calibrate on 13″/14″/15″/16″ hardware at every scaling mode with the Notch fit sheet and record per-model defaults. On-screen CPU/energy and the shaders' GPU frame time (Instruments on hardware). The look of the seven shaders WP11 still writes, and their parity with the fallbacks. Haptic delivery from a background agent. |
