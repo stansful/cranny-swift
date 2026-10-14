@@ -1,6 +1,6 @@
 // Views use tokens only (ARCHITECTURE.md §9.4, DESIGN.md §2.0 rule 1): no literal glyph fonts, colours or
-// animations in NotchUI's views. Literals live in Core's tables or in NotchUITokens.swift. #Preview blocks and the
-// preview sample data are exempt.
+// animations in NotchUI's views. Literals live in Core's tables or in NotchUITokens.swift. #Preview blocks, the
+// preview sample data and the DEBUG QA hooks are exempt.
 import Foundation
 import Testing
 
@@ -8,7 +8,8 @@ import Testing
     private static let sources = URL(fileURLWithPath: #filePath)
         .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         .appendingPathComponent("Sources/CrannyNotchUI")
-    private static let exempt: Set<String> = ["NotchUITokens.swift", "PreviewSupport.swift", "PreviewGallery.swift"]
+    private static let exempt: Set<String> = ["NotchUITokens.swift", "PreviewSupport.swift", "PreviewGallery.swift",
+                                              "NotchUIQAHooks.swift"]     // DEBUG QA: a grey desktop stand-in
     private static let literals = [".font(.system(", "Color.white.opacity(", "Color(white:", "withAnimation(.",
                                    ".animation(.easeIn", ".animation(.easeOut", ".animation(.spring", ".animation(.linear"]
 

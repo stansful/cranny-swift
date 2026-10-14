@@ -32,6 +32,9 @@ public struct NotchCanvasView: View {
             .environment(\.notchNamespace, namespace)
             .environment(\.notchZones, model.zones)
             .crannyThemeRoot(model.theme)
+        #if DEBUG
+            .task { await NotchUIQAHooks.writeSnapshot(model: model, registry: registry, actions: actions) }   // --qa-snapshot
+        #endif
     }
 
     /// The owner's context with `phase` and `layout` always in step with what is drawn.

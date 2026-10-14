@@ -99,5 +99,6 @@ import UniformTypeIdentifiers
         #expect(NotchUIQAHooks.mode(in: ["--qa-mode", "nonsense"]) == nil)
         #expect(NotchUIQAHooks.mode(in: ["--qa-mode"]) == nil)
         #expect(NotchUIQAHooks.mode(in: []) == nil)
+        #expect(NotchUIQAHooks.snapshotPath == nil)                         // the test runner passes none
     }
 }
