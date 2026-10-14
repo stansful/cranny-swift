@@ -26,8 +26,10 @@ import SwiftUI
     var palette: AmbientPalette? { .timer }
     var opensWidget: WidgetID? { .timer }
     var accessibilityLabel: String { model.state.isPaused ? TimerCopy.pausedLabel : TimerCopy.runningLabel }
+    /// "4 minutes, 59 seconds left". The shell's element re-renders with it once a second while VoiceOver runs
+    /// (`TimerModel.spokenSecondsLeft`, refreshed by the band's ring).
     var accessibilityValue: String? {
-        TimerCopy.left(TimerFormat.spoken(model.state.displayedSeconds(at: model.now)))
+        TimerCopy.left(TimerFormat.spoken(model.spokenSecondsLeft))
     }
     var actions: [ActivityAction] {
         let paused = model.state.isPaused

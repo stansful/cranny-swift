@@ -7,13 +7,15 @@ import SwiftUI
 // MARK: - Band
 
 /// Leading wing and satellite of the running timer: a 16u ring in `warning`. It flies to the widget's ring when the
-/// panel opens (`MatchedID.timerRing`).
+/// panel opens (`MatchedID.timerRing`). It is on screen whenever the activity is (compact, peek, minimal, glyph form),
+/// so it keeps the activity's VoiceOver value current.
 struct TimerCompactRing: View {
     @Environment(\.cranny) private var theme
     let model: TimerModel
     var body: some View {
         TimerRing(state: model.state, diameter: TimerMetrics.compactRing * theme.notchUnit, lineWidth: StrokeWidth.ringCompact)
             .notchMatched(MatchedID.timerRing)
+            .refreshesSpokenTime(model)
     }
 }
 

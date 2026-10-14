@@ -5,8 +5,9 @@
 //    deadline, so "4:59" never lags), and no wake-up at all while paused, idle or done;
 //  • rings use `RingClock` (Core's `EffectClock` technique) at `RingCadence`: as often as the arc moves about one
 //    device pixel, at most 4 × per second (a 1-minute timer in the widget), every 15–30 s for a long timer in the
-//    band, and not at all unless running.
-// Both stop as soon as their view leaves the screen.
+//    band, and not at all unless running;
+//  • VoiceOver's "time left" (`refreshesSpokenTime`): the countdown's 1-Hz tick, only while VoiceOver runs.
+// All stop as soon as their view leaves the screen.
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -23,14 +24,7 @@ struct CountdownClock<Content: View>: View {
             .task(id: deadline) {
                 now = Date()
                 guard let deadline else { return }
-                while let wake = CountdownTick.next(after: Date(), deadline: deadline) {
-                    do {
-                        try await Task.sleep(for: .seconds(max(wake.timeIntervalSinceNow, 0)), tolerance: .milliseconds(40))
-                    } catch {
-                        return                                          // cancelled: paused, changed or off screen
-                    }
-                    now = Date()
-                }
+                await CountdownTick.run(until: deadline) { now = Date() }
             }
     }
 }
@@ -45,6 +39,42 @@ nonisolated enum CountdownTick {
         let left = deadline.timeIntervalSince(now)
         guard left > 0 else { return nil }
         return deadline.addingTimeInterval(-(left.rounded(.up) - 1) + margin)
+    }
+
+    /// Sleeps to each change of the shown second and calls `tick` (the last call is just after the deadline).
+    /// Returns when the deadline has passed or the task is cancelled (paused, changed or off screen).
+    @MainActor static func run(until deadline: Date, _ tick: @MainActor () -> Void) async {
+        while let wake = next(after: Date(), deadline: deadline) {
+            do {
+                try await Task.sleep(for: .seconds(max(wake.timeIntervalSinceNow, 0)), tolerance: .milliseconds(40))
+            } catch {
+                return
+            }
+            tick()
+        }
+    }
+}
+
+extension View {
+    /// While VoiceOver runs and `model`'s timer runs, refreshes `TimerModel.spokenSeconds` at each second boundary,
+    /// so an accessibility value computed from `spokenSecondsLeft` (the widget ring, the running activity) never goes
+    /// stale. Put it on a view that is on screen whenever that value can be read. Without VoiceOver: no wake-ups.
+    func refreshesSpokenTime(_ model: TimerModel) -> some View {
+        modifier(SpokenTimeRefresh(model: model))
+    }
+}
+
+private struct SpokenTimeRefresh: ViewModifier {
+    @Environment(\.cranny) private var theme
+    let model: TimerModel
+
+    func body(content: Content) -> some View {
+        let deadline = theme.voiceOverRunning ? model.state.endDate : nil
+        content.task(id: deadline) {
+            guard let deadline else { return }
+            model.refreshSpokenTime()
+            await CountdownTick.run(until: deadline) { model.refreshSpokenTime() }
+        }
     }
 }
 

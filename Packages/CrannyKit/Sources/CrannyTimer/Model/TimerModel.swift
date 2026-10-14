@@ -20,6 +20,9 @@ private let log = Log.logger(.timer)
     private(set) var runningRevision = 0
     /// Every time a timer finishes ("Timer done" peeks, the ember burst plays, the widget ring pulses).
     private(set) var doneRevision = 0
+    /// VoiceOver only: the seconds left when a timer view on screen last refreshed it (`refreshSpokenTime`, once a
+    /// second while VoiceOver runs). Nothing writes it otherwise, so it costs nothing without VoiceOver.
+    private(set) var spokenSeconds = 0
 
     @ObservationIgnored private let settings: SettingsStore
     @ObservationIgnored private let dependencies: TimerDependencies
@@ -51,6 +54,24 @@ private let log = Log.logger(.timer)
     var bandUsesGlyphForm: Bool {
         let size = settings[CoreSettings.textSize]
         return size == .large || size == .extraLarge
+    }
+
+    // MARK: VoiceOver's time left
+
+    /// The whole seconds left now, for accessibility values ("4 minutes, 59 seconds left"). Such a value is computed
+    /// when its view renders, and nothing else re-renders it while a timer runs: this getter also observes
+    /// `spokenSeconds`, so the widget's ring and the shell's activity element re-render each time a timer view on
+    /// screen refreshes it.
+    var spokenSecondsLeft: Int {
+        _ = spokenSeconds
+        return state.displayedSeconds(at: now)
+    }
+
+    /// Called by the timer views on screen at each second boundary while VoiceOver runs (`refreshesSpokenTime`).
+    /// Writes only when the shown second changed, so several views on screen cause one update.
+    func refreshSpokenTime() {
+        let seconds = state.displayedSeconds(at: now)
+        if seconds != spokenSeconds { spokenSeconds = seconds }
     }
 
     // MARK: Actions

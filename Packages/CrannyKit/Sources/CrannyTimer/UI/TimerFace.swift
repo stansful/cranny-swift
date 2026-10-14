@@ -34,11 +34,14 @@ struct TimerFace: View {
                     TimerPresetGrid(presets: model.presets, side: side, start: model.start(seconds:))
                         .transition(.crannyContent(reduceMotion: theme.reduceMotion, anchor: .center))
                 } else {
-                    dial(diameter: max(side - TimerMetrics.ringInset, 0))
+                    TimerDial(model: model, diameter: max(side - TimerMetrics.ringInset, 0), entry: entry,
+                              showsControls: hovered || focused,
+                              showsFocusRing: focused && (notchContext.keyboardNavigation || context.isFocused))
                         .transition(.crannyContent(reduceMotion: theme.reduceMotion, anchor: .center))
                 }
             }
             .frame(width: side, height: side)
+            .modifier(TimerFaceAccessibility(model: model, showsPresets: showsPresetGrid))
             if wide {
                 TimerPresetColumn(presets: model.presets, width: max(context.contentSize.width - side - Space.m, 0),
                                   height: side, start: model.start(seconds:))
@@ -63,50 +66,6 @@ struct TimerFace: View {
         .onDisappear {
             model.clearDraft()
             entry = ""
-        }
-    }
-
-    // MARK: The ring as ONE accessibility element: adjustable ±1 min, with the state's actions
-
-    private func dial(diameter: CGFloat) -> some View {
-        TimerDial(model: model, diameter: diameter, entry: entry, showsControls: hovered || focused,
-                  showsFocusRing: focused && (notchContext.keyboardNavigation || context.isFocused))
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(Text(TimerCopy.timer))
-            .accessibilityValue(Text(accessibilityValue))
-            .accessibilityAdjustableAction { direction in
-                switch direction {
-                case .increment: model.adjust(byMinutes: 1)
-                case .decrement: model.adjust(byMinutes: -1)
-                @unknown default: break
-                }
-            }
-            .accessibilityActions { accessibilityActions }
-    }
-
-    private var accessibilityValue: String {
-        let state = model.state
-        switch state.phase {
-        case .idle: return TimerCopy.setUp(TimerFormat.spoken(model.setupDuration))
-        case .running(let end):
-            return TimerCopy.left(TimerFormat.spoken(state.displayedSeconds(at: Date())), endingAt: TimerFormat.time(end))
-        case .paused:
-            return TimerCopy.pausedLeft(TimerFormat.spoken(state.displayedSeconds(at: Date())))
-        case .done: return TimerCopy.timerDone
-        }
-    }
-
-    @ViewBuilder private var accessibilityActions: some View {
-        let state = model.state
-        if state.phase == .idle {
-            Button(TimerCopy.start) { model.startSetup() }
-        }
-        if state.isCounting {
-            Button(state.isPaused ? TimerCopy.resume : TimerCopy.pause) { model.togglePause() }
-        }
-        if state.isCounting || state.isDone {
-            Button(TimerCopy.addMinute) { model.addMinute() }
-            Button(TimerCopy.stop) { model.stop() }
         }
     }
 
