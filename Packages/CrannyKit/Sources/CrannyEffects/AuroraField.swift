@@ -94,7 +94,9 @@ struct AuroraFallback: View {
 }
 
 /// macOS 14: three blurred sine curtains, normal blending (App. B.1). They are drawn at alpha / cap and the layer at
-/// opacity cap, so overlapping curtains can never pass the audited alpha cap.
+/// opacity cap, so overlapping curtains can never pass the audited alpha cap. Tuned against the shader like the mesh
+/// (ParityTests): the curtains start at 54 % of the height and stay lit down to the bottom edge, so peak (≈ 0.8 · cap)
+/// and the mean of each horizontal third match the shader.
 struct AuroraCurtains: View {
     var palette: AmbientPalette
     var level: AmbienceLevel
@@ -109,7 +111,7 @@ struct AuroraCurtains: View {
             for (i, c) in palette.glows.enumerated() {
                 let fi = Double(i)
                 let phase = time * (0.09 + 0.035 * fi) * 2 * .pi
-                let base = hgt * (0.62 + 0.10 * fi)
+                let base = hgt * (0.54 + 0.10 * fi)
                 let amp = hgt * (0.09 + 0.06 * energy) * (1 - 0.2 * fi)
                 var path = Path()
                 path.move(to: CGPoint(x: -40, y: hgt + 40))
@@ -121,9 +123,9 @@ struct AuroraCurtains: View {
                     x += 10
                 }
                 path.addLine(to: CGPoint(x: w + 40, y: hgt + 40)); path.closeSubpath()
-                let a = 0.6 * min(0.8 + 0.2 * energy, 1)
+                let a = 0.55 * min(0.8 + 0.2 * energy, 1)
                 let grad = Gradient(stops: [.init(color: c.color(0), location: 0), .init(color: c.color(a), location: 0.35),
-                                            .init(color: c.color(a * 0.25), location: 0.75), .init(color: c.color(0), location: 1)])
+                                            .init(color: c.color(a * 0.9), location: 0.75), .init(color: c.color(a * 0.8), location: 1)])
                 ctx.fill(path, with: .linearGradient(grad, startPoint: CGPoint(x: 0, y: base - amp * 1.6), endPoint: CGPoint(x: 0, y: hgt)))
             }
         }

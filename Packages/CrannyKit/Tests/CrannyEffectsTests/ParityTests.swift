@@ -46,6 +46,29 @@ func shaderAndFallbackAgree(_ effect: AmbientEffect) throws {
     }
 }
 
+/// The macOS 14 fallback (three blurred curtains in a Canvas, App. B.1) meets the same parity bar against the shader:
+/// black band, peak ±10 %, mean of each horizontal third ±25 %.
+@Test(.enabled(if: shadersRun)) func auroraCurtainsAgreeWithTheShader() throws {
+    for level in [AmbienceLevel.subtle, .vivid] {
+        for time in [12.0, 40.0] {
+            let shader = try rasterize(AmbientShader(effect: .aurora, glows: AmbientPalette.afterglow.glows, level: level,
+                                                     energy: 0, time: time, displayScale: 1), size: size)
+            let curtains = try rasterize(AuroraCurtains(palette: .afterglow, level: level, energy: 0, time: time)
+                .mask { BandMask() }, size: size)
+            let cap = Glow.ambientAlphaCap(level)
+            #expect(curtains.peakAlpha(topRows: 0.4) == 0, "curtains lit the band")
+            #expect(agree(shader.peakAlpha, curtains.peakAlpha, within: 0.10, floor: 0),
+                    "\(level) t\(time): peak \(shader.peakAlpha) vs curtains \(curtains.peakAlpha)")
+            for third in 0..<3 {
+                let from = Double(third) / 3, to = Double(third + 1) / 3
+                let s = shader.meanAlpha(rows: from, to), c = curtains.meanAlpha(rows: from, to)
+                #expect(agree(s, c, within: 0.25, floor: 0.01 * cap),
+                        "\(level) t\(time): third \(third) mean \(s) vs curtains \(c)")
+            }
+        }
+    }
+}
+
 /// The aurora's peak is ≈ 0.8 · cap at energy 0 on both paths (the mesh's brightest point).
 @Test(.enabled(if: shadersRun)) func auroraPeaksAtFourFifthsOfTheCap() throws {
     for level in [AmbienceLevel.subtle, .vivid] {
