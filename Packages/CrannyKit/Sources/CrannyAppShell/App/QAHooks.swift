@@ -4,6 +4,9 @@
 //   --qa-page <page id>                   with `open`: show this page (`nook` = Home, `tray`, `page.<uuid>`)
 //   --qa-exit-after <seconds>             quit after that many seconds (screenshots in scripts and CI)
 //   --qa-settings <pane id>               also open Settings at that pane (`general`, `about`, …)
+//   --qa-welcome <step>                   show the Welcome window at a step (`hello`, `openIt`, `gestures`,
+//                                         `preset`, `permissions`, `done`); records nothing (WP15)
+//   --qa-tutorial <n>                     start the interactive tutorial at step n (1-based); records nothing
 //
 // No input is synthesized: the state is written through the same view-model inputs the pointer uses.
 // The whole file is compiled out of Release builds.
@@ -23,9 +26,15 @@ enum QAHooks {
         var page: PageID?
         var exitAfter: Double?
         var settingsPage: SettingsPageID?
+        /// `WelcomeStep` raw value; `WelcomeWindowController` acts on it (WP15).
+        var welcomeStep: String?
+        /// 1-based tutorial step; `WelcomeWindowController` starts the tour there (WP15).
+        var tutorialStep: Int?
 
-        init(state: State? = nil, page: PageID? = nil, exitAfter: Double? = nil, settingsPage: SettingsPageID? = nil) {
+        init(state: State? = nil, page: PageID? = nil, exitAfter: Double? = nil, settingsPage: SettingsPageID? = nil,
+             welcomeStep: String? = nil, tutorialStep: Int? = nil) {
             self.state = state; self.page = page; self.exitAfter = exitAfter; self.settingsPage = settingsPage
+            self.welcomeStep = welcomeStep; self.tutorialStep = tutorialStep
         }
 
         init(arguments: [String]) {
@@ -36,10 +45,14 @@ enum QAHooks {
             self.init(state: value("--qa-state").flatMap(State.init(rawValue:)),
                       page: value("--qa-page").map(PageID.init(rawValue:)),
                       exitAfter: value("--qa-exit-after").flatMap(Double.init).flatMap { $0 > 0 ? $0 : nil },
-                      settingsPage: value("--qa-settings").map(SettingsPageID.init(rawValue:)))
+                      settingsPage: value("--qa-settings").map(SettingsPageID.init(rawValue:)),
+                      welcomeStep: value("--qa-welcome"),
+                      tutorialStep: value("--qa-tutorial").flatMap(Int.init).flatMap { $0 > 0 ? $0 : nil })
         }
 
-        var isEmpty: Bool { state == nil && exitAfter == nil && settingsPage == nil }
+        var isEmpty: Bool {
+            state == nil && exitAfter == nil && settingsPage == nil && welcomeStep == nil && tutorialStep == nil
+        }
     }
 
     /// The label of the sample activity used for `compact` and `peek`.
