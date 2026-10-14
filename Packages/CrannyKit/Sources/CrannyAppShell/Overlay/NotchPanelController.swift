@@ -114,11 +114,13 @@ import SwiftUI
             self?.viewModel.send(.configChanged)
         })
         // The drop zone (and with it the hit area) follows the drag state; a pending canvas change waits for
-        // the surface to be closed (a peek ends without a `.closed` event, so the state is watched, not events).
+        // the surface to be closed, and a menu's region ends with the open surface (a peek ends without a `.closed`
+        // event, so the state is watched, not events).
         viewModel.didSync = { [weak self] in
             guard let self else { return }
             let zone = self.dropZoneInCanvas()
             if self.chrome.dropZone != zone { self.chrome.dropZone = zone }
+            self.hover.surfaceChanged()
             self.applyPendingWhenSettled()
         }
     }

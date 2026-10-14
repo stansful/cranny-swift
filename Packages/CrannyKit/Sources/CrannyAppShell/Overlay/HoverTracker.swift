@@ -83,16 +83,17 @@ nonisolated struct HoverZones: Equatable, Sendable {
 /// A menu opened from the panel (a widget's menu such as Mirror's cameras, a context menu) hangs below it, so the
 /// pointer that picks an item is usually outside the exit zone when the menu closes, over a place that no longer shows
 /// anything. While the menu tracks, its `menu` hold keeps the panel. After it closes, the region the session's menus
-/// occupied — `extent`: their reach around where the session began, plus the 32-pt control allowance — counts as inside
-/// for as long as the pointer stays in it (design ruling E3): the close grace (`HoverIntent.closeGrace`) starts only
-/// when the pointer leaves the region. The region also ends when the pointer comes back to the panel or the panel no
-/// longer shows open; then the usual hover applies. Its owner checks it once `closeGrace` after the menu closed: a
-/// pointer it cannot read then ends the region (`expire`), so a region never outlives a pointer nobody can see.
+/// occupied (`region(from:to:reach:screen:)`, with the 32-pt control allowance) counts as inside for as long as the
+/// pointer stays in it (design ruling E3): the close grace (`HoverIntent.closeGrace`) starts only when the pointer
+/// leaves the region. The region also ends when the pointer comes back to the panel or the panel no longer shows open
+/// (a move, or `panelClosed` as soon as the surface changes); then the usual hover applies. Its owner checks it once
+/// `closeGrace` after the menu closed: a pointer it cannot read then ends the region (`expire`), so a region never
+/// outlives a pointer nobody can see.
 ///
 /// Only the menu's own region: a menu that did not begin with the pointer on the open (or peeking) panel — the menu bar
 /// extra's, a Settings pop-up — leaves nothing, and neither does one that ended with the pointer beyond the menus' own
-/// size from where it began (dismissed by a click elsewhere, Esc after the pointer moved away) or one of unknown size.
-/// Pure.
+/// size from where it began (dismissed by a click elsewhere, Esc after the pointer moved away), off the panel's screen,
+/// or one of unknown size. Pure.
 nonisolated struct MenuLinger: Equatable, Sendable {
     /// Where the pointer was when the tracking menu began on this panel; nil for a menu from elsewhere.
     private(set) var origin: CGPoint?
@@ -116,21 +117,30 @@ nonisolated struct MenuLinger: Equatable, Sendable {
     mutating func ended(at point: CGPoint, zones: HoverZones?, reach: CGSize) -> Int? {
         defer { origin = nil }
         region = nil
-        guard let origin, let zones, zones.expanded, reach.width > 0, reach.height > 0 else { return nil }
-        let extent = Self.extent(from: origin, reach: reach)
-        guard !zones.hoverZone.contains(point), extent.contains(point) else { return nil }
-        region = extent
+        guard let origin, let zones, zones.expanded, reach.width > 0, reach.height > 0,
+              !zones.hoverZone.contains(point), Self.extent(from: origin, reach: reach).contains(point) else { return nil }
+        let occupied = Self.region(from: origin, to: point, reach: reach, screen: zones.screenFrame)
+        guard occupied.contains(point) else { return nil }
+        region = occupied
         serial += 1
         return serial
     }
 
     /// The pointer moved (after `HoverTracker.update` saw it with the region): the region ends once the pointer is
     /// outside it, back inside the exit zone, or the panel no longer shows open. Nothing else ends it while the pointer
-    /// can be read (ruling E3).
+    /// can be read and the panel shows open (ruling E3).
     mutating func pointerMoved(to point: CGPoint, zones: HoverZones?) {
         guard let current = region else { return }
         let stays = zones.map { $0.expanded && current.contains(point) && !$0.hoverZone.contains(point) } ?? false
         if !stays { region = nil }
+    }
+
+    /// The panel no longer shows open or peeks (closed, hidden): the region ends at once, without waiting for a move,
+    /// and a menu still tracking no longer counts as the panel's (ruling E3: the region lasts only while the panel shows
+    /// open, so a panel opened again before the pointer moves never counts the old menu's place as inside).
+    mutating func panelClosed() {
+        region = nil
+        origin = nil
     }
 
     /// Whether region `serial` is still the one that counts (a later menu, the pointer leaving or the panel closing
@@ -146,14 +156,27 @@ nonisolated struct MenuLinger: Equatable, Sendable {
         return true
     }
 
-    /// Where the menus of a session that began with the pointer at `origin` can be, and so the region they occupied.
-    /// A menu opens from the control under the pointer (a pull-down below it, a context menu at the click, a pop-up
-    /// over its button; any of them flipped at the screen's edges, a submenu beside its item), so it lies within
-    /// `reach` of that point in every direction, plus the control itself (`controlSlack`). It holds the point where
-    /// the session began, on the panel, so the way back up to the panel never leaves it.
-    static func extent(from origin: CGPoint, reach: CGSize) -> CGRect {
-        CGRect(x: origin.x - reach.width, y: origin.y - reach.height, width: 2 * reach.width, height: 2 * reach.height)
+    /// Where menus `reach` large can be when they hang from `point`: within their size of it in every direction, plus
+    /// the 32-pt control allowance (`controlSlack`). A menu opens from the control under the pointer (a pull-down below
+    /// it, a context menu at the click, a pop-up over its button; any of them flipped at the screen's edges, a submenu
+    /// beside its item), so it lies in the extent of the point where the session began.
+    static func extent(from point: CGPoint, reach: CGSize) -> CGRect {
+        CGRect(x: point.x - reach.width, y: point.y - reach.height, width: 2 * reach.width, height: 2 * reach.height)
             .insetBy(dx: -controlSlack, dy: -controlSlack)
+    }
+
+    /// The region the menus of a session occupied, as closely as AppKit tells it: AppKit gives a tracking menu's size
+    /// (`NSMenu.size`) but not its frame, nor which way it opened. So the region is every place the menus can have
+    /// been, given three facts. They hung from the control where the session began (`origin`): within the extent of
+    /// that point. The pointer that picked an item was on them where the session ended (`end`): within the extent of
+    /// that point too. And AppKit keeps a menu on the screen it opens on, the panel's (`screen`; its top row included,
+    /// as the pointer's y can equal the top edge). The intersection holds the control and the pointer, and so the
+    /// straight way between them back up to the panel; after a pick it holds the menus themselves. It never reaches
+    /// off the screen (the menu bar of a display above) or beyond the menus' size (+32 pt) from the control or the
+    /// item (the band beside the panel, the far side of the control, when the menu could not have been there).
+    static func region(from origin: CGPoint, to end: CGPoint, reach: CGSize, screen: CGRect) -> CGRect {
+        let display = CGRect(x: screen.minX, y: screen.minY, width: screen.width, height: screen.height + 1)
+        return extent(from: origin, reach: reach).intersection(extent(from: end, reach: reach)).intersection(display)
     }
 
     /// The control a menu hangs from, beside the point that opened it: a band control's height (DESIGN.md §2.3). The
@@ -194,8 +217,9 @@ nonisolated struct MenuTracking: Equatable, Sendable {
 }
 
 /// The pointer as one panel sees it (§4.3, §4.5): `HoverTracker` turns positions into the machine's inputs and
-/// `MenuLinger` keeps a menu's region inside while the pointer stays in it after the menu closed. `NotchPanelController`
-/// owns one and wires the closures to its panel; tests wire them to a reducer, so both run this code.
+/// `MenuLinger` keeps a menu's region inside while the pointer stays in it after the menu closed and the panel shows
+/// open. `NotchPanelController` owns one, wires the closures to its panel and calls `surfaceChanged` after every sync;
+/// tests wire them to a reducer, so both run this code.
 @MainActor final class PanelHover {
     /// The panel's hover zones without a menu's region; nil while hidden.
     var zones: @MainActor () -> HoverZones? = { nil }
@@ -224,6 +248,17 @@ nonisolated struct MenuTracking: Equatable, Sendable {
     }
 
     var isInside: Bool { tracker.isInside }
+
+    /// The panel's surface changed (`NotchPanelController` calls this after every sync of its machine): a panel that no
+    /// longer shows open or peeks, or is hidden, loses a menu's region at once (ruling E3), so opening it again before
+    /// the pointer moves never counts the old menu's place as inside. The pointer counted as inside only through the
+    /// region, so the machine learns at once where it is now (read again, else the last position seen).
+    func surfaceChanged() {
+        guard linger.fromPanel || linger.region != nil, zones()?.expanded != true else { return }
+        let hadRegion = linger.region != nil
+        linger.panelClosed()
+        if hadRegion, let point = pointer() ?? lastPoint { moved(to: point) }
+    }
 
     /// A pointer move (and the re-read after a menu): enter/leave and band inputs on change.
     func moved(to point: CGPoint) {

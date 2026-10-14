@@ -1,8 +1,8 @@
 // What a file drag and a tracking menu leave behind on a panel (ARCHITECTURE.md §4.4–§4.5, §10.20 issues 8, 12 and
 // 25): a closed panel keeps no drag state or `drag` hold, and a menu opened from the panel keeps it open while the
-// pointer stays where the menu was (ruling E3). The reducer is driven through the production pointer code:
-// `PanelHover` (as `NotchPanelController` wires it) and `PanelHover.menuTracking` (as `OverlayCoordinator` calls it).
-// No windows, no input.
+// pointer stays where the menu was (ruling E3), until the pointer leaves that region or the panel closes. The reducer
+// is driven through the production pointer code: `PanelHover` (as `NotchPanelController` wires it, `surfaceChanged`
+// after every input) and `PanelHover.menuTracking` (as `OverlayCoordinator` calls it). No windows, no input.
 import CoreGraphics
 import CrannyCore
 import CrannyNotchUI
@@ -136,6 +136,7 @@ private let belowTheMenu = CGPoint(x: 1000, y: 600)
         let (next, fx) = NotchMachine.reduce(state, input, now: time, config: NotchMachineConfig())
         state = next
         effects += fx
+        hover.surfaceChanged()                               // the controller's `didSync`, after every input
     }
 
     /// A pointer event (the monitors see none while a menu tracks).
@@ -262,20 +263,63 @@ private let belowTheMenu = CGPoint(x: 1000, y: 600)
     #expect(panel.state.isClosed)
 }
 
-/// A panel that closed while the pointer rested in the region (Esc, the hot key) loses the region at the check, so
-/// opening it again later does not count the old menu's place as inside.
+/// A panel that closed while the pointer rested in the region (Esc, the hot key) loses the region as it closes, so the
+/// check finds nothing and opening it again later does not count the old menu's place as inside.
 @MainActor @Test func aPanelClosedMeanwhileLosesTheRegion() {
     let panel = openPanel()
     let menus = MenuSession(panel)
     menus.began(at: cameraButton)
     menus.ended(at: pickedItem)
     panel.send(.escape)
-    #expect(panel.state.isClosed)
+    #expect(panel.state.isClosed && panel.hover.linger.region == nil && panel.state.hover == .outside)
+    panel.clearEffects()
     panel.checkAfterTheGrace()
-    #expect(panel.hover.linger.region == nil && panel.state.hover == .outside)
+    #expect(panel.hover.linger.region == nil && panel.state.hover == .outside && panel.effects.isEmpty)
     panel.send(.hotKey)
     panel.move(to: pickedItem)
     #expect(panel.state.isOpen && panel.state.hover == .outside)
+}
+
+/// The panel closed after the safety check, while the pointer rested in the region (Esc), and opened again before the
+/// pointer moved (the hot key): the region went with the close, so the old menu's place is outside the reopened panel.
+@MainActor @Test func aPanelClosedAfterTheCheckLosesTheRegion() {
+    let panel = openPanel()
+    let menus = MenuSession(panel)
+    menus.began(at: cameraButton)
+    menus.ended(at: pickedItem)
+    panel.checkAfterTheGrace()                               // the pointer rests where the menu was: the region stays
+    #expect(panel.hover.linger.region != nil && panel.state.hover == .inside)
+    panel.send(.escape)
+    #expect(panel.state.isClosed && panel.hover.linger.region == nil && !panel.hover.linger.fromPanel)
+    panel.send(.hotKey)                                      // open again, the mouse has not moved
+    panel.move(to: CGPoint(x: 1180, y: 690))                 // where the old menu could have hung
+    #expect(panel.state.isOpen && panel.state.hover == .outside && panel.hover.linger.region == nil)
+}
+
+/// A panel hidden while the region lasts (zones nil) loses it too, and so does a menu still tracking on it.
+@MainActor @Test func aHiddenPanelLosesTheRegionAndTheMenuOrigin() {
+    let hover = PanelHover()
+    var zones: HoverZones? = HoverZones(shape: Panel.open, satellite: nil, wings: nil, screenFrame: Panel.screen,
+                                        band: 32, expanded: true)
+    var inputs: [NotchInput] = []
+    hover.zones = { zones }
+    hover.send = { inputs.append($0) }
+    hover.pointer = { pickedItem }
+    hover.after = { _, _ in }
+    hover.menuBegan(at: cameraButton)
+    hover.menuEnded(at: pickedItem, reach: cameraMenu)
+    hover.surfaceChanged()                                   // still open: nothing changes
+    #expect(hover.linger.region != nil)
+    zones = nil
+    hover.surfaceChanged()
+    #expect(hover.linger.region == nil && inputs.last == .pointerLeft && !hover.isInside)
+    zones = HoverZones(shape: Panel.open, satellite: nil, wings: nil, screenFrame: Panel.screen, band: 32, expanded: true)
+    hover.menuBegan(at: cameraButton)
+    zones?.expanded = false                                  // closed while the menu tracked
+    hover.surfaceChanged()
+    zones?.expanded = true
+    hover.menuEnded(at: pickedItem, reach: cameraMenu)
+    #expect(!hover.linger.fromPanel && hover.linger.region == nil)
 }
 
 /// Only where the menu could have been: a menu dismissed by a click far away (or with Esc after the pointer moved
@@ -354,9 +398,10 @@ private let belowTheMenu = CGPoint(x: 1000, y: 600)
     #expect(!tracking.isTracking && tracking.reach == .zero)
 }
 
-/// The region is where the session's menus could hang: their reach around the control that opened them, plus the
-/// 32-pt control allowance (`MenuLinger.extent`). It holds the picked item and the control, so the way back up to the
-/// panel stays inside, and nothing beyond the menus' size.
+/// The region is where the session's menus can have hung (`MenuLinger.region`): within their size, plus the 32-pt
+/// control allowance, of both the control that opened them and the item picked, on the panel's screen. It holds the
+/// picked item and the control, so the way back up to the panel stays inside, and nothing beyond the menus' size from
+/// either point: not the band beside the panel, not above the screen's top edge.
 @Test func theMenuRegionIsWhereTheMenusCouldHang() throws {
     let zones = HoverZones(shape: Panel.open, satellite: nil, wings: nil, screenFrame: Panel.screen, band: 32,
                            expanded: true)
@@ -367,10 +412,18 @@ private let belowTheMenu = CGPoint(x: 1000, y: 600)
     let serial = try #require(recorded)
     let region = try #require(linger.region)
     let extent = MenuLinger.extent(from: cameraButton, reach: cameraMenu)
-    #expect(region == extent && region.contains(pickedItem) && region.contains(cameraButton))
+    #expect(region == MenuLinger.region(from: cameraButton, to: pickedItem, reach: cameraMenu, screen: Panel.screen))
+    #expect(region == extent.intersection(MenuLinger.extent(from: pickedItem, reach: cameraMenu)))
+    #expect(region.contains(pickedItem) && region.contains(cameraButton))
+    // Below: as far as a menu hanging from the button reaches. Above and to the left: as far as one holding the item.
     #expect(region.minY == cameraButton.y - cameraMenu.height - MenuLinger.controlSlack)
+    #expect(region.maxY == pickedItem.y + cameraMenu.height + MenuLinger.controlSlack)
+    #expect(region.minX == pickedItem.x - cameraMenu.width - MenuLinger.controlSlack)
     #expect(region.maxX == cameraButton.x + cameraMenu.width + MenuLinger.controlSlack)
     #expect(!region.contains(belowTheMenu) && !region.contains(CGPoint(x: 600, y: 720)))   // beyond the menu's size
+    #expect(!region.contains(CGPoint(x: 740, y: 700)))                       // left of where the item allows
+    #expect(!region.contains(CGPoint(x: 1150, y: 970)))                      // the band beside the panel
+    #expect(!region.contains(CGPoint(x: 1000, y: 1000)))                     // a display above
     #expect(!linger.fromPanel)                                                // one menu, one region
 
     // It counts as inside only while the panel shows open (or peeks).
@@ -381,7 +434,8 @@ private let belowTheMenu = CGPoint(x: 1000, y: 600)
     #expect(!withRegion.contains(pickedItem))
 
     // No region for an item picked inside the exit zone, a menu that began elsewhere or on a closed panel, a menu of
-    // unknown size (even within the control allowance), or an end beyond the menu's reach from where it began.
+    // unknown size (even within the control allowance), an end beyond the menu's reach from where it began, or one off
+    // the panel's screen.
     var near = MenuLinger()
     near.began(at: cameraButton, zones: zones)
     #expect(near.ended(at: CGPoint(x: 1000, y: 775), zones: zones, reach: cameraMenu) == nil && near.region == nil)
@@ -401,6 +455,9 @@ private let belowTheMenu = CGPoint(x: 1000, y: 600)
     var beyond = MenuLinger()
     beyond.began(at: cameraButton, zones: zones)
     #expect(beyond.ended(at: CGPoint(x: extent.midX, y: extent.minY - 1), zones: zones, reach: cameraMenu) == nil)
+    var offScreen = MenuLinger()                                              // on the display to the right
+    offScreen.began(at: cameraButton, zones: zones)
+    #expect(offScreen.ended(at: CGPoint(x: 1550, y: 800), zones: zones, reach: CGSize(width: 600, height: 160)) == nil)
 
     // The region ends when the pointer leaves it, comes back inside, or the panel closes; never by itself …
     var moving = linger
@@ -425,6 +482,47 @@ private let belowTheMenu = CGPoint(x: 1000, y: 600)
     let next = try #require(laterRecorded)
     #expect(next == serial + 1 && !later.isCurrent(serial) && !later.expire(serial) && later.region != nil)
     #expect(later.expire(next) && later.region == nil)
+}
+
+/// AppKit does not say where a menu hung, only its size, so the region must hold the menu wherever it was: a pull-down
+/// below its button (aligned to either edge), a pop-up with the chosen item over the button, a context menu at the
+/// click (flipped left near an edge), and a header menu that AppKit moved down to keep it on the screen. After any
+/// pick outside the exit zone the region holds that whole menu (on the screen), and never more than the screen.
+@Test func theMenuRegionHoldsTheMenuWhereverItHung() throws {
+    let zones = HoverZones(shape: Panel.open, satellite: nil, wings: nil, screenFrame: Panel.screen, band: 32,
+                           expanded: true)
+    let button = CGRect(x: 960, y: 846, width: 80, height: 28)                   // the control around `cameraButton`
+    let w = cameraMenu.width, h = cameraMenu.height
+    let header = CGPoint(x: 980, y: 960)                                         // a control in the open header
+    let tall = CGSize(width: 220, height: 300)
+    let placements: [(name: String, origin: CGPoint, size: CGSize, menu: CGRect)] = [
+        ("pull-down, leading edge", cameraButton, cameraMenu, CGRect(x: button.minX, y: button.minY - 4 - h, width: w, height: h)),
+        ("pull-down, trailing edge", cameraButton, cameraMenu, CGRect(x: button.maxX - w, y: button.minY - 4 - h, width: w, height: h)),
+        ("pop-up over the button", cameraButton, cameraMenu, CGRect(x: button.minX - 12, y: button.midY - 100, width: w, height: h)),
+        ("context menu at the click", cameraButton, cameraMenu, CGRect(x: cameraButton.x, y: cameraButton.y - h, width: w, height: h)),
+        ("context menu flipped left", cameraButton, cameraMenu, CGRect(x: cameraButton.x - w, y: cameraButton.y - h, width: w, height: h)),
+        ("header pop-up kept on the screen", header, tall, CGRect(x: header.x - 20, y: Panel.screen.maxY - tall.height,
+                                                                   width: tall.width, height: tall.height)),
+    ]
+    var regions = 0
+    for placement in placements {
+        let menu = placement.menu
+        let inner = menu.insetBy(dx: 1, dy: 1)
+        let picks = [CGPoint(x: inner.minX, y: inner.minY), CGPoint(x: inner.maxX, y: inner.minY),
+                     CGPoint(x: inner.minX, y: inner.maxY), CGPoint(x: inner.maxX, y: inner.maxY),
+                     CGPoint(x: menu.midX, y: menu.midY)]
+        for item in picks where !zones.hoverZone.contains(item) {
+            var linger = MenuLinger()
+            linger.began(at: placement.origin, zones: zones)
+            _ = linger.ended(at: item, zones: zones, reach: placement.size)
+            let region = try #require(linger.region, "\(placement.name): no region for a pick at \(item)")
+            regions += 1
+            #expect(region.contains(menu) && region.contains(placement.origin) && region.contains(item),
+                    "\(placement.name): \(menu) picked at \(item) → \(region)")
+            #expect(region.maxY <= Panel.screen.maxY + 1 && region.minX >= Panel.screen.minX)
+        }
+    }
+    #expect(regions >= 15)
 }
 
 private extension HoverZones {
