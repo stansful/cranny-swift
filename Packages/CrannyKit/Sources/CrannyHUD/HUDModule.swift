@@ -44,7 +44,8 @@ public enum HUDModule: FeatureModule {
                      title: String(localized: "HUD", bundle: .module, comment: "Settings sidebar: pane name (the volume and brightness heads-up display)"),
                      symbol: "speaker.wave.2.fill", tint: .teal, group: .notch, order: 2,
                      keywords: searchKeywords, previewState: .hud) {
-            AnyView(HUDSettingsPane(settings: services.settings, permissions: services.permissions, controller: controller))
+            AnyView(HUDSettingsPane(settings: services.settings, permissions: services.permissions, app: services.app,
+                                    controller: controller))
         }
     }
 

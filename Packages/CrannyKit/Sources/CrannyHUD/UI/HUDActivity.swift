@@ -35,6 +35,11 @@ import SwiftUI
 
     init(settings: SettingsStore) { self.settings = settings }
 
+    /// The Settings ▸ Live Activities toggle of this activity. Off hands the keys back to macOS (its HUD shows).
+    static func isEnabled(in settings: SettingsStore) -> Bool {
+        settings[CoreSettings.activityPreferences][.hud]?.isEnabled ?? kind.isEnabledByDefault
+    }
+
     /// A sample that never expires: the Settings stage, "Simulate ▸ Volume" and previews.
     static func sample(settings: SettingsStore, display: HUDDisplay = HUDDisplay(kind: .volume, level: 0.62)) -> HUDActivity {
         let sample = HUDActivity(settings: settings)

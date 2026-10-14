@@ -76,6 +76,28 @@ import Testing
         #expect(HUDSettings.duration.id == "hud.duration")
     }
 
+    @Test func paneExplainsEveryStateWithoutAHUD() {
+        func status(granted: Bool = true, replacing: Bool = true, activity: Bool = true, running: Bool = false,
+                    failed: Bool = false) -> HUDPaneStatus {
+            HUDPaneStatus(granted: granted, replacing: replacing, activityEnabled: activity, tapRunning: running, tapFailed: failed)
+        }
+        #expect(status(granted: false) == .needsAccessibility)
+        #expect(status(granted: false, replacing: false) == .needsAccessibility)   // the pill and the link show anyway
+        #expect(status(replacing: false) == .off)
+        #expect(status(activity: false) == .activityDisabled)                      // toggle on, keys with macOS: say why
+        #expect(status(replacing: false, activity: false) == .off)
+        #expect(status(running: true) == .running)
+        #expect(status(failed: true) == .tapFailed)
+        #expect(status() == .idle)
+    }
+
+    @Test func liveActivitiesToggleIsRead() {
+        let settings = CrannyServices.preview().settings
+        #expect(HUDActivity.isEnabled(in: settings))
+        settings[CoreSettings.activityPreferences] = [.hud: ActivityPreference(isEnabled: false, peeksOnChange: false)]
+        #expect(!HUDActivity.isEnabled(in: settings))
+    }
+
     @Test func durationIsClamped() {
         #expect(HUDSettings.clampedDuration(0.1) == 0.8)
         #expect(HUDSettings.clampedDuration(9) == 3)

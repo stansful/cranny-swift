@@ -265,6 +265,17 @@
         }
       }
     },
+    "Live Activities Settings…" : {
+      "comment" : "Settings ▸ HUD: button that opens Settings ▸ Live Activities",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки активностей…"
+          }
+        }
+      }
+    },
     "Mono" : {
       "comment" : "Settings ▸ HUD ▸ Colors: white bar",
       "localizations" : {
@@ -408,6 +419,17 @@
         }
       }
     },
+    "The HUD is off in Live Activities" : {
+      "comment" : "Settings ▸ HUD: row shown while the HUD activity is turned off in Settings ▸ Live Activities",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Индикатор выключен в разделе «Активности»"
+          }
+        }
+      }
+    },
     "Turn on Cranny in Privacy & Security ▸ Accessibility, then come back here." : {
       "comment" : "Settings ▸ HUD: footnote while Accessibility is not granted",
       "localizations" : {
@@ -492,6 +514,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "macOS не передала клавиши Cranny. Попробуйте выключить и снова включить индикатор."
+          }
+        }
+      }
+    },
+    "macOS shows its own HUD until you turn it back on there." : {
+      "comment" : "Settings ▸ HUD: footnote under The HUD is off in Live Activities",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пока он там выключен, macOS показывает свой индикатор."
           }
         }
       }

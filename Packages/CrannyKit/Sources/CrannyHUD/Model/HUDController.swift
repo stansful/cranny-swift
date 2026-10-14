@@ -95,7 +95,7 @@ private let log = Log.logger(.hud)
             volume: settings[HUDSettings.volume],
             brightness: settings[HUDSettings.brightness],
             keyboardBacklight: settings[HUDSettings.keyboardBacklight],
-            activityEnabled: settings[CoreSettings.activityPreferences][.hud]?.isEnabled ?? HUDActivity.kind.isEnabledByDefault,
+            activityEnabled: HUDActivity.isEnabled(in: settings),
             accessibilityGranted: accessibility.isGranted(),
             screenLocked: environment.isScreenLocked,
             displaysAsleep: environment.areDisplaysAsleep,

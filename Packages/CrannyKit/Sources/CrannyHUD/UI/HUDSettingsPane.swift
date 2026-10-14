@@ -3,25 +3,60 @@
 // Show value · Show output device · Duration. The Settings stage above it shows the HUD (`previewState: .hud`).
 //
 // Turning "Replace the system HUD" on while Accessibility is missing asks for it then (the one place outside
-// onboarding that does, §7.13). Without the grant the pane says why there is no HUD and links to System Settings.
+// onboarding that does, §7.13). Whenever the toggle is on but Cranny leaves the keys to macOS, the pane says why:
+// no Accessibility (with a link to System Settings), the HUD activity off in Live Activities (with a link there),
+// or a tap macOS refused (`HUDPaneStatus`).
 import AppKit
 import CrannyCore
 import Foundation
 import SwiftUI
 
+/// What Settings ▸ HUD explains under its main toggle. Pure, so every state is tested: each one in which the toggle
+/// is on but macOS keeps its own HUD gives the reason (D10: never two HUDs, and never none without saying why).
+nonisolated enum HUDPaneStatus: Equatable {
+    /// Accessibility is missing: no tap, whatever the toggle says.
+    case needsAccessibility
+    /// "Replace the system HUD" is off.
+    case off
+    /// On and granted, but the HUD activity is off in Settings ▸ Live Activities: the keys go to macOS.
+    case activityDisabled
+    /// The key tap runs: Cranny draws the HUD.
+    case running
+    /// macOS refused the tap although Accessibility was reported granted.
+    case tapFailed
+    /// On, granted and enabled, but no tap yet, or none of Volume / Brightness / Keyboard backlight is on (the
+    /// rows below show that).
+    case idle
+
+    init(granted: Bool, replacing: Bool, activityEnabled: Bool, tapRunning: Bool, tapFailed: Bool) {
+        self = if !granted { .needsAccessibility }
+               else if !replacing { .off }
+               else if !activityEnabled { .activityDisabled }
+               else if tapRunning { .running }
+               else if tapFailed { .tapFailed }
+               else { .idle }
+    }
+}
+
 struct HUDSettingsPane: View {
     let settings: SettingsStore
     let permissions: PermissionsCenter
+    /// Opens Settings ▸ Live Activities.
+    let app: any AppControl
     /// nil in previews: status comes from the permission alone.
     var controller: HUDController?
     @State private var competingApps: [String] = []
 
     var body: some View {
         let replacing = settings[HUDSettings.replaceSystemHUD]
+        let status = HUDPaneStatus(granted: permissions.status(.accessibility) == .granted, replacing: replacing,
+                                   activityEnabled: HUDActivity.isEnabled(in: settings),
+                                   tapRunning: controller?.isTapRunning ?? false, tapFailed: controller?.tapFailed ?? false)
         Form {
             Section {
                 replaceRow
-                accessibilityRow(replacing: replacing)
+                accessibilityRow(status: status)
+                if status == .activityDisabled { activityDisabledRow }
                 if replacing, !competingApps.isEmpty { competingRow }
             } footer: {
                 Text("Cranny draws its HUD only when it can hide the one macOS shows. Without Accessibility, macOS keeps its own HUD and Cranny shows none.",
@@ -91,7 +126,7 @@ struct HUDSettingsPane: View {
         .resettable(HUDSettings.replaceSystemHUD, in: settings)
     }
 
-    private func accessibilityRow(replacing: Bool) -> some View {
+    private func accessibilityRow(status paneStatus: HUDPaneStatus) -> some View {
         let status = permissions.status(.accessibility)
         return LabeledContent {
             HStack(spacing: 8) {
@@ -105,23 +140,39 @@ struct HUDSettingsPane: View {
                 }
             }
         } label: {
-            FootnotedLabel(title: Text(PermissionKind.accessibility.title), footnote: accessibilityFootnote(status: status, replacing: replacing))
+            FootnotedLabel(title: Text(PermissionKind.accessibility.title), footnote: accessibilityFootnote(paneStatus))
         }
     }
 
-    private func accessibilityFootnote(status: PermissionStatus, replacing: Bool) -> Text? {
-        if status != .granted {
-            return Text("Turn on Cranny in Privacy & Security ▸ Accessibility, then come back here.", bundle: .module,
-                        comment: "Settings ▸ HUD: footnote while Accessibility is not granted")
+    private func accessibilityFootnote(_ status: HUDPaneStatus) -> Text? {
+        switch status {
+        case .needsAccessibility:
+            Text("Turn on Cranny in Privacy & Security ▸ Accessibility, then come back here.", bundle: .module,
+                 comment: "Settings ▸ HUD: footnote while Accessibility is not granted")
+        case .running:
+            Text("Cranny handles the keys now.", bundle: .module, comment: "Settings ▸ HUD: footnote while the HUD replacement is active")
+        case .tapFailed:
+            Text("macOS did not hand the keys to Cranny. Try turning the HUD off and on.", bundle: .module,
+                 comment: "Settings ▸ HUD: footnote when the key tap could not start although Accessibility is granted")
+        case .off, .activityDisabled, .idle:
+            nil
         }
-        guard replacing, let controller else { return nil }
-        if controller.isTapRunning {
-            return Text("Cranny handles the keys now.", bundle: .module, comment: "Settings ▸ HUD: footnote while the HUD replacement is active")
+    }
+
+    /// The HUD activity is off in Settings ▸ Live Activities, so every key goes to macOS: say so and link there.
+    private var activityDisabledRow: some View {
+        LabeledContent {
+            Button {
+                app.openSettings(.liveActivities)
+            } label: {
+                Text("Live Activities Settings…", bundle: .module, comment: "Settings ▸ HUD: button that opens Settings ▸ Live Activities")
+            }
+        } label: {
+            FootnotedLabel(title: Text("The HUD is off in Live Activities", bundle: .module,
+                                       comment: "Settings ▸ HUD: row shown while the HUD activity is turned off in Settings ▸ Live Activities"),
+                           footnote: Text("macOS shows its own HUD until you turn it back on there.", bundle: .module,
+                                          comment: "Settings ▸ HUD: footnote under The HUD is off in Live Activities"))
         }
-        return controller.tapFailed
-            ? Text("macOS did not hand the keys to Cranny. Try turning the HUD off and on.", bundle: .module,
-                   comment: "Settings ▸ HUD: footnote when the key tap could not start although Accessibility is granted")
-            : nil
     }
 
     private var competingRow: some View {
@@ -198,12 +249,20 @@ struct HUDSettingsPane: View {
     let services = CrannyServices.preview()
     services.settings[HUDSettings.replaceSystemHUD] = true
     services.settings[HUDSettings.colors] = .semantic
-    return HUDSettingsPane(settings: services.settings, permissions: services.permissions)
+    return HUDSettingsPane(settings: services.settings, permissions: services.permissions, app: services.app)
+        .frame(width: 620, height: 640)
+}
+
+#Preview("Settings ▸ HUD · off in Live Activities") {
+    let services = CrannyServices.preview()
+    services.settings[HUDSettings.replaceSystemHUD] = true
+    services.settings[CoreSettings.activityPreferences] = [.hud: ActivityPreference(isEnabled: false, peeksOnChange: false)]
+    return HUDSettingsPane(settings: services.settings, permissions: services.permissions, app: services.app)
         .frame(width: 620, height: 640)
 }
 
 #Preview("Settings ▸ HUD · off") {
     let services = CrannyServices.preview()
-    return HUDSettingsPane(settings: services.settings, permissions: services.permissions)
+    return HUDSettingsPane(settings: services.settings, permissions: services.permissions, app: services.app)
         .frame(width: 620, height: 640)
 }
