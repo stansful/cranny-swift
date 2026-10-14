@@ -23,7 +23,8 @@ nonisolated protocol EventSource: Sendable {
     /// Shows the system prompt. Only from the widget's "Show your events" button (ARCHITECTURE.md §7.4), never at
     /// launch or from Settings.
     func request() async -> PermissionStatus
-    /// Re-reads the status (cheap; never prompts): the user may have changed it in System Settings.
+    /// Re-reads the status (never prompts): the user may have changed it in System Settings. The answer may land a
+    /// moment later; `status` is observable, and the store follows it by observation.
     func refresh()
     /// System Settings ▸ Privacy & Security ▸ Calendars.
     func openSystemSettings()
@@ -35,7 +36,10 @@ nonisolated protocol EventSource: Sendable {
     init(permissions: PermissionsCenter) { self.permissions = permissions }
     var status: PermissionStatus { permissions.status(.calendar) }
     func request() async -> PermissionStatus { await permissions.request(.calendar) }
-    func refresh() { permissions.refresh() }
+    /// Only the calendar status, queried off the main actor: the widget asks on every open of the Nook while access
+    /// is missing, and the other kinds' system queries (Accessibility, camera, Bluetooth, Automation) are not its
+    /// business.
+    func refresh() { permissions.refreshInBackground(.calendar) }
     func openSystemSettings() { permissions.openSystemSettings(.calendar) }
 }
 
