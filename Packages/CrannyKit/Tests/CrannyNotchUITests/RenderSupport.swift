@@ -29,10 +29,13 @@ struct ShapeProbe {
     }
 
     /// Row 0 is the top of the canvas.
-    func isDark(x: Int, y: Int) -> Bool {
+    func isDark(x: Int, y: Int) -> Bool { luminance(x: x, y: y) < 0.35 }
+
+    /// Relative luminance (0…1) of a pixel; row 0 is the top of the canvas.
+    func luminance(x: Int, y: Int) -> Double {
         let i = (y * width + x) * 4
         let r = Double(pixels[i]) / 255, g = Double(pixels[i + 1]) / 255, b = Double(pixels[i + 2]) / 255
-        return 0.2126 * r + 0.7152 * g + 0.0722 * b < 0.35
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b
     }
 
     /// Dark extent of the row at `y` points from the top (nil = none).

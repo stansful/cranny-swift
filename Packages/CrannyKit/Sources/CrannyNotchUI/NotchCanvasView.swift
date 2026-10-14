@@ -89,10 +89,13 @@ private struct CanvasBody: View {
     private func surface(_ geometry: NotchGeometry) -> some View {
         let isOpen = model.phase == .open
         let expanded = isOpen || model.phase == .peek
-        let underglow = isOpen && registry.services.settings[CoreSettings.underglow] && theme.allowsUnderglow
+        // The underglow (open only, DESIGN.md §5.1) stays in the surface in every phase at alpha 0, so it morphs
+        // with the shape instead of being inserted at the open size.
+        let underglow = registry.services.settings[CoreSettings.underglow] && theme.allowsUnderglow
         return NotchSurface(geometry: geometry, band: model.layout.band, openness: expanded ? 1 : 0,
                             elevation: model.phase == .peek ? Elevation.peek : Elevation.open,
-                            keylineTint: keylineTint, underglow: underglow ? model.ambient.glow1.color : nil) {
+                            keylineTint: keylineTint,
+                            underglow: underglow ? model.ambient.glow1.color.opacity(isOpen ? 1 : 0) : nil) {
             ZStack(alignment: .top) {
                 if isOpen && theme.effectiveAmbience != .off {
                     NookLightLayer(model: model, registry: registry, geometry: geometry)
@@ -103,6 +106,7 @@ private struct CanvasBody: View {
                 rim(geometry)
             }
         }
+        .lifecycleReport("surface")
         // NotchSurface is the VoiceOver container "Cranny"; collapsed it reads "Cranny, collapsed" + Open.
         .modifier(CollapsedAccessibility(isCollapsed: model.phase == .idle || model.phase == .breath, open: actions.open))
     }
@@ -167,17 +171,25 @@ private struct CanvasBody: View {
 }
 
 /// The closed notch for VoiceOver: "Cranny, collapsed" with the action Open (DESIGN.md §16).
-private struct CollapsedAccessibility: ViewModifier {
+///
+/// The modifiers are applied in every phase and only their values change: an `if` here would put the surface in
+/// a different branch whenever the phase enters or leaves idle/breath, and SwiftUI would re-create it at its final
+/// size instead of morphing it out of the camera (identity tests).
+struct CollapsedAccessibility: ViewModifier {
     let isCollapsed: Bool
     let open: @MainActor () -> Void
     func body(content: Content) -> some View {
-        if isCollapsed {
-            content
-                .accessibilityValue(Text("Collapsed", bundle: .module, comment: "Closed notch: VoiceOver value (\"Cranny, collapsed\")"))
-                .accessibilityAction(named: Text("Open", bundle: .module, comment: "Notch: VoiceOver action that opens the panel")) { open() }
-        } else {
-            content
-        }
+        content
+            .accessibilityValue(isCollapsed
+                ? Text("Collapsed", bundle: .module, comment: "Closed notch: VoiceOver value (\"Cranny, collapsed\")")
+                : Text(verbatim: ""))
+            .accessibilityActions {
+                if isCollapsed {
+                    Button(action: open) {
+                        Text("Open", bundle: .module, comment: "Notch: VoiceOver action that opens the panel")
+                    }
+                }
+            }
     }
 }
 
