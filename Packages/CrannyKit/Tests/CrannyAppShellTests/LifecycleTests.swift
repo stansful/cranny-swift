@@ -1,4 +1,5 @@
-// Launch and quit (ARCHITECTURE.md §3.4): terminate hooks only after launch hooks.
+// Launch, quit and display changes (ARCHITECTURE.md §3.4, §4.9): terminate hooks only after launch hooks, and one
+// display rule for the panels and the menu's Show On ▸ checkmarks.
 import AppKit
 import CrannyCore
 import CrannyNotchUI
@@ -50,5 +51,36 @@ import Testing
     #expect(gate.defersQuit(atMost: .milliseconds(50)) { journal.entries.append("quit") })
     for _ in 0..<200 where journal.entries.isEmpty { try await Task.sleep(for: .milliseconds(10)) }
     #expect(journal.entries == ["quit"] && gate.phase == .launching)
+}
+
+// MARK: - Show On ▸ (C-SHELL-5)
+
+private let notchedLaptop = ConnectedDisplay(key: "built-in", name: "Built-in Retina Display", isBuiltIn: true, hasNotch: true)
+private let external = ConnectedDisplay(key: "external", name: "DELL U2723QE", isBuiltIn: false, hasNotch: false)
+
+/// "Only on my external monitor": the notched built-in display is set to Off in General ▸ Displays. The menu checks
+/// exactly the displays with a panel, the last one cannot be unchecked, and checking the laptop again shows its notch.
+@Test func showOnAgreesWithThePanelsForANotchedDisplaySetToOff() throws {
+    let off: [DisplayKey: DisplayPreferences] = ["built-in": DisplayPreferences(style: .off)]
+    let policy = ShowOnPolicy(selection: .all, perDisplay: off, noNotchStyle: .floatingIsland)
+    let displays = [notchedLaptop, external]
+    let descriptors = displays.enumerated().map { index, display in
+        DisplayDescriptor(key: display.key, displayID: CGDirectDisplayID(index + 1), isBuiltIn: display.isBuiltIn,
+                          hasNotch: display.hasNotch, isPrimary: index == 0)
+    }
+    let panels = DisplayCatalog.placements(for: descriptors, selection: .all, perDisplay: off, noNotchStyle: .floatingIsland)
+    #expect(panels.map(\.key) == ["external"])
+    #expect(policy.shownKeys(on: displays) == ["external"])
+    #expect(!policy.canToggle("external", on: displays))                        // Cranny never vanishes everywhere
+    #expect(policy.toggling("external", on: displays) == policy)
+    let laptopBack = policy.toggling("built-in", on: displays)
+    #expect(laptopBack.perDisplay["built-in"]?.style == nil)                    // Automatic: the notch
+    #expect(laptopBack.shownKeys(on: displays) == ["built-in", "external"] && laptopBack.selection == .all)
+    // Every selection: the checkmarks are the panels.
+    for selection in [DisplaySelection.builtIn, .all, .pointer, .custom(["built-in"]), .custom(["external"]), .custom([])] {
+        let shown = ShowOnPolicy(selection: selection, perDisplay: off, noNotchStyle: .floatingIsland).shownKeys(on: displays)
+        let placed = DisplayCatalog.placements(for: descriptors, selection: selection, perDisplay: off, noNotchStyle: .floatingIsland)
+        #expect(shown == Set(placed.map(\.key)), "\(selection)")
+    }
 }
 
