@@ -34,7 +34,8 @@ private let log = Log.logger(.overlay)
     @ObservationIgnored let displayChanges = DisplayChangeObserver()
     @ObservationIgnored var tokens: [ObservationToken] = []
     @ObservationIgnored var menuObservers: [any NSObjectProtocol] = []
-    @ObservationIgnored var trackingMenus = 0
+    /// The NSMenu tracking sessions (§4.5): the `menu` hold and the panels' menu regions.
+    @ObservationIgnored var menus = MenuTracking()
     // Arbitration (+Activities)
     @ObservationIgnored var arbiter = ActivityArbiter()
     @ObservationIgnored var ranked: [ActivitySnapshot] = []
@@ -72,7 +73,9 @@ private let log = Log.logger(.overlay)
         menuObservers = [NSMenu.didBeginTrackingNotification, NSMenu.didEndTrackingNotification].map { name in
             NotificationCenter.default.addObserver(forName: name, object: nil, queue: nil) { [weak self] note in
                 let began = note.name == NSMenu.didBeginTrackingNotification
-                MainActor.assumeIsolated { self?.menuTracking(began: began) }          // posted on the main thread
+                // Posted on the main thread, where the menu is read and stays.
+                nonisolated(unsafe) let menu = note.object as? NSMenu
+                MainActor.assumeIsolated { self?.menuTracking(began: began, size: menu?.size ?? .zero) }
             }
         }
         pointer.start { [weak self] point, kind in self?.pointerEvent(point, kind: kind) }
@@ -234,19 +237,14 @@ private let log = Log.logger(.overlay)
         if !controllers.isEmpty { applyDisplayFacts() }
     }
 
-    /// Menus nest (submenus): hold while any tracking session is open. The panels learn where the pointer is when
-    /// the first one begins and the last one ends (`MenuLinger`), before the hold changes.
-    func menuTracking(began: Bool) {
-        let wasTracking = trackingMenus > 0
-        trackingMenus = max(0, trackingMenus + (began ? 1 : -1))
-        let tracking = trackingMenus > 0
-        if tracking != wasTracking {
-            let point = NSEvent.mouseLocation
-            for controller in controllers.values {
-                if tracking { controller.menuBegan(at: point) } else { controller.menuEnded(at: point) }
-            }
+    /// A menu of `size` began or ended tracking. Menus nest (submenus): hold while any tracking session is open. The
+    /// panels learn where the pointer is when the first one begins and the last one ends, before the hold changes
+    /// (`PanelHover.menuTracking`).
+    private func menuTracking(began: Bool, size: CGSize) {
+        PanelHover.menuTracking(&menus, began: began, size: size, panels: controllers.values.map(\.hover),
+                                pointer: { NSEvent.mouseLocation }) {
+            self.setHoldOpen($0, reason: NotchMachineState.menuHold)
         }
-        setHoldOpen(tracking, reason: NotchMachineState.menuHold)
     }
 
     // MARK: Events

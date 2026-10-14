@@ -17,9 +17,8 @@ import SwiftUI
     private(set) var screen: NSScreen
     private(set) var style: NoNotchStyle
     private let registry: ModuleRegistry
-    private let hover = HoverTracker()
-    /// A menu opened from this panel keeps its region inside after it closes (§4.5).
-    private var menuLinger = MenuLinger()
+    /// The pointer as this panel sees it: hover zones, enter/leave, a menu's region after it closed (§4.3, §4.5).
+    let hover = PanelHover()
     private let focus: FocusManager
     private let keyboard: KeyboardRouter
     private let gestures: GestureRouter
@@ -77,6 +76,8 @@ import SwiftUI
         viewModel.relinquishKey = { [weak self] in self?.focus.relinquishKeyIfNeeded() }
         viewModel.onEvent = { [weak self] event in self?.didEmit(event) }
         focus.onHold = { [weak self] reason, on in self?.viewModel.send(.hold(reason, on)) }
+        hover.zones = { [weak self] in self?.panelZones }
+        hover.send = { [weak self] input in self?.viewModel.send(input) }
         drops.onDropFinished = { [weak self] in self?.onDropFinished() }
         focus.start()
         keyboard.start()
@@ -167,41 +168,26 @@ import SwiftUI
                       width: g.outerWidth, height: g.height)
     }
 
-    /// The hover zones in screen coordinates, or nil while hidden (§4.3, DESIGN.md §3.6).
-    var hoverZones: HoverZones? {
+    /// The hover zones in screen coordinates (with a menu's region while it lasts), or nil while hidden (§4.3,
+    /// DESIGN.md §3.6).
+    var hoverZones: HoverZones? { hover.hoverZones }
+
+    /// The zones of the shape as drawn, without a menu's region.
+    private var panelZones: HoverZones? {
         guard let geometry = viewModel.hoverGeometry else { return nil }
         let frame = panel.frame
         return HoverZones(shape: HoverZones.shapeRect(geometry, panelFrame: frame),
                           satellite: satelliteInCanvas().map { HoverZones.screenRect($0, panelFrame: frame) },
                           wings: viewModel.courtesyGeometry.map { HoverZones.shapeRect($0, panelFrame: frame) },
                           screenFrame: screen.frame, band: scene.layout.band,
-                          expanded: scene.phase == .open || scene.phase == .peek, menuRegion: menuLinger.region)
+                          expanded: scene.phase == .open || scene.phase == .peek)
     }
 
-    func pointerMoved(to point: CGPoint) {
-        let zones = hoverZones
-        for input in hover.update(point, zones: zones) { viewModel.send(input) }
-        menuLinger.pointerMoved(to: point, zones: zones)
-    }
-
-    // MARK: Menus (§4.5)
-
-    /// A menu began tracking (the coordinator's `menu` hold follows): remember whether it opened from this panel.
-    func menuBegan(at point: CGPoint) {
-        menuLinger.began(at: point, zones: hoverZones)
-    }
-
-    /// The last menu stopped tracking with the pointer at `point`; called before the `menu` hold is released, so the
-    /// machine sees the pointer where it is now (the hover tracker sees no events while a menu tracks), with the
-    /// menu's region counted as inside when the menu came from this panel.
-    func menuEnded(at point: CGPoint) {
-        menuLinger.ended(at: point, zones: hoverZones)
-        pointerMoved(to: point)
-    }
+    func pointerMoved(to point: CGPoint) { hover.moved(to: point) }
 
     /// A file drag moved (`contents` = what is dragged). Sends the machine its drag inputs on zone changes.
     func dragMoved(to point: CGPoint, contents: DragDetector.Contents) {
-        guard let entered = hover.updateDrag(point, zones: hoverZones), entered else { return }
+        guard let entered = hover.dragMoved(to: point), entered else { return }
         viewModel.send(.fileDragEntered(contents.types))
     }
 
