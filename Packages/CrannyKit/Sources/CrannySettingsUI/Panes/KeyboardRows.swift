@@ -1,5 +1,6 @@
 // CrannySettingsUI/Panes/KeyboardRows.swift — the rows of Settings ▸ Keyboard and the pure helpers behind them:
-// the design's shortcut order, the effective binding of a shortcut and the type-to-capture targets.
+// the design's shortcut order, the effective binding of a shortcut, the type-to-capture targets and when capture has
+// nowhere to go.
 import CrannyCore
 import Foundation
 
@@ -48,5 +49,26 @@ enum KeyboardRows {
             }
         }
         return targets
+    }
+
+    /// Type to capture with nowhere to show what it creates.
+    struct CaptureGap: Equatable {
+        /// The widget the chosen target fills, which is on no page.
+        let widget: WidgetID
+        /// Its name ("Notes"): the registered widget's title, else the target's.
+        let title: String
+    }
+
+    /// The chosen target names a widget that is on no page, so the shell leaves the typed keys with the panel
+    /// (ARCHITECTURE §4.10, C-SHELL-1) and typing does nothing: the pane warns and leads to Layout & Widgets. Nil while
+    /// capture is off, works, or its target does not name a widget (always captured). Same rule as the shell's
+    /// `KeyboardRouter.captureTarget()`: any grid page counts.
+    static func captureGap(_ registry: ModuleRegistry) -> CaptureGap? {
+        let settings = registry.services.settings
+        guard let id = settings[CoreSettings.typeToCapture],
+              let target = registry.captureTargets.first(where: { $0.id == id }),
+              let widget = target.widget,
+              !settings[CoreSettings.pages].contains(where: { $0.items.contains { $0.widget == widget } }) else { return nil }
+        return CaptureGap(widget: widget, title: registry.widget(widget)?.title ?? target.title)
     }
 }

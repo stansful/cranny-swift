@@ -1,7 +1,8 @@
 // CrannySettingsUI/Panes/KeyboardPane.swift — Settings ▸ Keyboard (DESIGN.md §11.1, §16): a recorder per global shortcut
 // in the design's order (Open Cranny ⌃⌥N on; Open Tray, New note, Start timer, Toggle pin, Pause activities off by
-// default; then any other module's), the type-to-capture target, and a read-only reference of the keys inside Cranny
-// (the same data as the hold-⌘ overlay).
+// default; then any other module's), the type-to-capture target (with a warning and a way to Layout & Widgets while
+// its widget is on no page, so typing would do nothing), and a read-only reference of the keys inside Cranny (the same
+// data as the hold-⌘ overlay).
 import AppKit
 import CrannyCore
 import Foundation
@@ -40,6 +41,9 @@ struct KeyboardPane: View {
             }
             Section {
                 CaptureTargetRow(registry: registry)
+                if let gap = KeyboardRows.captureGap(registry) {
+                    CaptureGapRow(gap: gap, app: registry.services.app)
+                }
             }
             KeyboardReference()
         }
@@ -66,6 +70,49 @@ private struct CaptureTargetRow: View {
         ChoiceRow(KeyboardRows.typeToCapture, settings: registry.services.settings, key: CoreSettings.typeToCapture, choices: choices,
                   footnote: String(localized: "When you open Cranny with the keyboard, just start typing to write a note or a to-do.",
                                    bundle: .module, comment: "Settings ▸ Keyboard: footnote of Type to capture"))
+    }
+}
+
+/// The type-to-capture widget is on no page, so typing does nothing (`KeyboardRows.captureGap`): an inline warning
+/// under the picker whose button opens Layout & Widgets at that widget's library entry, where Add puts it on a page.
+/// The row goes away as soon as the widget is on a page or capture is turned off.
+private struct CaptureGapRow: View {
+    let gap: KeyboardRows.CaptureGap
+    let app: any AppControl
+    @Environment(SettingsNavigator.self) private var navigator: SettingsNavigator?
+
+    var body: some View {
+        LabeledContent {
+            Button {
+                show()
+            } label: {
+                Text("Show in Layout & Widgets", bundle: .module,
+                     comment: "Settings ▸ Keyboard: button under the type-to-capture warning; opens Settings ▸ Layout & Widgets at that widget")
+            }
+        } label: {
+            Label {
+                Text("The \(gap.title) widget isn’t on any page, so typing does nothing.", bundle: .module,
+                     comment: "Settings ▸ Keyboard: warning under Type to capture when its widget is on no page; the argument is the widget's name (Notes, To-dos)")
+                    .fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                // The system's warning sign in its multicolour rendering, as the other Settings warnings: it follows
+                // Light/Dark and Increase Contrast with no literal colour.
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .symbolRenderingMode(.multicolor)
+                    .accessibilityHidden(true)
+            }
+        }
+        .accessibilityElement(children: .contain)
+    }
+
+    /// Opens Layout & Widgets, scrolls to the widget's library entry and highlights it (a deep link from previews).
+    private func show() {
+        let row = LayoutRows.widget(gap.widget, title: gap.title)
+        if let navigator {
+            navigator.open(row: row)
+        } else {
+            app.openSettings(SettingsPageID("\(SettingsPageID.nookAndWidgets.rawValue)#widget.\(gap.widget.rawValue)"))
+        }
     }
 }
 

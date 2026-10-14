@@ -2940,6 +2940,17 @@
         }
       }
     },
+    "Show in Layout & Widgets" : {
+      "comment" : "Settings ▸ Keyboard: button under the type-to-capture warning; opens Settings ▸ Layout & Widgets at that widget",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать в разделе «Раскладка и виджеты»"
+          }
+        }
+      }
+    },
     "Show menu bar icon" : {
       "comment" : "Settings ▸ General: toggle",
       "localizations" : {
@@ -3255,6 +3266,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Размер текста"
+          }
+        }
+      }
+    },
+    "The %@ widget isn’t on any page, so typing does nothing." : {
+      "comment" : "Settings ▸ Keyboard: warning under Type to capture when its widget is on no page; the argument is the widget's name (Notes, To-dos)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Виджета «%@» нет ни на одной странице, поэтому ввод с клавиатуры не сработает."
           }
         }
       }
