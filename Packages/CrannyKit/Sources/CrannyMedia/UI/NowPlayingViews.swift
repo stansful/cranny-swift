@@ -19,7 +19,7 @@ struct NowPlayingLeading: View {
                 .notchMatched(MatchedID.mediaArtwork)
         } else {
             Image(systemName: "music.note")
-                .font(.system(size: 13 * theme.notchUnit, weight: .semibold))
+                .crannySymbol(.band)
                 .foregroundStyle(theme.palette.label)
                 .frame(width: size, height: size)
                 .accessibilityHidden(true)

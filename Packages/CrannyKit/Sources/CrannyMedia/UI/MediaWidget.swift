@@ -120,10 +120,8 @@ private struct MediaEmptyView: View {
                 } else if PlayerApps.url(for: source) != nil {
                     Button { PlayerApps.open(source) } label: {
                         Text(verbatim: Self.openTitle(PlayerApps.name(for: source)))
-                            .crannyFont(.caption).fontWeight(.semibold)
-                            .foregroundStyle(theme.accentColor)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(CrannyLinkButtonStyle())                  // `info`, 28 × 24 target (DESIGN.md §2.1, §16)
                 }
             }
             Spacer(minLength: 0)

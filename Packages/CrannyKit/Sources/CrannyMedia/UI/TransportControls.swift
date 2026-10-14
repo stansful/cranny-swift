@@ -19,7 +19,7 @@ struct TransportControls: View {
             button(MediaStrings.previousTrack, symbol: "backward.fill", command: .previousTrack)
             Button { Task { await service.send(.togglePlayPause) } } label: {
                 Image(systemName: playing ? "pause.fill" : "play.fill")
-                    .contentTransition(theme.reduceMotion ? .identity : .symbolEffect(.replace))
+                    .contentTransition(theme.symbolReplace)
             }
             .buttonStyle(CrannyIconButtonStyle(prominentPlayPause ? .prominent : .plain,
                                                size: prominentPlayPause ? HitTarget.band.width : HitTarget.preferred))
