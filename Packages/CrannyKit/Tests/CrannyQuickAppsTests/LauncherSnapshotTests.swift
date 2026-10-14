@@ -101,6 +101,36 @@ struct LauncherSnapshot {
         }
     }
 
+    /// The launcher in a real `NSHostingView` (off-screen window, never ordered front), so the AppKit menu anchors
+    /// behind "+" and "+N" are attached as in the app: they must draw nothing.
+    @Test func renderHostedLauncher() async throws {
+        let directory = try #require(snapshotDirectory)
+        try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+        let variants: [(String, QuickAppsModel, Int)] = [
+            ("16-hosted-editing-overflow", QuickAppsPreview.model(editing: true, states: states), 2),
+            ("17-hosted-overflow-failed",
+             QuickAppsPreview.model(states: [QuickAppsPreview.sampleShortcuts[2].id: .failed(.shortcutFailed)]), 3),
+        ]
+        for (name, model, cells) in variants {
+            await warmIcons(model, theme: CrannyTheme())
+            let card = QuickAppsPreview.card(model: model, cells: cells)
+            let size = CGSize(width: CrannyTheme().grid.width(cells: cells) + 2 * Space.xl, height: CrannyTheme().grid.height + 2 * Space.xl)
+            let window = NSWindow(contentRect: CGRect(origin: .zero, size: size), styleMask: [.borderless], backing: .buffered, defer: false)
+            window.isReleasedWhenClosed = false
+            window.appearance = NSAppearance(named: .darkAqua)
+            let host = NSHostingView(rootView: card.frame(width: size.width, height: size.height))
+            host.frame = CGRect(origin: .zero, size: size)
+            window.contentView = host
+            try await Task.sleep(for: .milliseconds(300))
+            host.layoutSubtreeIfNeeded()
+            let rep = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: rep)
+            let png = try #require(rep.representation(using: .png, properties: [:]))
+            try png.write(to: URL(fileURLWithPath: directory).appending(path: "\(name).png"))
+            window.close()
+        }
+    }
+
     /// The renderer takes one frame: put the icons in the cache first.
     private func warmIcons(_ model: QuickAppsModel, theme: CrannyTheme) async {
         let tile = TileMetrics(tile: theme.grid.cell, showsLabels: model.showsLabels)
