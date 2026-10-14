@@ -1,7 +1,10 @@
 // CrannyOnboarding/Model/PermissionPlan.swift — step 5: one row per permission the chosen layout needs,
 // built from what modules declared (`registry.permissionUses`). Pure. DESIGN.md §12.1: Calendar,
 // Accessibility (HUD), Automation (media apps), Bluetooth; Camera is never asked here (Mirror asks on first
-// use) and System Audio Recording has no prompt to show (CrannyMedia records what it observes).
+// use) and System Audio Recording has no prompt to show (CrannyMedia records what it observes). A use that
+// serves an off-by-default switch (`PermissionUse.optIn`: Media's Apple Events fallback for Automation, every
+// Bluetooth device for Bluetooth) is offered only while that switch is on: otherwise the grant would change
+// nothing, and the switch in Settings asks for the permission when it is turned on.
 import CrannyCore
 import Foundation
 
@@ -51,11 +54,12 @@ nonisolated enum PermissionPlan {
         PresetLayout.modules(of: items).union(everyLayout)
     }
 
-    /// One row per group, in DESIGN.md's order, for the uses of `modules`.
-    static func rows(uses: [PermissionUse], modules: Set<ModuleID>) -> [PermissionRow] {
+    /// One row per group, in DESIGN.md's order, for the uses of `modules` that a grant makes work: `isOn` reads
+    /// the opt-in switch of a use that has one (`PermissionUse.optIn`).
+    static func rows(uses: [PermissionUse], modules: Set<ModuleID>, isOn: (SettingKey<Bool>) -> Bool) -> [PermissionRow] {
         var kinds: [PermissionGroup: [PermissionKind]] = [:]
         var reasons: [PermissionGroup: [String]] = [:]
-        for use in uses where modules.contains(use.module) {
+        for use in uses where modules.contains(use.module) && use.optIn.map(isOn) != false {
             guard let group = PermissionGroup(use.kind) else { continue }
             if !(kinds[group] ?? []).contains(use.kind) { kinds[group, default: []].append(use.kind) }
             let reason = use.reason.trimmingCharacters(in: .whitespacesAndNewlines)

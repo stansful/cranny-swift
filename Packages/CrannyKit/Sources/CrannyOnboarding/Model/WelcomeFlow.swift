@@ -295,9 +295,12 @@ private let log = Log.logger(.onboarding)
 
     // MARK: Step 5 · Permissions
 
+    /// Observed by the view: a row whose opt-in is switched on elsewhere (Settings) appears.
     var permissionRows: [PermissionRow] {
-        let items = PresetLayout.homeItems(services.settings[CoreSettings.pages])
-        return PermissionPlan.rows(uses: registry.permissionUses, modules: PermissionPlan.modules(for: items))
+        let settings = services.settings
+        let items = PresetLayout.homeItems(settings[CoreSettings.pages])
+        return PermissionPlan.rows(uses: registry.permissionUses, modules: PermissionPlan.modules(for: items),
+                                   isOn: { settings[$0] })
     }
 
     func state(of row: PermissionRow) -> PermissionRowState {

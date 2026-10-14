@@ -60,6 +60,13 @@ extension Bundle {
     }
 }
 
+/// The opt-in switches of the sample uses below, like Media's Apple Events fallback and the system activities'
+/// "every Bluetooth device" (both off by default).
+enum SamplePermissionOptIns {
+    static let appleEvents = SettingKey<Bool>(.media, "allowAppleEvents", default: false)
+    static let allBluetoothDevices = SettingKey<Bool>(.system, "showsAllBluetoothDevices", default: false)
+}
+
 /// Uses declared the way the feature modules declare them (calendar, HUD, media, devices), for previews.
 @MainActor func registerSamplePermissionUses(in registry: ModuleRegistry) {
     struct Calendar: FeatureModule {
@@ -77,15 +84,18 @@ extension Bundle {
     struct Media: FeatureModule {
         static var id: ModuleID { .media }
         static func register(in registry: ModuleRegistry) {
-            registry.declare(.automation(bundleID: "com.apple.Music"), reason: "Control Music when other ways fail. Cranny sends only playback commands.")
-            registry.declare(.automation(bundleID: "com.spotify.client"), reason: "Control Music when other ways fail. Cranny sends only playback commands.")
+            registry.declare(.automation(bundleID: "com.apple.Music"), reason: "Control Music when other ways fail. Cranny sends only playback commands.",
+                             optIn: SamplePermissionOptIns.appleEvents)
+            registry.declare(.automation(bundleID: "com.spotify.client"), reason: "Control Music when other ways fail. Cranny sends only playback commands.",
+                             optIn: SamplePermissionOptIns.appleEvents)
             registry.declare(.systemAudioRecording, reason: "Draw the live visualizer.")
         }
     }
     struct System: FeatureModule {
         static var id: ModuleID { .system }
         static func register(in registry: ModuleRegistry) {
-            registry.declare(.bluetooth, reason: "Show the battery of every Bluetooth device. Cranny never connects to them.")
+            registry.declare(.bluetooth, reason: "Show the battery of every Bluetooth device. Cranny never connects to them.",
+                             optIn: SamplePermissionOptIns.allBluetoothDevices)
         }
     }
     for module in [Calendar.self, HUD.self, Media.self, System.self] as [any FeatureModule.Type] { registry.register(module) }

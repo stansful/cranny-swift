@@ -48,19 +48,25 @@ import Testing
 }
 
 @Suite struct PermissionPlanTests {
+    private static let appleEvents = SettingKey<Bool>(.media, "allowAppleEvents", default: false)
+    private static let allDevices = SettingKey<Bool>(.system, "showsAllBluetoothDevices", default: false)
     private let uses: [PermissionUse] = [
         PermissionUse(kind: .calendar, module: .calendar, reason: "Show your events in Cranny. Cranny never edits or uploads them."),
         PermissionUse(kind: .accessibility, module: .hud, reason: "Replace the system HUD."),
-        PermissionUse(kind: .automation(bundleID: "com.apple.Music"), module: .media, reason: "Control music apps."),
-        PermissionUse(kind: .automation(bundleID: "com.spotify.client"), module: .media, reason: "Control music apps."),
+        PermissionUse(kind: .automation(bundleID: "com.apple.Music"), module: .media, reason: "Control music apps.", optIn: Self.appleEvents),
+        PermissionUse(kind: .automation(bundleID: "com.spotify.client"), module: .media, reason: "Control music apps.", optIn: Self.appleEvents),
         PermissionUse(kind: .systemAudioRecording, module: .media, reason: "Live visualizer."),
         PermissionUse(kind: .camera, module: .mirror, reason: "Mirror."),
-        PermissionUse(kind: .bluetooth, module: .system, reason: "All Bluetooth devices."),
+        PermissionUse(kind: .bluetooth, module: .system, reason: "All Bluetooth devices.", optIn: Self.allDevices),
         PermissionUse(kind: .calendar, module: .calendar, reason: "Show your events in Cranny. Cranny never edits or uploads them."),
     ]
+    /// Every opt-in switched on (Settings ▸ Media's Apple Events fallback, every Bluetooth device).
+    private let allOn: (SettingKey<Bool>) -> Bool = { _ in true }
+    /// The defaults of a first run: every opt-in off.
+    private let defaults: (SettingKey<Bool>) -> Bool = { $0.defaultValue }
 
-    @Test func listenerAsksForWhatDesignLists() {
-        let rows = PermissionPlan.rows(uses: uses, modules: PermissionPlan.modules(for: NookPreset.listener.items))
+    @Test func listenerAsksForWhatDesignListsOnceItsSwitchesAreOn() {
+        let rows = PermissionPlan.rows(uses: uses, modules: PermissionPlan.modules(for: NookPreset.listener.items), isOn: allOn)
         #expect(rows.map(\.group) == [.calendar, .accessibility, .automation, .bluetooth])
         let automation = rows.first { $0.group == .automation }
         #expect(automation?.kinds == [.automation(bundleID: "com.apple.Music"), .automation(bundleID: "com.spotify.client")])
@@ -68,9 +74,21 @@ import Testing
         #expect(rows.first?.kinds == [.calendar])           // declared twice, asked once
     }
 
+    @Test func aFirstRunAsksOnlyForWhatAGrantMakesWork() {
+        // The Apple Events fallback and "every Bluetooth device" are off by default: Automation for Music and
+        // Spotify, and Bluetooth, would be granted for nothing. Their switches ask when they are turned on.
+        let listener = PermissionPlan.rows(uses: uses, modules: PermissionPlan.modules(for: NookPreset.listener.items), isOn: defaults)
+        #expect(listener.map(\.group) == [.calendar, .accessibility])
+        let minimal = PermissionPlan.rows(uses: uses, modules: PermissionPlan.modules(for: NookPreset.minimal.items), isOn: defaults)
+        #expect(minimal.map(\.group) == [.accessibility])
+        let onlyAppleEvents = PermissionPlan.rows(uses: uses, modules: PermissionPlan.modules(for: NookPreset.listener.items),
+                                                  isOn: { $0 == Self.appleEvents })
+        #expect(onlyAppleEvents.map(\.group) == [.calendar, .accessibility, .automation])
+    }
+
     @Test func cameraAndAudioRecordingAreNeverAskedHere() {
         let everything: Set<ModuleID> = [.media, .mirror, .calendar, .hud, .system]
-        let rows = PermissionPlan.rows(uses: uses, modules: everything)
+        let rows = PermissionPlan.rows(uses: uses, modules: everything, isOn: allOn)
         let kinds = rows.flatMap(\.kinds)
         #expect(!kinds.contains(.camera))
         #expect(!kinds.contains(.systemAudioRecording))
@@ -79,11 +97,11 @@ import Testing
     }
 
     @Test func onlyTheFeaturesOfTheLayoutCount() {
-        let maker = PermissionPlan.rows(uses: uses, modules: PermissionPlan.modules(for: NookPreset.maker.items))
+        let maker = PermissionPlan.rows(uses: uses, modules: PermissionPlan.modules(for: NookPreset.maker.items), isOn: allOn)
         #expect(maker.map(\.group) == [.accessibility, .bluetooth])   // HUD and devices work with every layout
-        let meetings = PermissionPlan.rows(uses: uses, modules: PermissionPlan.modules(for: NookPreset.meetings.items))
+        let meetings = PermissionPlan.rows(uses: uses, modules: PermissionPlan.modules(for: NookPreset.meetings.items), isOn: allOn)
         #expect(meetings.map(\.group) == [.calendar, .accessibility, .bluetooth])
-        #expect(PermissionPlan.rows(uses: [], modules: [.calendar]).isEmpty)
+        #expect(PermissionPlan.rows(uses: [], modules: [.calendar], isOn: allOn).isEmpty)
     }
 
     @Test func rowStateFollowsEveryKind() {
