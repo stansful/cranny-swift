@@ -65,7 +65,7 @@ extension TrayStore {
         let list = urls(of: targets(for: id))
         guard !list.isEmpty else { return }
         system.copy(text: list.map(\.path).joined(separator: "\n"))
-        notch.flash(symbol: "link", label: Self.pathsCopiedLabel(count: list.count))
+        notch.flash(symbol: "link", label: Self.copiedLabel)
     }
 
     /// ⌘⌫ / ✕ / "Remove": removes the selection (or `id`).

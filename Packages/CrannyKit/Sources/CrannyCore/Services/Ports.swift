@@ -55,7 +55,11 @@ public nonisolated enum NotchEvent: Sendable, Equatable {
     /// Share picker (activates Cranny first, R3 §7).
     func presentSharePicker(_ urls: [URL])
     /// Shows a transient P1 compact activity (glyph + short label, 2.6 s) on the pointer display — onboarding
-    /// "Hi", "Path copied". Ignored while paused or hidden. `label` is already localized; ≤ 12 characters.
+    /// "Hi", the Tray's "Copied". Ignored while paused or hidden. `label` is already localized and must fit the wing
+    /// by measured width, not by a character count: the `compact` style (13-pt semibold rounded × notch unit) within
+    /// the wide slot's 72u at every notch unit, in every language (about 8 Cyrillic letters). The shell draws the glyph
+    /// alone when it does not fit and keeps the label for the peek row and VoiceOver; list a new label in the shell's
+    /// `FlashLabelCatalog`, whose test renders every flash label in English and Russian.
     func flash(symbol: String, label: String)
     /// Calls `handler` for every `NotchEvent`; keep the returned ID to remove it.
     @discardableResult func addEventObserver(_ handler: @escaping @MainActor (NotchEvent) -> Void) -> UUID

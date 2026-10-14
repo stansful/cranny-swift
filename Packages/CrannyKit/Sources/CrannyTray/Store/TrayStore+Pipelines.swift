@@ -129,12 +129,11 @@ extension TrayStore {
         }
         if result.copiesPaths {
             system.copy(text: finalURLs.map(\.path).joined(separator: "\n"))
-            notch.flash(symbol: "link", label: Self.pathsCopiedLabel(count: finalURLs.count))
+            notch.flash(symbol: "link", label: Self.copiedLabel)
         }
         if let text = result.text {
             system.copy(text: text)
-            notch.flash(symbol: "doc.on.doc", label: String(localized: "Text copied", bundle: .module,
-                                                            comment: "Notch flash: Copy text confirmation; at most 12 characters"))
+            notch.flash(symbol: "doc.on.doc", label: Self.copiedLabel)
         }
         if result.reveals { system.reveal(finalURLs) }
         haptics.play(.generic)
@@ -145,11 +144,12 @@ extension TrayStore {
         endJob(jobID)
     }
 
-    /// "Path copied" / "Paths copied" in the band (Copy paths chip, context menu, pipelines ending in Copy paths).
-    static func pathsCopiedLabel(count: Int) -> String {
-        count == 1
-            ? String(localized: "Path copied", bundle: .module, comment: "Notch flash: Copy paths confirmation (one file); at most 12 characters")
-            : String(localized: "Paths copied", bundle: .module, comment: "Notch flash: Copy paths confirmation (several files); at most 12 characters")
+    /// "Copied" in the band after Copy paths (the chip, the context menu, a pipeline ending in Copy paths; with the
+    /// `link` glyph) and after a pipeline copied text (with `doc.on.doc`): the glyph says what was copied, and the
+    /// word fits the wing in every language (`NotchControl.flash`, design ruling E4).
+    static var copiedLabel: String {
+        String(localized: "Copied", bundle: .module,
+               comment: "Notch flash: confirms Copy paths or a copied text; the link or copy glyph beside it says what was copied; one short word that fits the compact wing")
     }
 
     private func fail(_ jobID: UUID, _ error: any Error) {

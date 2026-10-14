@@ -45,7 +45,7 @@ import Testing
 @Test func theConfirmationSaysWhatWasChosen() {
     let all: [PauseConfirmation] = PauseDuration.allCases.map { .paused($0) } + [.resumed]
     #expect(Set(all.map(\.message)).count == all.count && all.allSatisfy { !$0.message.isEmpty })
-    #expect(all.allSatisfy { !$0.label.isEmpty && $0.label.count <= 12 })        // a flash label fits the wing
+    #expect(all.allSatisfy { !$0.label.isEmpty && WingTextMetrics.fits($0.label, slot: .wide) })   // measured (E4)
     #expect(PauseConfirmation.paused(.oneHour).symbol == "pause.fill" && PauseConfirmation.resumed.symbol == "play.fill")
     #expect(PauseConfirmation.paused(.oneHour).message.contains("1"))
     // The menu's status line and the confirmation are one sentence.
@@ -59,8 +59,8 @@ import Testing
     flash.show(symbol: confirmation.symbol, label: confirmation.label, detail: confirmation.message, duration: 60,
                outlastsPause: true)
     #expect(flash.isActive && flash.outlastsPause && flash.accessibilityLabel == confirmation.message)
-    flash.show(symbol: "doc.on.doc", label: "Path copied", duration: 60)       // an ordinary flash replaces it
-    #expect(!flash.outlastsPause && flash.detail == nil && flash.accessibilityLabel == "Path copied")
+    flash.show(symbol: "doc.on.doc", label: "Copied", duration: 60)            // an ordinary flash replaces it
+    #expect(!flash.outlastsPause && flash.detail == nil && flash.accessibilityLabel == "Copied")
     flash.show(symbol: confirmation.symbol, label: confirmation.label, detail: confirmation.message, duration: 60,
                outlastsPause: true)
     flash.hide()
@@ -119,25 +119,6 @@ import Testing
     #expect(text("Resume Live Activities").hasPrefix("Возобнов") && text("Live Activities resumed").hasSuffix("возобновлены"))
 }
 
-/// Every confirmation's wing word fits the wing it is drawn in (`FlashActivity.compactTrailing` in its slot's content,
-/// slot − 20u), in English and Russian, at every notch unit: the 12-character limit of flash labels does not ensure it.
-@MainActor @Test(arguments: ["en", "ru"]) func theWingWordsFitTheWing(language: String) throws {
-    let russian = try #require(Bundle.module.path(forResource: "ru", ofType: "lproj").flatMap { Bundle(path: $0) })
-    for key in ["Paused", "Resumed"] {                     // English: the keys
-        let label = language == "en" ? key : russian.localizedString(forKey: key, value: "\u{0}", table: "Localizable")
-        let flash = FlashActivity()
-        flash.show(symbol: "pause.fill", label: label, duration: 60)
-        for unit in [0.8, 0.9375, 1, 1.0625, 1.25] as [CGFloat] {
-            var theme = CrannyTheme()
-            theme.notchUnit = unit
-            let drawn = NSHostingView(rootView: flash.compactTrailing().fixedSize().crannyThemeRoot(theme)).fittingSize.width
-            let wing = flash.slot.points(unit: unit) - 20 * unit
-            #expect(drawn <= wing, "\(label) at \(unit)u: \(drawn) pt in a \(wing)-pt wing")
-        }
-        flash.hide()
-    }
-}
-
 @MainActor @Observable private final class AlertProbe: LiveActivity {
     let id: ActivityID = "probe.meeting"
     let isActive = true
@@ -186,7 +167,7 @@ import Testing
     #expect((viewModel.activity(.flash) as? any OpenHeaderActivity)?.headerMessage == confirmation.message)
 
     // An ordinary flash that replaces it waits in the lineup (the arbiter's `.activityChanged` re-syncs the scene).
-    flash.show(symbol: "doc.on.doc", label: "Path copied", duration: 60)
+    flash.show(symbol: "doc.on.doc", label: "Copied", duration: 60)
     viewModel.send(.activityChanged)
     #expect(viewModel.scene.headerActivity == nil)
 }
