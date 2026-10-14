@@ -390,18 +390,3 @@ private func page(_ tag: String) throws -> URL { try #require(URL(string: "https
     #expect(await eventually { checker.state == .idle })                           // the pre-release no longer counts
     #expect(await transport.requests.count == 2 && sleeper.waits.isEmpty)          // and nothing was asked by itself
 }
-
-// MARK: - The menu's result alert
-
-@Test func theAlertSaysWhatTheCheckFound() throws {
-    let url = try page("v0.2.0")
-    let available = try #require(UpdateAlert.content(for: .available(version: "0.2.0", notesURL: url), currentVersion: "0.1.0"))
-    #expect(available.title.contains("0.2.0") && available.message.contains("0.1.0"))
-    #expect(available.link == url && available.secondaryButton != nil)
-    let upToDate = try #require(UpdateAlert.content(for: .upToDate, currentVersion: "0.1.0"))
-    #expect(upToDate.message.contains("0.1.0") && upToDate.link == nil && upToDate.secondaryButton == nil)
-    let failed = try #require(UpdateAlert.content(for: .failed("GitHub is down"), currentVersion: "0.1.0"))
-    #expect(failed.message == "GitHub is down" && failed.link == nil)
-    #expect(UpdateAlert.content(for: .idle, currentVersion: "0.1.0") == nil)
-    #expect(UpdateAlert.content(for: .checking, currentVersion: "0.1.0") == nil)
-}

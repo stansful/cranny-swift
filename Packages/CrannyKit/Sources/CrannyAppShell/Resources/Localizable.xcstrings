@@ -67,39 +67,6 @@
         }
       }
     },
-    "Couldn't check for updates" : {
-      "comment" : "Update alert: title when the check failed",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Не удалось проверить обновления"
-          }
-        }
-      }
-    },
-    "Cranny %@ is available" : {
-      "comment" : "Update alert: title; the argument is the new version, e.g. 0.2.0",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Доступна версия Cranny %@"
-          }
-        }
-      }
-    },
-    "Cranny is up to date" : {
-      "comment" : "Update alert: title when no newer release exists",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "У вас последняя версия Cranny"
-          }
-        }
-      }
-    },
     "Cranny, demo mode" : {
       "comment" : "Menu bar icon: VoiceOver label while Demo mode is on",
       "localizations" : {
@@ -276,17 +243,6 @@
         }
       }
     },
-    "Later" : {
-      "comment" : "Update alert: button that closes the alert",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Позже"
-          }
-        }
-      }
-    },
     "Launch at login needs Cranny in the Applications folder. Move it there, then open it again." : {
       "comment" : "Settings ▸ General ▸ Launch at login: footnote when the app runs from a translocated copy",
       "localizations" : {
@@ -371,17 +327,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Активности возобновлены"
-          }
-        }
-      }
-    },
-    "OK" : {
-      "comment" : "Update alert: button that closes the alert",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ОК"
           }
         }
       }
@@ -613,39 +558,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "В этой сборке проверка обновлений недоступна."
-          }
-        }
-      }
-    },
-    "Version %@ is the newest version." : {
-      "comment" : "Update alert: message when up to date; the argument is the running version",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Версия %@ — самая новая."
-          }
-        }
-      }
-    },
-    "View Release" : {
-      "comment" : "Update alert: button that opens the GitHub release page",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Открыть страницу выпуска"
-          }
-        }
-      }
-    },
-    "You have version %@. The release page has the download and the release notes." : {
-      "comment" : "Update alert: message under the title; the argument is the running version",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "У вас версия %@. На странице выпуска есть загрузка и список изменений."
           }
         }
       }

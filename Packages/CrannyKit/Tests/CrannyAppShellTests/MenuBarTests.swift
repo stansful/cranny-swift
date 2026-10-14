@@ -105,7 +105,8 @@ private func policy(_ selection: DisplaySelection, _ perDisplay: [DisplayKey: Di
 
 // MARK: - Wiring
 
-@MainActor private func makeServices(login: FakeLoginItem = FakeLoginItem(), repository: String? = "octo/cranny")
+@MainActor private func makeServices(login: FakeLoginItem = FakeLoginItem(), repository: String? = "octo/cranny",
+                                     transport: FakeUpdateTransport = FakeUpdateTransport([]))
     -> (ShellAppServices, ModuleRegistry, OverlayCoordinator) {
     let registry = ModuleRegistry(services: .preview())
     let overlay = OverlayCoordinator(registry: registry, environment: ShellEnvironment())
@@ -114,7 +115,7 @@ private func policy(_ selection: DisplaySelection, _ perDisplay: [DisplayKey: Di
                                     settingsWindow: SettingsWindowController(registry: registry),
                                     welcomeWindow: WelcomeWindowController(registry: registry), loginItemService: login,
                                     updateConfiguration: UpdateConfiguration(repository: repository, currentVersion: "0.1.0"),
-                                    updateTransport: FakeUpdateTransport([]))
+                                    updateTransport: transport)
     return (services, registry, overlay)
 }
 
@@ -129,6 +130,19 @@ private func policy(_ selection: DisplaySelection, _ perDisplay: [DisplayKey: Di
     #expect(control.loginItem == .enabled && login.calls == ["register"])
     #expect(control.pause === services.pause && control.demo === services.demo && control.displays === services.displays)
     #expect(control.updates?.isConfigured == true)
+}
+
+@Test func theMenuChecksForUpdatesAndSettingsShowsTheResult() async throws {
+    let transport = FakeUpdateTransport([.ok(Data(#"{"tag_name": "v0.2.0", "draft": false, "prerelease": false}"#.utf8), etag: nil)])
+    let (services, _, _) = makeServices(transport: transport)
+    let control = services.appControl
+    // Attached but not connected (no `start()`): there is no Settings window to open in a test.
+    control.attach(loginItems: services.loginItems, updates: services.updates, pause: services.pause, demo: services.demo,
+                   displays: services.displays, tutorial: services.tutorial, shortcuts: [])
+    control.checkForUpdatesFromMenu()
+    #expect(control.update == .idle || control.update == .checking)               // no alert: the state is the answer
+    #expect(await eventually { if case .available = control.update { true } else { false } })
+    #expect(await transport.requests.count == 1)
 }
 
 @Test func theMenuShowsTheEffectiveBindingOnlyWhileRegistered() {

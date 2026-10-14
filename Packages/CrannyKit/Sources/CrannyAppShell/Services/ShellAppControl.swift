@@ -83,13 +83,13 @@ import SwiftUI
     /// "About Cranny" opens Settings ▸ About: the icon, version, updates, licence and acknowledgements (§11.1).
     func showAbout() { openSettings(.about) }
 
-    /// "Check for Updates…": checks, then reports the result in an alert (the menu has no room for it).
+    /// "Check for Updates…": checks and opens Settings ▸ About, which shows "Checking…" and then the result inline
+    /// (`update`); the menu item follows the same state. Settings opens in response to the click (cooperative
+    /// activation, DESIGN.md §11.1). Nothing appears later by itself, so a slow answer never takes focus from
+    /// another app, and no modal alert ever blocks the panel or Settings.
     func checkForUpdatesFromMenu() {
-        guard let updates else { return }
-        Task {
-            let result = await updates.check(userInitiated: true)
-            UpdateAlert.present(result, currentVersion: updates.configuration.currentVersion)
-        }
+        checkForUpdates()
+        openSettings(.about)
     }
 
     /// The release page of an available update, in the default browser.

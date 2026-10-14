@@ -156,7 +156,7 @@ nonisolated enum UpdateEvaluator {
     }
 }
 
-/// Why a check failed, as a localized one-liner (Settings ▸ About and the result alert show it).
+/// Why a check failed, as a localized one-liner (Settings ▸ About shows it after a check the user started).
 nonisolated enum UpdateFailure: Error, Equatable, Sendable {
     /// `repositoryNotFound`: GitHub does not know `CrannyGitHubRepository` (wrong, renamed or private), HTTP 404.
     case notConfigured, offline, rateLimited, server(Int), repositoryNotFound, unreadable, badVersion

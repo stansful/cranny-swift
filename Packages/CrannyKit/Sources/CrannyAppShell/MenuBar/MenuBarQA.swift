@@ -63,17 +63,12 @@ private let log = Log.logger(.app)
         if options.updateCheck {
             Task {
                 try? await Task.sleep(for: .seconds(1))
-                appControl.checkForUpdatesFromMenu()
+                appControl.checkForUpdatesFromMenu()                // Settings ▸ About opens and shows the result
             }
-            // Close the result alert after a while (nobody clicks during QA), so a menu can follow. A common-mode
-            // timer, because Swift tasks wait while the alert runs modally.
-            RunLoop.main.add(Timer(timeInterval: 7, repeats: false) { _ in
-                MainActor.assumeIsolated { if NSApp.modalWindow != nil { NSApp.abortModal() } }      // main run loop
-            }, forMode: .common)
         }
         if let menu = options.menu {
             Task {
-                try? await Task.sleep(for: .seconds(options.updateCheck ? 8 : 1.5))
+                try? await Task.sleep(for: .seconds(options.updateCheck ? 4 : 1.5))
                 open(menu)
             }
         }

@@ -52,7 +52,8 @@ struct MenuBarContent: View {
     }
 }
 
-/// "Check for Updates…", or "Checking for Updates…" while a check runs, or the available update itself.
+/// "Check for Updates…" (opens Settings ▸ About, which shows the result), "Checking for Updates…" while a check
+/// runs, or the available update itself.
 private struct UpdateMenuItem: View {
     let appControl: ShellAppControl
 

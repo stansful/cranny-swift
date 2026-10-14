@@ -8,8 +8,8 @@
 // Menu bar extra (WP16, parsed by `MenuBarQA.Options`):
 //   --qa-menu main|pause|showOn           open the menu bar extra's menu (or one of its submenus) after 1.5 s
 //   --qa-demo on|off                      turn Demo mode on or off after 1 s, so the icon badge changes live
-//   --qa-update-check                     run "Check for Updates…" as the menu does; the alert closes after 7 s
-//   --qa-snapshot <dir> [--qa-snapshot-at 1,3.5]   render every window of the app (menus, alerts, the status
+//   --qa-update-check                     run "Check for Updates…" as the menu does (Settings ▸ About opens)
+//   --qa-snapshot <dir> [--qa-snapshot-at 1,3.5]   render every window of the app (menus, Settings, the status
 //                                         item) in-process into <dir> at those seconds; works while displays sleep
 //
 // No input is synthesized: the state is written through the same view-model inputs the pointer uses.
