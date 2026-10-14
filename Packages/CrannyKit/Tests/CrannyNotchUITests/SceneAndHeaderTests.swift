@@ -85,7 +85,7 @@ private let notch = NotchLayout(metrics: .reference)
             theme.textSize = size
             for count in 1...5 {
                 var tabs = (0..<min(count, 4)).map { HeaderTab(id: PageID(rawValue: "p\($0)"), title: titles[$0], symbol: symbols[$0], badge: nil) }
-                if count == 5 { tabs.append(HeaderTab(id: .tray, title: "Лоток", symbol: "tray.full.fill", badge: 128)) }
+                if count == 5 { tabs.append(HeaderTab(id: .tray, title: "Полка", symbol: "tray.full.fill", badge: 128)) }
                 let host = NSHostingController(rootView: HeaderTabsView(tabs: tabs, selected: tabs[0].id, select: { _ in })
                     .crannyThemeRoot(theme))
                 let side: CGFloat = 140
@@ -110,7 +110,7 @@ private let notch = NotchLayout(metrics: .reference)
             NookPage(id: "page.work", title: "Рабочий стол", symbol: "folder", items: []),
             NookPage(id: "page.trip", title: "Путешествия", symbol: "calendar", items: []),
         ]
-        registry.add(page: PageDescriptor(id: .tray, title: "Лоток", symbol: "tray.full.fill", order: 10, badge: { 128 }) { _ in
+        registry.add(page: PageDescriptor(id: .tray, title: "Полка", symbol: "tray.full.fill", order: 10, badge: { 128 }) { _ in
             AnyView(EmptyView())
         })
         let width = notch.open(columns: 1).bodyWidth - 2 * CrannyTheme().grid.padding

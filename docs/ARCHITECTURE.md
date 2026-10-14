@@ -2243,7 +2243,7 @@ Scripts target `/bin/bash` 3.2, source `scripts/lib.sh`, find Xcode even when `x
 | Home (the built-in grid page) | Главная | code id `nook`; the word "Nook" never appears in UI text (D20) |
 | Layout & Widgets (Settings pane) | Раскладка и виджеты | |
 | layout (a page of widgets, onboarding presets) | раскладка | |
-| Tray | Лоток | |
+| Tray | Полка | на полке / с полки («Оставить на полке», «Убрать с полки», «Очистить полку»); not «Лоток» |
 | live activity / Live Activities | активность / Активности | |
 | peek | мини-просмотр | not «Быстрый просмотр» (= Quick Look) |
 | pipeline | конвейер | |
