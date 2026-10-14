@@ -964,13 +964,13 @@
         }
       }
     },
-    "Skip tour" : {
-      "comment" : "Tutorial: always-visible button that ends the tour; also its ⌘K command while it runs",
+    "Skip tutorial" : {
+      "comment" : "Tutorial: always-visible button that ends the tutorial; also its ⌘K command while it runs",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Пропустить тур"
+            "value" : "Пропустить обучение"
           }
         }
       }
@@ -1036,35 +1036,24 @@
         }
       }
     },
-    "Take the 1-minute tour" : {
+    "Take the 1-minute tutorial" : {
       "comment" : "Welcome step 6: primary button that starts the interactive tutorial",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Пройти тур за минуту"
+            "value" : "Пройти обучение за минуту"
           }
         }
       }
     },
-    "That's the tour. Replay it any time from the menu bar." : {
-      "comment" : "Tutorial: last bubble after every step is done",
+    "The tutorial ended. Replay it any time from the menu bar." : {
+      "comment" : "Tutorial: VoiceOver announcement when a step waited for minutes and the tutorial ended by itself",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вот и весь тур. Повторить его можно в любой момент из строки меню."
-          }
-        }
-      }
-    },
-    "The tour ended. Replay it any time from the menu bar." : {
-      "comment" : "Tutorial: VoiceOver announcement when a step waited for minutes and the tour ended by itself",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Тур закончился. Повторить его можно в любой момент из строки меню."
+            "value" : "Обучение закончилось. Повторить его можно в любой момент из строки меню."
           }
         }
       }
@@ -1131,6 +1120,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Попробуйте жесты"
+          }
+        }
+      }
+    },
+    "Tutorial complete. Replay it any time from the menu bar." : {
+      "comment" : "Tutorial: last bubble after every step is done (the menu bar item is Show Tutorial)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обучение пройдено. Повторить его можно в любой момент из строки меню."
           }
         }
       }
@@ -1224,7 +1224,7 @@
       }
     },
     "tutorial, tour, stop, end, skip" : {
-      "comment" : "⌘K: search words for Skip tour while the tutorial runs, comma-separated",
+      "comment" : "⌘K: search words for Skip tutorial while the tutorial runs, comma-separated",
       "localizations" : {
         "ru" : {
           "stringUnit" : {

@@ -59,9 +59,9 @@ import Testing
     @Test func theTipBubbleDraws() {
         let tips = VStack(spacing: Space.l) {
             TipBubble(content: TipContent(text: "Rest the pointer on the notch, or press", keys: "⌃⌥N", progress: "1 of 5",
-                                          mark: .symbol("cursorarrow.motionlines"), actionTitle: "Skip tour"), onAction: {})
+                                          mark: .symbol("cursorarrow.motionlines"), actionTitle: "Skip tutorial"), onAction: {})
             TipBubble(content: TipContent(text: "Drag any file onto the notch", progress: "2 of 5", mark: .done,
-                                          actionTitle: "Skip tour"), onAction: {})
+                                          actionTitle: "Skip tutorial"), onAction: {})
             TipBubble(content: TipContent(text: "Rest the pointer here, or press", keys: "⌃⌥N"), onAction: {})
         }
         .padding(Space.huge)
@@ -73,7 +73,7 @@ import Testing
 
     @Test func theTipPanelTakesTheBubblesSize() {
         let model = TipModel(content: TipContent(text: "Swipe sideways with two fingers to change the track and more words to wrap",
-                                                 progress: "3 of 5", mark: .symbol("hand.draw.fill"), actionTitle: "Skip tour"))
+                                                 progress: "3 of 5", mark: .symbol("hand.draw.fill"), actionTitle: "Skip tutorial"))
         let hosting = TipHostingView(rootView: TipBubbleView(model: model))
         hosting.sizingOptions = [.intrinsicContentSize]
         let tour = hosting.intrinsicContentSize

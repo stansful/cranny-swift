@@ -140,7 +140,7 @@ import Testing
         let first = try #require(presenter.shown.last)
         #expect(first.mark == .symbol("cursorarrow.motionlines"))
         #expect(first.keys == "⌃⌥N")
-        #expect(first.isInteractive)                          // "Skip tour" is always there
+        #expect(first.isInteractive)                          // "Skip tutorial" is always there
         #expect(first.progress != nil)
 
         let notch = try #require(registry.testNotch)
@@ -181,7 +181,7 @@ import Testing
         let presenter = RecordingTipPresenter()
         let tutorial = TutorialController(registry: registry, presenter: presenter, celebration: .milliseconds(1))
         tutorial.start()
-        presenter.pressAction()                               // "Skip tour"
+        presenter.pressAction()                               // "Skip tutorial"
         #expect(!tutorial.isRunning)
         #expect(!presenter.isVisible)
         let shown = presenter.shown.count

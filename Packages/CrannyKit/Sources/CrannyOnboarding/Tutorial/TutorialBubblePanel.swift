@@ -1,11 +1,11 @@
 // CrannyOnboarding/Tutorial/TutorialBubblePanel.swift — the window behind the tip (ARCHITECTURE.md §5.9): a
 // small non-activating panel at the notch's level (26) whose caret sits 10 pt under
-// `NotchControl.shapeFrameOnScreen()`. Clicking "Skip tour" never activates Cranny; a coach mark without a
+// `NotchControl.shapeFrameOnScreen()`. Clicking "Skip tutorial" never activates Cranny; a coach mark without a
 // button is click-through. The panel fades in and out, and when the shape opens or closes it fades out, moves
 // and fades back in under the new shape (instantly under Reduce Motion). It is never moved with an animated
 // frame: AppKit's window-frame animation stalls while the displays sleep and would leave it behind. Its owners
 // show it only under a real shape (`TipSurroundings`) and hide it otherwise. While VoiceOver runs, a new or
-// changed tour bubble posts a layout change pointing at itself, so "Skip tour" can be reached.
+// changed tour bubble posts a layout change pointing at itself, so "Skip tutorial" can be reached.
 import AppKit
 import CrannyCore
 import SwiftUI
@@ -127,7 +127,7 @@ import SwiftUI
     }
 
     /// The tour bubble is in another app's world (Cranny is not active), so VoiceOver does not find it on its own:
-    /// a layout change naming the bubble lets VoiceOver users reach "Skip tour". Best effort, only while VoiceOver runs.
+    /// a layout change naming the bubble lets VoiceOver users reach "Skip tutorial". Best effort, only while VoiceOver runs.
     private func offerToVoiceOver(_ panel: NSPanel, _ hosting: NSView) {
         guard NSWorkspace.shared.isVoiceOverEnabled else { return }
         NSAccessibility.post(element: panel, notification: .layoutChanged, userInfo: [.uiElements: [hosting]])
@@ -170,7 +170,7 @@ final class TutorialBubblePanel: NSPanel {
     override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect { frameRect }
 }
 
-/// The first click on "Skip tour" acts at once (R1 gotcha 6).
+/// The first click on "Skip tutorial" acts at once (R1 gotcha 6).
 final class TipHostingView: NSHostingView<TipBubbleView> {
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }

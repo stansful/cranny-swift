@@ -23,7 +23,7 @@ public nonisolated enum WelcomeStep: String, CaseIterable, Sendable {
 public nonisolated enum WelcomeOutcome: Sendable, Equatable {
     /// "Done": setup is finished and the panel has been opened once.
     case done
-    /// "Take the 1-minute tour": the owner starts the interactive tutorial.
+    /// "Take the 1-minute tutorial": the owner starts the interactive tutorial.
     case tour
     /// "Skip setup" (Esc, then confirmed) or the window was closed early.
     case skipped

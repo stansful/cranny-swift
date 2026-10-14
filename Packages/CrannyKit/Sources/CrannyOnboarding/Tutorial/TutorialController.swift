@@ -1,11 +1,11 @@
 // CrannyOnboarding/Tutorial/TutorialController.swift — the 5-step interactive tutorial in the real notch
 // (DESIGN.md §12.2). Intra-shell interface fixed by WP0 (ARCHITECTURE.md §10.0): `init(registry:)`, `start()`,
-// `stop()`, `isRunning` (observable, so a menu can offer "Skip tour" while it runs). Every step completes on real
+// `stop()`, `isRunning` (observable, so a menu can offer "Skip tutorial" while it runs). Every step completes on real
 // detection through `NotchControl.addEventObserver`, with a ✓ bounce, an `.alignment` haptic and a VoiceOver
 // announcement. The bubble sits under `NotchControl.shapeFrameOnScreen()` and shows only while the notch does
 // (`TipPresentation`, observed: no timers, no polling). Steps 4 and 5 act through keys (hold ⌘, Esc) that reach
 // only a key panel, so while they wait the tutorial asks `NotchControl.requestKeyboardFocus()` whenever the panel
-// opens or is pinned, however that happened. Ways out: "Skip tour" on the bubble, the same command in ⌘K
+// opens or is pinned, however that happened. Ways out: "Skip tutorial" on the bubble, the same command in ⌘K
 // (`TutorialCommands`), and a step that waits longer than `idleLimit` ends the tour (one sleep per step).
 import AppKit
 import CrannyCore
@@ -199,8 +199,8 @@ private let log = Log.logger(.onboarding)
         guard isRunning else { return }
         log.info("tutorial ended: step \(self.run.number, privacy: .public) waited too long")
         stop()
-        announce(String(localized: "The tour ended. Replay it any time from the menu bar.", bundle: .module,
-                        comment: "Tutorial: VoiceOver announcement when a step waited for minutes and the tour ended by itself"))
+        announce(String(localized: "The tutorial ended. Replay it any time from the menu bar.", bundle: .module,
+                        comment: "Tutorial: VoiceOver announcement when a step waited for minutes and the tutorial ended by itself"))
     }
 
     /// The bubble as it should be now (observed).
@@ -219,14 +219,16 @@ private let log = Log.logger(.onboarding)
 
     // MARK: Copy
 
-    /// "Skip tour": the bubble's button and the ⌘K command.
+    /// "Skip tutorial": the bubble's button and the ⌘K command. The feature is "the tutorial" in every surface
+    /// (the menu bar's "Show Tutorial", Settings ▸ About's "Replay Tutorial"), so the farewell's "replay it from the
+    /// menu bar" points at an item with the same name.
     static var skipTitle: String {
-        String(localized: "Skip tour", bundle: .module, comment: "Tutorial: always-visible button that ends the tour; also its ⌘K command while it runs")
+        String(localized: "Skip tutorial", bundle: .module, comment: "Tutorial: always-visible button that ends the tutorial; also its ⌘K command while it runs")
     }
 
     private static var farewellText: String {
-        String(localized: "That's the tour. Replay it any time from the menu bar.", bundle: .module,
-               comment: "Tutorial: last bubble after every step is done")
+        String(localized: "Tutorial complete. Replay it any time from the menu bar.", bundle: .module,
+               comment: "Tutorial: last bubble after every step is done (the menu bar item is Show Tutorial)")
     }
 
     private func content(for showing: Showing) -> TipContent {
