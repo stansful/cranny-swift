@@ -6,6 +6,8 @@
 //   * a SwiftUI `[[ stitchable ]]` function (`.colorEffect`, `.layerEffect`, `.distortionEffect`), and
 //   * for the ambient effects, a `[[ fragment ]]` function of the dedicated Metal layer (`AmbientRenderer`),
 //     which draws the light without invalidating SwiftUI on every frame (ARCHITECTURE.md §10.1, issue 1).
+// Values that are the same for every pixel of a frame (the aurora's OKLab stops, the 36 motes) are computed once per
+// frame on the CPU for the layer (`AmbientFrameTables`, `buffer(1)`); the stitchable functions compute them per pixel.
 #pragma once
 #include <metal_stdlib>
 using namespace metal;
@@ -183,7 +185,7 @@ struct AmbientUniforms {
     float4 ripple;    // centre x, y (pt), seconds since the trigger, 1 = playing
     float4 halo;      // centre x, y (unit point), radius (pt), dither amount (1 = ±0.5 LSB)
     float4 stops[5];  // palette stops, sRGB, alpha unused
-    int4 counts;      // stop count, unused, unused, unused
+    int4 counts;      // stop count, pixel rows of the layer above the drawable, unused, unused
 };
 
 struct AmbientVertexOut {
@@ -194,25 +196,34 @@ struct AmbientVertexOut {
 struct AmbientPixel {
     float2 position;   // points, top-left origin, ripple applied
     float2 size;       // points
-    float2 pixel;      // device pixels (for the dither and the masks)
+    float2 pixel;      // device pixels of the whole layer (for the dither and the masks)
     Palette palette;
 };
 
+/// The drawable covers only the lit band at the bottom of the layer (`AmbientDrawableLayout`): `counts.y` rows of
+/// the layer lie above it, so drawable row r is layer row r + counts.y, and every field, mask and the dither see the
+/// same coordinates as in a drawable of the whole layer.
 static inline AmbientPixel ambientPixel(AmbientVertexOut in, constant AmbientUniforms &u) {
     AmbientPixel px;
-    px.pixel = in.position.xy;
+    px.pixel = in.position.xy + float2(0.0, float(u.counts.y));
     px.size = max(u.frame.xy, float2(1.0));
-    float2 p = in.position.xy / max(u.frame.z, 1e-3);
+    float2 p = px.pixel / max(u.frame.z, 1e-3);
     if (u.ripple.w > 0.5) { p = rippleSource(p, u.ripple.xy, u.ripple.z, 6.0, 56.0, 480.0); }
     px.position = p;
     px.palette = palette(u.stops, u.counts.x);
     return px;
 }
 
-/// Fill, reveal and dither: the passes SwiftUI applies around the stitchable functions.
-static inline half4 ambientFinish(half4 color, AmbientPixel px, constant AmbientUniforms &u) {
+/// Fill × reveal at this pixel (unrippled, so it never depends on the field). Every layer fragment checks it first
+/// and returns transparent where it is 0 (above the rising fill, outside First light's reveal): the field there
+/// would be multiplied by 0, and the dither keeps a transparent pixel transparent, so the output is the same.
+static inline float ambientMask(AmbientPixel px, constant AmbientUniforms &u) {
     float2 p = px.pixel / max(u.frame.z, 1e-3);
-    float m = fillMask(p.y / px.size.y, u.params.w) * revealMask(p, u.reveal);
+    return fillMask(p.y / px.size.y, u.params.w) * revealMask(p, u.reveal);
+}
+
+/// Fill, reveal (`m`, from `ambientMask`) and dither: the passes SwiftUI applies around the stitchable functions.
+static inline half4 ambientFinish(half4 color, AmbientPixel px, constant AmbientUniforms &u, float m) {
     return dither(color * half(m), px.pixel, u.halo.w);
 }
 

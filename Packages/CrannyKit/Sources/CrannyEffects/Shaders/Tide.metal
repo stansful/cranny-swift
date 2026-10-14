@@ -7,7 +7,8 @@ using namespace metal;
 
 namespace cranny {
 
-/// Three soft, tapered sine lines (line i in stop i) with a 3-pt bloom, summed additively. Points throughout.
+/// Three soft, tapered sine lines (line i in stop i) with a 3-pt bloom, summed additively. Points throughout. A pixel
+/// evaluates only the lines that can reach it (one or two).
 static inline half4 tide(float2 p, float2 size, float time, thread const Palette &pal,
                          float energy, float intensity, float cap) {
     float width = max(size.x, 1.0), height = max(size.y, 1.0);
@@ -23,6 +24,10 @@ static inline half4 tide(float2 p, float2 size, float time, thread const Palette
         float base = height * (0.80 + 0.06 * fi);
         float amplitude = amplitude0 * (1.0 - 0.2 * fi);
         float k = 2.0 * M_PI_F * (0.75 + 0.35 * fi) / width;
+        // A line strays at most 1.45 · amplitude from its base, with a slope of at most 1.855 · amplitude · k: farther
+        // than that plus 10 slope-corrected points, its core is 0 and its bloom ≤ 0.35 · e⁻¹¹ (< 0.001 LSB). Skip it.
+        float slopeMax = 1.855 * abs(amplitude) * k;
+        if (abs(p.y - base) > 1.45 * abs(amplitude) + 10.0 * sqrt(1.0 + slopeMax * slopeMax)) { continue; }
         float omega = 2.0 * M_PI_F * (0.09 + 0.035 * fi);
         float a1 = k * p.x + omega * time + 2.1 * fi;
         float a2 = 1.9 * k * p.x - 1.4 * omega * time;
@@ -53,6 +58,8 @@ static inline half4 tide(float2 p, float2 size, float time, thread const Palette
 fragment half4 tideFragment(cranny::AmbientVertexOut in [[stage_in]],
                             constant cranny::AmbientUniforms &u [[buffer(0)]]) {
     cranny::AmbientPixel px = cranny::ambientPixel(in, u);
+    float m = cranny::ambientMask(px, u);
+    if (m <= 0.0) { return half4(0.0h); }                                       // masked out: nothing to evaluate
     half4 c = cranny::tide(px.position, px.size, u.frame.w, px.palette, u.params.x, u.params.y, u.params.z);
-    return cranny::ambientFinish(c, px, u);
+    return cranny::ambientFinish(c, px, u, m);
 }

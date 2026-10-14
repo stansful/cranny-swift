@@ -23,6 +23,9 @@ import Testing
     #expect(u.ripple == .zero)                                          // no ripple
     #expect(u.halo == SIMD4(0.5, 1, 260, 1))                            // ambient halo, dithered
     #expect(u.counts.x == 3)
+    #expect(u.counts.y == 0)                                            // a drawable of the whole layer
+    #expect(AmbientUniforms(state: state, size: CGSize(width: 800, height: 200), scale: 2, time: 12, date: date,
+                            rowOffset: 152).counts.y == 152)            // the lit band starts 152 rows down
     let iris = BrandColor.iris
     #expect(abs(u.stops.0.x - Float(iris.r)) < 1e-6 && u.stops.0.w == 1 && u.stops.3 == .zero)
 

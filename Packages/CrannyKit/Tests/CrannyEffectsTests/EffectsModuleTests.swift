@@ -60,6 +60,15 @@ import Testing
     #expect(ShaderEffects.unavailabilityReason(defaults: defaults) == "CrannyDisableShaders is set")
 }
 
+/// Preparing the effects ahead of their first use (the shell calls it once per launch) builds the light's renderer and
+/// compiles the moments' shaders without drawing anything; a second call returns at once.
+@Test(.enabled(if: shadersRun)) func effectsPrepareAheadOfTheirFirstUse() async throws {
+    await EffectsPreparation.prepare()
+    await EffectsPreparation.prepare()
+    #expect(AmbientRenderer.renderer(forDisplay: nil) != nil)
+    #expect(ShaderEffects.isAvailable)
+}
+
 @Test func diagnosticsNameTheRenderer() {
     #expect(["metal-layer", "swiftui-shader", "fallback"].contains(EffectsDiagnostics.ambientRenderer))
     if EffectsDiagnostics.shaderStatus == "ok", ShaderEffects.allowsLayer {

@@ -63,6 +63,24 @@ private typealias GPU = AmbientGPU.Candidate
     #expect(shared.device.registryID == device.registryID)
 }
 
+/// The renderer can be built off the main actor (`prewarm`, before the first open) and then serves the first view:
+/// the same pipelines as a synchronous build, shared with every view on that GPU.
+@Test(.enabled(if: shadersRun)) func rendererBuildsOffTheMainActor() async throws {
+    let device = try #require(AmbientGPU.device())
+    let parts = try #require(await Task.detached(priority: .utility) { AmbientRenderer.build(on: device) }.value)
+    #expect(Set(parts.pipelines.keys) == Set(AmbientEffect.allCases))
+    let renderer = AmbientRenderer(parts)
+    for effect in AmbientEffect.allCases {
+        let uniforms = AmbientUniforms(state: layerState(effect), size: CGSize(width: 8, height: 8), scale: 1, time: 1,
+                                       date: Date())
+        #expect(renderer.image(effect, uniforms: uniforms, width: 8, height: 8) != nil, "\(effect): no pipeline")
+    }
+    await AmbientRenderer.prewarm()
+    await AmbientRenderer.prewarm()                                     // a no-op once a renderer exists
+    let shared = try #require(AmbientRenderer.renderer(forDisplay: nil))
+    #expect(AmbientRenderer.renderer(forDisplay: nil) === shared)
+}
+
 /// A renderer that cannot be built turns the layer path off once; the light then uses the SwiftUI shader path
 /// (`AmbientPath.resolve(… layerAllowed: false) == .shader`) instead of staying transparent.
 @Test func layerFailureFallsBackToTheShaderPath() {

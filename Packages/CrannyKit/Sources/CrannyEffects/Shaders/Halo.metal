@@ -26,6 +26,8 @@ static inline half4 halo(float2 p, float2 size, float2 center, float radius, hal
 fragment half4 haloFragment(cranny::AmbientVertexOut in [[stage_in]],
                             constant cranny::AmbientUniforms &u [[buffer(0)]]) {
     cranny::AmbientPixel px = cranny::ambientPixel(in, u);
+    float m = cranny::ambientMask(px, u);
+    if (m <= 0.0) { return half4(0.0h); }                                       // masked out: nothing to evaluate
     half4 c = cranny::halo(px.position, px.size, u.halo.xy, u.halo.z, cranny::stop(px.palette, 0), u.params.z);
-    return cranny::ambientFinish(c, px, u);
+    return cranny::ambientFinish(c, px, u, m);
 }

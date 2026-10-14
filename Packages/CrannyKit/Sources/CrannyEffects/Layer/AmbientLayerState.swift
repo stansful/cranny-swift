@@ -37,12 +37,13 @@ nonisolated struct AmbientUniforms {
     var ripple: SIMD4<Float>    // centre x, y (pt), seconds since the trigger, 1 = playing
     var halo: SIMD4<Float>      // centre x, y (unit), radius (pt), dither amount
     var stops: (SIMD4<Float>, SIMD4<Float>, SIMD4<Float>, SIMD4<Float>, SIMD4<Float>)
-    var counts: SIMD4<Int32>    // stop count
+    var counts: SIMD4<Int32>    // stop count, pixel rows of the layer above the drawable (`AmbientDrawableLayout.offset`)
 
     static let maxStops = 5
 
-    /// Uniforms for one frame of `state` at `time` (shader seconds) on a layer of `size` points.
-    init(state: AmbientLayerState, size: CGSize, scale: CGFloat, time: Double, date: Date) {
+    /// Uniforms for one frame of `state` at `time` (shader seconds) on a layer of `size` points, drawn into a drawable
+    /// that starts `rowOffset` pixel rows below the layer's top (0: a drawable of the whole layer).
+    init(state: AmbientLayerState, size: CGSize, scale: CGFloat, time: Double, date: Date, rowOffset: Int = 0) {
         let rippleElapsed = Ripple.elapsed(since: state.rippleStart, at: date)
         frame = SIMD4(Float(size.width), Float(size.height), Float(scale), Float(time))
         params = SIMD4(Float(Ripple.energy(state.energy, elapsed: rippleElapsed)), Float(state.level.intensity),
@@ -63,6 +64,6 @@ nonisolated struct AmbientUniforms {
             return SIMD4(simd_clamp(c, .zero, .one), 1)
         }
         stops = (stop(0), stop(1), stop(2), stop(3), stop(4))
-        counts = SIMD4(Int32(glows.count), 0, 0, 0)
+        counts = SIMD4(Int32(glows.count), Int32(clamping: rowOffset), 0, 0)
     }
 }

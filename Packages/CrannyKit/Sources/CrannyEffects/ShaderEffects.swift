@@ -55,8 +55,9 @@ enum ShaderEffects {
     /// The compiled library inside the module bundle (the ambient layer loads it with `makeLibrary(URL:)`).
     nonisolated static var libraryURL: URL? { Bundle.module.url(forResource: "default", withExtension: "metallib") }
 
-    /// Whether the ambient light may use the dedicated Metal layer (`-CrannyDisableEffectLayer` is not set).
-    nonisolated static var allowsLayer: Bool { allowsLayer(defaults: .standard) }
+    /// Whether the ambient light may use the dedicated Metal layer (`-CrannyDisableEffectLayer` is not set). Read once:
+    /// the light asks on every update, and the switch is a launch argument (like `-CrannyDisableShaders`).
+    nonisolated static let allowsLayer: Bool = allowsLayer(defaults: .standard)
 
     nonisolated static func allowsLayer(defaults: UserDefaults) -> Bool { !defaults.bool(forKey: disableLayerKey) }
 

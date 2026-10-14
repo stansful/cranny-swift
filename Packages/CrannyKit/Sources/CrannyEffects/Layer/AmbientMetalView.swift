@@ -7,12 +7,19 @@
 // Energy rules (ARCHITECTURE.md §9.2): frames come from a `Task.sleep` loop paced at the budget's interval
 // (30 fps on AC, 20 on battery); there is no loop while the budget is paused (closed, occluded, full screen),
 // while the window is occluded or gone, or while the view has no size. A paused layer keeps its last frame and
-// redraws only when an input changes, and on resume time continues from that frame (nothing jumps). The view holds
-// its `AmbientRenderer` only while it is in a window (AmbientRenderer.swift explains when the GPU is let go).
+// redraws only when an input changes: at most once per main-queue turn, after that turn's layout (a resize frame in
+// the same update already shows the change), and not while the window is occluded (it redraws when it is revealed).
+// On resume time continues from the last frame (nothing jumps). The view holds its `AmbientRenderer` only while it
+// is in a window (AmbientRenderer.swift explains when the GPU is let go).
+//
+// The CAMetalLayer belongs to a subview that covers only the lit band at the bottom of the light, never its clear top
+// (AmbientDrawableLayout.swift); this view clips it.
 //
 // Resizing (the open and close morph, when callers frame the light to the shape's current bounds): every layout
 // pass that changes the size draws one frame at the new size and presents it inside the same Core Animation
-// transaction, so the light is never shown stretched or a frame behind the shape.
+// transaction, so the light is never shown stretched or a frame behind the shape. Meanwhile the drawable only grows,
+// in steps, instead of being reallocated on every frame; the next frame drawn at rest returns it to the band's exact
+// size (presented with the transaction too, since its frame changes).
 import AppKit
 import CoreGraphics
 import CrannyCore
@@ -43,7 +50,14 @@ struct AmbientMetalLayer: NSViewRepresentable {
 final class AmbientMetalNSView: NSView {
     /// The renderer of the GPU this view draws with; held only while the view is in a window.
     private(set) var renderer: AmbientRenderer?
-    private let metalLayer = CAMetalLayer()
+    private let drawableView = AmbientDrawableView()
+    /// The layer the frames are presented in (tests).
+    var metalLayer: CAMetalLayer { drawableView.metalLayer }
+    /// The drawable's size and place now; nil until the view first has a size (tests).
+    private(set) var drawableLayout: AmbientDrawableLayout?
+    /// The drawable's frame or size changed: the next frame is presented with the Core Animation transaction, so the
+    /// new frame and the new pixels appear together.
+    private var needsSynchronizedFrame = false
 
     /// Set by SwiftUI on every update.
     var state: AmbientLayerState? {
@@ -64,20 +78,22 @@ final class AmbientMetalNSView: NSView {
     private(set) var framesDrawn = 0
     /// When the last frame was drawn: a loop tick right after a resize frame is skipped (one draw per frame at most).
     private var lastDrawn: ContinuousClock.Instant?
+    /// A paused layer's pending redraw of its latest input (one per main-queue turn); tests await it.
+    private(set) var pausedRedraw: Task<Void, Never>?
+    /// An input changed after the last frame drawn (any frame shows the latest state).
+    private var hasUndrawnInput = false
+    /// Tests only: their windows are never ordered in, so the window server reports them occluded.
+    var treatsWindowAsVisible = false
     /// Whether the frame loop runs now (tests).
     var isRunning: Bool { loop != nil }
 
     init() {
         super.init(frame: .zero)
-        metalLayer.pixelFormat = AmbientRenderer.pixelFormat
-        metalLayer.colorspace = CGColorSpace(name: CGColorSpace.sRGB)
-        metalLayer.framebufferOnly = true
-        metalLayer.isOpaque = false
-        metalLayer.presentsWithTransaction = false
-        metalLayer.needsDisplayOnBoundsChange = false
         wantsLayer = true
         layerContentsRedrawPolicy = .never
+        clipsToBounds = true                         // a resizing drawable may reach past the bounds (never drawn)
         setAccessibilityElement(false)
+        addSubview(drawableView)
     }
 
     @available(*, unavailable)
@@ -85,7 +101,6 @@ final class AmbientMetalNSView: NSView {
 
     deinit { loop?.cancel() }
 
-    override func makeBackingLayer() -> CALayer { metalLayer }
     override var isOpaque: Bool { false }
     /// Light never takes a click (the panel's per-pixel pass-through relies on it).
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
@@ -119,7 +134,7 @@ final class AmbientMetalNSView: NSView {
         let changed = newSize != frame.size
         super.setFrameSize(newSize)
         guard changed else { return }
-        updateDrawableSize()
+        updateDrawableSize(resizing: true)
         updateLoop(drawsFirstFrame: false)
         draw(at: Date(), running: loop != nil, synchronized: true)     // in step with the new bounds
     }
@@ -170,16 +185,26 @@ final class AmbientMetalNSView: NSView {
         AmbientRenderer.renderScale(for: state?.effect ?? .motes, displayScale: window?.backingScaleFactor ?? 2)
     }
 
-    private func updateDrawableSize() {
+    /// Lays the drawable out for the current bounds, scale and effect: exactly the lit band, or while `resizing` at
+    /// least that, grown in steps (AmbientDrawableLayout.swift). A new frame or size is presented with the next frame.
+    private func updateDrawableSize(resizing: Bool = false) {
         let scale = scale
-        metalLayer.contentsScale = scale
-        let size = CGSize(width: (bounds.width * scale).rounded(), height: (bounds.height * scale).rounded())
-        if size.width >= 1, size.height >= 1, metalLayer.drawableSize != size { metalLayer.drawableSize = size }
+        if metalLayer.contentsScale != scale { metalLayer.contentsScale = scale }
+        let litTop = AmbientRenderer.litTop(state?.effect ?? .motes, height: bounds.height, energy: state?.energy ?? 0)
+        guard let next = AmbientDrawableLayout(bounds: bounds.size, scale: scale, litTop: litTop,
+                                               growingFrom: resizing ? drawableLayout?.pixels : nil),
+              next != drawableLayout else { return }
+        let previous = drawableLayout
+        drawableLayout = next
+        guard next.frame != previous?.frame || next.pixels != previous?.pixels else { return }
+        drawableView.frame = next.frame
+        metalLayer.drawableSize = next.pixels
+        needsSynchronizedFrame = true
     }
 
     private var isWindowVisible: Bool {
         guard let window else { return false }
-        return window.occlusionState.contains(.visible) || EffectsQA.keepsRunning
+        return treatsWindowAsVisible || window.occlusionState.contains(.visible) || EffectsQA.keepsRunning
     }
 
     private var hasSize: Bool { bounds.width >= 1 && bounds.height >= 1 }
@@ -191,15 +216,35 @@ final class AmbientMetalNSView: NSView {
         loop?.cancel()
         loop = nil
         loopInterval = nil
+        pausedRedraw?.cancel()
+        pausedRedraw = nil
         renderer = nil
         metalLayer.device = nil
     }
 
     private func stateDidChange() {
         updateLoop()                                 // draws the first frame itself when it starts the loop
-        // A running loop picks the change up on its next frame; a paused layer redraws now (fill and colour
-        // animations stay visible while time stands still, e.g. the drain on close).
-        if loop == nil { drawNow() }
+        // A new effect moved the drawable: show its pixels with its new frame now, not a loop interval later.
+        if needsSynchronizedFrame { drawNow(); return }
+        // A running loop picks the change up on its next frame; a paused layer redraws (fill and colour animations
+        // stay visible while time stands still, e.g. the drain on close).
+        if loop == nil { schedulePausedRedraw() }
+    }
+
+    /// The paused layer's redraw of its latest input, at the end of this main-queue turn: after the turn's layout, so
+    /// an input that changes together with the size (the fill rising during the open morph) costs one frame, the
+    /// resize frame, not two. Once per turn however many inputs change; skipped while the window is occluded
+    /// (`occlusionDidChange` draws the latest state when it is revealed).
+    private func schedulePausedRedraw() {
+        hasUndrawnInput = true
+        guard pausedRedraw == nil else { return }
+        pausedRedraw = Task { [weak self] in
+            guard let self, !Task.isCancelled else { return }
+            self.pausedRedraw = nil
+            // Not when a frame (a resize frame) has shown it since, nor while a loop draws or nobody can see it.
+            guard self.hasUndrawnInput, self.loop == nil, self.isWindowVisible else { return }
+            self.drawNow()
+        }
     }
 
     /// The interval the loop should run at now, or nil when it should not run.
@@ -241,8 +286,12 @@ final class AmbientMetalNSView: NSView {
 
     private func drawNow() { draw(at: Date(), running: loop != nil) }
 
+    /// Draws one frame. `synchronized`: a resize frame, presented with the new bounds (its drawable may be larger than
+    /// the band). Any other frame first returns the drawable to the band's exact size.
     private func draw(at date: Date, running: Bool, synchronized: Bool = false) {
         guard let state, let renderer, hasSize, window != nil else { return }
+        if !synchronized { updateDrawableSize() }
+        guard let layout = drawableLayout else { return }
         let time: Double
         if running || lastTime == nil {
             let t = (EffectTiming.ambientTime(date) + timeOffset).truncatingRemainder(dividingBy: 3600)
@@ -251,8 +300,12 @@ final class AmbientMetalNSView: NSView {
             time = lastTime ?? state.restingTime
         }
         lastTime = time
-        let uniforms = AmbientUniforms(state: state, size: bounds.size, scale: scale, time: time, date: date)
-        if renderer.draw(state.effect, uniforms: uniforms, in: metalLayer, synchronized: synchronized) {
+        let uniforms = AmbientUniforms(state: state, size: bounds.size, scale: scale, time: time, date: date,
+                                       rowOffset: layout.offset)
+        if renderer.draw(state.effect, uniforms: uniforms, in: metalLayer, region: layout.hasSlack ? layout.region : nil,
+                         synchronized: synchronized || needsSynchronizedFrame) {
+            needsSynchronizedFrame = false
+            hasUndrawnInput = false
             framesDrawn += 1
             lastDrawn = ContinuousClock.now
         }
