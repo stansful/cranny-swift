@@ -19,6 +19,8 @@ nonisolated struct BatteryState: Equatable, Sendable {
     var minutesToEmpty: Int?
     /// nil while macOS is still estimating, and on battery.
     var minutesToFull: Int?
+    /// The adapter's wattage when `parse` is given its details. Nothing shows it, so live reads skip that
+    /// powerd call (`PowerSources.readBattery`) and leave it nil.
     var adapterWatts: Int?
     var isLowPowerMode: Bool
 
@@ -51,7 +53,7 @@ nonisolated extension BatteryState {
     /// - Parameters:
     ///   - sources: every power-source description; only the present internal battery is used.
     ///   - providingType: `IOPSGetProvidingPowerSourceType` ("AC Power", "Battery Power", "UPS Power").
-    ///   - adapter: `IOPSCopyExternalPowerAdapterDetails`, if any.
+    ///   - adapter: `IOPSCopyExternalPowerAdapterDetails`, if any (live reads pass nil: nothing shows it).
     ///   - isLowPowerMode: `ProcessInfo.isLowPowerModeEnabled`.
     static func parse(sources: [[String: Any]], providingType: String?, adapter: [String: Any]?,
                       isLowPowerMode: Bool) -> BatteryState {

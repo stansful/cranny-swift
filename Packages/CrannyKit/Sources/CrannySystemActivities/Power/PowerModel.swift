@@ -1,6 +1,12 @@
 // CrannySystemActivities/Power/PowerModel.swift — drives the Charging and Low battery activities from IOPS
-// snapshots. Event-driven only (§9.2): a power-source notification → one off-main read → the pure
-// `PowerTransitions` reducer → activity changes. Nothing runs while nothing changes.
+// snapshots. Event-driven only (§9.2): a power-source notification → one off-main read (utility priority) →
+// the pure `PowerTransitions` reducer → activity changes. Nothing runs while nothing changes.
+//
+// Energy: the observer reports every change of any power source only while the details matter
+// (`wantsDetail`). A Mac with a battery on power, with nothing on screen that shows a percent or an estimate,
+// hears only the switch to battery (and Low Power Mode): the thresholds re-arm while plugged in anyway, and
+// the switch is what starts following again. The model runs only while Charging, Low battery or Bluetooth
+// devices (whose visible batteries these notifications refresh) is enabled in Settings ▸ Live Activities.
 import CrannyCore
 import Foundation
 import Observation
@@ -13,7 +19,12 @@ private let log = Log.logger(.system)
     let lowBattery: LowBatteryActivity
     /// Called after every power-source notification (the accessory model refreshes visible batteries).
     var onSourcesChanged: (@MainActor () -> Void)?
+    /// Whether `onSourcesChanged` needs every change of any power source right now (the accessory model: while
+    /// its activity shows batteries). Read through Observation: a change re-decides what the observer follows.
+    var wantsSourcesChanged: (@MainActor () -> Bool)?
     private(set) var state: BatteryState?
+    /// The observer reports every change (true from `start`, so nothing is missed before the first read).
+    private(set) var followsDetail = true
 
     private let settings: SettingsStore
     /// `@concurrent`: the model, not each caller, guarantees the IPC read never runs on the main actor (§9.2).
@@ -24,6 +35,7 @@ private let log = Log.logger(.system)
     private var criticalThreshold: Int?
     private var generation = 0
     private var thresholdsToken: ObservationToken?
+    private var detailToken: ObservationToken?
 
     /// - Parameters:
     ///   - read: one snapshot of the battery (live: `PowerSources.snapshot`); always runs off the main actor.
@@ -38,7 +50,26 @@ private let log = Log.logger(.system)
     /// How long a transient activity stays: the user's peek duration (time limits are adjustable, WCAG 2.2.1).
     var transientDuration: TimeInterval { max(settings[CoreSettings.peekDuration], 1) }
 
+    /// Whether the observer must report every change of any power source, or only the switches between AC and
+    /// battery. On battery the thresholds need every percent. On power they re-arm whatever the level, so only
+    /// what is on screen needs the details. A Mac without a battery keeps them all: IOKit can find the internal
+    /// battery seconds into boot, and only the any-source notification reports that.
+    var wantsDetail: Bool {
+        guard let state, state.hasBattery, state.isPluggedIn else { return true }
+        return isShowingDetail
+    }
+
+    /// Something on screen shows what the details change: a battery activity, or the accessory model's batteries.
+    private var isShowingDetail: Bool {
+        charging.isActive || lowBattery.isActive || (wantsSourcesChanged?() ?? false)
+    }
+
+    /// Also a restart (Settings ▸ Live Activities): the first snapshot is a baseline again, as at launch.
     func start() {
+        transitions = PowerTransitions()
+        criticalThreshold = nil
+        state = nil
+        followsDetail = true
         observer?.start { [weak self] in
             self?.refresh()
             self?.onSourcesChanged?()
@@ -46,20 +77,28 @@ private let log = Log.logger(.system)
         thresholdsToken = observe({ [settings] in settings[SystemSettings.lowBatteryThresholds] }) { [weak self] _ in
             self?.thresholdsChanged()
         }
+        detailToken = observe({ [weak self] in self?.isShowingDetail ?? false }) { [weak self] _ in
+            self?.syncDetail()
+        }
         refresh()
     }
 
+    /// Stops listening and hides both activities (nothing keeps them current any more).
     func stop() {
         observer?.stop()
         thresholdsToken = nil
+        detailToken = nil
         generation += 1                                   // drops a read in flight
+        charging.end()
+        lowBattery.end()
     }
 
-    /// Reads a snapshot off the main actor; a newer refresh supersedes an older one still in flight.
+    /// Reads a snapshot off the main actor; a newer refresh supersedes an older one still in flight. Utility
+    /// priority: the result only updates an activity, never a key or a click.
     func refresh() {
         generation += 1
         let current = generation
-        Task { [weak self, read] in
+        Task(priority: .utility) { [weak self, read] in
             let state = await read()
             guard let self, current == self.generation else { return }
             self.apply(state)
@@ -87,6 +126,7 @@ private let log = Log.logger(.system)
         }
         if charging.isActive { charging.update(ChargingContent(state)) }
         syncLowBattery(state, thresholds: thresholds)
+        syncDetail()
     }
 
     /// Keeps the final warning on screen while it applies, and removes any warning once power is connected.
@@ -114,5 +154,17 @@ private let log = Log.logger(.system)
     private func thresholdsChanged() {
         transitions.reset(thresholds: thresholds)
         if let state { syncLowBattery(state, thresholds: thresholds) }
+    }
+
+    /// Tells the observer whether to follow every change (`wantsDetail`), after each snapshot and whenever what
+    /// is on screen changes. Starting to follow reads once more: a change between the last read and the
+    /// subscription would otherwise wait for the next one.
+    private func syncDetail() {
+        guard let observer else { return }
+        let wanted = wantsDetail
+        guard wanted != followsDetail else { return }
+        followsDetail = wanted
+        observer.setFollowsDetail(wanted)
+        if wanted { refresh() }
     }
 }

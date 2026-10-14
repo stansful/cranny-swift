@@ -3,6 +3,10 @@
 //
 // Threading: confined to `queue`. The HAL calls the device-list listener there, every HAL read happens
 // there, and results leave as Sendable values through `onChange` (the caller hops to the main actor).
+//
+// Energy: one change fires several callbacks (wake from sleep, a headset publishing its A2DP and hands-free
+// devices), so they are coalesced over 50 ms into one enumeration, and a list equal to the last one reported
+// is not reported again (the tracker would find nothing new in it).
 import AudioToolbox
 import CoreAudio
 import CrannyCore
@@ -24,6 +28,13 @@ nonisolated final class AudioDeviceWatcher: @unchecked Sendable {   // confined 
     private let onChange: @Sendable (Int, [AudioOutputDevice]) -> Void
     private var listener: AudioObjectPropertyListenerBlock?
     private var sequence = 0
+    /// A coalesced report is scheduled.
+    private var pending = false
+    /// The list reported last (nil before the baseline, which is always reported).
+    private var last: [AudioOutputDevice]?
+
+    /// One burst of device-list callbacks becomes one enumeration this long after its first callback.
+    static let coalescing: DispatchTimeInterval = .milliseconds(50)
 
     init(onChange: @escaping @Sendable (Int, [AudioOutputDevice]) -> Void) { self.onChange = onChange }
 
@@ -31,7 +42,7 @@ nonisolated final class AudioDeviceWatcher: @unchecked Sendable {   // confined 
         queue.async { [self] in
             guard listener == nil else { return }
             var address = Self.devicesAddress
-            let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in self?.report() }
+            let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in self?.coalesce() }
             let status = AudioObjectAddPropertyListenerBlock(AudioHAL.system, &address, queue, block)
             if status == noErr { listener = block } else { log.error("Core Audio device listener failed: \(status, privacy: .public)") }
             report()
@@ -40,6 +51,7 @@ nonisolated final class AudioDeviceWatcher: @unchecked Sendable {   // confined 
 
     func stop() {
         queue.async { [self] in
+            last = nil
             guard let listener else { return }
             var address = Self.devicesAddress
             AudioObjectRemovePropertyListenerBlock(AudioHAL.system, &address, queue, listener)
@@ -47,9 +59,22 @@ nonisolated final class AudioDeviceWatcher: @unchecked Sendable {   // confined 
         }
     }
 
+    private func coalesce() {
+        guard !pending else { return }
+        pending = true
+        queue.asyncAfter(deadline: .now() + Self.coalescing) { [self] in
+            pending = false
+            guard listener != nil else { return }        // stopped meanwhile
+            report()
+        }
+    }
+
     private func report() {
+        let devices = Self.bluetoothOutputs()
+        guard devices != last else { return }
+        last = devices
         sequence += 1
-        onChange(sequence, Self.bluetoothOutputs())
+        onChange(sequence, devices)
     }
 
     // MARK: HAL reads (Core's `AudioHAL`)

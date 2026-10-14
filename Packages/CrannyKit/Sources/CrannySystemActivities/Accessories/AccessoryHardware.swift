@@ -24,22 +24,27 @@ import Foundation
     /// Unstructured hops to the main actor may run out of order: only the newest report of a source counts.
     private var lastAudioReport = 0
     private var lastHIDReport = 0
+    /// Bumped by every start and stop: a report still hopping from stopped watchers is dropped, so it can never
+    /// stand in for the next start's baseline (the model restarts when its activity is turned back on).
+    private var session = 0
 
     func startWatching(audio: @escaping @MainActor ([AudioOutputDevice]) -> Void,
                        hid: @escaping @MainActor ([HIDPeripheral]) -> Void) {
         guard audioWatcher == nil else { return }
         lastAudioReport = 0
         lastHIDReport = 0
+        session += 1
+        let session = session
         let audioWatcher = AudioDeviceWatcher { [weak self] number, devices in
             Task { @MainActor [weak self] in
-                guard let self, number > self.lastAudioReport else { return }
+                guard let self, session == self.session, number > self.lastAudioReport else { return }
                 self.lastAudioReport = number
                 audio(devices)
             }
         }
         let hidWatcher = HIDPeripheralWatcher { [weak self] number, peripherals in
             Task { @MainActor [weak self] in
-                guard let self, number > self.lastHIDReport else { return }
+                guard let self, session == self.session, number > self.lastHIDReport else { return }
                 self.lastHIDReport = number
                 hid(peripherals)
             }
@@ -51,6 +56,7 @@ import Foundation
     }
 
     func stopWatching() {
+        session += 1
         audioWatcher?.stop()
         hidWatcher?.stop()
         audioWatcher = nil

@@ -2,7 +2,8 @@
 // Connections come from the watchers' notifications; battery levels are read once when a device connects,
 // a second after (levels often follow the connection) and every 60 s while the activity is visible — the
 // only polling this module does (§9.2). The opt-in IOBluetooth watcher runs only with the setting on AND
-// Bluetooth access granted; this model never asks for access itself.
+// Bluetooth access granted; this model never asks for access itself. The model itself runs only while the
+// Bluetooth devices activity is enabled in Settings ▸ Live Activities (`ModelGate`).
 import CrannyCore
 import Foundation
 import Observation
@@ -44,6 +45,7 @@ private let log = Log.logger(.bluetooth)
         settings[SystemSettings.showsAllBluetoothDevices] && permissions.status(.bluetooth) == .granted
     }
 
+    /// Also a restart (Settings ▸ Live Activities): each source's first report is a baseline again, as at launch.
     func start() {
         hardware.startWatching(audio: { [weak self] in self?.audioChanged($0) },
                                hid: { [weak self] in self?.hidChanged($0) })
@@ -53,12 +55,19 @@ private let log = Log.logger(.bluetooth)
         setBluetoothWatcher(running: wantsBluetoothWatcher)
     }
 
+    /// Stops every watcher and hides the activity; what was connected is forgotten, so devices that connect
+    /// before the next `start` are part of its baseline, not announcements.
     func stop() {
         hardware.stopWatching()
         setBluetoothWatcher(running: false)
         bluetoothToken = nil
         refreshTask?.cancel()
         refreshTask = nil
+        audio = []
+        hid = []
+        tracker.forget(.audio)
+        tracker.forget(.hid)
+        activity.end()                                   // a connect still reading its levels finds nothing connected
     }
 
     // MARK: Source reports
@@ -90,10 +99,15 @@ private let log = Log.logger(.bluetooth)
         endIfGone()
     }
 
-    /// A power-source notification: accessory levels may have changed. Read them only while they are shown.
+    /// Power-source notifications matter only while the activity shows batteries. The power model follows every
+    /// change of any power source only while this holds (read through Observation).
+    var wantsPowerSourceChanges: Bool { activity.isActive }
+
+    /// A power-source notification: accessory levels may have changed. Read them only while they are shown,
+    /// at utility priority (the levels only update the activity).
     func powerSourcesChanged() {
-        guard activity.isActive else { return }
-        Task { [weak self] in await self?.refreshBatteries() }
+        guard wantsPowerSourceChanges else { return }
+        Task(priority: .utility) { [weak self] in await self?.refreshBatteries() }
     }
 
     // MARK: Showing
@@ -113,12 +127,13 @@ private let log = Log.logger(.bluetooth)
     }
 
     /// One sleep per refresh, and none past the activity: a transient activity (2.6 s) gets the 1-s refresh only.
+    /// Utility priority: the reads only update the activity.
     private func scheduleVisibleRefresh() {
         refreshTask?.cancel()
         refreshGeneration += 1
         let generation = refreshGeneration
         isRefreshScheduled = true
-        refreshTask = Task { [weak self] in
+        refreshTask = Task(priority: .utility) { [weak self] in
             var delay = Self.firstRefresh
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(delay))

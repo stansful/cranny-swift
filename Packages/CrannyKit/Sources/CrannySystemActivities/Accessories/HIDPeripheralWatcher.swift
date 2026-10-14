@@ -4,6 +4,9 @@
 //
 // Threading: confined to `queue`. The notification port delivers there, every registry read happens there,
 // and results leave as Sendable values through `onChange` (the caller hops to the main actor).
+//
+// Energy: the built-in keyboard and trackpad also match the service (they re-match around sleep and wake) and
+// `parse` drops them, so a drain that changed nothing an accessory list shows is not reported.
 import CrannyCore
 import Foundation
 import IOKit
@@ -46,6 +49,8 @@ nonisolated final class HIDPeripheralWatcher: @unchecked Sendable {   // confine
     private var addedIterator: io_iterator_t = 0
     private var removedIterator: io_iterator_t = 0
     private var devices: [UInt64: HIDPeripheral] = [:]
+    /// The list reported last (nil before the baseline, which is always reported).
+    private var lastReported: [HIDPeripheral]?
 
     init(onChange: @escaping @Sendable (Int, [HIDPeripheral]) -> Void) { self.onChange = onChange }
 
@@ -84,6 +89,7 @@ nonisolated final class HIDPeripheralWatcher: @unchecked Sendable {   // confine
             if let port { IONotificationPortDestroy(port) }
             port = nil
             devices = [:]
+            lastReported = nil
         }
     }
 
@@ -101,8 +107,11 @@ nonisolated final class HIDPeripheralWatcher: @unchecked Sendable {   // confine
             service = IOIteratorNext(iterator)
         }
         guard report else { return }
+        let list = devices.values.sorted { $0.id < $1.id }
+        guard list != lastReported else { return }      // e.g. only the built-in devices re-matched
+        lastReported = list
         sequence += 1
-        onChange(sequence, devices.values.sorted { $0.id < $1.id })
+        onChange(sequence, list)
     }
 
     // MARK: Registry reads

@@ -27,4 +27,23 @@ import Testing
     @Test func bluetoothAudioOutputs() {
         #expect(AudioDeviceWatcher.bluetoothOutputs().allSatisfy { !$0.id.isEmpty })
     }
+
+    /// Subscribing changes nothing on the Mac: the IOPS run-loop sources attach and detach cleanly.
+    @Test @MainActor func powerObserverAttachesTheDetailOnlyWhileFollowed() {
+        let observer = PowerObserver()
+        observer.setFollowsDetail(true)                    // stopped: ignored
+        #expect(!observer.isFollowingDetail)
+        observer.start {}
+        #expect(observer.isFollowingDetail)                // until the model knows better
+        observer.setFollowsDetail(false)
+        #expect(!observer.isFollowingDetail)
+        observer.setFollowsDetail(true)
+        observer.setFollowsDetail(true)                    // idempotent
+        #expect(observer.isFollowingDetail)
+        observer.start {}                                  // a restart replaces everything
+        #expect(observer.isFollowingDetail)
+        observer.stop()
+        #expect(!observer.isFollowingDetail)
+        observer.stop()
+    }
 }

@@ -138,6 +138,37 @@ import Testing
         #expect(!model.isRefreshScheduled)                  // the 1-s wake-up saw it gone; no 60-s wake-up follows
     }
 
+    @Test func aRestartStartsFromABaseline() async {
+        let model = makeModel()
+        model.start()
+        hardware.audio?([])
+        hardware.audio?([AudioOutputDevice(id: "1", name: "AirPods")])
+        await settle { activity.isActive }
+        model.stop()                                         // Settings ▸ Live Activities: Bluetooth devices off
+        #expect(!activity.isActive)
+        model.start()                                        // and on again
+        defer { model.stop() }
+        hardware.audio?([AudioOutputDevice(id: "1", name: "AirPods"), AudioOutputDevice(id: "2", name: "Beats Flex")])
+        await settle { false }
+        #expect(!activity.isActive)                          // connected while off: part of the baseline
+        hardware.audio?([AudioOutputDevice(id: "2", name: "Beats Flex"), AudioOutputDevice(id: "3", name: "Speaker")])
+        await settle { activity.isActive }
+        #expect(activity.accessory?.name == "Speaker")       // a new connection after the restart still shows
+    }
+
+    @Test func theActivityOnlyAsksForPowerNotificationsWhileVisible() async {
+        let model = makeModel()
+        model.start()
+        defer { model.stop() }
+        #expect(!model.wantsPowerSourceChanges)
+        hardware.audio?([])
+        hardware.audio?([AudioOutputDevice(id: "1", name: "AirPods")])
+        await settle { activity.isActive }
+        #expect(model.wantsPowerSourceChanges)
+        activity.end()
+        #expect(!model.wantsPowerSourceChanges)
+    }
+
     @Test func powerNotificationsReadNothingWhileHidden() async {
         let model = makeModel()
         model.powerSourcesChanged()

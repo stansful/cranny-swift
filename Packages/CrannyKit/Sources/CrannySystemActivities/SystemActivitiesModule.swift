@@ -12,7 +12,7 @@ public enum SystemActivitiesModule: FeatureModule {
     public static var id: ModuleID { .system }
 
     /// Creates the models and contributes the three activities. Cheap: nothing touches IOKit, Core Audio or
-    /// Bluetooth until `onLaunch`.
+    /// Bluetooth until `onLaunch`, and then only while the Settings ▸ Live Activities toggles want it.
     public static func register(in registry: ModuleRegistry) {
         let services = registry.services
         let charging = ChargingActivity()
@@ -23,14 +23,31 @@ public enum SystemActivitiesModule: FeatureModule {
         let accessories = AccessoryModel(activity: bluetooth, settings: services.settings,
                                          permissions: services.permissions, hardware: LiveAccessoryHardware())
         power.onSourcesChanged = { [weak accessories] in accessories?.powerSourcesChanged() }
+        power.wantsSourcesChanged = { [weak accessories] in accessories?.wantsPowerSourceChanges ?? false }
 
-        registry.add(activity: charging, kind: chargingKind, sample: { ChargingActivity.sample() })
-        registry.add(activity: lowBattery, kind: lowBatteryKind, sample: { LowBatteryActivity.sample() },
+        let charge = chargingKind, low = lowBatteryKind, devices = bluetoothKind
+        registry.add(activity: charging, kind: charge, sample: { ChargingActivity.sample() })
+        registry.add(activity: lowBattery, kind: low, sample: { LowBatteryActivity.sample() },
                      options: { AnyView(LowBatteryOptionsView(settings: services.settings)) })
-        registry.add(activity: bluetooth, kind: bluetoothKind, sample: { BluetoothActivity.sample() },
+        registry.add(activity: bluetooth, kind: devices, sample: { BluetoothActivity.sample() },
                      options: { AnyView(BluetoothOptionsView(settings: services.settings, permissions: services.permissions)) })
         registry.declare(.bluetooth, reason: SystemCopy.bluetoothPermissionReason,
                          optIn: SystemSettings.showsAllBluetoothDevices)   // onboarding asks only while it is on
+
+        // Each model runs only while an activity it feeds is enabled (`ModelGate`). The power notifications also
+        // refresh the batteries of a visible Bluetooth activity, so that toggle keeps the power model running too.
+        let settings = services.settings
+        let (chargeOn, lowOn, devicesOn) = (charge.isEnabledByDefault, low.isEnabledByDefault, devices.isEnabledByDefault)
+        let powerGate = ModelGate(
+            isEnabled: {
+                ModelGate.isEnabled(.charging, byDefault: chargeOn, in: settings)
+                    || ModelGate.isEnabled(.lowBattery, byDefault: lowOn, in: settings)
+                    || ModelGate.isEnabled(.bluetoothDevice, byDefault: devicesOn, in: settings)
+            },
+            start: { power.start() }, stop: { power.stop() })
+        let accessoryGate = ModelGate(
+            isEnabled: { ModelGate.isEnabled(.bluetoothDevice, byDefault: devicesOn, in: settings) },
+            start: { accessories.start() }, stop: { accessories.stop() })
 
         registry.onLaunch {
             #if DEBUG
@@ -39,12 +56,12 @@ public enum SystemActivitiesModule: FeatureModule {
                 return
             }
             #endif
-            power.start()
-            accessories.start()
+            powerGate.open()
+            accessoryGate.open()
         }
         registry.onTerminate {
-            power.stop()
-            accessories.stop()
+            powerGate.close()
+            accessoryGate.close()
         }
     }
 

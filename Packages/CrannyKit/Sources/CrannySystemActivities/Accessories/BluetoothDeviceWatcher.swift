@@ -66,9 +66,11 @@ nonisolated struct BluetoothDeviceInfo: Equatable, Sendable, Identifiable {
     func start() {
         guard connectNotification == nil else { return }
         // The devices connected already form the baseline (the model's first report of this source). Registering
-        // then also notifies them once more; they are known by then, so nothing is announced twice.
+        // then also notifies them once more; they are known by then, so nothing is announced twice. A baseline
+        // device is never shown from this report (only a new connection is), so its batteries are not read here:
+        // each read is several private calls into bluetoothd, on the main actor.
         for case let device as IOBluetoothDevice in IOBluetoothDevice.pairedDevices() ?? [] where device.isConnected() {
-            track(device)
+            track(device, readsBatteries: false)
         }
         connectNotification = IOBluetoothDevice.register(forConnectNotifications: self, selector: #selector(connected(_:device:)))
         log.info("IOBluetooth watcher started")
@@ -98,12 +100,13 @@ nonisolated struct BluetoothDeviceInfo: Equatable, Sendable, Identifiable {
         onChange(Array(devices.values))
     }
 
-    private func track(_ device: IOBluetoothDevice) {
+    /// - Parameter readsBatteries: false for the baseline, whose levels nobody shows (`.unknown` instead).
+    private func track(_ device: IOBluetoothDevice, readsBatteries: Bool = true) {
         guard let address = device.addressString else { return }
         devices[address] = BluetoothDeviceInfo(
             id: address, name: device.name ?? "",
             kind: BluetoothDeviceInfo.kind(major: device.deviceClassMajor, minor: device.deviceClassMinor),
-            batteries: BluetoothBatterySelectors.batteries(of: device))
+            batteries: readsBatteries ? BluetoothBatterySelectors.batteries(of: device) : .unknown)
         if disconnectNotifications[address] == nil {
             disconnectNotifications[address] = device.register(forDisconnectNotification: self, selector: #selector(disconnected(_:device:)))
         }
