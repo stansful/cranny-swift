@@ -1,7 +1,8 @@
 // CrannyNotchUI/Nook/NookHeader.swift — the header row in the band (DESIGN.md §6.2): page tabs left of the
 // camera, the camera zone (N + 16) kept empty — time and date on displays without a notch — and the actions
 // on the right: ⌕ palette (⌘K), 📌 pin (⌘P), ⚙︎ Settings (⌘,). While a HUD is the primary activity, its views
-// take the row instead, around the camera (§10 "While the panel is open", ARCHITECTURE.md §4.11).
+// take the row instead, around the camera (§10 "While the panel is open", ARCHITECTURE.md §4.11); so does an
+// `OpenHeaderActivity` with a message (the Pause Live Activities confirmation, §9.2).
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -16,16 +17,20 @@ struct NookHeader: View {
     let perform: @MainActor (NookCommand) -> Void
 
     var body: some View {
-        let hud = hudActivity
+        let takeover = takeover
         ZStack {
-            if let hud {
-                HUDHeaderOverlay(id: hud.id, activity: hud.activity, layout: model.layout, actions: actions)
+            switch takeover {
+            case let .hud(id, activity):
+                HUDHeaderOverlay(id: id, activity: activity, layout: model.layout, actions: actions)
                     .transition(swap)
-            } else {
+            case let .message(id, activity, message):
+                HeaderMessageOverlay(id: id, activity: activity, message: message, layout: model.layout)
+                    .transition(swap)
+            case nil:
                 row.transition(swap)
             }
         }
-        .animation(theme.animation(.contentSwap), value: hud?.id)
+        .animation(theme.animation(.contentSwap), value: takeover?.key)
     }
 
     /// `contentSwap` with `.blurReplace` (opacity only under Reduce Motion).
@@ -65,10 +70,12 @@ struct NookHeader: View {
         HeaderTabItems.make(pages: registry.services.settings[CoreSettings.pages], modulePages: registry.pages)
     }
 
-    /// The primary activity, when it is a HUD (P0).
-    private var hudActivity: (id: ActivityID, activity: any LiveActivity)? {
-        guard let id = model.primary, let activity = model.activity(id, in: registry), activity.priority == .hud else { return nil }
-        return (id, activity)
+    /// What takes the row: a HUD as the primary (P0), else the primary or the owner's `headerActivity` with a message.
+    private var takeover: HeaderTakeover? {
+        func lookup(_ id: ActivityID?) -> (ActivityID, any LiveActivity)? {
+            id.flatMap { id in model.activity(id, in: registry).map { (id, $0) } }
+        }
+        return HeaderTakeover.resolve(primary: lookup(model.primary), header: lookup(model.headerActivity))
     }
 
     // MARK: Actions

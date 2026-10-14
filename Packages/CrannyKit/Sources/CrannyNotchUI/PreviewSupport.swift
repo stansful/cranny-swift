@@ -180,6 +180,25 @@ private struct PreviewPeekRow: View {
     }
 }
 
+/// The shell's pause confirmation as previews see it: a glyph and a short word in the wings, a sentence for the open
+/// header (`OpenHeaderActivity`).
+@MainActor @Observable final class PreviewConfirmation: OpenHeaderActivity {
+    static let sentence = "Live Activities paused for 1 hour"
+    let id: ActivityID = "preview.confirmation"
+    let isActive = true
+    let revision = 1
+    let priority: ActivityPriority = .alert
+    let slot: SlotWidth = .wide
+    var headerMessage: String?
+    var accessibilityLabel: String { headerMessage ?? "Paused" }
+    init(_ message: String?) { headerMessage = message }
+
+    func compactLeading() -> some View { Image(systemName: "pause.fill").crannySymbol(.band) }
+    func compactTrailing() -> some View { Text(verbatim: "Paused").crannyFont(.compact) }
+    func minimal() -> some View { Image(systemName: "pause.fill").crannySymbol(.band) }
+    func peekRow() -> some View { Text(verbatim: headerMessage ?? "Paused").crannyFont(.title) }
+}
+
 /// Sample ⌘K commands.
 @MainActor final class PreviewCommands: PaletteCommandProvider {
     func commands(matching query: String) -> [PaletteCommand] {
@@ -219,7 +238,8 @@ enum PreviewVariant: String, CaseIterable {
 @MainActor func previewScene(_ phase: NotchPhase, metrics: NotchMetrics = .reference, style: NoNotchStyle = .floatingIsland,
                              variant: PreviewVariant = .standard, sample: PreviewActivity.Sample = .nowPlaying,
                              satellite: Bool = false, peekRowCount: Int = 1, hudInHeader: Bool = false,
-                             palette: Bool = false, mode: NookMode = .grid) -> (NotchSceneModel, ModuleRegistry) {
+                             headerMessage: String? = nil, palette: Bool = false,
+                             mode: NookMode = .grid) -> (NotchSceneModel, ModuleRegistry) {
     let registry = ModuleRegistry(services: .preview())
     registry.add(commands: PreviewCommands())
     registry.addPreviewStandIns()                                    // named cards without the feature modules
@@ -251,6 +271,12 @@ enum PreviewVariant: String, CaseIterable {
         model.open = OpenState(page: .nook, mode: palette ? .palette : mode, reason: .click)
         model.openColumns = NookPreset.listener.items.reduce(0) { $0 + $1.cells }
         if hudInHeader { model.primary = primary.id; model.primarySlot = .wide }
+        if let headerMessage {                                      // behind Now Playing in the lineup
+            let confirmation = PreviewConfirmation(headerMessage)
+            model.sampleActivities[confirmation.id] = confirmation
+            model.primary = primary.id
+            model.headerActivity = confirmation.id
+        }
     default:
         break
     }

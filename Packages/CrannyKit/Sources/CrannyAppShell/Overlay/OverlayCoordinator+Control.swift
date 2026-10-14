@@ -64,8 +64,9 @@ extension OverlayCoordinator {
     /// play glyph and a word in the wings, the sentence in a peek row where peeks may show), for the peek duration,
     /// and the sentence for VoiceOver. The announcement is feedback (the direct answer to the user's action): the
     /// app-wide limit neither drops it nor counts it, and without VoiceOver posting it does nothing. Nothing shows on
-    /// a locked screen or sleeping displays; while the panel is open the flash waits in the lineup (the wings show it
-    /// once the panel closes, within its lifetime) and VoiceOver still hears it.
+    /// a locked screen or sleeping displays. While that display's panel is open (⌘K always runs there) the flash is
+    /// its primary, and the open header shows the glyph and the sentence instead of the tabs (`OpenHeaderActivity`);
+    /// the wings show the rest of its lifetime if the panel closes.
     func confirmPause(_ confirmation: PauseConfirmation) {
         let duration = registry.services.settings[CoreSettings.peekDuration]
         // `presentFlash` shows nothing on a panel that is hidden for a reason that blocks input (lock, sleep, policy).

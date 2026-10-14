@@ -1,14 +1,16 @@
 // CrannyAppShell/Services/FlashActivity.swift — the shell-owned transient activity behind
 // `NotchControl.flash(symbol:label:)` (ARCHITECTURE.md §3.6, `ActivityID.flash`): a glyph and a short,
 // already-localized label (≤ 12 characters) in the wings for 2.6 s — onboarding "Hi", "Path copied". The shell's
-// own confirmations (Pause Live Activities, Resume) add a `detail` sentence, drawn in the flash's peek row and read
-// by VoiceOver, and outlast the pause they confirm (`outlastsPause`).
+// own confirmations (Pause Live Activities, Resume) add a `detail` sentence, drawn in the flash's peek row, in the
+// open header while the panel is open (`OpenHeaderActivity`) and read by VoiceOver, and outlast the pause they
+// confirm (`outlastsPause`).
 import CrannyCore
+import CrannyNotchUI
 import Foundation
 import Observation
 import SwiftUI
 
-@MainActor @Observable final class FlashActivity: LiveActivity {
+@MainActor @Observable final class FlashActivity: OpenHeaderActivity {
     static let kind = ActivityKind(id: .flash, module: .shell,
                                    title: String(localized: "Confirmations", bundle: .module,
                                                  comment: "Live Activities pane: the shell's short confirmations (e.g. \"Path copied\")"),
@@ -21,8 +23,8 @@ import SwiftUI
     private(set) var expiresAt: Date?
     private(set) var symbol = "hand.wave.fill"
     private(set) var label = ""
-    /// The whole sentence of a shell confirmation ("Live Activities paused for 1 hour"): the peek row and VoiceOver
-    /// say it, the wings keep the short `label`. Nil for `NotchControl.flash`.
+    /// The whole sentence of a shell confirmation ("Live Activities paused for 1 hour"): the peek row, the open header
+    /// and VoiceOver say it, the wings keep the short `label`. Nil for `NotchControl.flash`.
     private(set) var detail: String?
     /// A Pause Live Activities or Resume confirmation: shown (and peeked) although activities are paused, and not
     /// hidden when the pause it confirms begins.
@@ -31,6 +33,9 @@ import SwiftUI
 
     var slot: SlotWidth { label.count <= 4 ? .medium : .wide }
     var accessibilityLabel: String { detail ?? label }
+    /// A confirmation takes the open header while the panel is open (it can neither show in the wings nor peek
+    /// there); an ordinary flash waits in the lineup.
+    var headerMessage: String? { detail }
 
     /// Shows (or refreshes) the flash; it hides itself after `duration` (one sleep, no polling).
     /// Call through `OverlayCoordinator.showFlash` (it picks the display and drops the flash while paused) or

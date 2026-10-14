@@ -1,6 +1,6 @@
 // CrannyNotchUI/NotchScene.swift — the render model of one notch (one per display panel, one per stage).
-// The contract of ARCHITECTURE.md §4.12. Additive since the foundation: `middleLabelWidth` (open issue 3) and
-// `isVisibleOnScreen`.
+// The contract of ARCHITECTURE.md §4.12. Additive since the foundation: `middleLabelWidth` (open issue 3),
+// `isVisibleOnScreen`, `OpenState.gestureVelocity` and `headerActivity` (with `OpenHeaderActivity`).
 import CrannyCore
 import CrannyEffects
 import Foundation
@@ -55,6 +55,10 @@ public nonisolated struct OpenState: Equatable, Sendable {
     public var primary: ActivityID?
     /// The second activity: the satellite bubble beside the compact shape.
     public var satellite: ActivityID?
+    /// An activity of this display's lineup with a message for the open header (`OpenHeaderActivity`, e.g. the
+    /// Pause Live Activities confirmation), whatever its rank: it takes the header row while the panel is open, unless
+    /// a HUD is the primary. The owner picks it; stages leave it nil.
+    public var headerActivity: ActivityID?
     /// Peek rows, top to bottom (at most 4 are drawn).
     public var peekRows: [ActivityID] = []
     /// Stages (Settings preview, onboarding) put `RegisteredActivity.makeSample()` instances here; the canvas

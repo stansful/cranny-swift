@@ -136,8 +136,10 @@ extension HostedTests {
     /// The keyboard map works whatever the header shows (review: the edit bar and a HUD removed the buttons
     /// that carried ⌘K, ⌘P, ⌘, and ⌘1–⌘5).
     @MainActor @Suite("Keyboard map in the open panel") struct KeyMapHostedTests {
-        @Test(arguments: ["grid", "edit", "hud"]) func shortcutsSurviveTheHeaderSwaps(state: String) async throws {
-            let (model, registry) = previewScene(.open, hudInHeader: state == "hud", mode: state == "edit" ? .editLayout : .grid)
+        @Test(arguments: ["grid", "edit", "hud", "confirmation"]) func shortcutsSurviveTheHeaderSwaps(state: String) async throws {
+            let (model, registry) = previewScene(.open, hudInHeader: state == "hud",
+                                                 headerMessage: state == "confirmation" ? PreviewConfirmation.sentence : nil,
+                                                 mode: state == "edit" ? .editLayout : .grid)
             registry.services.settings[CoreSettings.pages].append(NookPage(id: "page.focus", title: "Focus", symbol: "note.text", items: []))
             var modes: [NookMode] = []
             var pins = 0, settings = 0
