@@ -1,0 +1,176 @@
+// Visualizer logic: the synthetic spectrum (determinism, range, seamless loop, rest), the FFT analyzer on synthetic
+// buffers (no audio tap is ever started), the energy follower and the sample ring.
+import CrannyCore
+import Foundation
+import Testing
+@testable import CrannyMedia
+
+@Suite("Synthetic spectrum") struct SyntheticSpectrumTests {
+    @Test func deterministicPerTrackKey() {
+        let a = SyntheticSpectrum(trackKey: "spotify:track:42"), b = SyntheticSpectrum(trackKey: "spotify:track:42")
+        #expect(a == b)
+        #expect(a.seed == SyntheticSpectrum.fnv1a("spotify:track:42"))
+        for bar in 0..<SyntheticSpectrum.barCount {
+            #expect(a.keyframes(bar: bar, fps: 30) == b.keyframes(bar: bar, fps: 30))
+        }
+        let other = SyntheticSpectrum(trackKey: "spotify:track:43")
+        #expect(a.keyframes(bar: 2, fps: 30) != other.keyframes(bar: 2, fps: 30))
+    }
+
+    @Test func fnvIsStableAcrossLaunches() {
+        // Fixed reference values: `hashValue` would change every launch.
+        #expect(SyntheticSpectrum.fnv1a("") == 0xcbf2_9ce4_8422_2325)
+        #expect(SyntheticSpectrum.fnv1a("a") == 0xaf63_dc4c_8601_ec8c)
+    }
+
+    @Test(arguments: ["", "a", "Midnight Window", "com.apple.Music|Song|Artist|Album"])
+    func tempoAndRange(_ key: String) {
+        let s = SyntheticSpectrum(trackKey: key)
+        #expect([100.0, 105, 110, 115, 120].contains(s.bpm))
+        #expect((8...9.6).contains(s.loopDuration))
+        for bar in 0..<SyntheticSpectrum.barCount {
+            for frame in s.keyframes(bar: bar, fps: 30) {
+                #expect(frame >= SyntheticSpectrum.floor && frame <= SyntheticSpectrum.ceiling)
+            }
+        }
+    }
+
+    @Test func loopsSeamlessly() {
+        let s = SyntheticSpectrum(trackKey: "loop")
+        for bar in 0..<SyntheticSpectrum.barCount {
+            for t in stride(from: 0.0, to: s.loopDuration, by: 0.37) {
+                #expect(abs(s.level(bar: bar, at: t) - s.level(bar: bar, at: t + s.loopDuration)) < 1e-9)
+            }
+        }
+    }
+
+    @Test func keyframesSampleOneLoop() {
+        let s = SyntheticSpectrum(trackKey: "frames")
+        let frames = s.keyframes(bar: 0, fps: 30)
+        #expect(frames.count == Int((s.loopDuration * 30).rounded()))
+        #expect(frames.first == s.level(bar: 0, at: 0))
+        #expect(s.keyframes(bar: 0, fps: 20).count < frames.count)        // battery: fewer frames
+        #expect(s.level(bar: 99, at: 1) == SyntheticSpectrum.floor)        // out of range: resting floor
+    }
+
+    @Test func barsMove() {
+        let s = SyntheticSpectrum(trackKey: "moves")
+        for bar in 0..<SyntheticSpectrum.barCount {
+            let frames = s.keyframes(bar: bar, fps: 30)
+            #expect((frames.max() ?? 0) - (frames.min() ?? 0) > 0.3)       // visibly alive, not a flat line
+        }
+    }
+
+    @Test func easesToRestIn400Milliseconds() {
+        #expect(SyntheticSpectrum.restEnvelope(elapsed: 0) == 1)
+        #expect(SyntheticSpectrum.restEnvelope(elapsed: -1) == 1)
+        #expect(SyntheticSpectrum.restEnvelope(elapsed: 0.4) == 0)
+        #expect(SyntheticSpectrum.restEnvelope(elapsed: 5) == 0)
+        var previous = 1.0
+        for ms in stride(from: 20, through: 400, by: 20) {
+            let value = SyntheticSpectrum.restEnvelope(elapsed: Double(ms) / 1000)
+            #expect(value < previous)
+            previous = value
+        }
+    }
+
+    @Test func metricsMapLevelsToHeights() {
+        let m = VisualizerMetrics.compact(unit: 1)
+        #expect(m.width == 23)                                             // 5 × 3 + 4 × 2
+        #expect(m.height(for: 0) == 4)
+        #expect(m.height(for: 1) == 16)
+        #expect(m.height(for: 2) == 16)
+        #expect(m.dot == 3)
+    }
+}
+
+@Suite("Spectrum analyzer") struct SpectrumAnalyzerTests {
+    private func sine(_ hz: Double, amplitude: Float = 0.5, count: Int = 1024, rate: Double = 48_000) -> [Float] {
+        (0..<count).map { amplitude * Float(sin(2 * .pi * hz * Double($0) / rate)) }
+    }
+
+    private func analyze(_ samples: [Float], frames: Int = 12) throws -> SpectrumAnalyzer {
+        let analyzer = try #require(SpectrumAnalyzer())
+        for _ in 0..<frames { samples.withUnsafeBufferPointer { analyzer.analyze($0) } }
+        return analyzer
+    }
+
+    @Test func silenceIsZero() throws {
+        let analyzer = try analyze([Float](repeating: 0, count: 1024))
+        #expect(analyzer.bands.allSatisfy { $0 == 0 })
+        #expect(analyzer.barLevels.allSatisfy { $0 == 0 })
+    }
+
+    // Bars: ≈ 40–85 Hz · 85–300 Hz · 300 Hz–1 kHz · 1–3.6 kHz · 3.6–16 kHz (24 log bands folded 3/5/5/5/6).
+    @Test(arguments: [(200.0, 1), (600.0, 2), (2_000.0, 3), (8_000.0, 4)])
+    func toneLandsInTheRightBar(_ hz: Double, _ bar: Int) throws {
+        let analyzer = try analyze(sine(hz))
+        let levels = analyzer.barLevels
+        #expect(levels.count == 5)
+        #expect(levels.indices.max { levels[$0] < levels[$1] } == bar)
+        #expect(levels[bar] > 0.5)
+    }
+
+    @Test func louderIsHigher() throws {
+        let quiet = try analyze(sine(1_000, amplitude: 0.01)).barLevels[2]
+        let loud = try analyze(sine(1_000, amplitude: 0.8)).barLevels[2]
+        #expect(loud > quiet)
+    }
+
+    @Test func wrongBufferSizeIsIgnored() throws {
+        let analyzer = try #require(SpectrumAnalyzer())
+        [Float](repeating: 1, count: 512).withUnsafeBufferPointer { analyzer.analyze($0) }
+        #expect(analyzer.bands.allSatisfy { $0 == 0 })
+        #expect(SpectrumAnalyzer(size: 8) == nil)
+    }
+
+    @Test func rms() {
+        let square = [Float](repeating: 0.5, count: 256)
+        #expect(abs(square.withUnsafeBufferPointer(SpectrumAnalyzer.rms) - 0.5) < 1e-6)
+        let tone = sine(440, amplitude: 1, count: 4800)
+        #expect(abs(tone.withUnsafeBufferPointer(SpectrumAnalyzer.rms) - Float(1 / 2.0.squareRoot())) < 0.01)
+        #expect([Float]().withUnsafeBufferPointer(SpectrumAnalyzer.rms) == 0)
+    }
+
+    @Test func foldGroupsBandsIntoFiveBars() {
+        var levels = [Double](repeating: 0, count: 24)
+        levels[0] = 0.9; levels[23] = 0.4
+        #expect(SpectrumAnalyzer.fold(levels, into: 5) == [0.9, 0, 0, 0, 0.4])
+        #expect(SpectrumAnalyzer.fold([], into: 5) == [0, 0, 0, 0, 0])
+        #expect(SpectrumAnalyzer.fold([0.1, 0.2], into: 5).count == 5)
+    }
+}
+
+@Suite("Energy and samples") struct EnergyTests {
+    @Test func attackIsFasterThanRelease() {
+        var follower = EnergyFollower()
+        let afterAttack = follower.update(rms: 0.4, dt: 0.06)              // one attack time constant
+        #expect(abs(afterAttack - (1 - exp(-1))) < 1e-9)
+        var steady = EnergyFollower()
+        for _ in 0..<100 { _ = steady.update(rms: 0.4, dt: 1.0 / 30) }
+        #expect(abs(steady.value - 1) < 1e-6)                             // 0.4 RMS is loud music → 1
+        let afterRelease = steady.update(rms: 0, dt: 0.06)
+        #expect(afterRelease > 0.8)                                        // 300-ms release: slow fall
+        #expect(follower.update(rms: 0.2, dt: 0) == afterAttack)           // dt 0: unchanged
+    }
+
+    @Test func ringReturnsTheLatestSamplesOldestFirst() {
+        let ring = SampleRing(capacity: 64)
+        let first = (0..<50).map(Float.init), second = (50..<80).map(Float.init)
+        first.withUnsafeBufferPointer { ring.pushMono($0) }
+        second.withUnsafeBufferPointer { ring.pushMono($0) }
+        var out = [Float](repeating: -1, count: 8)
+        let written = out.withUnsafeMutableBufferPointer { ring.latest(into: $0) }
+        #expect(written == 80)
+        #expect(out == (72..<80).map(Float.init))
+    }
+
+    @Test func stereoIsMixedToMono() {
+        let ring = SampleRing(capacity: 64)
+        let stereo: [Float] = [1, 0, 0.5, 0.5, -1, 1]
+        stereo.withUnsafeBufferPointer { ring.pushStereo($0.baseAddress!, frames: 3) }
+        var out = [Float](repeating: 9, count: 3)
+        out.withUnsafeMutableBufferPointer { _ = ring.latest(into: $0) }
+        #expect(out == [0.5, 0.5, 0])
+    }
+}
