@@ -169,8 +169,8 @@ Two cases where text sits on something other than a card:
 | Token | Standard | Increase Contrast | On black / on card | Meaning |
 |---|---|---|:-:|---|
 | `success` | #30D158 | #30DB5B | 10.4 / 9.1 | Charging, Join, done, meeting in progress |
-| `warning` | #FF9F0A | #FFB340 | 10.2 / 8.9 | Timer (always), last minute, ≤ 20 % battery |
-| `danger` | #FF453A | #FF6961 | 6.2 / 5.4 | ≤ 10 % battery, failed pipeline, destructive actions, today's weekday |
+| `warning` | #FF9F0A | #FFB340 | 10.2 / 8.9 | Timer (always), last minute, the first low-battery warning, a device battery below 20 % |
+| `danger` | #FF453A | #FF6961 | 6.2 / 5.4 | The final low-battery warning, failed pipeline, destructive actions, today's weekday |
 | `info` | #409CFF | #70B7FF | 7.4 / 6.5 | Links, AirDrop, Bluetooth |
 | `caution` | #FFD60A | #FFD426 | 14.9 / 13.0 | Low Power Mode, brightness (coloured HUD) |
 
@@ -1081,8 +1081,8 @@ public nonisolated enum SlotWidth: Int, CaseIterable, Comparable, Sendable {
         switch self {
         case .none: 0
         case .glyph: 40     // 20-pt artwork, a glyph, a 16-pt ring
-        case .short: 52     // 5-bar visualizer, "82%", battery ring + value
-        case .medium: 68    // "4:59", "in 4m", Join capsule
+        case .short: 52     // 5-bar visualizer, "82%"
+        case .medium: 68    // "4:59", "in 4m", Join capsule, battery ring + value
         case .wide: 92      // HUD: glyph | level bar 64 (+ optional value)
         }
     }
@@ -1212,8 +1212,8 @@ These numbers are printed by the harness. "Outer W" includes the ears.
 | **closed** | 184 × 31.5 | 10 | 0 | 184 | none | none | Cutout −0.5 pt per side; r = clamp(0.30·band, 6, 12) + tune |
 | **hover "breath"** | 196 × 34.5 | 12 | 4 | 204 | none | none | Shown during the dwell; tells you it noticed |
 | **compact · glyph** | 265 × 32 | 13 | 6 | 277 | none | none | Artwork, a single glyph |
-| **compact · short** | 289 × 32 | 13 | 6 | 301 | none | none | Now Playing, charging, Bluetooth |
-| **compact · medium** | 321 × 32 | 13 | 6 | 333 | none | none | Timer, meeting |
+| **compact · short** | 289 × 32 | 13 | 6 | 301 | none | none | Now Playing, charging, low battery |
+| **compact · medium** | 321 × 32 | 13 | 6 | 333 | none | none | Timer, meeting, Bluetooth device |
 | **HUD (wide)** | 369 × 32 | 13 | 6 | 381 | none | none | Never taller than the band |
 | **satellite** | Ø 24 | — | — | — | none | none | 6u beyond the compact body's edge, vertically centred in the band |
 | **peek · 1 row** | 425 × 92 | 22 | 8 | 441 | peek | × 1 | Width = clamp(N + 240u, 380, 460); rows of 52 + 8 bottom |
@@ -1238,8 +1238,8 @@ These numbers are printed by the harness. "Outer W" includes the ears.
 | Class | Width | Content budget (− 12 outer − 8 gap) | Used by |
 |---|---|---|---|
 | `glyph` | 40 | 20 | 20-pt artwork, a single glyph, a 16-pt ring |
-| `short` | 52 | 32 | 5-bar visualizer, "82%", device battery |
-| `medium` | 68 | 48 | "4:59", "in 4m" / "4 мин", Join capsule |
+| `short` | 52 | 32 | 5-bar visualizer, "82%" |
+| `medium` | 68 | 48 | "4:59", "in 4m" / "4 мин", Join capsule, device battery (12-pt ring + "84%" = 45 pt) |
 | `wide` | 92 | 72 | HUD level bar 64 + inset |
 
 ### 3.4 Closed equals the hardware
@@ -2089,9 +2089,9 @@ When a file drag enters the proximity zone (§3.6), the shape opens straight to 
 | **Meeting in progress** | medium | Elapsed ring 16u in the calendar colour | "12m left" (`compact`) | Title · elapsed / remaining bar (2 pt, `success`) · Join | During the event (option: elapsed or remaining) | P2 |
 | **Timer** | medium | Ring 16u, 2.5 stroke, `warning` | "4:59" (`compact`; `warning` in the last minute) | Ring 40 · label · ⏸ ⏹ · +1 min | While running; peeks at 1 min left (option) | P2 |
 | **Timer done** | medium | `timer` in `warning` (+ `.bounce`) | "Done" | Stop · +1 min | Until dismissed or 1 min | P1 |
-| **Charging** | short | `bolt.fill` in `success` | "82%" (`compact`) | Code-drawn battery 24 × 12 (exact fill) · `numeral` % · "1 h 20 m to full" | 2.6 s on plug / unplug | P1, transient |
-| **Low battery** | short | `battery.25percent` or `battery.0percent` in `danger` + "!" | "10%" in `danger` | … + **Low Power Mode…** button (opens Battery settings; there is no public API to toggle it, ARCHITECTURE D18) | At 20 % and 10 % (persists at ≤ 10 %; thresholds are the activity's option) | P1 |
-| **Bluetooth device** | short | Device glyph: `airpodspro`, `airpodsmax`, `airpods`, `beats.headphones`, `earbuds`, `headphones` | 12-pt battery ring (`success`; < 20 % `warning`) + "84%", or ✓ when unknown | Name · L / R / Case rings with % | 2.6 s on connect | P1, transient |
+| **Charging** | short | `bolt.fill` in `success`; plugged in but not charging, `powerplug.fill` in `secondaryLabel` | "82%" (`compact`) | Code-drawn battery 24 × 12 (exact fill) · `numeral` % · "1 h 20 m to full" | 2.6 s on plug / unplug | P1, transient |
+| **Low battery** | short | First warning: `battery.25percent` + "!" in `warning`. Final warning: `battery.0percent` + "!" in `danger` (the role sets the colour, whatever the thresholds) | "10%" in the same colour | … + **Low Power Mode…** button (opens Battery settings; there is no public API to toggle it, ARCHITECTURE D18) | At 20 % and 10 % (persists at ≤ 10 %; thresholds are the activity's option) | P1 |
+| **Bluetooth device** | medium (ring + "84%" is 45 pt; `short` holds 32) | Device glyph: `airpodspro`, `airpodsmax`, `airpods`, `beats.headphones`, `earbuds`, `headphones` | 12-pt battery ring (`success`; < 20 % `warning`) + "84%", or ✓ when unknown | Name · L / R / Case rings with % | 2.6 s on connect | P1, transient |
 | **HUD** | wide | §10 | §10 | — | On key press | P0 |
 
 **Interaction**
@@ -2379,7 +2379,7 @@ A build script could render 16–1024 px for an `AppIcon.appiconset`; it is need
 | **Reduce Motion** | §4.2: open, close and resize become dissolves at the final size; small morphs lose their bounce; no blur, scale, slide, stagger, marquee, typing effect, pulse, ember or neck; the light freezes on a resting frame; the visualizer shows static dots; rubber-banding releases without overshoot. |
 | **Reduce Transparency** | The `opaque` palette. Translucent background, glass island, light layer and underglow are off. The tutorial bubble is opaque. |
 | **Increase Contrast** | The `highContrast` palette: opaque cards, a 34 % hairline on every card, tertiary 9–11:1, quaternary 5.3:1, **keyline always on (45 %)**, accessible semantic variants, accent guarded at 7:1, light capped at Subtle, HUD ticks. |
-| **Differentiate Without Color** | Colour is never the only carrier. Low battery adds "!" and the stepped glyph; Join always has its glyph *and* "Join" text in peek and the Nook; a live meeting says "Now"; past events are struck through as well as dimmed; a timer's urgency is carried by its digits, not its colour; an armed drop zone turns its dash solid; selected files carry a check badge; pipeline errors show "!" with text; the HUD shows ticks and the value. |
+| **Differentiate Without Color** | Colour is never the only carrier. Low battery adds "!" and a stepped glyph (`battery.25percent` at the first warning, `battery.0percent` at the final one); plugged in but not charging shows a plug, not a grey bolt; Join always has its glyph *and* "Join" text in peek and the Nook; a live meeting says "Now"; past events are struck through as well as dimmed; a timer's urgency is carried by its digits, not its colour; an armed drop zone turns its dash solid; selected files carry a check badge; pipeline errors show "!" with text; the HUD shows ticks and the value. |
 | **Text size** (Cranny setting) | S / M / L / XL = 0.92 / 1 / 1.12 / 1.24 on every Nook and peek style, **and the cell grows** (56 → 68 at XL), so nothing clips. Band text follows the notch unit; at L and XL, compact text activities switch to their glyph form and the details move to the peek. |
 | **VoiceOver** | See below. Hover-to-open turns off automatically while VoiceOver runs. |
 | **Keyboard / Full Keyboard Access** | See below. Every action has a key path; nothing is hover-only. |
