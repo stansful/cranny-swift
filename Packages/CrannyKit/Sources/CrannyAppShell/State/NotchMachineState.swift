@@ -177,10 +177,12 @@ nonisolated enum NotchInput: Equatable {
     case pointerEntered
     /// The pointer left the entry zone (closed) or the exit zone (open/peek).
     case pointerLeft
-    /// The dwell scheduled on entry elapsed; `shouldOpen` = `HoverIntent.shouldOpen(…)` at that moment.
+    /// The required dwell (`NotchMachine.requiredDwell`) elapsed; `shouldOpen` = HoverIntent's pass-through rules
+    /// (no button down, no ⌥ held, not too fast) at that moment.
     case dwellElapsed(shouldOpen: Bool)
-    /// The dwell elapsed while the pointer was still moving faster than the pass-through speed: dwell again (a
-    /// pointer that arrives fast and then rests on the notch opens; one that passes through leaves first).
+    /// Look again: the pointer was still moving faster than the pass-through speed (a pointer that arrives fast and
+    /// then rests on the notch opens; one that passes through leaves first), or the required dwell grew meanwhile
+    /// (a full-screen Space was found). Waits the rest of the required dwell, at least `dwellRetryFloor`.
     case dwellRetry
     case timerElapsed(NotchTimer)
     case click

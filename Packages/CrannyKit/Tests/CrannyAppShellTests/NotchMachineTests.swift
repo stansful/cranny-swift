@@ -62,11 +62,32 @@ private func phase(_ s: NotchMachineState, _ c: NotchMachineConfig = idle) -> No
     #expect(left.hover == .outside && fx.last == .cancel(.dwell) && phase(left) == .idle)
     let (late, _) = run([.dwellElapsed(shouldOpen: true)], from: left)       // a dwell that was cancelled
     #expect(late.isClosed)
-    // Still moving fast when the dwell elapsed: look again; it opens once the pointer rests on the notch.
+    // Still moving fast when the dwell elapsed: look again soon (never a 0-s spin); it opens once the pointer rests.
     let (travelling, fx2) = run([.pointerEntered, .dwellRetry])
-    #expect(fx2 == [.schedule(.dwell, after: HoverIntent.defaultDelay.seconds), .schedule(.dwell, after: HoverIntent.defaultDelay.seconds)])
+    #expect(fx2 == [.schedule(.dwell, after: HoverIntent.defaultDelay.seconds), .schedule(.dwell, after: NotchMachine.dwellRetryFloor)])
     #expect(run([.dwellElapsed(shouldOpen: true)], from: travelling).0.isOpen)
     #expect(run([.dwellRetry], from: left).1.isEmpty)                          // gone: nothing to retry
+    var instant = idle
+    instant.hoverDelay = 0
+    #expect(run([.pointerEntered, .dwellRetry], config: instant).1.last == .schedule(.dwell, after: NotchMachine.dwellRetryFloor))
+}
+
+/// The dwell is measured against what is required now: a full-screen Space found when the dwell fires (§5.7
+/// "lazily, right before a hover-open") extends it to 0.40 s from entry; the retry waits only the rest.
+@Test func aDwellThatTurnsOutTooShortWaitsTheRest() {
+    let (dwelling, _) = NotchMachine.reduce(NotchMachineState(), .pointerEntered, now: 10, config: idle)
+    var fullScreen = NotchEnvironment()
+    fullScreen.fullScreen = true                                               // `.alertsAndHUD`
+    let (restricted, _) = NotchMachine.reduce(dwelling, .environment(fullScreen), now: 10.12, config: idle)
+    #expect(NotchMachine.requiredDwell(restricted, config: idle) == HoverIntent.fullScreenDwell)
+    let (_, fx) = NotchMachine.reduce(restricted, .dwellRetry, now: 10.12, config: idle)
+    #expect(fx.count == 1)
+    if case .schedule(.dwell, let rest)? = fx.first { #expect(abs(rest - 0.28) < 0.0001) } else { Issue.record("no dwell: \(fx)") }
+    // Over compact the quick-peek dwell applies whatever the hover delay (DESIGN.md §4.6).
+    var long = compact
+    long.hoverDelay = HoverIntent.Delay.long.seconds
+    #expect(NotchMachine.requiredDwell(dwelling, config: long) == HoverIntent.peekDwell)
+    #expect(NotchMachine.requiredDwell(restricted, config: long) == HoverIntent.fullScreenDwell)
 }
 
 @Test func compactDwellsForAQuickPeekAndFullScreenDwellsLonger() {
@@ -378,6 +399,17 @@ private let pdf: [UTType] = [.pdf]
     #expect(run([.autoPeek(.flash, until: 9)], from: opened(), config: compact).0.isOpen)   // never while open
     let (hoverPeek, _) = run([.pointerEntered, .dwellElapsed(shouldOpen: true)], config: compact)
     #expect(run([.autoPeek(.flash, until: 9)], from: hoverPeek, config: compact).0.surface == .peek(.hover))
+}
+
+/// §4.7 "a hover keeps it": an auto-peek that arrives while the pointer dwells on the notch is kept by it.
+@Test func anAutoPeekDuringADwellIsKeptByThePointer() {
+    let (dwelling, _) = run([.pointerEntered], config: compact)
+    let (peek, fx) = run([.autoPeek("test.primary", until: 2.6)], from: dwelling, config: compact)
+    #expect(peek.hover == .inside && fx.contains(.cancel(.dwell)) && !peek.timers.contains(.dwell))
+    let (kept, _) = run([.dwellElapsed(shouldOpen: true), .timerElapsed(.peekEnd)], from: peek, config: compact)
+    #expect(kept.surface == .peek(.auto("test.primary", until: 2.6)))
+    let (left, _) = run([.pointerLeft, .timerElapsed(.grace)], from: kept, config: compact)
+    #expect(left.isClosed)
 }
 
 // MARK: - Environment (rows 27–31)

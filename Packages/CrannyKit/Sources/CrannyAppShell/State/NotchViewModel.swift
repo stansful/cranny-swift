@@ -20,6 +20,8 @@ import Foundation
     private var inbox: [NotchInput] = []
     private var isReducing = false
     private var syncedFocus: WidgetID?
+    /// The dwell (its start time) whose full-screen facts were re-read already: once per hover, not per retry.
+    private var dwellEnvironmentChecked: TimeInterval?
 
     // MARK: Wiring (NotchPanelController / OverlayCoordinator)
 
@@ -27,6 +29,10 @@ import Foundation
     var relinquishKey: () -> Void = {}
     /// Current pointer speed (pt/s) for the pass-through rule.
     var pointerSpeed: () -> CGFloat = { 0 }
+    /// A mouse button is down / ⌥ is held right now (the other two pass-through rules).
+    var pointerKeys: () -> (buttonDown: Bool, optionDown: Bool) = {
+        (NSEvent.pressedMouseButtons != 0, NSEvent.modifierFlags.contains(.option))
+    }
     /// Every `NotchEvent` this display emits (the coordinator forwards them to `NotchControl` observers).
     var onEvent: (NotchEvent) -> Void = { _ in }
     /// Header buttons the shell routes elsewhere (Settings).
@@ -187,41 +193,45 @@ import Foundation
     /// One sleep per timer, never repeating (§9.2). The dwell decides `shouldOpen` when it fires.
     private func schedule(_ timer: NotchTimer, after delay: TimeInterval) {
         timerTasks[timer]?.cancel()
-        let since = ProcessInfo.processInfo.systemUptime
         timerTasks[timer] = Task { [weak self] in
             try? await Task.sleep(for: .seconds(max(delay, 0)))
             guard !Task.isCancelled, let self else { return }
             self.timerTasks[timer] = nil
-            if timer == .dwell {
-                if let environment = self.refreshEnvironment() { self.setEnvironment(environment) }
-                let dwell = max(ProcessInfo.processInfo.systemUptime - since, delay)
-                if self.shouldOpen(dwell: dwell) {
-                    self.send(.dwellElapsed(shouldOpen: true))
-                } else {
-                    // Only the speed said no: still travelling, so look again instead of giving up until re-entry.
-                    self.send(self.isOnlyTooFast() ? .dwellRetry : .dwellElapsed(shouldOpen: false))
-                }
-            } else {
-                self.send(.timerElapsed(timer))
-            }
+            if timer == .dwell { self.dwellElapsed() } else { self.send(.timerElapsed(timer)) }
         }
     }
 
-    private func shouldOpen(dwell: TimeInterval) -> Bool {
-        let settings = registry.services.settings
-        return HoverIntent.shouldOpen(
-            dwell: dwell, pointerSpeed: pointerSpeed(), delay: settings[CoreSettings.hoverDelay],
-            mouseButtonDown: NSEvent.pressedMouseButtons != 0,
-            optionHeld: settings[CoreSettings.holdOptionToPass] && NSEvent.modifierFlags.contains(.option),
-            isFileDrag: false, fullScreenSpace: state.environment.restrictsToAlerts)
+    /// The dwell elapsed. The length is measured against what the machine requires now (`requiredDwell`: the
+    /// quick-peek dwell over compact, whatever the hover delay; longer in a full-screen Space), the pointer
+    /// against HoverIntent's pass-through rules (button down, ⌥ held, too fast).
+    private func dwellElapsed() {
+        guard case .dwelling(let since) = state.hover else { send(.dwellElapsed(shouldOpen: false)); return }   // clears the timer
+        // §5.7 "lazily, right before a hover-open": one window-list query per hover, not one per retry.
+        if dwellEnvironmentChecked != since {
+            dwellEnvironmentChecked = since
+            if let environment = refreshEnvironment() { setEnvironment(environment) }
+        }
+        let required = NotchMachine.requiredDwell(state, config: currentConfig())
+        let elapsed = ProcessInfo.processInfo.systemUptime - since
+        let keys = pointerKeys(), speed = pointerSpeed()
+        let optionHeld = registry.services.settings[CoreSettings.holdOptionToPass] && keys.optionDown
+        // Only the dwell length is checked here; `delay: .instant` leaves HoverIntent the three pointer rules.
+        let aiming = HoverIntent.shouldOpen(dwell: elapsed, pointerSpeed: speed, delay: .instant,
+                                            mouseButtonDown: keys.buttonDown, optionHeld: optionHeld,
+                                            isFileDrag: false, fullScreenSpace: false)
+        let tooFastOnly = !keys.buttonDown && !optionHeld && speed > HoverIntent.passThroughSpeed
+        if elapsed + Self.dwellTolerance < required {
+            send(.dwellRetry)                                  // a full-screen Space was found: dwell the rest
+        } else if aiming {
+            send(.dwellElapsed(shouldOpen: true))
+        } else {
+            // Only the speed said no: still travelling, so look again instead of giving up until re-entry.
+            send(tooFastOnly ? .dwellRetry : .dwellElapsed(shouldOpen: false))
+        }
     }
 
-    /// The pass-through speed is the one reason not to open (no button down, no ⌥ held).
-    private func isOnlyTooFast() -> Bool {
-        let settings = registry.services.settings
-        let optionHeld = settings[CoreSettings.holdOptionToPass] && NSEvent.modifierFlags.contains(.option)
-        return pointerSpeed() > HoverIntent.passThroughSpeed && NSEvent.pressedMouseButtons == 0 && !optionHeld
-    }
+    /// A sleep never wakes early by more than this (clock granularity between the reducer's `now` and ours).
+    private static let dwellTolerance: TimeInterval = 0.005
 
     // MARK: Scene
 

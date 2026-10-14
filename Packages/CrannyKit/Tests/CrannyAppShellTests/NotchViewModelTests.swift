@@ -41,7 +41,15 @@ private struct Fixture {
                                                          defaultPriority: .ongoing))
         viewModel = NotchViewModel(scene: NotchSceneModel(layout: NotchLayout(metrics: metrics), theme: CrannyTheme()),
                                    registry: registry)
+        viewModel.pointerKeys = { (false, false) }                              // never the real mouse or keyboard
     }
+}
+
+/// Waits (real time) until `condition` holds or `seconds` pass. Generous: the first AppKit use in the test process
+/// can block the main actor for a couple of seconds while other tests start.
+@MainActor private func waitUntil(_ seconds: Double, _ condition: () -> Bool) async throws {
+    let deadline = ProcessInfo.processInfo.systemUptime + seconds
+    while !condition(), ProcessInfo.processInfo.systemUptime < deadline { try await Task.sleep(for: .milliseconds(10)) }
 }
 
 @Test func theLineupBecomesTheScenesCompactAndPeekRows() {
@@ -165,4 +173,53 @@ private struct Fixture {
     #expect(f.scene.phase == .breath)
     for _ in 0..<60 where f.scene.phase != .open { try await Task.sleep(for: .milliseconds(50)) }
     #expect(f.scene.phase == .open && f.scene.open?.reason == .hover)
+}
+
+/// Quick peek over compact dwells 0.18 s whatever the hover delay (DESIGN.md §4.6): a Long delay (0.45 s) must not
+/// turn every quick peek into "passing through".
+@Test(arguments: HoverIntent.Delay.allCases)
+func quickPeekOnHoverWorksForEveryHoverDelay(_ delay: HoverIntent.Delay) async throws {
+    let f = Fixture()
+    f.settings[CoreSettings.hoverDelay] = delay
+    f.viewModel.setLineup(Lineup(primary: "probe.one"))
+    f.viewModel.send(.pointerEntered)
+    try await waitUntil(10) { f.scene.phase == .peek }
+    #expect(f.scene.phase == .peek && f.viewModel.state.hover == .inside, "hover delay \(delay): \(f.viewModel.state) \(f.scene.phase)")
+}
+
+/// A full-screen Space found when the dwell fires extends it to 0.40 s from entry (one window-list query per
+/// hover, not per retry), then it opens.
+@Test func aFullScreenSpaceFoundAtTheDwellExtendsIt() async throws {
+    let f = Fixture()
+    f.settings[CoreSettings.hoverDelay] = .short
+    var checks = 0
+    f.viewModel.refreshEnvironment = {
+        checks += 1
+        var environment = NotchEnvironment()
+        environment.fullScreen = true                                          // `.alertsAndHUD`
+        return environment
+    }
+    let start = ProcessInfo.processInfo.systemUptime
+    f.viewModel.send(.pointerEntered)
+    try await waitUntil(10) { f.scene.phase == .open }
+    #expect(f.scene.phase == .open && ProcessInfo.processInfo.systemUptime - start >= HoverIntent.fullScreenDwell - 0.01)
+    #expect(checks == 1)
+}
+
+/// A pointer that rests on the notch after arriving fast opens; while it is too fast the dwell looks again every
+/// 50 ms at most (Instant used to spin on 0-s sleeps), with one full-screen check for the whole hover.
+@Test func aFastPointerIsRetriedWithAFloor() async throws {
+    let f = Fixture()
+    f.settings[CoreSettings.hoverDelay] = .instant
+    var checks = 0, speedReads = 0
+    f.viewModel.refreshEnvironment = { checks += 1; return nil }
+    let start = ProcessInfo.processInfo.systemUptime
+    f.viewModel.pointerSpeed = {
+        speedReads += 1
+        return ProcessInfo.processInfo.systemUptime - start < 0.25 ? 5000 : 0
+    }
+    f.viewModel.send(.pointerEntered)
+    try await waitUntil(10) { f.scene.phase == .open }
+    #expect(f.scene.phase == .open && checks == 1)
+    #expect(speedReads < 40, "\(speedReads) speed reads in 0.25 s")
 }

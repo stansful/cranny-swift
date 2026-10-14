@@ -12,6 +12,17 @@ nonisolated enum NotchMachine {
     static let wingsReturnDelay: TimeInterval = 1.5
     /// §4.4: after a drop in the catch state, the shape gulps for 0.25 s before it returns.
     static let catchGulp: TimeInterval = 0.25
+    /// A dwell that elapsed while the pointer was still too fast looks again after at least this long (the pointer
+    /// monitor holds a speed for 50 ms after the last event), so an Instant hover delay never spins.
+    static let dwellRetryFloor: TimeInterval = 0.05
+
+    /// How long the pointer must rest before the dwell decides (§4.3): the quick-peek dwell over compact (it does
+    /// not depend on the hover delay, DESIGN.md §4.6), else the hover delay; at least 0.40 s in a full-screen Space
+    /// under `.alertsAndHUD`.
+    static func requiredDwell(_ s: NotchMachineState, config: NotchMachineConfig) -> TimeInterval {
+        let base = config.hasPrimaryActivity ? HoverIntent.peekDwell : config.hoverDelay
+        return s.environment.restrictsToAlerts ? max(base, HoverIntent.fullScreenDwell) : base
+    }
 
     /// §4.2: what is drawn.
     static func phase(_ s: NotchMachineState, config: NotchMachineConfig) -> NotchPhase {
@@ -67,8 +78,11 @@ nonisolated struct NotchReduction {
         case .dwellElapsed(let shouldOpen): dwellElapsed(shouldOpen: shouldOpen)
         case .dwellRetry:
             s.timers.remove(.dwell)
-            guard s.isClosed, case .dwelling = s.hover, !s.blocksInput else { break }
-            schedule(.dwell, dwell(config.hasPrimaryActivity ? HoverIntent.peekDwell : config.hoverDelay))
+            guard s.isClosed, case .dwelling(let since) = s.hover, !s.blocksInput else { break }
+            // The rest of the required dwell (it grows when a full-screen Space was found meanwhile), never less
+            // than the floor.
+            let remaining = NotchMachine.requiredDwell(s, config: config) - (now - since)
+            schedule(.dwell, max(remaining, NotchMachine.dwellRetryFloor))
         case .timerElapsed(let timer): timerElapsed(timer)
         case .click:
             guard !s.blocksInput, !s.isOpen else { break }
@@ -124,14 +138,9 @@ nonisolated struct NotchReduction {
         case .closed:
             guard s.hover == .outside else { return }
             guard config.openMode != .shortcutOnly else { s.hover = .inside; return }
-            if config.hasPrimaryActivity {
-                guard config.quickPeekOnHover else { s.hover = .inside; return }
-                s.hover = .dwelling(since: now)
-                schedule(.dwell, dwell(HoverIntent.peekDwell))
-            } else {
-                s.hover = .dwelling(since: now)
-                schedule(.dwell, dwell(config.hoverDelay))
-            }
+            if config.hasPrimaryActivity, !config.quickPeekOnHover { s.hover = .inside; return }
+            s.hover = .dwelling(since: now)
+            schedule(.dwell, NotchMachine.requiredDwell(s, config: config))
         case .peek, .open:
             s.hover = .inside
             cancel(.grace)
@@ -162,11 +171,6 @@ nonisolated struct NotchReduction {
             open(page: nil, focus: nil, reason: .hover)
         }
         s.hover = .inside
-    }
-
-    /// Full-screen Spaces (`.alertsAndHUD`) need a longer dwell: tabs and toolbars live up there.
-    func dwell(_ delay: TimeInterval) -> TimeInterval {
-        s.environment.restrictsToAlerts ? max(delay, HoverIntent.fullScreenDwell) : delay
     }
 
     // MARK: Open and close
@@ -259,6 +263,8 @@ nonisolated struct NotchReduction {
         guard !s.blocksInput, !s.isOpen, s.surface != .peek(.hover) else { return }   // a hover peek already shows it
         s.handleHidden = false
         s.surface = .peek(.auto(id, until: until))
+        // A pointer dwelling on the notch now rests on the peek: it keeps it ("a hover keeps it", §4.7).
+        if case .dwelling = s.hover { s.hover = .inside; cancel(.dwell) }
         cancel(.grace)
         if until.isFinite { schedule(.peekEnd, max(until - now, 0)) } else { cancel(.peekEnd) }
     }
