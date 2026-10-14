@@ -77,7 +77,7 @@ nonisolated struct MirrorPresentation: Equatable, Sendable {
             // Only the built-in camera is suspended by the lid; a USB camera with a shut privacy cover is not.
             MirrorPresentation(message: MirrorCopy.unavailable, detail: camera?.kind == .builtIn ? MirrorCopy.lidClosed : nil)
         case .notAuthorized:
-            MirrorPresentation(message: MirrorCopy.accessOff, actionTitle: MirrorCopy.openSettings, action: .openSettings)
+            MirrorPresentation(message: MirrorCopy.accessOff, actionTitle: MirrorCopy.allowCamera, action: .openSettings)
         case .disconnected, .sessionFailed:
             MirrorPresentation(glyph: .problem, message: MirrorCopy.message(for: error),
                                actionTitle: MirrorCopy.tryAgain, action: .turnOn)

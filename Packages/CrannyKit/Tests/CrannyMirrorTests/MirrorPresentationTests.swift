@@ -45,7 +45,7 @@ import Testing
         #expect(make(.requestingAccess).message == MirrorCopy.waitingForAccess)
         let denied = make(.off, .denied)
         #expect(denied.message == MirrorCopy.accessOff)
-        #expect(denied.actionTitle == MirrorCopy.openSettings)
+        #expect(denied.actionTitle == MirrorCopy.allowCamera)
         #expect(denied.accessibilityHint == MirrorCopy.openSettingsHint)
         let restricted = make(.off, .restricted)
         #expect(restricted.message == MirrorCopy.accessRestricted)

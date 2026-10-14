@@ -150,7 +150,7 @@ nonisolated enum MirrorMachine {
             switch inputs.authorization {
             case .granted: return start(inputs)
             case .notDetermined, .unknown: return (.requestingAccess, [.holdOpen(true), .requestAccess])
-            case .denied: return (.off, [.openSystemSettings])                 // the "Open Settings" state
+            case .denied: return (.off, [.openSystemSettings])                 // the "Allow…" chip (System Settings)
             case .restricted: return (.off, [])                                // managed Mac: nothing to offer
             }
         }
