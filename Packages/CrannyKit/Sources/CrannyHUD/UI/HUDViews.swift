@@ -42,7 +42,8 @@ nonisolated enum HUDTint: Equatable, Sendable {
 // MARK: - Glyph
 
 /// The kind's glyph: `speaker.wave.3.fill` with the level as variable value, `speaker.slash.fill` when muted,
-/// `sun.*` / `light.*` for brightness and the keyboard, or the output device's glyph with one `.bounce`.
+/// `sun.*` / `light.*` for brightness and the keyboard, or the output device's glyph with one `.bounce`
+/// (`HUDDisplay.symbolName`: mute always wins).
 struct HUDGlyph: View {
     @Environment(\.cranny) private var theme
     let activity: HUDActivity
@@ -50,16 +51,32 @@ struct HUDGlyph: View {
 
     var body: some View {
         if let display = activity.display {
-            let symbol = display.deviceGlyph ?? display.kind.symbol(level: display.level, muted: display.isMuted)
-            let variable = display.deviceGlyph == nil ? display.kind.variableValue(level: display.level, muted: display.isMuted) : nil
+            let symbol = display.symbolName
+            let variable = display.symbolVariableValue
             Image(systemName: symbol, variableValue: variable)
                 .symbolRenderingMode(variable == nil ? .monochrome : .hierarchical)   // unfilled waves dim; the rest white
                 .crannyFont(style)
                 .foregroundStyle(theme.palette.label)
                 .contentTransition(.symbolEffect(.replace))
-                .symbolEffect(.bounce, options: .nonRepeating, value: theme.reduceMotion ? 0 : display.glyphBounce)
+                .modifier(GlyphBounce(value: display.glyphBounce))
                 .animation(theme.animation(.contentSwap), value: symbol)
                 .accessibilityHidden(true)
+        }
+    }
+}
+
+/// One `.bounce` per increment of `value` (a new output device, DESIGN.md §10). None under Reduce Motion or the
+/// Instant personality (§4.2: "no animation at all"). The effect is left out rather than fed a constant, so turning
+/// either setting off later does not look like an increment and bounce a glyph that did not change.
+private struct GlyphBounce: ViewModifier {
+    @Environment(\.cranny) private var theme
+    let value: Int
+
+    func body(content: Content) -> some View {
+        if theme.reduceMotion || theme.motion == .instant {
+            content
+        } else {
+            content.symbolEffect(.bounce, options: .nonRepeating, value: value)
         }
     }
 }

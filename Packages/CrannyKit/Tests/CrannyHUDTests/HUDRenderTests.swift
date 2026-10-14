@@ -24,12 +24,18 @@ import Testing
         contrast.increaseContrast = true
         var colorless = CrannyTheme()
         colorless.differentiateWithoutColor = true
+        var instant = CrannyTheme()
+        instant.motion = .instant
         return [
             Case(name: "volume", display: HUDDisplay(kind: .volume, level: 0.62)),
             Case(name: "volume-value", display: HUDDisplay(kind: .volume, level: 0.62)) { $0[HUDSettings.showsValue] = true },
             Case(name: "volume-muted", display: HUDDisplay(kind: .volume, level: 0.62, isMuted: true)),
             Case(name: "volume-fine", display: HUDDisplay(kind: .volume, level: 0.453125, showsFineTicks: true)),
             Case(name: "volume-device", display: HUDDisplay(kind: .volume, level: 0.5, deviceGlyph: "airpodspro")),
+            Case(name: "volume-device-muted", display: HUDDisplay(kind: .volume, level: 0.5, isMuted: true, deviceGlyph: "airpodspro"),
+                 theme: colorless),                                       // speaker.slash.fill and the value
+            Case(name: "volume-instant", display: HUDDisplay(kind: .volume, level: 0.5, deviceGlyph: "airpodspro", glyphBounce: 3),
+                 theme: instant),
             Case(name: "volume-full", display: HUDDisplay(kind: .volume, level: 1)) { $0[HUDSettings.showsValue] = true },
             Case(name: "volume-zero", display: HUDDisplay(kind: .volume, level: 0)),
             Case(name: "brightness-semantic", display: HUDDisplay(kind: .brightness, level: 0.75)) { $0[HUDSettings.colors] = .semantic },
