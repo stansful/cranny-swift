@@ -1,6 +1,8 @@
 // CrannyTimer/Model/TimerModel.swift — the one timer of the app: deadline-based, persisted, observable.
 // Energy (ARCHITECTURE.md §9.2): the model never ticks. It keeps ONE sleep to its next event (last minute, deadline,
-// end of "done"); views that show seconds run their own 1-Hz clock only while they are on screen.
+// end of "done"); views that show seconds run their own 1-Hz clock only while they are on screen. `state.json` is
+// written in the background at utility priority; a scroll or ↑↓ gesture on a counting timer is written once, 0.3 s
+// after its last detent, instead of once per detent.
 import AppKit
 import CrannyCore
 import Foundation
@@ -28,7 +30,8 @@ private let log = Log.logger(.timer)
     /// Clock, scheduler, sound, file and shell ports (read by tests to check what a sample can touch).
     @ObservationIgnored let dependencies: TimerDependencies
     @ObservationIgnored private var lastMinuteSignalled = true
-    @ObservationIgnored private var writeSequence = 0
+    /// Bumped by every write (tests read it to count them).
+    @ObservationIgnored private(set) var writeSequence = 0
     /// Set by the first user change; a slow launch restore never overwrites it.
     @ObservationIgnored private var changedSinceLaunch = false
     /// Set when the launch restore finished. Until then (or a user change) quitting writes nothing: launch hooks run
@@ -36,10 +39,16 @@ private let log = Log.logger(.timer)
     /// written then would replace the timer saved on disk.
     @ObservationIgnored private var restoreFinished = false
     @ObservationIgnored private var systemObservers: [(NotificationCenter, any NSObjectProtocol)] = []
+    /// The write after a run of scroll / ↑↓ adjustments (any other write replaces it).
+    @ObservationIgnored private let adjustmentSave: Debouncer
+
+    /// How long after the last scroll detent or ↑↓ step the adjusted timer is written.
+    static let adjustmentSaveDelay: Duration = .milliseconds(300)
 
     init(settings: SettingsStore, dependencies: TimerDependencies) {
         self.settings = settings
         self.dependencies = dependencies
+        adjustmentSave = Debouncer(delay: Self.adjustmentSaveDelay)
     }
 
     // MARK: Reading
@@ -134,13 +143,17 @@ private let log = Log.logger(.timer)
 
     /// Scroll detents and VoiceOver: ±`minutes` on a counting timer, else on the idle set-up value.
     /// Returns whether the value changed (the caller plays one `.levelChange` haptic per applied detent).
+    /// A gesture sends many detents in a fraction of a second: the counting timer is written once after the last one
+    /// (`adjustmentSaveDelay`; a quit writes it at once, `persistNow()`).
     @discardableResult func adjust(byMinutes minutes: Int) -> Bool {
         guard minutes != 0 else { return false }
         let delta = TimeInterval(minutes) * TimerLimits.step
         if state.isCounting {
             guard state.adjust(by: delta, now: now) else { return false }
             rearmLastMinute()
-            commit()
+            changedSinceLaunch = true
+            if dependencies.file != nil { adjustmentSave.schedule { [weak self] in self?.persist() } }
+            reschedule()
             return true
         }
         guard !state.isDone else { return false }
@@ -221,11 +234,14 @@ private let log = Log.logger(.timer)
 
     private var snapshot: TimerSnapshot { TimerSnapshot(state: state, lastDuration: lastDuration) }
 
+    /// Writes the current state in the background. Utility priority: nobody waits for it, and the sequence number
+    /// keeps a late write from replacing a newer one. Replaces a pending adjustment write (this one is newer).
     private func persist() {
+        adjustmentSave.cancel()
         guard let file = dependencies.file else { return }
         writeSequence += 1
         let snapshot = self.snapshot, sequence = writeSequence
-        Task { await file.writeInBackground(snapshot, sequence: sequence) }
+        Task(priority: .utility) { await file.writeInBackground(snapshot, sequence: sequence) }
     }
 
     /// Launch hook: loads the saved timer (off the main actor) and applies what it means now — still running, done
@@ -250,6 +266,7 @@ private let log = Log.logger(.timer)
     /// Terminate hook: a synchronous final write (the process exits right after). Nothing to write before the launch
     /// restore finished unless the user changed the timer meanwhile: the file still holds the saved timer.
     func persistNow() {
+        adjustmentSave.cancel()
         guard let file = dependencies.file, restoreFinished || changedSinceLaunch else { return }
         writeSequence += 1
         do { try file.write(snapshot, sequence: writeSequence) } catch {

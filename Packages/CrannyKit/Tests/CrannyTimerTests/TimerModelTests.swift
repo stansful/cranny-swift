@@ -222,6 +222,39 @@ import Testing
         #expect(relaunched.scheduler.date == t0.addingTimeInterval(540))
     }
 
+    @Test func aScrollGestureIsWrittenOnceAfterItsLastDetent() async throws {
+        let url = temporaryFile()
+        let h = TimerHarness(file: TimerStateFile(url: url))
+        h.model.start(seconds: 600)
+        #expect(h.model.writeSequence == 1)                                     // a start is written at once
+        for _ in 0..<5 { #expect(h.model.adjust(byMinutes: 1)) }
+        #expect(h.model.writeSequence == 1)                                     // not once per detent
+        #expect(h.scheduler.date == t0.addingTimeInterval(840))                 // the wake-up follows every detent
+        // About 0.3 s after the last detent, one write holds all five (generous bound: suites run in parallel).
+        for _ in 0..<500 where h.model.writeSequence == 1 { try await Task.sleep(for: .milliseconds(20)) }
+        #expect(h.model.writeSequence == 2)
+        for _ in 0..<500 where TimerStateFile(url: url).load()?.state.endDate != t0.addingTimeInterval(900) {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(TimerStateFile(url: url).load()?.state.endDate == t0.addingTimeInterval(900))
+    }
+
+    @Test func anyOtherChangeOrAQuitWritesAPendingAdjustmentAtOnce() async throws {
+        let url = temporaryFile()
+        let h = TimerHarness(file: TimerStateFile(url: url))
+        h.model.start(seconds: 600)
+        h.model.adjust(byMinutes: 2)
+        h.model.pause()                                                         // written at once, adjustment included
+        #expect(h.model.writeSequence == 2)
+        h.model.resume()
+        h.model.adjust(byMinutes: -1)
+        h.model.persistNow()                                                    // the terminate hook
+        #expect(h.model.writeSequence == 4)
+        #expect(TimerStateFile(url: url).load()?.state.endDate == t0.addingTimeInterval(660))
+        try await Task.sleep(for: TimerModel.adjustmentSaveDelay * 2)
+        #expect(h.model.writeSequence == 4)                                     // the pending write was dropped
+    }
+
     @Test func restoreAfterTheDeadlineShowsDoneWithoutSound() async throws {
         let url = temporaryFile()
         try TimerStateFile(url: url).write(TimerSnapshot(state: TimerState(phase: .running(endDate: t0.addingTimeInterval(-20)), total: 300),

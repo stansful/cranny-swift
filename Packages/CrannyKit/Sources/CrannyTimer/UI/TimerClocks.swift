@@ -3,9 +3,11 @@
 // filters the content. Instead:
 //  • digits use `CountdownClock`: one sleep to the exact moment the shown second changes (1 Hz, aligned to the
 //    deadline, so "4:59" never lags), and no wake-up at all while paused, idle or done;
-//  • rings use Core's `EffectClock` (restarted when the deadline moves) at `RingCadence`: as often as the arc moves
-//    about one device pixel, at most 4 × per second (a 1-minute timer in the widget), every 15–30 s for a long timer
-//    in the band, and not at all unless running;
+//  • rings use `RingClock` (restarted when the deadline moves) at `RingCadence`: as often as the arc moves about one
+//    device pixel, at most 4 × per second (a 1-minute timer in the widget), every 15–30 s for a long timer in the
+//    band, and not at all unless running. The period is snapped to whole seconds (or ½, ⅓, ¼ s) and anchored to the
+//    deadline like the digits, so ring frames land on the digits' own wake-ups: one timer fire and one render
+//    instead of two;
 //  • VoiceOver's "time left" (`refreshesSpokenTime`): the countdown's 1-Hz tick, only while VoiceOver runs.
 // All stop as soon as their view leaves the screen.
 import CrannyCore
@@ -32,6 +34,8 @@ struct CountdownClock<Content: View>: View {
 nonisolated enum CountdownTick {
     /// Wake slightly after the boundary, so the first read already shows the new second.
     static let margin: TimeInterval = 0.02
+    /// How late a wake-up may come. The ring uses the same, so its wake-ups and the digits' fire together.
+    static let tolerance: Duration = .milliseconds(40)
 
     /// The next instant the rounded-up seconds left change (`deadline − (⌈left⌉ − 1)`), or nil once the deadline
     /// has passed (the last wake renders "0:00").
@@ -46,7 +50,7 @@ nonisolated enum CountdownTick {
     @MainActor static func run(until deadline: Date, _ tick: @MainActor () -> Void) async {
         while let wake = next(after: Date(), deadline: deadline) {
             do {
-                try await Task.sleep(for: .seconds(max(wake.timeIntervalSinceNow, 0)), tolerance: .milliseconds(40))
+                try await Task.sleep(for: .seconds(max(wake.timeIntervalSinceNow, 0)), tolerance: tolerance)
             } catch {
                 return
             }
@@ -91,6 +95,57 @@ nonisolated enum RingCadence {
         let pixels = Double.pi * Double(max(diameter, 1)) * Double(max(displayScale, 1))
         return min(max(max(total, 0) / pixels, fastest), slowest)
     }
+
+    /// `interval` snapped to a period that divides or is a whole number of seconds (0.54 → 0.5, 2.98 → 3, 0.3 → ⅓), so
+    /// a ring anchored to the deadline redraws exactly when the digits change (or halfway between). The arc still
+    /// moves about one device pixel per frame.
+    static func aligned(_ interval: Double) -> Double {
+        let snapped = interval >= 1 ? interval.rounded() : 1 / max((1 / interval).rounded(), 1)
+        return min(max(snapped, fastest), slowest)
+    }
+
+    /// The next frame of a ring counting down to `deadline` at `period`: just after the next boundary
+    /// `deadline − k × period` (k ≥ 0), or nil once the deadline has passed (the last frame lands just after it, like
+    /// the digits' "0:00"). With a period of 1 s this is exactly `CountdownTick.next`.
+    static func nextFrame(after now: Date, deadline: Date, period: Double) -> Date? {
+        let left = deadline.timeIntervalSince(now)
+        guard left > 0, period > 0 else { return nil }
+        let boundary = (left / period).rounded(.up) - 1
+        return deadline.addingTimeInterval(-boundary * period + CountdownTick.margin)
+    }
+}
+
+/// Calls `content` with the current date at every `deadline − k × period` (plus `CountdownTick.margin`) until the
+/// deadline (`RingCadence.nextFrame`). The digits' clock wakes at `deadline − n` seconds with the same margin and
+/// tolerance, so with a whole-second (or ½, ⅓, ¼ s) period every ring frame shares a wake-up and a render with the
+/// digits. `period == nil` (or no deadline) = frozen: no wake-ups. A new deadline or period redraws at once with the
+/// current date ("+1 min" or a resume never waits for a 30-s tick). Stops when its view leaves the screen.
+struct RingClock<Content: View>: View {
+    let deadline: Date?
+    let period: Double?
+    @ViewBuilder let content: (Date) -> Content
+    @State private var now = Date()
+
+    private struct Schedule: Hashable {
+        var deadline: Date?
+        var period: Double?
+    }
+
+    var body: some View {
+        content(now)
+            .task(id: Schedule(deadline: deadline, period: period)) {
+                now = Date()
+                guard let deadline, let period, period > 0 else { return }
+                while let wake = RingCadence.nextFrame(after: Date(), deadline: deadline, period: period) {
+                    do {
+                        try await Task.sleep(for: .seconds(max(wake.timeIntervalSinceNow, 0)), tolerance: CountdownTick.tolerance)
+                    } catch {
+                        return                                                   // paused, changed or off screen
+                    }
+                    now = Date()
+                }
+            }
+    }
 }
 
 /// A countdown ring (Core's `ProgressRing` in `warning`) that redraws only at `RingCadence`, and not at all unless
@@ -104,9 +159,9 @@ struct TimerRing: View {
 
     var body: some View {
         let cadence = state.isRunning
-            ? RingCadence.interval(total: state.total, diameter: diameter, displayScale: displayScale) : nil
+            ? RingCadence.aligned(RingCadence.interval(total: state.total, diameter: diameter, displayScale: displayScale)) : nil
         // Restarts (and redraws at once) when the deadline moves: "+1 min" or a resume never waits for a 30-s tick.
-        EffectClock(minimumInterval: cadence, restartKey: AnyHashable(state.endDate)) { date in
+        RingClock(deadline: state.endDate, period: cadence) { date in
             ProgressRing(progress: state.progress(at: date), color: theme.palette.warning, lineWidth: lineWidth)
         }
         .frame(width: diameter, height: diameter)

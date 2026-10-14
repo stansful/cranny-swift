@@ -69,6 +69,45 @@ import Testing
         #expect(RingCadence.interval(total: 86_000, diameter: 16, displayScale: 2) == RingCadence.slowest)
     }
 
+    @Test func ringPeriodsSnapToWholeSecondsOrFractionsOfOne() {
+        #expect(RingCadence.aligned(0.54) == 0.5)                              // the widget ring of a 5-minute timer
+        #expect(RingCadence.aligned(2.98) == 3)                                // the band ring of a 5-minute timer
+        #expect(RingCadence.aligned(0.25) == 0.25)
+        #expect(abs(RingCadence.aligned(0.3) - 1.0 / 3) < 1e-12)
+        #expect(RingCadence.aligned(0.8) == 1)
+        #expect(RingCadence.aligned(14.6) == 15)
+        #expect(RingCadence.aligned(40) == RingCadence.slowest)
+        #expect(RingCadence.aligned(0.1) == RingCadence.fastest)
+    }
+
+    @Test func ringFramesShareTheDigitsWakeUps() throws {
+        let deadline = t0.addingTimeInterval(300)
+        // A whole-second period: every ring frame is a wake-up of the digits' clock.
+        for period in [1.0, 3, 15] {
+            var now = t0.addingTimeInterval(0.37), frames = 0
+            while let frame = RingCadence.nextFrame(after: now, deadline: deadline, period: period) {
+                #expect(frame > now)
+                // The digits' wake-up for the boundary just before this frame is this frame.
+                let boundary = frame.addingTimeInterval(-CountdownTick.margin - 0.001)
+                let digits = try #require(CountdownTick.next(after: boundary, deadline: deadline))
+                #expect(abs(digits.timeIntervalSince(frame)) < 1e-6)
+                now = frame
+                frames += 1
+            }
+            #expect(frames == Int((300 / period).rounded(.up)))
+            #expect(abs(now.timeIntervalSince(deadline) - CountdownTick.margin) < 1e-6)   // the last one draws the end
+        }
+        // Half a second: every other frame is one of the digits' wake-ups, the others fall halfway between.
+        let half = try #require(RingCadence.nextFrame(after: deadline.addingTimeInterval(-4.3), deadline: deadline, period: 0.5))
+        #expect(abs(half.timeIntervalSince(deadline) - (-4 + CountdownTick.margin)) < 1e-6)
+        let next = try #require(RingCadence.nextFrame(after: half, deadline: deadline, period: 0.5))
+        #expect(abs(next.timeIntervalSince(deadline) - (-3.5 + CountdownTick.margin)) < 1e-6)
+        // A wake-up that comes a little early never draws the same frame twice; nothing after the deadline.
+        let early = try #require(RingCadence.nextFrame(after: half.addingTimeInterval(-0.01), deadline: deadline, period: 0.5))
+        #expect(abs(early.timeIntervalSince(next)) < 1e-6)
+        #expect(RingCadence.nextFrame(after: deadline, deadline: deadline, period: 1) == nil)
+    }
+
     @Test func pulseTriggerChangesOnlyInsideTheWindowAndNotAtZero() {
         let triggers = (0...12).reversed().map { seconds in
             TimerDigits.pulseTrigger(seconds: seconds, pulsing: seconds <= 10 && seconds > 0)
