@@ -107,11 +107,18 @@ extension TrayStore {
 
     /// Files dropped on an AirDrop zone go straight to the AirDrop sheet; they are not kept. The drop counts as taken
     /// whatever the user does in the sheet (a false result would make the shell keep the files in the Tray, §4.4), and
-    /// the drop does not wait for the sheet.
+    /// the drop does not wait for the sheet. Temporary files (resolved promises from Photos, Safari or Mail, which the
+    /// shell may delete once the drop returns) are first copied into a staging folder that lives until the sheet is
+    /// done; `presentAirDrop` returns when sharing finished or failed.
     func airDrop(dropped urls: [URL]) async -> Bool {
         guard !urls.isEmpty else { return false }
+        let folder = directories.work.appending(path: "\(UUID().uuidString)-airdrop", directoryHint: .isDirectory)
+        let staged = await Self.stage(urls, storage: storage, into: folder)
         let notch = notch
-        Task { _ = await notch.presentAirDrop(urls) }
+        Task {
+            _ = await notch.presentAirDrop(staged)
+            await Self.removeFolder(folder)
+        }
         return true
     }
 

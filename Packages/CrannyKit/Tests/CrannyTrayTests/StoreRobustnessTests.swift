@@ -1,5 +1,5 @@
 // TrayStore edge cases found in review: a damaged or missing index, repeat drops of edited files, the cap after a
-// repeat drop or a lower setting, a refresh racing an insert, files that cannot be kept,
+// repeat drop or a lower setting, a refresh racing an insert, AirDrop of temporary files, files that cannot be kept,
 // and Stop on every path. Temporary folders and recording doubles only.
 import AppKit
 import CrannyCore
@@ -14,8 +14,8 @@ import UniformTypeIdentifiers
     var directories: TrayDirectories { .temporary(base) }
     var notch: PreviewNotchControl { services.notch as? PreviewNotchControl ?? PreviewNotchControl() }
 
-    func makeStore(system: RecordingTraySystem = RecordingTraySystem()) -> TrayStore {
-        TrayStore(settings: services.settings, notch: services.notch, haptics: services.haptics, system: system,
+    func makeStore(system: RecordingTraySystem = RecordingTraySystem(), notch: (any NotchControl)? = nil) -> TrayStore {
+        TrayStore(settings: services.settings, notch: notch ?? services.notch, haptics: services.haptics, system: system,
                   directories: directories)
     }
 
@@ -150,6 +150,30 @@ import UniformTypeIdentifiers
         #expect(store.url(doomed) == nil)
     }
 
+    // MARK: AirDrop of dropped files
+
+    @Test func temporaryFilesDroppedOnAirDropOutliveTheDrop() async throws {
+        let sharing = SharingNotch()
+        let store = makeStore(notch: sharing)
+        let incoming = directories.temporaryRoots[0].appending(path: "promise", directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: incoming, withIntermediateDirectories: true)
+        let promised = Fixtures.text("IMG_0001.heic", in: incoming)
+        let user = Fixtures.text("Brief.pdf", in: Fixtures.folder("desktop"))
+        sharing.holdsSheet = true
+        #expect(await store.airDrop(dropped: [promised, user]))
+        try FileManager.default.removeItem(at: incoming)                   // the shell cleans up after the drop
+        await waitUntil { sharing.received.count == 1 }
+        let sent = try #require(sharing.received.first)
+        #expect(sent.count == 2 && sent[1] == user)                         // the user's own file is sent as it is
+        #expect(sent[0].lastPathComponent == "IMG_0001.heic" && sent[0] != promised)
+        #expect(sharing.existedWhenPresented == [true, true])
+        #expect(FileManager.default.fileExists(atPath: sent[0].path))       // still there while the sheet is up
+        sharing.finishSheet()
+        await waitUntil { !FileManager.default.fileExists(atPath: sent[0].path) }
+        #expect(!FileManager.default.fileExists(atPath: sent[0].path))      // staged copy removed afterwards
+        #expect(FileManager.default.fileExists(atPath: user.path))
+    }
+
     // MARK: Files that cannot be kept
 
     @Test func aFileThatCannotBeKeptShowsAnErrorTile() async throws {
@@ -211,4 +235,35 @@ import UniformTypeIdentifiers
         #expect(menu.items.first?.title == TrayItemCommand.stopTitle)
         #expect(menu.items.dropFirst().first?.isSeparatorItem == true)
     }
+}
+
+/// A `NotchControl` whose AirDrop sheet stays up until the test finishes it, recording what it was given and whether
+/// those files existed when it was shown. Nothing is shared.
+@MainActor final class SharingNotch: NotchControl {
+    private(set) var received: [[URL]] = []
+    private(set) var existedWhenPresented: [Bool] = []
+    var holdsSheet = false
+    private var sheet: CheckedContinuation<Void, Never>?
+
+    func finishSheet() { sheet?.resume(); sheet = nil }
+
+    func presentAirDrop(_ urls: [URL]) async -> Bool {
+        received.append(urls)
+        existedWhenPresented = urls.map { FileManager.default.fileExists(atPath: $0.path) }
+        if holdsSheet { await withCheckedContinuation { sheet = $0 } }
+        return true
+    }
+    func open(page: PageID?, focus: WidgetID?, reason: OpenReason) {}
+    func close() {}
+    func togglePinned() {}
+    func setHoldOpen(_ hold: Bool, reason: String) {}
+    func setFocusMode(_ widget: WidgetID?) {}
+    func requestPeek(_ activity: ActivityID) {}
+    func requestKeyboardFocus() {}
+    func setCalibrationOverlay(_ visible: Bool) {}
+    func shapeFrameOnScreen() -> CGRect? { nil }
+    func presentSharePicker(_ urls: [URL]) {}
+    func flash(symbol: String, label: String) {}
+    func addEventObserver(_ handler: @escaping @MainActor (NotchEvent) -> Void) -> UUID { UUID() }
+    func removeEventObserver(_ id: UUID) {}
 }
