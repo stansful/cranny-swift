@@ -3,6 +3,7 @@
 // Resolution runs at launch, whenever `QuickAppsSettings.apps` changes and when an app the catalog could not
 // find is launched (it was just installed). Icons are rendered off the main actor once per size and cached.
 import CoreGraphics
+import CrannyCore
 import Foundation
 import Observation
 
@@ -26,6 +27,13 @@ import Observation
 
     func app(_ bundleID: String) -> ResolvedApp? { apps[bundleID] }
     func isMissing(_ bundleID: String) -> Bool { missing.contains(bundleID) }
+
+    /// CrannyCore's explicit state of an app (as Settings' and Media's app rows read it): installed, looked up and not
+    /// found, or not looked up yet (an app just added, or before the first resolution).
+    func presence(_ bundleID: String) -> AppIdentity.Presence {
+        if apps[bundleID] != nil { return .installed }
+        return missing.contains(bundleID) ? .notInstalled : .pending
+    }
 
     /// Looks up every bundle id (in parallel off the main actor); a newer call supersedes an older one.
     func refresh(_ bundleIDs: [String]) async {

@@ -36,7 +36,8 @@ import SwiftUI
         let model = QuickAppsModel(services: services, resolver: PreviewAppResolver(), launcher: PreviewLauncher(),
                                    cli: ShortcutsCLI(runner: { _, _ in CLIOutput(stdout: list) }),
                                    running: RunningAppsObserver(center: NotificationCenter(), snapshot: { running }))
-        model.catalog.seed(apps.compactMap(PreviewAppResolver.app(for:)))
+        let found = apps.compactMap(PreviewAppResolver.app(for:))
+        model.catalog.seed(found, missing: Set(apps).subtracting(found.map(\.bundleID)))
         model.running.start()
         model.isEditing = editing
         for (id, state) in states { model.runs.show(state, for: id) }
@@ -65,13 +66,14 @@ import SwiftUI
     }
 }
 
-/// Looks real apps up synchronously (previews only).
+/// The live resolver, plus a synchronous lookup that seeds a preview's catalog before its first frame (previews only;
+/// the same Launch Services answer and naming rule as CrannyCore's `AppIdentityResolver.locate`).
 nonisolated struct PreviewAppResolver: AppResolving {
     static func app(for bundleID: String) -> ResolvedApp? {
         guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else { return nil }
         return ResolvedApp(bundleID: bundleID, url: url, name: AppIdentity.name(of: url))
     }
-    func resolve(_ bundleID: String) async -> ResolvedApp? { Self.app(for: bundleID) }
+    func resolve(_ bundleID: String) async -> ResolvedApp? { await WorkspaceAppResolver().resolve(bundleID) }
     func app(at url: URL) async -> ResolvedApp? { await WorkspaceAppResolver().app(at: url) }
     func icon(at url: URL, pixelSize: Int) async -> CGImage? { await WorkspaceAppResolver().icon(at: url, pixelSize: pixelSize) }
 }

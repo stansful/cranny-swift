@@ -1,5 +1,7 @@
 // CrannyQuickApps/UI/TileSettingsRow.swift — one row of Settings ▸ Shortcuts' tile list: icon or squircle, name,
 // what it is (or that it is missing), "Customize…" for shortcuts, remove; Move Up/Down in its menu and for VoiceOver.
+// An app is named as everywhere else (CrannyCore's `AppIdentity` rule, §10.20 #11), never by its bundle identifier:
+// "App not installed" once the lookup found nothing, and no name while it runs.
 import CrannyCore
 import SwiftUI
 
@@ -26,11 +28,17 @@ struct TileSettingsRow: View {
         HStack(spacing: 10) {
             icon
             VStack(alignment: .leading, spacing: 1) {
-                Text(verbatim: title).lineLimit(1)
-                Text(verbatim: subtitle)
-                    .font(.caption)
-                    .foregroundStyle(isMissing ? AnyShapeStyle(Color.orange) : AnyShapeStyle(.secondary))
+                let missing = row.isMissing(in: model.catalog)
+                let subtitle = row.subtitle(in: model.catalog)
+                Text(verbatim: row.title(in: model.catalog))
+                    .foregroundStyle(missing && subtitle == nil ? AnyShapeStyle(Color.orange) : AnyShapeStyle(.primary))
                     .lineLimit(1)
+                if let subtitle {
+                    Text(verbatim: subtitle)
+                        .font(.caption)
+                        .foregroundStyle(missing ? AnyShapeStyle(Color.orange) : AnyShapeStyle(.secondary))
+                        .lineLimit(1)
+                }
             }
             Spacer(minLength: 8)
             if case .shortcut = row {
@@ -100,39 +108,50 @@ struct TileSettingsRow: View {
             Text("Remove from Quick Apps", bundle: .module, comment: "Quick Apps: edit-mode remove badge / tile action")
         }
     }
+}
 
-    // MARK: Text
+// MARK: Text
 
-    private var isMissing: Bool {
-        switch row {
-        case .app(_, let app): app == nil && model.catalog.hasResolved
-        case .shortcut(_, let isMissing): isMissing
+extension TileSettingsRow.Row {
+    /// The app's Finder name (`ResolvedApp.name`); "App not installed" once the lookup found nothing; nothing while it
+    /// runs. A shortcut's name. Never a bundle identifier.
+    func title(in catalog: AppCatalog) -> String {
+        switch self {
+        case .app(let bundleID, let app):
+            if let app { return app.name }
+            return catalog.presence(bundleID) == .notInstalled
+                ? String(localized: "App not installed", bundle: .module,
+                         comment: "Settings ▸ Shortcuts: title of a row whose app is no longer installed (its name is not known)")
+                : ""
+        case .shortcut(let entry, _): return entry.displayName
         }
     }
 
-    private var title: String {
-        switch row {
-        case .app(let bundleID, let app): app?.name ?? bundleID
-        case .shortcut(let entry, _): entry.displayName
-        }
-    }
-
-    private var subtitle: String {
-        switch row {
+    /// What the tile is, or that a shortcut is missing; nil for an app that is not installed (its title says so).
+    func subtitle(in catalog: AppCatalog) -> String? {
+        switch self {
         case .app:
-            isMissing
-                ? String(localized: "Not installed", bundle: .module, comment: "Settings ▸ Shortcuts: an app in the list that is not on this Mac")
+            isMissing(in: catalog)
+                ? nil
                 : String(localized: "App", bundle: .module, comment: "Quick Apps: an app (⌘K result kind, Settings row subtitle)")
-        case .shortcut:
+        case .shortcut(_, let isMissing):
             isMissing
                 ? String(localized: "Not found in Shortcuts", bundle: .module, comment: "Settings ▸ Shortcuts: a shortcut deleted in Shortcuts.app")
                 : String(localized: "Shortcut", bundle: .module, comment: "Quick Apps: a Shortcuts.app shortcut (⌘K result kind, Settings row subtitle, neutral tile name in Demo mode)")
         }
     }
+
+    /// The app was looked up and is not installed (not while the lookup runs), or the shortcut is gone.
+    func isMissing(in catalog: AppCatalog) -> Bool {
+        switch self {
+        case .app(let bundleID, let app): app == nil && catalog.presence(bundleID) == .notInstalled
+        case .shortcut(_, let isMissing): isMissing
+        }
+    }
 }
 
 #Preview("Tile rows") {
-    let model = QuickAppsPreview.model()
+    let model = QuickAppsPreview.model(apps: ["com.apple.Safari", "com.example.gone"])
     Form {
         TileSettingsRow(row: .app(bundleID: "com.apple.Safari", app: PreviewAppResolver.app(for: "com.apple.Safari")),
                         model: model, isFirst: true, isLast: false)

@@ -1,10 +1,10 @@
 // CrannyCore/Platform/AppIdentity.swift
 // The name and icon of an app given its bundle identifier, for every place that shows apps (Settings ▸ Excluded apps
-// and Permissions, Media's player rows and empty state, Quick Apps' names). One naming rule (`AppIdentity.name(of:)`):
-// Finder's localized display name, or the bundle's file name where the bundle may not be read (an app left in
-// Downloads: `ProtectedLocations`) or names nothing, never the bundle identifier. Launch Services and the bundle are
-// read off the main actor (ARCHITECTURE.md §9.2), once per app until `refresh()`; views show nothing (or their own
-// fallback) until the answer lands, and hide an app that is not installed or say so.
+// and Permissions, Media's player rows and empty state, Quick Apps' lookups through `locate`). One naming rule
+// (`AppIdentity.name(of:)`): Finder's localized display name, or the bundle's file name where the bundle may not be
+// read (an app left in Downloads: `ProtectedLocations`) or names nothing, never the bundle identifier. Launch Services
+// and the bundle are read off the main actor (ARCHITECTURE.md §9.2), once per app until `refresh()`; views show
+// nothing (or their own fallback) until the answer lands, and hide an app that is not installed or say so.
 import AppKit
 import Foundation
 import Observation
