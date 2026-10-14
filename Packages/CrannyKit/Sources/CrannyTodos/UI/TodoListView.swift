@@ -95,6 +95,9 @@ struct TodoListView: View {
 
     // MARK: Keyboard
 
+    /// What the ⌫ key actually sends on the Mac (DEL, U+007F); SwiftUI's `.delete` is backspace (U+0008).
+    private static let deleteKey = KeyEquivalent("\u{7F}")
+
     private func handle(_ press: KeyPress) -> KeyPress.Result {
         guard !isReadOnly, model.editingID == nil else { return .ignored }
         let others: EventModifiers = [.option, .control, .shift]
@@ -105,7 +108,7 @@ struct TodoListView: View {
         case .downArrow: key = .down
         case .space: key = .space
         case .return: key = .returnKey
-        case .delete: key = .deleteBackward
+        case .delete, Self.deleteKey: key = .deleteBackward
         default: return .ignored
         }
         guard let command = TodoKeyMap.command(for: key, command: press.modifiers.contains(.command),
