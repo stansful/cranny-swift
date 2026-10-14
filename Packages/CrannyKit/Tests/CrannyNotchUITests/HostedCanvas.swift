@@ -70,3 +70,29 @@ struct InstanceCounter: View {
     var value: Bool
     init(_ value: Bool) { self.value = value }
 }
+
+/// Hosts `InstanceCounter` inside `modifier(flag)`, so a test can flip the flag and count instances.
+struct ModifiedCounter<M: ViewModifier>: View {
+    let flag: Flag
+    let probe: NotchLifecycleProbe
+    let modifier: (Bool) -> M
+    var body: some View { InstanceCounter(probe: probe).modifier(modifier(flag.value)) }
+}
+
+/// A live activity whose VoiceOver value comes and goes; its leading wing reports every new instance.
+@MainActor @Observable final class ToggleActivity: LiveActivity {
+    let id: ActivityID
+    let isActive = true
+    let priority: ActivityPriority = .ongoing
+    let slot: SlotWidth = .short
+    let revision = 0
+    var value: String?
+    @ObservationIgnored let probe: NotchLifecycleProbe
+    init(id: ActivityID, probe: NotchLifecycleProbe) { self.id = id; self.probe = probe }
+    var accessibilityLabel: String { "Toggle" }
+    var accessibilityValue: String? { value }
+    func compactLeading() -> some View { InstanceCounter(probe: probe) }
+    func compactTrailing() -> some View { EmptyView() }
+    func minimal() -> some View { EmptyView() }
+    func peekRow() -> some View { InstanceCounter(probe: probe) }
+}

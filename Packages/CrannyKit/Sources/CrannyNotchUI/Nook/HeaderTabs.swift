@@ -136,16 +136,14 @@ private struct TabSegmentStyle: ButtonStyle {
     }
 }
 
-/// "3 items" on a tab with a count badge (VoiceOver).
-private struct BadgeValue: ViewModifier {
+/// "3 items" on a tab with a count badge (VoiceOver). Always applied, with an empty value without a badge, so
+/// the tab keeps its identity (and hover state) when the count goes from 0 to 1.
+struct BadgeValue: ViewModifier {
     let count: Int?
     func body(content: Content) -> some View {
-        if let count {
-            content.accessibilityValue(Text("\(count) items", bundle: .module,
-                                            comment: "Open panel: VoiceOver value of a tab's count badge (Tray items)"))
-        } else {
-            content
-        }
+        content.accessibilityValue(count.map {
+            Text("\($0) items", bundle: .module, comment: "Open panel: VoiceOver value of a tab's count badge (Tray items)")
+        } ?? Text(verbatim: ""))
     }
 }
 

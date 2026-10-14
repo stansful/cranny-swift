@@ -65,6 +65,51 @@ extension HostedTests {
         }
     }
 
+    /// Accessibility modifiers whose input comes and goes are applied in every state, so the view they wrap
+    /// is updated, never re-created (review: the band row replayed its entrance when a value appeared, the Tray
+    /// tab lost its hover state when the count went from 0 to 1).
+    @MainActor @Suite("Conditional accessibility keeps identity") struct ModifierIdentityTests {
+        private func flips<M: ViewModifier>(_ modifier: @escaping (Bool) -> M) -> Int {
+            let flag = Flag(false)
+            let probe = NotchLifecycleProbe()
+            let hosted = Hosted(ModifiedCounter(flag: flag, probe: probe, modifier: modifier), size: CGSize(width: 100, height: 40))
+            defer { hosted.tearDown() }
+            for value in [true, false, true] {
+                flag.value = value
+                hosted.settle(0.05)
+            }
+            return probe.appearances(of: "instance")
+        }
+
+        @Test func collapsedNotch() {
+            #expect(flips { CollapsedAccessibility(isCollapsed: $0, open: {}) } == 1)
+        }
+
+        @Test func tabBadge() {
+            #expect(flips { BadgeValue(count: $0 ? 3 : nil) } == 1)
+        }
+
+        @Test func shortcutHint() {
+            #expect(flips { ShortcutHint(shortcut: $0 ? NookKeyMap.palette : nil) } == 1)
+        }
+
+        @Test(arguments: [NotchPhase.compact, .peek]) func activityValueComesAndGoes(phase: NotchPhase) {
+            let (model, registry) = previewScene(phase)
+            let probe = NotchLifecycleProbe()
+            let activity = ToggleActivity(id: .nowPlaying, probe: probe)
+            model.sampleActivities[.nowPlaying] = activity
+            let (hosted, _) = hostedCanvas(model, registry)
+            defer { hosted.tearDown() }
+            let initial = probe.appearances(of: "instance")
+            #expect(initial >= 1)
+            for value in ["2 minutes left", nil, "1 minute left", ""] {
+                activity.value = value
+                hosted.settle(0.05)
+            }
+            #expect(probe.appearances(of: "instance") == initial, "the activity's views were re-created")
+        }
+    }
+
     @MainActor @Suite("Morph frames (hosted, off-screen)") struct MorphFrameTests {
         /// While the shape grows out of the camera, nothing of the open panel may be drawn below the shape's current
         /// bottom edge: no keyline, no underglow layer, no surface instance at its final size (DESIGN.md §3.4, §4.3).

@@ -117,14 +117,7 @@ private struct PaletteRow: View {
         .accessibilityLabel(Text(verbatim: command.title))
         .accessibilityValue(Text(verbatim: command.kind))
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
-        .modifier(OptionalHint(hint: command.shortcut?.display))
-    }
-}
-
-private struct OptionalHint: ViewModifier {
-    let hint: String?
-    func body(content: Content) -> some View {
-        if let hint { content.accessibilityHint(Text(verbatim: hint)) } else { content }
+        .accessibilityHint(Text(verbatim: command.shortcut?.display ?? ""))
     }
 }
 

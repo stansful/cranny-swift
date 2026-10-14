@@ -32,10 +32,11 @@ extension View {
     }
 }
 
-private struct ShortcutHint: ViewModifier {
+/// Always applied (an empty hint reads nothing), so the control keeps its identity.
+struct ShortcutHint: ViewModifier {
     let shortcut: NookShortcut?
     func body(content: Content) -> some View {
-        if let shortcut { content.accessibilityHint(Text(verbatim: shortcut.display)) } else { content }
+        content.accessibilityHint(Text(verbatim: shortcut?.display ?? ""))
     }
 }
 

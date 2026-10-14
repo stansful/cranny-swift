@@ -18,7 +18,9 @@ struct ActivityAccessibility: ViewModifier {
         content
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(Text(verbatim: activity.accessibilityLabel))
-            .modifier(OptionalValue(value: activity.accessibilityValue))
+            // Always applied (an empty value reads nothing): a conditional modifier would re-create the row,
+            // replaying the wings' entrance and dropping the activity views' state whenever the value comes or goes.
+            .accessibilityValue(Text(verbatim: activity.accessibilityValue ?? ""))
             .accessibilityAddTraits(open == nil ? [] : .isButton)
             .accessibilityIdentifier("activity.\(id.rawValue)")
             .accessibilityAction { open?() }                              // VO-Space: the default action
@@ -36,13 +38,6 @@ struct ActivityAccessibility: ViewModifier {
                     }
                 }
             }
-    }
-}
-
-private struct OptionalValue: ViewModifier {
-    let value: String?
-    func body(content: Content) -> some View {
-        if let value, !value.isEmpty { content.accessibilityValue(Text(verbatim: value)) } else { content }
     }
 }
 
