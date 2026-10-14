@@ -16,7 +16,7 @@ struct CheckBadge: View {
         Image(systemName: isDone ? "checkmark.circle.fill" : "circle")
             .font(.system(size: size, weight: .medium))
             .foregroundStyle(isDone ? AnyShapeStyle(Color.green) : AnyShapeStyle(.tertiary))
-            .contentTransition(.symbolEffect(.replace))
+            .contentTransition(reduceMotion ? .identity : .symbolEffect(.replace))
             // The bounce plays when the value changes; under Reduce Motion the value never changes.
             .symbolEffect(.bounce, value: isDone && !reduceMotion)
             .opacity(isDone || showsPending ? 1 : 0)

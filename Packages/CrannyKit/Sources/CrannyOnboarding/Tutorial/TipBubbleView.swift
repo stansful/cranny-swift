@@ -100,8 +100,8 @@ struct TipBubble: View {
             Image(systemName: symbol)
                 .font(.system(size: CrannyTextStyle.headline.spec.size, weight: .semibold))
                 .foregroundStyle(content.mark == .done ? theme.palette.success : theme.accentColor)
-                .contentTransition(.symbolEffect(.replace))
-                .symbolEffect(.bounce, value: completions)
+                .contentTransition(theme.symbolReplace)
+                .crannySymbolBounce(value: completions)
                 .accessibilityHidden(true)
         }
     }
