@@ -134,7 +134,7 @@ private let log = Log.logger(.onboarding)
             #endif
         }
         #if DEBUG
-        if let path = qa.snapshotPath { snapshotForVisualQA(into: URL(fileURLWithPath: path)) }
+        if let directory = qa.snapshotDirectory { snapshotForVisualQA(into: directory) }
         #endif
     }
 

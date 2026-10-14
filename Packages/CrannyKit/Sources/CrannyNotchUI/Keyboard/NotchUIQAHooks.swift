@@ -29,9 +29,11 @@ nonisolated enum NotchUIQAHooks {
     /// `--qa-hints` (always false in Release builds).
     static var showsHints: Bool { arguments.contains("--qa-hints") }
 
-    /// `--qa-snapshot <file.png>` (nil = none, or a Release build).
+    /// `--qa-snapshot <file.png>` (nil = none, or a Release build). Any other path is a directory for the shell's
+    /// window snapshots (CrannyAppShell/App/QAHooks.swift), not this canvas.
     static var snapshotPath: String? {
-        guard let i = arguments.firstIndex(of: "--qa-snapshot"), i + 1 < arguments.count else { return nil }
+        guard let i = arguments.firstIndex(of: "--qa-snapshot"), i + 1 < arguments.count,
+              arguments[i + 1].lowercased().hasSuffix(".png") else { return nil }
         return arguments[i + 1]
     }
 

@@ -42,7 +42,8 @@ private let log = Log.logger(.app)
                       demo: value("--qa-demo").flatMap { ["on": true, "off": false][$0] },
                       updateCheck: arguments.contains("--qa-update-check"),
                       openCranny: value("--qa-open-cranny").flatMap(Double.init),
-                      snapshotDirectory: value("--qa-snapshot"),
+                      // A `.png` path is NotchUI's panel snapshot; only a directory is ours (QAHooks.swift).
+                      snapshotDirectory: value("--qa-snapshot").flatMap { $0.lowercased().hasSuffix(".png") ? nil : $0 },
                       snapshotTimes: value("--qa-snapshot-at").map { $0.split(separator: ",").compactMap { Double($0) } } ?? [3])
         }
 

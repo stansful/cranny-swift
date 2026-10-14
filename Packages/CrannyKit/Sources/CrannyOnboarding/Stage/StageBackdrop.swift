@@ -10,6 +10,8 @@ import SwiftUI
 
 struct StageBackdrop: View {
     @Environment(\.cranny) private var theme
+    /// ImageRenderer snapshots cannot see CrannyEffects' Metal layer: they keep the light in SwiftUI.
+    @Environment(\.isStaticSnapshot) private var isStaticSnapshot
     /// `.off` draws the desktop alone.
     let level: AmbienceLevel
     let budget: EffectBudget
@@ -19,6 +21,7 @@ struct StageBackdrop: View {
             LinearGradient(colors: [BrandColor.night.color, BrandColor.graphite.color], startPoint: .top, endPoint: .bottom)
             if level != .off {
                 AuroraField(palette: .afterglow, level: level, energy: 0, budget: budget)
+                    .ambientLightRendering(isStaticSnapshot ? .inline : .automatic)
                     .transition(.opacity)
             }
         }

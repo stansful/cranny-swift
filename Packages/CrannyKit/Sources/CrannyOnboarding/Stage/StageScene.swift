@@ -176,9 +176,8 @@ import Observation
         var theme = baseTheme
         if !visible { theme.motion = .instant }
         model.theme = theme
-        // Integration with WP12: NotchSceneModel gains `isVisibleOnScreen`, which its canvas budget (compact
-        // effects) reads instead of the motion personality. When wp/12 merges, also set
-        // `model.isVisibleOnScreen = visible` here; `hidingTheWindowHoldsTheStageStill` fails until it is set.
+        // NotchUI's canvas budget (compact effects, the light) reads `isVisibleOnScreen`, not the motion personality.
+        model.isVisibleOnScreen = visible
     }
 
     // MARK: Scale

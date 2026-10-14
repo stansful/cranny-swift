@@ -12,7 +12,8 @@ struct NookLightLayer: View {
     @Environment(\.cranny) private var theme
     @Environment(\.notchDelight) private var delight
     /// Snapshots (`ImageRenderer`: tests, the gallery, `--qa-snapshot`) cannot see CrannyEffects' Metal layer, so
-    /// they keep the light in SwiftUI (`ambientLightRendering(.inline)`); the live panel uses the cheaper layer.
+    /// they keep the light in SwiftUI (`ambientLightRendering(.inline)`) on its resting frame (deterministic
+    /// pixels); the live panel uses the cheaper layer.
     @Environment(\.notchRendersFinalState) private var isSnapshot
     @State private var ripple: Double = 0
     @State private var firstLight: Double = 1
@@ -23,7 +24,7 @@ struct NookLightLayer: View {
         let level = theme.effectiveAmbience
         let budget = registry.services.environment.effectBudget(
             isOpen: model.phase == .open, isOnScreen: model.isVisibleOnScreen,
-            reduceMotion: theme.reduceMotion || theme.motion == .instant)
+            reduceMotion: theme.reduceMotion || theme.motion == .instant || isSnapshot)   // snapshots: the resting frame
         let energy = min((registry.services.nowPlaying?.audioEnergy ?? 0) + ripple, 1)
         let revealing = delight?.moment == .firstLight && !theme.reduceMotion
         AuroraField(palette: model.ambient, level: level, energy: energy, budget: budget)
