@@ -72,7 +72,8 @@ nonisolated struct LiveFrame: Equatable, Sendable {
     @ObservationIgnored private var lastAudio: Date?
 
     /// Makes the Live source that calls back with every frame; nil = the system cannot tap (before macOS 14.2).
-    typealias LiveSourceFactory = @MainActor (_ onFrame: @escaping @MainActor (LiveFrame) -> Void) -> (any LiveLevelSource)?
+    typealias LiveSourceFactory =
+        @MainActor (_ onFrame: @escaping @MainActor (LiveFrame) -> Void) -> (any LiveLevelSource)?
 
     init(settings: SettingsStore, environment: any SystemEnvironment, permissions: PermissionsCenter, clock: any MediaClock,
          allowsLive: Bool, makeLiveSource: @escaping LiveSourceFactory = VisualizerEngine.systemLiveSource) {

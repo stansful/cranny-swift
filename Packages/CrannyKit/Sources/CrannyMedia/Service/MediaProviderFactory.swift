@@ -41,33 +41,35 @@ extension MediaProviderFactory {
 /// quarantine copy sits in a directory other processes of the user can write, so a copy that changed since the last
 /// spawn is rewritten from the app's library before perl loads it (`BridgeLocator.unquarantinedCopy`).
 @MainActor final class BridgeResolution {
+    typealias Host = BridgeConnection.Host
+
     nonisolated struct Result: Sendable {
         var dylib: URL?
-        var hosts: Set<BridgeConnection.Host>
+        var hosts: Set<Host>
     }
 
     private let locate: @Sendable () -> URL?
-    private let findHosts: @Sendable () -> Set<BridgeConnection.Host>
-    private var hosts: Set<BridgeConnection.Host>?
+    private let findHosts: @Sendable () -> Set<Host>
+    private var hosts: Set<Host>?
 
     convenience init(paths: AppPaths) {
         self.init(locate: { BridgeLocator.locateForApp(paths: paths) },
-                  hosts: { Set(BridgeConnection.Host.allCases.filter(\.isAvailable)) })
+                  hosts: { Set(Host.allCases.filter(\.isAvailable)) })
     }
 
-    init(locate: @escaping @Sendable () -> URL?, hosts: @escaping @Sendable () -> Set<BridgeConnection.Host>) {
+    init(locate: @escaping @Sendable () -> URL?, hosts: @escaping @Sendable () -> Set<Host>) {
         self.locate = locate
         findHosts = hosts
     }
 
     func resolve() async -> Result {
-        let (dylib, found) = await Self.lookUp(locate, hosts: hosts == nil ? findHosts : nil)
-        if let found { hosts = found }
-        return Result(dylib: dylib, hosts: hosts ?? [])
+        let found = await Self.lookUp(locate, hosts: hosts == nil ? findHosts : nil)
+        if let foundHosts = found.hosts { hosts = foundHosts }
+        return Result(dylib: found.dylib, hosts: hosts ?? [])
     }
 
-    @concurrent private static func lookUp(_ locate: @Sendable () -> URL?,
-                                           hosts: (@Sendable () -> Set<BridgeConnection.Host>)?) async -> (URL?, Set<BridgeConnection.Host>?) {
+    @concurrent private static func lookUp(_ locate: @Sendable () -> URL?, hosts: (@Sendable () -> Set<Host>)?) async
+        -> (dylib: URL?, hosts: Set<Host>?) {
         (locate(), hosts?())
     }
 }

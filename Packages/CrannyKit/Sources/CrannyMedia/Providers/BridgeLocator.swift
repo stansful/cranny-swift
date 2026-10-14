@@ -71,7 +71,8 @@ nonisolated enum BridgeLocator {
         let destination = directory.appending(path: fileName)
         let bytes = try Data(contentsOf: source)
         // `attributesOfItem` does not follow links: a link reads as `.typeSymbolicLink`, nothing there as nil.
-        let existingType = (try? FileManager.default.attributesOfItem(atPath: destination.path))?[.type] as? FileAttributeType
+        let attributes = try? FileManager.default.attributesOfItem(atPath: destination.path)
+        let existingType = attributes?[.type] as? FileAttributeType
         if existingType == .typeRegular, let existing = try? Data(contentsOf: destination), existing == bytes,
            !isQuarantined(destination) {
             return destination
