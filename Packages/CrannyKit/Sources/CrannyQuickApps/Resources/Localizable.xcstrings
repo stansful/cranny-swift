@@ -1,6 +1,886 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ failed" : {
+      "comment" : "Quick Apps: VoiceOver announcement after a shortcut failed (shortcut name)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Быстрая команда «%@» завершилась с ошибкой"
+          }
+        }
+      }
+    },
+    "%@ finished" : {
+      "comment" : "Quick Apps: VoiceOver announcement after a shortcut ran (shortcut name)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Быстрая команда «%@» выполнена"
+          }
+        }
+      }
+    },
+    "%@ — click to stop" : {
+      "comment" : "Quick Apps: tooltip of a running shortcut (shortcut name)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — нажмите, чтобы остановить"
+          }
+        }
+      }
+    },
+    "%lld more" : {
+      "comment" : "Quick Apps: the overflow tile (number of tiles that do not fit)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ещё %lld"
+          }
+        }
+      }
+    },
+    "Add" : {
+      "comment" : "Quick Apps: add (open panel confirm button, name under the + tile)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить"
+          }
+        }
+      }
+    },
+    "Add App…" : {
+      "comment" : "Quick Apps: add an app with the open panel",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить приложение…"
+          }
+        }
+      }
+    },
+    "Add Shortcut" : {
+      "comment" : "Quick Apps: submenu listing Shortcuts.app shortcuts",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить быструю команду"
+          }
+        }
+      }
+    },
+    "Add Shortcut…" : {
+      "comment" : "Settings ▸ Shortcuts: opens the shortcut picker",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить быструю команду…"
+          }
+        }
+      }
+    },
+    "Add to Quick Apps" : {
+      "comment" : "Quick Apps: the + tile (tooltip, VoiceOver)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить в быстрые приложения"
+          }
+        }
+      }
+    },
+    "All shortcuts are added" : {
+      "comment" : "Quick Apps: shortcut submenu when every shortcut is on the launcher",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Все быстрые команды уже добавлены"
+          }
+        }
+      }
+    },
+    "App" : {
+      "comment" : "Quick Apps: an app (⌘K result kind, Settings row subtitle)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приложение"
+          }
+        }
+      }
+    },
+    "Apps" : {
+      "comment" : "Settings search keyword (Shortcuts pane)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приложения"
+          }
+        }
+      }
+    },
+    "Automatic" : {
+      "comment" : "Settings ▸ Shortcuts: automatic colour / symbol option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Автоматически"
+          }
+        }
+      }
+    },
+    "Blue" : {
+      "comment" : "Settings ▸ Shortcuts: tile colour name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Синий"
+          }
+        }
+      }
+    },
+    "Brown" : {
+      "comment" : "Settings ▸ Shortcuts: tile colour name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Коричневый"
+          }
+        }
+      }
+    },
+    "Choose apps to add to Quick Apps." : {
+      "comment" : "Quick Apps: open panel message",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите приложения, которые нужно добавить в быстрые приложения."
+          }
+        }
+      }
+    },
+    "Colour" : {
+      "comment" : "Settings ▸ Shortcuts: colour (popover section, search keyword)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Цвет"
+          }
+        }
+      }
+    },
+    "Couldn’t read your shortcuts." : {
+      "comment" : "Quick Apps: error when the list of Shortcuts.app shortcuts cannot be read",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось прочитать список быстрых команд."
+          }
+        }
+      }
+    },
+    "Customise…" : {
+      "comment" : "Settings ▸ Shortcuts: opens a shortcut's symbol and colour",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настроить…"
+          }
+        }
+      }
+    },
+    "Dock" : {
+      "comment" : "Settings search keyword (Shortcuts pane)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dock"
+          }
+        }
+      }
+    },
+    "Done" : {
+      "comment" : "Notch flash after a shortcut ran (≤ 12 characters)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Готово"
+          }
+        }
+      }
+    },
+    "Done Editing" : {
+      "comment" : "Quick Apps: menu item, leave edit mode",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Завершить правку"
+          }
+        }
+      }
+    },
+    "Drag apps from Finder or the Dock onto this list. Apps that aren’t installed stay here but are hidden from Cranny." : {
+      "comment" : "Settings ▸ Shortcuts: footnote under the tile list",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перетащите приложения в этот список из Finder или Dock. Неустановленные приложения остаются здесь, но Cranny их не показывает."
+          }
+        }
+      }
+    },
+    "Drag apps here" : {
+      "comment" : "Quick Apps widget: empty state",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перетащите сюда приложения"
+          }
+        }
+      }
+    },
+    "Edit Tiles" : {
+      "comment" : "Quick Apps: menu item, enter edit mode (remove, reorder, add)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить плитки"
+          }
+        }
+      }
+    },
+    "Failed" : {
+      "comment" : "Notch flash after a shortcut failed (≤ 12 characters)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ошибка"
+          }
+        }
+      }
+    },
+    "Finished" : {
+      "comment" : "Quick Apps: VoiceOver value of a shortcut that just ran",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выполнено"
+          }
+        }
+      }
+    },
+    "First letter" : {
+      "comment" : "Settings ▸ Shortcuts: glyph option, the name's first letter",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Первая буква"
+          }
+        }
+      }
+    },
+    "Green" : {
+      "comment" : "Settings ▸ Shortcuts: tile colour name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зелёный"
+          }
+        }
+      }
+    },
+    "Grey" : {
+      "comment" : "Settings ▸ Shortcuts: tile colour name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Серый"
+          }
+        }
+      }
+    },
+    "Indigo" : {
+      "comment" : "Settings ▸ Shortcuts: tile colour name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Индиго"
+          }
+        }
+      }
+    },
+    "Launcher" : {
+      "comment" : "Settings search keyword (Shortcuts pane)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Панель запуска"
+          }
+        }
+      }
+    },
+    "Loading…" : {
+      "comment" : "Quick Apps: shortcut submenu while the list is read",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загрузка…"
+          }
+        }
+      }
+    },
+    "Mint" : {
+      "comment" : "Settings ▸ Shortcuts: tile colour name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Мятный"
+          }
+        }
+      }
+    },
+    "Move Down" : {
+      "comment" : "Settings ▸ Shortcuts: reorder a tile",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переместить ниже"
+          }
+        }
+      }
+    },
+    "Move Up" : {
+      "comment" : "Settings ▸ Shortcuts: reorder a tile",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переместить выше"
+          }
+        }
+      }
+    },
+    "Move earlier" : {
+      "comment" : "Quick Apps: VoiceOver action, reorder tiles",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переместить раньше"
+          }
+        }
+      }
+    },
+    "Move later" : {
+      "comment" : "Quick Apps: VoiceOver action, reorder tiles",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переместить дальше"
+          }
+        }
+      }
+    },
+    "No shortcuts in Shortcuts yet" : {
+      "comment" : "Quick Apps: shortcut submenu when Shortcuts.app has none",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В «Быстрых командах» пока ничего нет"
+          }
+        }
+      }
+    },
+    "No shortcuts match “%@”" : {
+      "comment" : "Settings ▸ Shortcuts picker: no search results (query)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет быстрых команд по запросу «%@»"
+          }
+        }
+      }
+    },
+    "No tiles yet. Add an app or a shortcut." : {
+      "comment" : "Settings ▸ Shortcuts: empty tile list",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Плиток пока нет. Добавьте приложение или быструю команду."
+          }
+        }
+      }
+    },
+    "Not found in Shortcuts" : {
+      "comment" : "Settings ▸ Shortcuts: a shortcut deleted in Shortcuts.app",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет в «Быстрых командах»"
+          }
+        }
+      }
+    },
+    "Not installed" : {
+      "comment" : "Settings ▸ Shortcuts: an app in the list that is not on this Mac",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не установлено"
+          }
+        }
+      }
+    },
+    "Open" : {
+      "comment" : "Quick Apps: tile menu, open the app",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть"
+          }
+        }
+      }
+    },
+    "Open %@" : {
+      "comment" : "Command palette: open a quick app (app name)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть %@"
+          }
+        }
+      }
+    },
+    "Open Shortcuts" : {
+      "comment" : "Quick Apps: opens Shortcuts.app",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть «Быстрые команды»"
+          }
+        }
+      }
+    },
+    "Open apps and run shortcuts in one click" : {
+      "comment" : "Widget library: Quick Apps description",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приложения и быстрые команды в один клик"
+          }
+        }
+      }
+    },
+    "Option-%lld" : {
+      "comment" : "Quick Apps: VoiceOver hint, the tile's keyboard shortcut ⌥1–⌥9",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Option-%lld"
+          }
+        }
+      }
+    },
+    "Orange" : {
+      "comment" : "Settings ▸ Shortcuts: tile colour name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оранжевый"
+          }
+        }
+      }
+    },
+    "Pink" : {
+      "comment" : "Settings ▸ Shortcuts: tile colour name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Розовый"
+          }
+        }
+      }
+    },
+    "Purple" : {
+      "comment" : "Settings ▸ Shortcuts: tile colour name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Фиолетовый"
+          }
+        }
+      }
+    },
+    "Quick Apps" : {
+      "comment" : "Quick Apps: widget name (widget library, VoiceOver container)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Быстрые приложения"
+          }
+        }
+      }
+    },
+    "Quick Apps Settings…" : {
+      "comment" : "Quick Apps: opens Settings ▸ Shortcuts",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки быстрых приложений…"
+          }
+        }
+      }
+    },
+    "Red" : {
+      "comment" : "Settings ▸ Shortcuts: tile colour name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Красный"
+          }
+        }
+      }
+    },
+    "Reload from Shortcuts" : {
+      "comment" : "Settings ▸ Shortcuts picker: reload button",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обновить из «Быстрых команд»"
+          }
+        }
+      }
+    },
+    "Remove from Quick Apps" : {
+      "comment" : "Quick Apps: edit-mode remove badge / tile action",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Убрать из быстрых приложений"
+          }
+        }
+      }
+    },
+    "Reset to Default" : {
+      "comment" : "Settings: row context menu item",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Восстановить по умолчанию"
+          }
+        }
+      }
+    },
+    "Run" : {
+      "comment" : "Quick Apps: tile menu, run the shortcut",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запустить"
+          }
+        }
+      }
+    },
+    "Run %@" : {
+      "comment" : "Command palette: run a Shortcuts.app shortcut (shortcut name)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запустить «%@»"
+          }
+        }
+      }
+    },
+    "Running" : {
+      "comment" : "Quick Apps: VoiceOver value of an open app / a running shortcut",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Работает"
+          }
+        }
+      }
+    },
+    "Search shortcuts" : {
+      "comment" : "Settings ▸ Shortcuts picker: search field placeholder",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поиск быстрых команд"
+          }
+        }
+      }
+    },
+    "Shortcut" : {
+      "comment" : "Quick Apps: a Shortcuts.app shortcut (⌘K result kind, Settings row subtitle, neutral tile name in Demo mode)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Быстрая команда"
+          }
+        }
+      }
+    },
+    "Shortcuts" : {
+      "comment" : "Settings sidebar: Quick Apps & Shortcuts pane name (Apple's Shortcuts app)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Быстрые команды"
+          }
+        }
+      }
+    },
+    "Shortcuts isn’t available on this Mac." : {
+      "comment" : "Quick Apps: error when the Shortcuts command-line tool cannot be started",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "«Быстрые команды» недоступны на этом Mac."
+          }
+        }
+      }
+    },
+    "Show in Finder" : {
+      "comment" : "Quick Apps: tile menu / VoiceOver action",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать в Finder"
+          }
+        }
+      }
+    },
+    "Show names under tiles" : {
+      "comment" : "Quick Apps: option toggle (widget options, Settings ▸ Shortcuts)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подписи под плитками"
+          }
+        }
+      }
+    },
+    "Stop" : {
+      "comment" : "Quick Apps: tile menu, stop a running shortcut",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Остановить"
+          }
+        }
+      }
+    },
+    "Symbol" : {
+      "comment" : "Settings ▸ Shortcuts: symbol (popover section, search keyword)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Символ"
+          }
+        }
+      }
+    },
+    "Symbol and colour" : {
+      "comment" : "Settings ▸ Shortcuts: tooltip of a shortcut's squircle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Символ и цвет"
+          }
+        }
+      }
+    },
+    "Teal" : {
+      "comment" : "Settings ▸ Shortcuts: tile colour name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Бирюзовый"
+          }
+        }
+      }
+    },
+    "The app couldn’t be opened." : {
+      "comment" : "Quick Apps: error when macOS refuses to open a quick app",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось открыть приложение."
+          }
+        }
+      }
+    },
+    "The shortcut stopped with an error." : {
+      "comment" : "Quick Apps: failure badge tooltip after a shortcut run failed",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Быстрая команда завершилась с ошибкой."
+          }
+        }
+      }
+    },
+    "This app is no longer installed." : {
+      "comment" : "Quick Apps: error when a quick app cannot be found",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Это приложение больше не установлено."
+          }
+        }
+      }
+    },
+    "This shortcut is no longer in Shortcuts." : {
+      "comment" : "Quick Apps: failure badge tooltip when the shortcut was deleted in Shortcuts.app",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этой быстрой команды больше нет в «Быстрых командах»."
+          }
+        }
+      }
+    },
+    "Tiles" : {
+      "comment" : "Settings ▸ Shortcuts: section header",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Плитки"
+          }
+        }
+      }
+    },
+    "Try Again" : {
+      "comment" : "Settings ▸ Shortcuts picker: retry reading the list",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторить"
+          }
+        }
+      }
+    },
+    "Untitled shortcut" : {
+      "comment" : "Quick Apps: name of a shortcut whose name is empty",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Быстрая команда без названия"
+          }
+        }
+      }
+    },
+    "While Cranny is open, ⌥1–⌥9 open the first nine tiles. Click a running shortcut to stop it." : {
+      "comment" : "Settings ▸ Shortcuts: footnote about keys and stopping shortcuts",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пока Cranny открыт, ⌥1–⌥9 открывают первые девять плиток. Нажмите на работающую быструю команду, чтобы остановить её."
+          }
+        }
+      }
+    },
+    "Yellow" : {
+      "comment" : "Settings ▸ Shortcuts: tile colour name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Жёлтый"
+          }
+        }
+      }
+    },
+    "You have no shortcuts yet." : {
+      "comment" : "Settings ▸ Shortcuts picker: Shortcuts.app has no shortcuts",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "У вас пока нет быстрых команд."
+          }
+        }
+      }
+    }
   },
   "version" : "1.0"
 }
