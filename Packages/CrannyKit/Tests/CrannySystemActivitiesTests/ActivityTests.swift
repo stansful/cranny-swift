@@ -73,6 +73,17 @@ import Testing
         #expect(activity.accessibilityValue == SystemCopy.batteryUnknown)
     }
 
+    @Test func bluetoothGlyphBouncesOncePerConnection() {
+        let activity = BluetoothActivity()
+        activity.present(BluetoothActivity.SampleDevice.airPods.accessory, for: 2.6)
+        #expect(activity.claimBounce(for: activity.revision))               // the compact glyph appears: bounce
+        #expect(!activity.claimBounce(for: activity.revision))              // the peek re-creates it: no replay
+        activity.end()
+        activity.present(BluetoothActivity.SampleDevice.trackpad.accessory, for: 2.6)
+        #expect(activity.claimBounce(for: activity.revision))               // the next connection bounces again
+        #expect(!activity.claimBounce(for: activity.revision - 1))          // a stale view never does
+    }
+
     @Test func bluetoothVoiceOverListsTheParts() {
         let activity = BluetoothActivity.sample(.airPods)
         let value = activity.accessibilityValue ?? ""

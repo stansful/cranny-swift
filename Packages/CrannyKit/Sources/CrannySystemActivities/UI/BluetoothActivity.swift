@@ -16,6 +16,8 @@ import SwiftUI
     private(set) var revision = 0
     private(set) var expiresAt: Date?
     @ObservationIgnored private let expiry = ActivityExpiry()
+    /// The newest connection whose glyph has bounced (see `claimBounce(for:)`).
+    @ObservationIgnored private var bouncedRevision = 0
 
     var isActive: Bool { accessory != nil }
 
@@ -59,27 +61,43 @@ import SwiftUI
         expiresAt = nil
     }
 
+    /// True once per connection: the first glyph that appears for `revision` bounces (DESIGN.md §14.1 "a device
+    /// change"). NotchUI inserts the compact row, the peek's copy of it and the satellite as new views, so a
+    /// bounce keyed to a value change alone never plays, and one keyed to appearing would replay on every peek.
+    func claimBounce(for revision: Int) -> Bool {
+        guard revision > bouncedRevision else { return false }
+        bouncedRevision = revision
+        return true
+    }
+
     // MARK: Presentations
 
-    func compactLeading() -> some View { DeviceGlyph(accessory: accessory, revision: revision) }
+    func compactLeading() -> some View { DeviceGlyph(accessory: accessory, revision: revision, claimBounce: claimBounce) }
     func compactTrailing() -> some View { DeviceLevel(batteries: accessory?.batteries ?? .unknown) }
-    func minimal() -> some View { DeviceGlyph(accessory: accessory, revision: revision, isMinimal: true) }
+    func minimal() -> some View { DeviceGlyph(accessory: accessory, revision: revision, claimBounce: claimBounce, isMinimal: true) }
     func peekRow() -> some View { DevicePeekRow(accessory: accessory) }
 }
 
 // MARK: - Views
 
-/// The device glyph; it bounces once per new connection (never under Reduce Motion, DESIGN.md §14.1).
+/// The device glyph; it bounces once per new connection, when it first appears or when another device connects
+/// while it is on screen (never under Reduce Motion, DESIGN.md §14.1).
 private struct DeviceGlyph: View {
     @Environment(\.cranny) private var theme
     let accessory: Accessory?
     let revision: Int
+    let claimBounce: @MainActor (Int) -> Bool
     var isMinimal = false
+    @State private var bounces = 0
 
     var body: some View {
         BandSymbol(name: accessory?.symbol ?? DeviceSymbols.symbol(for: .other, isApple: false))
             .scaleEffect(isMinimal ? 0.8 : 1)
-            .symbolEffect(.bounce, options: .nonRepeating, value: theme.reduceMotion ? 0 : revision)
+            .symbolEffect(.bounce, options: .nonRepeating, value: bounces)
+            .task(id: revision) {                       // on appear and on each new connection while visible
+                guard !theme.reduceMotion, accessory != nil, claimBounce(revision) else { return }
+                bounces += 1
+            }
     }
 }
 
