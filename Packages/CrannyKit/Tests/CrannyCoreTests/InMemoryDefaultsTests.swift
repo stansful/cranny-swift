@@ -54,13 +54,15 @@ import Testing
         let package = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
         let allowed = ["UserDefaults(suiteName: \"com.apple."]                // reading a system domain
+        // The Debug-only `--qa-defaults-suite` switch: a suite only when a QA run asks for one (§10.20 #29).
+        let allowedFiles: Set<String> = ["InMemoryDefaultsTests.swift", "QAHooks+Defaults.swift"]
         var hits: [String] = []
         var scanned = 0
         for folder in ["Sources", "Tests"] {
             let root = package.appending(path: folder)
             let files = try #require(FileManager.default.enumerator(at: root, includingPropertiesForKeys: nil))
                 .compactMap { $0 as? URL }.filter { $0.pathExtension == "swift" }
-            for file in files where file.lastPathComponent != "InMemoryDefaultsTests.swift" {
+            for file in files where !allowedFiles.contains(file.lastPathComponent) {
                 scanned += 1
                 for (number, line) in try String(contentsOf: file, encoding: .utf8).components(separatedBy: "\n").enumerated() {
                     let code = line.trimmingCharacters(in: .whitespaces)

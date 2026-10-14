@@ -45,9 +45,10 @@ public nonisolated struct SettingKey<Value: Codable & Sendable & Equatable>: Sen
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
 
-    /// The app uses `.standard` (domain = bundle id). Tests and previews pass `InMemoryDefaults()`, never a
-    /// `UserDefaults(suiteName:)`, which would leave a plist in ~/Library/Preferences.
-    public init(defaults: UserDefaults = .standard) { self.defaults = defaults }
+    /// The app passes the shell's choice (`ShellDefaults`: `.standard`, domain = bundle id, or a Debug QA run's own
+    /// suite, `--qa-defaults-suite`). Tests and previews pass `InMemoryDefaults()`, never a `UserDefaults(suiteName:)`,
+    /// which would leave a plist in ~/Library/Preferences.
+    public init(defaults: UserDefaults) { self.defaults = defaults }
 
     /// The value of `key`; setting the default removes it from disk.
     public subscript<V>(key: SettingKey<V>) -> V {

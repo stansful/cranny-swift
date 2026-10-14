@@ -65,18 +65,30 @@ compiled out of Release builds (`#if DEBUG`) except the two effect switches mark
 that start with `--qa-` are read from the command line (parsed by CrannyCore's `LaunchArguments`); `-Cranny…`
 switches are `UserDefaults` arguments (`-Key value`). Each owner documents its hooks at the top of the file named in
 its heading. Run the app for QA with an isolated home (`CFFIXED_USER_HOME=<temp dir>`), so a run keeps its files
-(timer state, tray files, notes) out of your real `~/Library`.
+(timer state, tray files, notes) out of your real `~/Library`, **and** with its own settings suite,
+`--qa-defaults-suite <name>`, on every QA launch.
 
-**The isolated home does not isolate settings.** On macOS 27 Cranny's preferences still go to your real
-`~/Library/Preferences/app.cranny.Cranny.plist`, also with `__CFPREFERENCES_AVOID_DAEMON=1` (ARCHITECTURE.md §10.20
-#29). Seed the settings a run needs through the `UserDefaults` argument domain, which is never written to disk: the
-key is `-cranny.<module>.<name>` and the value is the setting's JSON as plist data (`-cranny.general.demoMode
-'<74727565>'` is `true`). Hooks that change a setting change your real one: `--qa-demo`, and `--qa-pause` (end a pause
-run with a `--qa-pause resume` run). Compare `defaults read app.cranny.Cranny` before and after a QA session.
+**The isolated home does not isolate settings; the suite does.** On macOS 27 Cranny's preferences still go to your
+real `~/Library/Preferences/app.cranny.Cranny.plist` under `CFFIXED_USER_HOME`, also with
+`__CFPREFERENCES_AVOID_DAEMON=1` (ARCHITECTURE.md §10.20 #29). `--qa-defaults-suite <name>` (Debug builds,
+`CrannyAppShell/App/QAHooks+Defaults.swift`) makes every writer in the app use `UserDefaults(suiteName: <name>)`
+instead: the settings store (so `--qa-demo`, `--qa-pause`, onboarding and Settings write there) and the Settings
+window's last pane; the window's frame is not autosaved in such a run (AppKit would write it to the real domain).
+Use a name of its own, such as `app.cranny.Cranny.qa`: the app's own domain or a global one is refused, and the run
+then keeps its settings in memory. The suite outlives the run (`~/Library/Preferences/<name>.plist`), so a
+`--qa-pause` run and a later `--qa-pause resume` run see the same pause; `defaults delete <name>` starts the next
+session from the defaults (it leaves an empty `<name>.plist`, which you may delete). Seed the settings a run needs through the `UserDefaults` argument domain, which is part
+of the suite's search list and never written to disk: the key is `-cranny.<module>.<name>` and the value is the
+setting's JSON as plist data (`-cranny.general.demoMode '<74727565>'` is `true`). `defaults read app.cranny.Cranny`
+is the same before and after a QA session (AppKit's own state, such as the menu bar item's position after a ⌘-drag,
+is not Cranny's to redirect).
 
 ```sh
-scripts/run.sh -- --qa-state open --qa-page nook --qa-exit-after 8
-scripts/run.sh -- --qa-state open --qa-page nook --qa-calendar sample --qa-snapshot /tmp/open.png --qa-exit-after 6
+QA=(--qa-defaults-suite app.cranny.Cranny.qa)            # an array: bash and zsh pass it as two arguments
+scripts/run.sh -- "${QA[@]}" --qa-state open --qa-page nook --qa-exit-after 8
+scripts/run.sh -- "${QA[@]}" --qa-state open --qa-page nook --qa-calendar sample --qa-snapshot /tmp/open.png --qa-exit-after 6
+scripts/run.sh -- "${QA[@]}" --qa-pause oneHour --qa-state closed --qa-snapshot /tmp/pause.png --qa-exit-after 5
+defaults delete app.cranny.Cranny.qa                      # the next session starts from the defaults
 ```
 
 ### Capturing
@@ -90,9 +102,10 @@ scripts/run.sh -- --qa-state open --qa-page nook --qa-calendar sample --qa-snaps
   Settings, Welcome), `--qa-capture <dir>`, `-CrannyQASnapshot <file.png>` (Settings) and
   `--qa-timer-snapshot <prefix>`. Known artifacts: the media visualizer draws a placeholder and window materials
   come out blank. A locked session also pauses the effects, so the light shows its resting frame.
-- `Cranny --diagnostics <file.json>` (also Release) writes a report and quits before any window exists: resource
-  bundles, the media bridge, menus, shader status and renderer, and which displays host a panel
-  (`panelScreens`). `make smoke` runs it.
+- `Cranny --diagnostics <file.json>` (also Release) writes a report and quits before any window exists, without
+  writing a preference: resource bundles, the media bridge, menus, shader status and renderer, and which displays
+  host a panel (`panelScreens`). `make smoke` runs it, with `--qa-defaults-suite app.cranny.Cranny.smoke` (a Debug
+  build then reads that suite instead of your settings; a Release build ignores the switch).
 
 ### Shell (`CrannyAppShell/App/QAHooks.swift`, `MenuBar/MenuBarQA.swift`)
 
@@ -108,10 +121,11 @@ scripts/run.sh -- --qa-state open --qa-page nook --qa-calendar sample --qa-snaps
 | `--qa-snapshot <file.png>` | 3 s after launch, renders the primary panel's canvas offscreen (final state, on mid-grey) to that PNG (CrannyNotchUI). |
 | `--qa-snapshot <dir>` [`--qa-snapshot-at 1,3.5`] | Renders every window of the app (menus, Settings, the status item) into `<dir>` at those seconds; with `--qa-welcome` or `--qa-tutorial`, the welcome windows after 3 s. A path ending in `.png` is the canvas snapshot above. |
 | `--qa-menu main\|pause\|showOn` | Opens the menu bar item's menu, or one of its submenus, after 1.5 s. A menu cannot be rendered by code, so its rows (title, ✓, disabled) are written to `qa-trace.txt` in the `--qa-snapshot` folder. |
-| `--qa-demo on\|off` | Turns Demo mode on or off after 1 s (this writes the real setting; see above). |
+| `--qa-defaults-suite <name>` | Keeps every setting the run writes in that suite instead of the app's preferences (see above). Use it on every QA launch. |
+| `--qa-demo on\|off` | Turns Demo mode on or off after 1 s (it writes the setting: run it with `--qa-defaults-suite`). |
 | `--qa-update-check` | Runs "Check for Updates…" as the menu does. |
 | `--qa-open-cranny <seconds>` | Runs the menu's "Open Cranny" after that many seconds. |
-| `--qa-pause oneHour\|untilTomorrow\|untilResumed\|resume` | After 1.5 s, runs that Pause Live Activities choice as the menu does, so its confirmation shows (`resume`: a silent one-hour pause, then Resume). With `--qa-state closed --qa-snapshot <file.png>` the snapshot shows the wing and the peek row; with `--qa-state open`, the confirmation in the open header. It writes `activities.pausedUntil` into your real preferences (see above): finish with a `resume` run. |
+| `--qa-pause oneHour\|untilTomorrow\|untilResumed\|resume` | After 1.5 s, runs that Pause Live Activities choice as the menu does, so its confirmation shows (`resume`: a silent one-hour pause, then Resume). With `--qa-state closed --qa-snapshot <file.png>` the snapshot shows the wing and the peek row; with `--qa-state open`, the confirmation in the open header. It writes `activities.pausedUntil`: run it with `--qa-defaults-suite`, and end a pause with a `resume` run in the same suite (or `defaults delete` it). |
 | `--qa-show-tutorial` | Runs the menu's "Show Tutorial" after 1 s, so `--qa-menu main` shows Skip Tutorial. |
 | `--qa-welcome hello\|openIt\|gestures\|preset\|permissions\|done` | Shows the Welcome window at that step; records nothing. |
 | `--qa-tutorial <n>` | Starts the interactive tutorial at step n (1-based); records nothing. |

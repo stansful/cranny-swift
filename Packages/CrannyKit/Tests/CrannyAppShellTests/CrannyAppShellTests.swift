@@ -38,7 +38,7 @@ import Testing
     registry.add(shortcut: GlobalShortcut(id: .togglePin, title: "Pin") {})
     let overlay = OverlayCoordinator(registry: registry, environment: ShellEnvironment())
     let control = ShellAppControl()
-    control.connect(settings: registry.services.settings, overlay: overlay, settingsWindow: SettingsWindowController(registry: registry),
+    control.connect(settings: registry.services.settings, overlay: overlay, settingsWindow: SettingsWindowController(registry: registry, defaults: .inMemory),
                     welcomeWindow: WelcomeWindowController(registry: registry), hotKeys: overlay.hotKeys)
     overlay.hotKeys.start(registry: registry)
     defer { overlay.hotKeys.stop() }

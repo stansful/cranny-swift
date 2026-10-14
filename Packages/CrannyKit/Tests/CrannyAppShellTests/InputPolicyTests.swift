@@ -121,7 +121,7 @@ private func reduce(_ s: NotchMachineState, _ input: NotchInput, config: NotchMa
     let hotKeys = HotKeyCenter()
     let control = ShellAppControl()
     let overlay = OverlayCoordinator(registry: registry, environment: ShellEnvironment())
-    control.connect(settings: registry.services.settings, overlay: overlay, settingsWindow: SettingsWindowController(registry: registry),
+    control.connect(settings: registry.services.settings, overlay: overlay, settingsWindow: SettingsWindowController(registry: registry, defaults: .inMemory),
                     welcomeWindow: WelcomeWindowController(registry: registry), hotKeys: hotKeys)
     hotKeys.start(registry: registry)
     defer { hotKeys.stop() }

@@ -13,8 +13,10 @@ APP="${APP:-$BUILD_DIR/Cranny.app}"
 OUT="$BUILD_DIR/logs/diagnostics.json"
 mkdir -p "$BUILD_DIR/logs"; rm -f "$OUT"
 # No `timeout` on macOS: perl's alarm kills the app if it hangs (exit 142).
-/usr/bin/perl -e 'alarm shift; exec @ARGV' 60 "$APP/Contents/MacOS/Cranny" --diagnostics "$OUT" >/dev/null 2>&1 \
-  || die "Cranny --diagnostics failed or timed out"
+# `--diagnostics` writes no preference; a Debug build also reads its settings from a suite of its own
+# (`--qa-defaults-suite`, docs/CONTRIBUTING.md ▸ Visual QA hooks), never from the user's; Release ignores the switch.
+/usr/bin/perl -e 'alarm shift; exec @ARGV' 60 "$APP/Contents/MacOS/Cranny" --qa-defaults-suite app.cranny.Cranny.smoke \
+  --diagnostics "$OUT" >/dev/null 2>&1 || die "Cranny --diagnostics failed or timed out"
 [[ -s "$OUT" ]] || die "no diagnostics written"
 METALLIB="$APP/Contents/Resources/CrannyKit_CrannyEffects.bundle/Contents/Resources/default.metallib"
 [[ -f "$METALLIB" ]] || die "CrannyEffects' default.metallib is not in the app (is the Metal Toolchain installed?)"
