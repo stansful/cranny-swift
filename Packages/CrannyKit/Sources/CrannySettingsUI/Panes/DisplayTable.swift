@@ -33,6 +33,22 @@ enum DisplayMode: Hashable, CaseIterable {
     }
 }
 
+/// "Chosen displays": the custom list as the shell uses it (`OverlayCoordinator.panelScreens` falls back to the main
+/// display when none of the chosen displays is connected). Pure, tested.
+enum ChosenDisplays {
+    /// The connected displays the list shows Cranny on.
+    static func connected(_ selection: DisplaySelection, connected: [DisplayKey]) -> [DisplayKey] {
+        guard case .custom(let keys) = selection else { return [] }
+        return connected.filter(keys.contains)
+    }
+
+    /// Whether `key` is the only connected display left in the list: its checkbox cannot be cleared, so the table never
+    /// claims Cranny is nowhere while the shell falls back to a display.
+    static func isLast(_ key: DisplayKey, in selection: DisplaySelection, connected: [DisplayKey]) -> Bool {
+        self.connected(selection, connected: connected) == [key]
+    }
+}
+
 /// One connected display.
 struct ConnectedDisplay: Identifiable {
     let key: DisplayKey
@@ -75,6 +91,14 @@ struct DisplaySection: View {
                 .settingRow(GeneralRows.displays, isDefault: settings.isDefault(CoreSettings.perDisplay)) {
                     settings.reset(CoreSettings.perDisplay)
                 }
+            if case .custom = selection, ChosenDisplays.connected(selection, connected: displays.map(\.key)).isEmpty,
+               let fallback = displays.first {
+                // The chosen displays were unplugged: say where Cranny is instead of showing no display checked.
+                Text("None of the chosen displays is connected, so Cranny uses \(fallback.name).", bundle: .module,
+                     comment: "Settings ▸ General ▸ Displays: footnote when no chosen display is connected; the argument is the display Cranny falls back to")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
         } header: {
             Text(verbatim: GeneralRows.displays.title)
         }
@@ -105,7 +129,8 @@ private struct DisplayGrid: View {
             }
             Divider().gridCellUnsizedAxes(.horizontal)
             ForEach(displays) { display in
-                DisplayRow(settings: settings, display: display, selection: selection, isCustom: isCustom)
+                DisplayRow(settings: settings, display: display, selection: selection, isCustom: isCustom,
+                           isLastChosen: ChosenDisplays.isLast(display.key, in: selection, connected: displays.map(\.key)))
             }
         }
         .padding(.vertical, 2)
@@ -125,12 +150,19 @@ private struct DisplayRow: View {
     let display: ConnectedDisplay
     let selection: DisplaySelection
     let isCustom: Bool
+    /// The only connected display in the list: it stays checked.
+    let isLastChosen: Bool
 
     var body: some View {
         GridRow {
             if isCustom {
                 Toggle(isOn: chosen) { Text(verbatim: display.name) }
                     .labelsHidden()
+                    .toggleStyle(.checkbox)                  // like the row's other columns; reads as checked and dimmed
+                    .disabled(isLastChosen)
+                    .help(isLastChosen ? Text("Cranny needs at least one display.", bundle: .module,
+                                              comment: "Settings ▸ General ▸ Displays: tooltip of the last checked display, which cannot be cleared")
+                                       : Text(verbatim: ""))
                     .accessibilityLabel(Text("Show on \(display.name)", bundle: .module,
                                              comment: "Settings ▸ General ▸ Displays: VoiceOver label of the custom-list checkbox; the argument is a display name"))
             }
@@ -160,7 +192,7 @@ private struct DisplayRow: View {
         Toggle(isOn: preference(path)) { Text(verbatim: title) }
             .labelsHidden()
             .toggleStyle(.checkbox)
-            .accessibilityLabel(Text(verbatim: "\(title), \(display.name)"))
+            .accessibilityLabel(Text(verbatim: SettingsFormat.pair(title, display.name)))
     }
 
     /// A binding into this display's preferences; writing the defaults removes the entry.
@@ -180,7 +212,7 @@ private struct DisplayRow: View {
         Binding(get: {
             if case .custom(let keys) = selection { keys.contains(display.key) } else { false }
         }, set: { isOn in
-            guard case .custom(var keys) = selection else { return }
+            guard case .custom(var keys) = selection, isOn || !isLastChosen else { return }
             keys.removeAll { $0 == display.key }
             if isOn { keys.append(display.key) }
             settings[CoreSettings.displaySelection] = .custom(keys)

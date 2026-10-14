@@ -1,6 +1,7 @@
 // CrannySettingsUI/Stage/StageSampleView.swift — the drawing of the stage's stand-in activities, per placement
 // (DESIGN.md §9.1–§9.3, §10): one datum per side in compact, a 52-pt row in peek, a glyph in the satellite.
-// Tokens only (`@Environment(\.cranny)`, `crannyFont`, `Space`, `Radius`); a still frame, no clocks.
+// Tokens (`@Environment(\.cranny)`, `crannyFont`, `Space`, `Radius`, `HitTarget`) and the named sizes of DESIGN.md §9.2–§9.3
+// below (Core has no tokens for them); a still frame, no clocks. In peek, Join shows its glyph and "Join" (§16).
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -58,7 +59,7 @@ struct StageSampleView: View {
     /// `[12] [visual 40, r 10] [12] [title / subtitle] [8] [≤ 3 controls] [12]` (DESIGN.md §9.3).
     private var peekRow: some View {
         HStack(spacing: Space.l) {
-            peekVisual.frame(width: 40, height: 40)
+            peekVisual.frame(width: SampleSize.peekVisual, height: SampleSize.peekVisual)
             VStack(alignment: .leading, spacing: 1) {
                 Text(verbatim: peekTitle).crannyFont(.headline).foregroundStyle(theme.palette.label).lineLimit(1)
                 Text(verbatim: peekSubtitle).crannyFont(.callout).foregroundStyle(theme.palette.secondaryLabel).lineLimit(1)
@@ -70,12 +71,12 @@ struct StageSampleView: View {
 
     @ViewBuilder private var peekVisual: some View {
         switch sample {
-        case .nowPlaying: SampleArtwork(size: 40, radius: Radius.artPeek)
-        case .timer: SampleRing(diameter: 34, lineWidth: StrokeWidth.ring)
+        case .nowPlaying: SampleArtwork(size: SampleSize.peekVisual, radius: Radius.artPeek)
+        case .timer: SampleRing(diameter: SampleSize.peekRing, lineWidth: StrokeWidth.ring)
         case .meeting:
             RoundedRectangle(cornerRadius: Radius.artPeek, style: .continuous).fill(theme.palette.control)
-                .overlay(Image(systemName: "calendar").font(.system(size: 17, weight: .medium)).foregroundStyle(theme.palette.info))
-        case .volume: Image(systemName: "speaker.wave.3.fill").font(.system(size: 17, weight: .medium))
+                .overlay(Image(systemName: "calendar").font(.system(size: SampleSize.peekGlyph, weight: .medium)).foregroundStyle(theme.palette.info))
+        case .volume: Image(systemName: "speaker.wave.3.fill").font(.system(size: SampleSize.peekGlyph, weight: .medium))
         }
     }
 
@@ -103,7 +104,7 @@ struct StageSampleView: View {
         case .nowPlaying:
             HStack(spacing: Space.xs) {
                 ForEach(["backward.fill", "pause.fill", "forward.fill"], id: \.self) { symbol in
-                    Image(systemName: symbol).font(.system(size: 13, weight: .semibold))
+                    Image(systemName: symbol).font(.system(size: SampleSize.transport, weight: .semibold))
                         .frame(width: HitTarget.preferred, height: HitTarget.preferred)
                 }
             }
@@ -111,16 +112,30 @@ struct StageSampleView: View {
         case .timer:
             HStack(spacing: Space.xs) {
                 ForEach(["pause.fill", "stop.fill"], id: \.self) { symbol in
-                    Image(systemName: symbol).font(.system(size: 12, weight: .semibold))
+                    Image(systemName: symbol).font(.system(size: SampleSize.filledControl, weight: .semibold))
                         .frame(width: HitTarget.preferred, height: HitTarget.preferred)
                         .background(Circle().fill(theme.palette.control))
                 }
             }
             .foregroundStyle(theme.palette.label)
-        case .meeting: SampleJoinCapsule(scale: 1.2)
+        case .meeting: SampleJoinButton()
         case .volume: EmptyView()
         }
     }
+}
+
+/// Sizes of DESIGN.md §9.2–§9.3 that have no Core token (the stand-ins go away once modules provide `makeSample`).
+private enum SampleSize {
+    /// The peek row's visual: 40 pt (artwork, ring box, event glyph well).
+    static let peekVisual: CGFloat = 2 * Space.xxl
+    /// The timer ring inside the 40-pt visual.
+    static let peekRing: CGFloat = 34
+    /// A glyph centred in the 40-pt visual.
+    static let peekGlyph: CGFloat = 17
+    /// Transport glyphs: 48 % of the 28-pt button (DESIGN.md §14.1).
+    static let transport: CGFloat = (HitTarget.preferred * 0.48).rounded()
+    /// A glyph on a filled 28-pt control.
+    static let filledControl: CGFloat = 12
 }
 
 /// A sample "album cover": a brand gradient with a note, never a real artwork.
@@ -160,7 +175,25 @@ private struct SampleVisualizer: View {
     }
 }
 
-/// Join: a `success` capsule with a black `person.2.wave.2.fill` (DESIGN.md §9.2, decision 15).
+/// Join in peek: the prominent `success` chip with its glyph AND "Join" (DESIGN.md §9.3, §16 Differentiate Without
+/// Color, decision 15), drawn by Core's chip style. A picture on the stage: it does not take clicks.
+private struct SampleJoinButton: View {
+    @Environment(\.cranny) private var theme
+    var body: some View {
+        Button {} label: {
+            Label {
+                Text("Join", bundle: .module, comment: "Settings preview stage: the sample meeting's Join button in peek (glossary: Подключиться)")
+            } icon: {
+                Image(systemName: "person.2.wave.2.fill")
+            }
+            .labelStyle(.titleAndIcon)
+        }
+        .buttonStyle(CrannyChipButtonStyle(tint: theme.palette.success, prominent: true))
+        .allowsHitTesting(false)
+    }
+}
+
+/// Join in compact: a 34 × 20 `success` capsule with a black `person.2.wave.2.fill` (DESIGN.md §9.2, decision 15).
 private struct SampleJoinCapsule: View {
     @Environment(\.cranny) private var theme
     let scale: CGFloat

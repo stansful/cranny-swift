@@ -91,8 +91,20 @@ enum AppearanceRows {
                         title: String(localized: "Handle", bundle: .module, comment: "Settings ▸ Appearance: picker Visible / Hidden until hover (no-notch displays)"))
     }
 
+    /// The rows the pane shows on this system: Glass island exists only on macOS 26 and later, so search never
+    /// offers a row that is not there.
     static var all: [SettingsRowInfo] {
-        [accent, textSize, motion, typingEffect, ambience, effect, albumGlow, underglow, progressRim, translucent, glassIsland,
-         buttons, widgets, density, panelPadding, notchFitWidth, notchFitRadius, noNotchStyle, handle]
+        rows(includingGlassIsland: hasGlassIsland)
+    }
+
+    /// Whether this system has Liquid Glass (the Glass island row).
+    static var hasGlassIsland: Bool {
+        if #available(macOS 26.0, *) { true } else { false }
+    }
+
+    static func rows(includingGlassIsland: Bool) -> [SettingsRowInfo] {
+        [accent, textSize, motion, typingEffect, ambience, effect, albumGlow, underglow, progressRim, translucent]
+            + (includingGlassIsland ? [glassIsland] : [])
+            + [buttons, widgets, density, panelPadding, notchFitWidth, notchFitRadius, noNotchStyle, handle]
     }
 }

@@ -89,7 +89,7 @@ private struct SurfaceSection: View {
             ToggleRow(info: AppearanceRows.translucent, settings: settings, key: CoreSettings.translucentBackground,
                       footnote: String(localized: "The open panel lets the desktop show through below the menu bar. Off with Reduce Transparency.",
                                        bundle: .module, comment: "Settings ▸ Appearance: footnote of Translucent background"))
-            if #available(macOS 26.0, *) {
+            if AppearanceRows.hasGlassIsland {
                 ToggleRow(info: AppearanceRows.glassIsland, settings: settings, key: CoreSettings.glassIsland,
                           footnote: String(localized: "Liquid Glass for the floating island on displays without a notch.", bundle: .module,
                                            comment: "Settings ▸ Appearance: footnote of Glass island"))

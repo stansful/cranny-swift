@@ -80,9 +80,10 @@ struct NotchFitControls: View {
                          onEditingChanged: { notch.setCalibrationOverlay($0) })
     }
 
-    /// The `.alignment` detent at 0 (DESIGN.md §14.2): landing on 0 or passing through it.
+    /// The `.alignment` detent at 0 (DESIGN.md §14.2): landing on 0 or passing through it. Leaving 0 is silent in
+    /// both directions, so dragging around 0 plays one detent per arrival, the same on each side.
     static func crossesZero(from old: Double, to new: Double) -> Bool {
-        old != new && (new == 0 || (old < 0) != (new < 0))
+        old != new && (new == 0 || (old < 0 && new > 0) || (old > 0 && new < 0))
     }
 }
 

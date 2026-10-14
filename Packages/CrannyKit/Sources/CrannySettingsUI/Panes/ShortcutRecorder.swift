@@ -3,7 +3,8 @@
 // and inline conflicts — a failed registration (`AppControl.shortcutState == .conflict`), another Cranny shortcut
 // with the same keys, or an enabled macOS shortcut (best effort, `SystemShortcuts`). Bindings go through
 // `AppControl.setShortcut`, which stores them and re-registers at once; "Reset to Default" removes the override.
-// Recording uses a local key monitor of this window only: no Accessibility permission.
+// Recording uses a local key monitor of this window only: no Accessibility permission. At most one recorder listens at a
+// time (`ShortcutRecording`): starting one stops the others.
 import AppKit
 import CrannyCore
 import Foundation
@@ -62,6 +63,7 @@ struct ShortcutRecorder: View {
     @State private var hint: String?
     @State private var monitor: (any NSObjectProtocol)?
     @State private var keyMonitor: Any?
+    @State private var recordingID = UUID()
 
     var body: some View {
         HStack(spacing: 6) {
@@ -105,6 +107,7 @@ struct ShortcutRecorder: View {
     static var offTitle: String { String(localized: "Off", bundle: .module, comment: "Settings: option that turns something off (a timeout, a display)") }
 
     private func start() {
+        ShortcutRecording.shared.begin(recordingID) { stop() }
         hint = nil
         isRecording = true
         // A local monitor sees key presses sent to this app's windows only (no Accessibility permission).
@@ -134,12 +137,37 @@ struct ShortcutRecorder: View {
     }
 
     private func stop() {
+        ShortcutRecording.shared.end(recordingID)
         if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
         if let monitor { NotificationCenter.default.removeObserver(monitor) }
         keyMonitor = nil
         monitor = nil
         isRecording = false
         hint = nil
+    }
+}
+
+/// The recorder that is listening, if any. Each recorder installs its own key monitor, so two listening at once would
+/// race for the next key press; starting one stops the one before.
+@MainActor final class ShortcutRecording {
+    static let shared = ShortcutRecording()
+    private var active: (id: UUID, stop: @MainActor () -> Void)?
+
+    /// The listening recorder's id.
+    var activeID: UUID? { active?.id }
+
+    /// `id` starts listening; another listening recorder is stopped first.
+    func begin(_ id: UUID, stop: @escaping @MainActor () -> Void) {
+        if let previous = active, previous.id != id {
+            active = nil
+            previous.stop()
+        }
+        active = (id, stop)
+    }
+
+    /// `id` stopped listening (a no-op if another recorder took over).
+    func end(_ id: UUID) {
+        if active?.id == id { active = nil }
     }
 }
 
