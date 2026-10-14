@@ -57,6 +57,7 @@ struct EditorConfiguration: Equatable {
         textView.isAutomaticTextCompletionEnabled = false
         textView.isAutomaticLinkDetectionEnabled = false
         textView.isGrammarCheckingEnabled = false
+        textView.setAccessibilityPlaceholderValue(NotesStrings.placeholder)    // VoiceOver: "Start typing" in an empty note
         textView.delegate = self
         textView.textStorage?.delegate = self
         textView.onCommand = { [weak self] in self?.perform($0) ?? false }
