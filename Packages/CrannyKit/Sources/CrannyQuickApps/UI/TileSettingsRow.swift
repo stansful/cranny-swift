@@ -79,7 +79,14 @@ struct TileSettingsRow: View {
         }
     }
 
+    /// The row's context menu, also its VoiceOver actions (the row reads as one element, so every button inside it
+    /// — Customise…, Remove — has an action here too).
     @ViewBuilder private var menu: some View {
+        if case .shortcut = row {
+            Button { isCustomizing = true } label: {
+                Text("Customise…", bundle: .module, comment: "Settings ▸ Shortcuts: opens a shortcut's symbol and colour")
+            }
+        }
         Button { model.move(row.id, by: -1) } label: { Text("Move Up", bundle: .module, comment: "Settings ▸ Shortcuts: reorder a tile") }
             .disabled(isFirst)
         Button { model.move(row.id, by: 1) } label: { Text("Move Down", bundle: .module, comment: "Settings ▸ Shortcuts: reorder a tile") }
