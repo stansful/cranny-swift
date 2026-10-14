@@ -6,6 +6,8 @@
 // reach activities as physical finger directions; the activity applies Gestures ▸ Invert itself.
 // Open: a scroll zone under the pointer takes the event; else a vertical swipe up over the header row closes;
 // else SwiftUI gets it (`ScrollView`s in widgets). Phase-less wheel events never form gestures.
+// The swipe settings (sensitivity and the three swipe toggles) are kept current by observation, not read from the
+// settings store with every scroll sample.
 import AppKit
 import CrannyCore
 import CrannyNotchUI
@@ -14,14 +16,43 @@ import Foundation
 @MainActor final class GestureRouter {
     private let scene: NotchSceneModel
     private let viewModel: NotchViewModel
-    private let registry: ModuleRegistry
     private var tracker = SwipeTracker(axis: .any)
     private var target: SwipeTarget = .shape
     private var headerTracker = SwipeTracker(axis: .vertical)
     private var overHeader = false
+    /// Gestures ▸ sensitivity and swipe toggles as they are now (`settingsToken` follows every change).
+    private var swipeSettings: SwipeSettings
+    /// Observes the swipe settings for as long as the router lives.
+    private var settingsToken: ObservationToken?
 
     init(scene: NotchSceneModel, viewModel: NotchViewModel, registry: ModuleRegistry) {
-        self.scene = scene; self.viewModel = viewModel; self.registry = registry
+        self.scene = scene; self.viewModel = viewModel
+        let settings = registry.services.settings
+        swipeSettings = SwipeSettings(settings)
+        tracker.sensitivity = swipeSettings.sensitivity
+        headerTracker.sensitivity = swipeSettings.sensitivity
+        settingsToken = observe({ SwipeSettings(settings) }) { [weak self] in self?.settingsChanged($0) }
+    }
+
+    /// The settings a swipe reads.
+    private struct SwipeSettings: Equatable {
+        var sensitivity: CGFloat
+        var trackSwipe: Bool
+        var swipeOpenClose: Bool
+        var swipeToDismiss: Bool
+
+        init(_ settings: SettingsStore) {
+            sensitivity = CGFloat(settings[CoreSettings.gestureSensitivity])
+            trackSwipe = settings[CoreSettings.trackSwipe]
+            swipeOpenClose = settings[CoreSettings.swipeOpenClose]
+            swipeToDismiss = settings[CoreSettings.swipeToDismiss]
+        }
+    }
+
+    private func settingsChanged(_ settings: SwipeSettings) {
+        swipeSettings = settings
+        tracker.sensitivity = settings.sensitivity
+        headerTracker.sensitivity = settings.sensitivity
     }
 
     /// `NotchPanel.scrollInterceptor`: true = consumed.
@@ -61,7 +92,6 @@ import Foundation
         // Directions stay physical finger motion: Gestures ▸ Invert is applied once, by the activity that changes
         // the track (`TrackSwipe`), exactly as the Media widget's own scroll zones do. Inverting here as well would
         // cancel it out over compact and peek.
-        tracker.sensitivity = CGFloat(registry.services.settings[CoreSettings.gestureSensitivity])
         switch tracker.handle(sample) {
         case .tracking(let axis, let translation)?:
             viewModel.setGestureTranslation(rubberBand(axis, translation))
@@ -79,16 +109,16 @@ import Foundation
 
     /// Live feedback only for gestures that can commit here (DESIGN.md §4.4 "Live feedback").
     private func rubberBand(_ axis: SwipeAxis, _ translation: CGFloat) -> CGSize {
-        let settings = registry.services.settings
+        let settings = swipeSettings
         let lineup = viewModel.lineup
         switch axis {
         case .horizontal:
-            guard settings[CoreSettings.trackSwipe], target != .satellite, lineup.primary != nil || !scene.peekRows.isEmpty
+            guard settings.trackSwipe, target != .satellite, lineup.primary != nil || !scene.peekRows.isEmpty
             else { return .zero }
             return CGSize(width: CrannyMotion.rubberBand(translation, limit: GestureSpec.horizontalTravel), height: 0)
         case .vertical:
             let down = translation > 0
-            guard down ? settings[CoreSettings.swipeOpenClose] : settings[CoreSettings.swipeToDismiss] || lineup.primary == nil
+            guard down ? settings.swipeOpenClose : settings.swipeToDismiss || lineup.primary == nil
             else { return .zero }
             return CGSize(width: 0, height: CrannyMotion.rubberBand(translation, limit: GestureSpec.verticalTravel))
         case .any:
@@ -114,8 +144,7 @@ import Foundation
             let top = scene.geometry.topInset
             overHeader = point.y >= top && point.y <= top + scene.layout.headerHeight
         }
-        guard overHeader, registry.services.settings[CoreSettings.swipeOpenClose] else { return false }
-        headerTracker.sensitivity = CGFloat(registry.services.settings[CoreSettings.gestureSensitivity])
+        guard overHeader, swipeSettings.swipeOpenClose else { return false }
         let update = headerTracker.handle(sample)
         if sample.phase.contains(.ended) || sample.phase.contains(.cancelled) { overHeader = false }
         switch update {

@@ -3,7 +3,9 @@
 // may be short by the notch band) AND (its owner is frontmost OR the Window Server's layer-24 menu-bar window is gone
 // from that display). Window bounds, layers and owner PIDs need no Screen Recording permission (only titles do).
 // `evaluate` is pure; `snapshot()` is the one window-server query, run 0.6 s after space/app changes and lazily
-// before a hover-open, never on a timer.
+// before a hover-open, never on a timer. It keeps only what the heuristic reads: windows of layer 0 and of the
+// menu-bar layer, each read from the window server's own dictionary (no Swift copy of every window), the owner's name
+// only for the menu-bar layer.
 import AppKit
 import CoreGraphics
 import Foundation
@@ -32,7 +34,7 @@ nonisolated enum FullScreenDetector {
     }
 
     /// The menu-bar window layer (`kCGMainMenuWindowLevelKey`, 24 on macOS 27, R1 §3.2).
-    static var menuBarLayer: Int { Int(CGWindowLevelForKey(.mainMenuWindow)) }
+    static let menuBarLayer = Int(CGWindowLevelForKey(.mainMenuWindow))
 
     /// Pure heuristic over a window list. `ignoredPIDs`: Cranny itself and the Dock.
     static func evaluate(windows: [Window], displays: [Display], frontmostPID: pid_t?, frontmostIsExcluded: Bool,
@@ -75,19 +77,33 @@ nonisolated enum FullScreenDetector {
 
     // MARK: Window server
 
-    /// On-screen windows, desktop elements excluded (one call, ≈ 1–3 ms; no permission needed).
+    /// On-screen windows of layer 0 and of the menu-bar layer, desktop elements excluded (one call, ≈ 1–3 ms; no
+    /// permission needed). Status items, menus, the Dock and the rest are skipped by their layer before anything
+    /// else of them is read.
     static func snapshot() -> [Window] {
         let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
-        guard let list = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else { return [] }
-        return list.compactMap(window(from:))
+        guard let list = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as NSArray? else { return [] }
+        var windows: [Window] = []
+        for case let info as NSDictionary in list {
+            guard let layer = info[kCGWindowLayer as String] as? Int, layer == 0 || layer == menuBarLayer else { continue }
+            if let window = window(from: info, layer: layer) { windows.append(window) }
+        }
+        return windows
     }
 
+    /// What `snapshot()` keeps of one window-server entry, whatever its layer.
     static func window(from info: [String: Any]) -> Window? {
-        guard let layer = info[kCGWindowLayer as String] as? Int,
-              let pid = info[kCGWindowOwnerPID as String] as? Int,
+        guard let layer = info[kCGWindowLayer as String] as? Int else { return nil }
+        return window(from: info as NSDictionary, layer: layer)
+    }
+
+    /// One window of `layer`: the owner's name only where `isMenuBar` reads it (empty for every other layer).
+    private static func window(from info: NSDictionary, layer: Int) -> Window? {
+        guard let pid = info[kCGWindowOwnerPID as String] as? Int,
               let boundsDictionary = info[kCGWindowBounds as String] as? NSDictionary,
               let bounds = CGRect(dictionaryRepresentation: boundsDictionary as CFDictionary) else { return nil }
-        return Window(layer: layer, bounds: bounds, ownerPID: pid_t(pid), ownerName: info[kCGWindowOwnerName as String] as? String ?? "")
+        let ownerName = layer == menuBarLayer ? info[kCGWindowOwnerName as String] as? String ?? "" : ""
+        return Window(layer: layer, bounds: bounds, ownerPID: pid_t(pid), ownerName: ownerName)
     }
 
     /// Height of the Window Server's menu-bar window on a display (CG bounds), for auto-hidden menu bars (§5.4).
