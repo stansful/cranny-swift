@@ -24,7 +24,7 @@ private let log = Log.logger(.hud)
     @ObservationIgnored let activity: HUDActivity
     @ObservationIgnored private let services: CrannyServices
     @ObservationIgnored private let hardware: HUDHardware
-    @ObservationIgnored private let accessibilityGranted: @MainActor () -> Bool
+    @ObservationIgnored private let accessibility: HUDAccessibility
     @ObservationIgnored private let feedback: FeedbackSound
     @ObservationIgnored private let configBox = HUDTapConfigBox()
     @ObservationIgnored private lazy var handler = MediaKeyHandler(
@@ -44,15 +44,13 @@ private let log = Log.logger(.hud)
     /// The grant as last applied (nil before `start()`): a false → true transition turns the HUD on.
     @ObservationIgnored private var lastAccessibilityGranted: Bool?
 
-    /// `accessibilityGranted` defaults to the Core permissions center (tests inject their own).
+    /// `accessibility` defaults to the Core permissions center (tests inject their own).
     init(services: CrannyServices, activity: HUDActivity, hardware: HUDHardware,
-         accessibilityGranted: (@MainActor () -> Bool)? = nil, feedback: FeedbackSound = FeedbackSound()) {
+         accessibility: HUDAccessibility? = nil, feedback: FeedbackSound = FeedbackSound()) {
         self.services = services
         self.activity = activity
         self.hardware = hardware
-        self.accessibilityGranted = accessibilityGranted ?? { [permissions = services.permissions] in
-            permissions.status(.accessibility) == .granted
-        }
+        self.accessibility = accessibility ?? .live(services.permissions)
         self.feedback = feedback
         activity.adjust = { [weak self] kind, action in
             guard let handler = self?.handler else { return }
@@ -67,11 +65,11 @@ private let log = Log.logger(.hud)
             if let inputs { self?.apply(inputs) }
         })
         apply(configInputs())
-        // Accessibility changes do not notify: when the grant is the one missing piece, re-check it each time the
-        // user comes back to Cranny (e.g. from System Settings to Settings ▸ HUD). No polling.
+        // Accessibility changes do not notify: re-check the grant each time the user comes back to Cranny (e.g.
+        // from System Settings to Settings ▸ HUD), whatever the toggle says. One call per activation; no polling.
         activationObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.refreshAccessibilityIfNeeded() }     // queue: .main
+            MainActor.assumeIsolated { self?.checkAccessibility() }     // queue: .main
         }
     }
 
@@ -98,7 +96,7 @@ private let log = Log.logger(.hud)
             brightness: settings[HUDSettings.brightness],
             keyboardBacklight: settings[HUDSettings.keyboardBacklight],
             activityEnabled: settings[CoreSettings.activityPreferences][.hud]?.isEnabled ?? HUDActivity.kind.isEnabledByDefault,
-            accessibilityGranted: accessibilityGranted(),
+            accessibilityGranted: accessibility.isGranted(),
             screenLocked: environment.isScreenLocked,
             displaysAsleep: environment.areDisplaysAsleep,
             fullScreenInFront: environment.isFullScreenInFront,
@@ -135,7 +133,7 @@ private let log = Log.logger(.hud)
             tapFailed = true
             // The grant was revoked since it was last read: refresh, which turns the config off.
             log.error("event tap could not be created although Accessibility was reported granted")
-            services.permissions.refresh()
+            accessibility.refresh()
         }
     }
 
@@ -158,9 +156,13 @@ private let log = Log.logger(.hud)
         volumeObserver = nil
     }
 
-    private func refreshAccessibilityIfNeeded() {
-        guard services.settings[HUDSettings.replaceSystemHUD], !accessibilityGranted() else { return }
-        services.permissions.refresh()
+    /// The user came back to Cranny, or macOS disabled the tap: if macOS's answer differs from the cached grant —
+    /// granted in System Settings, or revoked while the tap ran — refresh it. The config follows by observation
+    /// (a revoked grant removes the tap, so Settings ▸ HUD stops saying "Cranny handles the keys now").
+    func checkAccessibility() {
+        guard accessibility.isStale else { return }
+        log.info("Accessibility changed outside Cranny; refreshing")
+        accessibility.refresh()
     }
 
     // MARK: Signals from the tap (main actor)
@@ -179,6 +181,8 @@ private let log = Log.logger(.hud)
         case .volumeKeyReleased(let shiftHeld):
             feedback.keyReleased(shiftHeld: shiftHeld, demoMode: services.environment.isDemoMode,
                                  muted: state.session?.display.isMuted ?? false)
+        case .tapDisabled:
+            checkAccessibility()                 // macOS may have disabled it because the grant was revoked
         }
     }
 

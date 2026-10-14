@@ -107,6 +107,7 @@ nonisolated final class MediaKeyInterceptor: KeyInterceptor {
         guard let port = loop.withLockUnchecked({ $0.port }) else { return }
         CGEvent.tapEnable(tap: port, enable: true)
         log.info("event tap re-enabled after macOS disabled it")
+        handler.tapWasDisabled()                  // the main actor re-checks the grant (revoked → tap removed)
     }
 
     /// Runs on the tap thread for every system-defined event. Keep it fast.

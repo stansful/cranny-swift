@@ -52,6 +52,9 @@ nonisolated final class MediaKeyHandler: Sendable {
         if let update = apply(kind, action, fine: false, isRepeat: false) { sink(.changed(update)) }
     }
 
+    /// The tap saw `tapDisabledBy…` (and re-enabled itself): the main actor re-checks the Accessibility grant.
+    func tapWasDisabled() { sink(.tapDisabled) }
+
     // MARK: Key-up
 
     private func release(_ event: MediaKeyEvent) -> Bool {

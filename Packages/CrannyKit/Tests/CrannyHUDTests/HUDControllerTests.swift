@@ -6,9 +6,21 @@ import Observation
 import Testing
 @testable import CrannyHUD
 
-/// An accessibility grant the test can flip (observable, like `PermissionsCenter.statuses`).
+/// An accessibility grant the test can flip. `granted` is the cached status (observable, like
+/// `PermissionsCenter.statuses`); `trusted` is what macOS says right now (`AXIsProcessTrusted`), which only
+/// reaches the cache through `refresh`.
 @MainActor @Observable final class FakeGrant {
     var granted = true
+    var trusted = true
+    private(set) var refreshes = 0
+
+    /// Granted (or revoked) in System Settings: macOS knows, the cache does not yet.
+    func changeInSystemSettings(_ trusted: Bool) { self.trusted = trusted }
+
+    var accessibility: HUDAccessibility {
+        HUDAccessibility(isGranted: { [self] in granted }, isTrustedNow: { [self] in trusted },
+                         refresh: { [self] in refreshes += 1; granted = trusted })
+    }
 }
 
 @MainActor @Suite struct HUDControllerTests {
@@ -23,7 +35,7 @@ import Testing
         services = CrannyServices.preview(environment: environment)
         activity = HUDActivity(settings: services.settings)
         controller = HUDController(services: services, activity: activity, hardware: fake.hardware,
-                                   accessibilityGranted: { [grant] in grant.granted },
+                                   accessibility: grant.accessibility,
                                    feedback: FeedbackSound(isEnabledInSystem: { false }))
     }
 
@@ -72,6 +84,52 @@ import Testing
         #expect(await eventually { settings[HUDSettings.replaceSystemHUD] && fake.taps.count == 1 })
     }
 
+    @Test func comingBackPicksUpAGrantFromSystemSettings() async {
+        grant.granted = false
+        grant.trusted = false
+        settings[HUDSettings.replaceSystemHUD] = true
+        controller.start()
+        defer { controller.stop() }
+        controller.checkAccessibility()                              // nothing changed: no refresh
+        #expect(grant.refreshes == 0)
+        grant.changeInSystemSettings(true)
+        controller.checkAccessibility()                              // Cranny became active again
+        #expect(grant.refreshes == 1)
+        #expect(await eventually { fake.taps.count == 1 && controller.isTapRunning })
+    }
+
+    @Test func comingBackWithTheToggleOffStillRefreshes() {
+        grant.granted = false
+        grant.trusted = false
+        controller.start()
+        defer { controller.stop() }
+        grant.changeInSystemSettings(true)                           // "Open System Settings" with the toggle off
+        controller.checkAccessibility()
+        #expect(grant.granted)                                       // the pane's pill follows
+    }
+
+    @Test func aRevokedGrantRemovesTheTapOnReturn() async throws {
+        settings[HUDSettings.replaceSystemHUD] = true
+        controller.start()
+        defer { controller.stop() }
+        let tap = try #require(fake.taps.first)
+        #expect(controller.isTapRunning)
+        grant.changeInSystemSettings(false)                          // revoked while the HUD runs
+        controller.checkAccessibility()
+        #expect(await eventually { tap.stopCount == 1 && !controller.isTapRunning })
+    }
+
+    @Test func aDisabledTapRechecksTheGrant() async throws {
+        settings[HUDSettings.replaceSystemHUD] = true
+        controller.start()
+        defer { controller.stop() }
+        let tap = try #require(fake.taps.first)
+        grant.changeInSystemSettings(false)
+        tap.handler.tapWasDisabled()                                 // what the tap thread reports
+        #expect(await eventually { tap.stopCount == 1 && !controller.isTapRunning })
+        #expect(grant.refreshes == 1)
+    }
+
     @Test func aGrantFromAnEarlierSessionChangesNothing() async throws {
         controller.start()                                          // granted at launch, HUD off by choice
         defer { controller.stop() }
@@ -101,7 +159,7 @@ import Testing
     @Test func aFailedTapIsNotKept() {
         fake.tapStartSucceeds = false
         let controller = HUDController(services: services, activity: activity, hardware: fake.hardware,
-                                       accessibilityGranted: { true }, feedback: FeedbackSound(isEnabledInSystem: { false }))
+                                       accessibility: grant.accessibility, feedback: FeedbackSound(isEnabledInSystem: { false }))
         settings[HUDSettings.replaceSystemHUD] = true
         controller.start()
         defer { controller.stop() }

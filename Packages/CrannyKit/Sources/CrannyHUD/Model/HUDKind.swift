@@ -52,4 +52,7 @@ nonisolated enum HUDSignal: Sendable, Equatable {
     case changed(HUDUpdate)
     /// A consumed volume up/down key went up: macOS plays its feedback sound on release, so Cranny does.
     case volumeKeyReleased(shiftHeld: Bool)
+    /// macOS disabled the key tap (timeout or user input) and the tap re-enabled itself. The main actor re-checks
+    /// the Accessibility grant, which may have been revoked.
+    case tapDisabled
 }

@@ -190,6 +190,11 @@ import Testing
         #expect(recorder.signals.last == .volumeKeyReleased(shiftHeld: true))
     }
 
+    @Test func aDisabledTapIsReported() {
+        handler.tapWasDisabled()
+        #expect(recorder.signals == [.tapDisabled])
+    }
+
     @Test func voiceOverAdjustmentsApplyWithoutKeys() {
         let handler = handler
         handler.adjust(.volume, .up)

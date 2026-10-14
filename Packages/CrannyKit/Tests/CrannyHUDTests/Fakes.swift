@@ -132,11 +132,12 @@ nonisolated final class FakeVolumeObserver: VolumeObserving {
     }
 }
 
-/// Polls `condition` on the main actor until it holds or `timeout` passes (signals hop through `Task`s).
-@MainActor func eventually(timeout: Duration = .seconds(2), _ condition: @MainActor () -> Bool) async -> Bool {
-    let clock = ContinuousClock()
-    let end = clock.now.advanced(by: timeout)
-    while clock.now < end {
+/// Polls `condition` on the main actor until it holds, for at most `timeout` worth of 10-ms polls. Polls are
+/// counted, not timed: a render test can hold the main actor for seconds, and the hops a condition waits for
+/// (signals and observation callbacks are `Task`s on the main actor) only run between polls.
+@MainActor func eventually(timeout: Duration = .seconds(5), _ condition: @MainActor () -> Bool) async -> Bool {
+    let polls = Int(timeout / .milliseconds(10))
+    for _ in 0..<polls {
         if condition() { return true }
         try? await Task.sleep(for: .milliseconds(10))
     }
