@@ -89,6 +89,11 @@ extension NookShortcut.ModifierSet {
 /// Invisible buttons for the whole keyboard map (`NookKeyMap.all`: ⌘K, ⌘P, ⌘E, ⌘,, ⌘1–⌘5, ⌃Tab, ⌃⇧Tab) and
 /// Esc. They draw nothing and take no space; `.keyboardShortcut` makes them key equivalents of the panel while
 /// it is key. They live as long as the open panel, whatever the header shows.
+///
+/// When two buttons bind the same key equivalent, SwiftUI gives it to the first one in the view tree, so the open
+/// panel places these AFTER its content (`NookView`: an overlay): what a widget binds itself wins, and these are
+/// the fallback. Notes' inline delete confirmation binds Cancel to Esc; Esc must cancel the deletion, not step
+/// the panel back or close it under the confirmation (KeyboardRouter offers Esc as a key equivalent first).
 struct NookHiddenShortcuts: View {
     let perform: @MainActor (NookCommand) -> Void
 

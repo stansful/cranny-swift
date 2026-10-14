@@ -159,6 +159,43 @@ extension HostedTests {
             #expect(settings == 1, "⌘,")
             #expect(pages == ["page.focus"], "⌘2")
         }
+
+        /// Esc during a widget's own confirmation (Notes' inline delete: Cancel on Esc, Delete on Return) cancels it
+        /// and leaves the panel as it is; the panel's chain (focus → grid, grid → close) is only the fallback. Esc
+        /// is offered the way KeyboardRouter offers it: as a key equivalent of the hosting view.
+        @Test(arguments: ["grid", "focus"]) func escapeGoesToTheWidgetsOwnCancelFirst(state: String) async throws {
+            let focus = state == "focus"
+            let (model, registry) = previewScene(.open, mode: focus ? .focus(.notes) : .grid)
+            let log = KeyLog()
+            registry.add(widget: ConfirmingWidget(focus ? .notes : .media, log: log))
+            var actions = NotchUIActions()
+            actions.setMode = { log.hits.append("panel.setMode(\($0))") }
+            actions.close = { log.hits.append("panel.close") }
+            let (hosted, _) = hostedCanvas(model, registry, actions: actions)
+            defer { hosted.tearDown() }
+            hosted.settle(0.3)
+            #expect(hosted.keyEquivalent("\u{1b}", keyCode: 53, modifiers: []))
+            try await Task.sleep(for: .milliseconds(100))
+            #expect(log.hits == ["card.cancel"], "Esc went to \(log.hits)")
+            log.hits = []
+            hosted.keyEquivalent("\r", keyCode: 36, modifiers: [])                    // the card is live: Return deletes
+            #expect(log.hits == ["card.delete"], "Return went to \(log.hits)")
+        }
+
+        @Test(arguments: ["grid", "focus"]) func escapeRunsThePanelChainWhenNoWidgetTakesIt(state: String) async throws {
+            let focus = state == "focus"
+            let (model, registry) = previewScene(.open, mode: focus ? .focus(.notes) : .grid)
+            let log = KeyLog()
+            var actions = NotchUIActions()
+            actions.setMode = { log.hits.append("panel.setMode(\($0))") }
+            actions.close = { log.hits.append("panel.close") }
+            let (hosted, _) = hostedCanvas(model, registry, actions: actions)
+            defer { hosted.tearDown() }
+            hosted.settle(0.3)
+            #expect(hosted.keyEquivalent("\u{1b}", keyCode: 53, modifiers: []))
+            try await Task.sleep(for: .milliseconds(100))
+            #expect(log.hits == [focus ? "panel.setMode(\(NookMode.grid))" : "panel.close"], "Esc went to \(log.hits)")
+        }
     }
 
     @MainActor @Suite("Morph frames (hosted, off-screen)") struct MorphFrameTests {
