@@ -2,6 +2,8 @@
 //
 // In-memory only (called on every keystroke): the tiles, plus — once the user types — every shortcut of the last
 // Shortcuts list. The list is refreshed when the palette opens (`NotchEvent.paletteOpened`), never here.
+// Demo mode hides shortcut names as the tiles do: tile shortcuts read "Run Shortcut" (with their ⌥ key), and the
+// rest of Shortcuts.app is not listed.
 import CrannyCore
 import Foundation
 
@@ -18,8 +20,8 @@ final class QuickAppsCommands: PaletteCommandProvider {
                 scored.append((score, index, command))
             }
         }
-        // The rest of Shortcuts.app, only for a typed query (an empty palette lists the tiles).
-        if !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        // The rest of Shortcuts.app, only for a typed query (an empty palette lists the tiles), never in Demo mode.
+        if !model.environment.isDemoMode, !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             let onTiles = Set(model.shortcutEntries.map(\.id))
             for (offset, info) in model.shortcutsCatalog.shortcuts.enumerated() where !onTiles.contains(info.id) {
                 let entry = ShortcutEntry(id: info.id, name: info.name)
@@ -44,10 +46,11 @@ final class QuickAppsCommands: PaletteCommandProvider {
     }
 
     private func runCommand(_ entry: ShortcutEntry, shortcut: KeyCombo?) -> PaletteCommand {
-        PaletteCommand(id: CommandID("quickapps.run.\(entry.id)"),
-                       title: String(localized: "Run \(entry.displayName)", bundle: .module, comment: "Command palette: run a Shortcuts.app shortcut (shortcut name)"),
-                       kind: String(localized: "Shortcut", bundle: .module, comment: "Quick Apps: a Shortcuts.app shortcut (⌘K result kind, Settings row subtitle, neutral tile name in Demo mode)"),
-                       symbol: entry.symbol ?? ShortcutAppearance.fallbackSymbol,
+        let redacted = model.environment.isDemoMode
+        return PaletteCommand(id: CommandID("quickapps.run.\(entry.id)"),
+                       title: String(localized: "Run \(model.publicName(of: entry))", bundle: .module, comment: "Command palette: run a Shortcuts.app shortcut (shortcut name)"),
+                       kind: QuickAppsModel.neutralShortcutName,
+                       symbol: redacted ? ShortcutAppearance.fallbackSymbol : entry.symbol ?? ShortcutAppearance.fallbackSymbol,
                        shortcut: shortcut) { [model] in model.toggleRun(entry) }
     }
 }

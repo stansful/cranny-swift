@@ -68,3 +68,20 @@ import Testing
     #expect(await waitUntil { h.launcher.opened.count == 1 && fake.calls == [["run", morning.id]] })
     h.model.stop()
 }
+
+@Test func demoModeHidesShortcutNamesInThePalette() async {
+    let morning = ShortcutEntry(id: "0D7A5B52-6A0E-4C38-9C1F-3E2F1B6D9A01", name: "Morning routine", symbol: "sun.max.fill")
+    let h = ModelHarness(installed: ["com.apple.Safari"], apps: ["com.apple.Safari"], shortcuts: [morning],
+                         cli: FakeCLI(listing: shortcutListFixture))
+    await h.model.start()
+    await h.model.shortcutsCatalog.refresh()
+    h.environment.isDemoMode = true
+    let commands = QuickAppsCommands(model: h.model)
+    let all = commands.commands(matching: "")
+    #expect(all.map(\.title).last?.contains("Morning") == false)          // "Run Shortcut", still with its ⌥ key
+    #expect(all.last?.shortcut?.display == "⌥2")
+    #expect(all.last?.symbol == ShortcutAppearance.fallbackSymbol)
+    #expect(commands.commands(matching: "отч").isEmpty)                   // the rest of Shortcuts.app is not listed
+    #expect(commands.commands(matching: "morn").count == 1)               // the tile still answers its own name
+    h.model.stop()
+}
