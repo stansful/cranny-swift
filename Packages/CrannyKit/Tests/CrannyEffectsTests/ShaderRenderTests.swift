@@ -166,3 +166,25 @@ func ambientFrameFitsTheGPUBudget(_ effect: AmbientEffect) throws {
     #expect(AmbientRenderer.renderScale(for: .tide, displayScale: 2) == 2)
     #expect(AmbientRenderer.renderScale(for: .aurora, displayScale: 1) == 1)
 }
+
+/// First light's crest rides the reveal (over the light, never in the band) and draws nothing once the light has
+/// landed, so a kept `FirstLight` wrapper costs no shader pass afterwards. Shader and fallback crest alike.
+@Test(.enabled(if: shadersRun)) func firstLightCrestIsGoneOnceLanded() throws {
+    let size = CGSize(width: 400, height: 160)
+    let lowPower = EffectBudget(isOpen: true, onScreen: true, lowPower: true, fullScreenFront: false,
+                                reduceMotion: false, onBattery: false)
+    let black = try rasterize(Color.black, size: size)
+    for budget in [runningBudget, lowPower] {
+        func crest(_ t: Double) throws -> Raster {
+            try rasterize(ZStack {
+                Color.black
+                FirstLightCrest(palette: .afterglow, level: .vivid, budget: budget,
+                                reveal: FirstLightMath.reveal(elapsed: t, size: size), elapsed: t)
+            }, size: size)
+        }
+        let spreading = try crest(0.5)
+        #expect(spreading.meanDifference(black) > 0.5, "no crest while the light spreads")
+        #expect(spreading.meanDifference(black, topRows: 0.4) == 0, "the crest lit the band")
+        #expect(try crest(FirstLight<EmptyView>.duration).meanDifference(black) == 0, "a crest is left after landing")
+    }
+}
