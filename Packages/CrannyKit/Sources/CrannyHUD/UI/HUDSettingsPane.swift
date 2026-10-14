@@ -45,11 +45,13 @@ struct HUDSettingsPane: View {
     let app: any AppControl
     /// nil in previews: status comes from the permission alone.
     var controller: HUDController?
+    /// Previews only: the Accessibility status to show instead of this Mac's (a preview process has no grant).
+    var previewAccessibility: PermissionStatus?
     @State private var competingApps: [String] = []
 
     var body: some View {
         let replacing = settings[HUDSettings.replaceSystemHUD]
-        let status = HUDPaneStatus(granted: permissions.status(.accessibility) == .granted, replacing: replacing,
+        let status = HUDPaneStatus(granted: accessibilityStatus == .granted, replacing: replacing,
                                    activityEnabled: HUDActivity.isEnabled(in: settings),
                                    tapRunning: controller?.isTapRunning ?? false, tapFailed: controller?.tapFailed ?? false)
         Form {
@@ -126,8 +128,10 @@ struct HUDSettingsPane: View {
         .resettable(HUDSettings.replaceSystemHUD, in: settings)
     }
 
+    private var accessibilityStatus: PermissionStatus { previewAccessibility ?? permissions.status(.accessibility) }
+
     private func accessibilityRow(status paneStatus: HUDPaneStatus) -> some View {
-        let status = permissions.status(.accessibility)
+        let status = accessibilityStatus
         return LabeledContent {
             HStack(spacing: 8) {
                 PermissionStatusPill(status: status)
@@ -264,7 +268,8 @@ struct HUDSettingsPane: View {
     let services = CrannyServices.preview()
     services.settings[HUDSettings.replaceSystemHUD] = true
     services.settings[CoreSettings.activityPreferences] = [.hud: ActivityPreference(isEnabled: false, peeksOnChange: false)]
-    return HUDSettingsPane(settings: services.settings, permissions: services.permissions, app: services.app)
+    return HUDSettingsPane(settings: services.settings, permissions: services.permissions, app: services.app,
+                           previewAccessibility: .granted)
         .frame(width: 620, height: 640)
 }
 
