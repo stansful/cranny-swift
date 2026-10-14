@@ -2,7 +2,7 @@
 // with a privacy prompt: Files & Folders (Desktop, Documents, Downloads, iCloud Drive, File Provider storage, removable
 // and network volumes) and "data from other apps" (other apps' containers and group containers). No permission is
 // requested except from an explicit button (ARCHITECTURE §10.15). Used for the Settings wallpaper miniature and for app
-// names and icons (`AppIdentityResolver`: Settings, Media's player rows).
+// names and icons (`AppIdentityResolver`: Settings, Media's player rows; Quick Apps' launcher icons).
 //
 // Symbolic links are followed one component at a time, and only where reading a link cannot prompt: a link is read
 // only after the path up to it has been found outside every protected place, and a link whose target lies inside one

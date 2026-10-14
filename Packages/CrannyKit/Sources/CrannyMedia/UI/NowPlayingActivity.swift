@@ -66,7 +66,7 @@ import SwiftUI
         }
         if let source = np.bundleID ?? np.parentBundleID {
             let open = open
-            actions.append(ActivityAction(id: "open", title: MediaStrings.openIn(PlayerApps.name(for: source, fallback: np.appName))) { open(source) })
+            actions.append(ActivityAction(id: "open", title: MediaStrings.openAction(PlayerApps.name(for: source, fallback: np.appName))) { open(source) })
         }
         return actions
     }

@@ -113,7 +113,7 @@ private func policy(_ selection: DisplaySelection, _ perDisplay: [DisplayKey: Di
     let overlay = OverlayCoordinator(registry: registry, environment: ShellEnvironment())
     ShellContributions.register(in: registry, overlay: overlay)
     let services = ShellAppServices(registry: registry, appControl: ShellAppControl(), overlay: overlay,
-                                    settingsWindow: SettingsWindowController(registry: registry),
+                                    settingsWindow: SettingsWindowController(registry: registry, defaults: .inMemory),
                                     welcomeWindow: WelcomeWindowController(registry: registry), loginItemService: login,
                                     updateConfiguration: UpdateConfiguration(repository: repository, currentVersion: "0.1.0"),
                                     updateTransport: transport)

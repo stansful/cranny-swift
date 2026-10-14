@@ -97,7 +97,7 @@ nonisolated private let integration = ProcessInfo.processInfo.environment["CRANN
     let registry = ModuleRegistry(services: .preview())
     let overlay = OverlayCoordinator(registry: registry, environment: ShellEnvironment())
     let control = ShellAppControl()
-    control.connect(settings: registry.services.settings, overlay: overlay, settingsWindow: SettingsWindowController(registry: registry),
+    control.connect(settings: registry.services.settings, overlay: overlay, settingsWindow: SettingsWindowController(registry: registry, defaults: .inMemory),
                     welcomeWindow: WelcomeWindowController(registry: registry), hotKeys: overlay.hotKeys)
     var events: [NotchEvent] = []
     overlay.notchControl.addEventObserver { events.append($0) }

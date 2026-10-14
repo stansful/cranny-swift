@@ -117,9 +117,9 @@ private struct MediaEmptyView: View {
                         Label { Text(verbatim: MediaStrings.play) } icon: { Image(systemName: "play.fill") }
                     }
                     .buttonStyle(CrannyChipButtonStyle(prominent: true))
-                } else if PlayerApps.url(for: source) != nil {
+                } else if let name = PlayerApps.identity(source).name {         // installed: Finder's name
                     Button { PlayerApps.open(source) } label: {
-                        Text(verbatim: Self.openTitle(PlayerApps.name(for: source)))
+                        Text(verbatim: Self.openTitle(name))
                     }
                     .buttonStyle(CrannyLinkButtonStyle())                  // `info`, 28 × 24 target (DESIGN.md §2.1, §16)
                 }

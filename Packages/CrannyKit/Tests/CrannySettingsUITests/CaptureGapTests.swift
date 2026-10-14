@@ -21,13 +21,22 @@ private func layout(_ registry: ModuleRegistry, maxColumns: Int) -> LayoutEditor
     return LayoutEditor(pages: live.pages, maxColumns: maxColumns, sizes: sizes)
 }
 
-/// The default Home (Listener: Media 5, Calendar 3, Quick Apps 2) has no Notes, so the default target captures
+/// Ruling E2 (§10.20 #24): a fresh install has Type to capture off, so the default Home (Listener, no Notes) shows
+/// no Keyboard warning.
+@Test func aFreshInstallShowsNoKeyboardWarning() {
+    let registry = captureRegistry()
+    #expect(registry.services.settings[CoreSettings.typeToCapture] == nil)
+    #expect(registry.services.settings[CoreSettings.pages] == [NookPreset.listener.page])
+    #expect(KeyboardRows.captureGap(registry, layout: LayoutEditor.live(registry: registry, stage: nil)) == nil)
+}
+
+/// The default Home (Listener: Media 5, Calendar 3, Quick Apps 2) has no Notes, so Notes as the target captures
 /// nothing: warn. On the reference 14-inch display (12 columns) Home has 2 cells left and Notes needs 3, so the way
 /// out is a new page; with 13 columns Notes fits on Home and the warning leads to its library entry.
 @Test func captureWarnsWhileItsWidgetIsOnNoPage() {
     let registry = captureRegistry()
     let settings = registry.services.settings
-    #expect(settings[CoreSettings.typeToCapture] == "notes")
+    settings[CoreSettings.typeToCapture] = "notes"                                       // chosen (an earlier install)
     let reference = LayoutEditor.live(registry: registry, stage: nil)
     #expect(reference.maxColumns == 12)                                                  // 1512-pt display, Standard
     let gap = KeyboardRows.captureGap(registry, layout: reference)
@@ -46,6 +55,7 @@ private func layout(_ registry: ModuleRegistry, maxColumns: Int) -> LayoutEditor
 @Test func captureIsQuietOnceItsWidgetIsOnAnyPage() {
     let registry = captureRegistry()
     let settings = registry.services.settings
+    settings[CoreSettings.typeToCapture] = "notes"
     settings[CoreSettings.pages] = [NookPreset.maker.page]                                       // Notes on Home
     #expect(KeyboardRows.captureGap(registry, layout: layout(registry, maxColumns: 12)) == nil)
 
@@ -80,6 +90,7 @@ private func layout(_ registry: ModuleRegistry, maxColumns: Int) -> LayoutEditor
 @Test func captureWarningLeadsToAnAddThatWorks() {
     let registry = captureRegistry()
     let settings = registry.services.settings
+    settings[CoreSettings.typeToCapture] = "notes"
 
     // Home is full for Notes; Add there is refused, so the warning sends the user to add a page first.
     var editor = layout(registry, maxColumns: 12)

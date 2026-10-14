@@ -377,47 +377,30 @@ private enum Payload {
 }
 
 @Suite("Apple Events fallback: declared players") @MainActor struct AutomationDeclarationTests {
-    private func automationIDs(_ isInstalled: @escaping (String) -> Bool) -> [String] {
+    private func makeRegistry() -> ModuleRegistry {
         let registry = ModuleRegistry(services: .preview())
-        registry.registerMedia(isInstalled: isInstalled)
-        return registry.permissionUses.compactMap { if case .automation(let id) = $0.kind { id } else { nil } }
+        registry.register(MediaModule.self)
+        return registry
     }
 
-    @Test func onlyInstalledPlayersAskForAutomation() {
-        #expect(automationIDs { _ in true } == ["com.apple.Music", "com.spotify.client"])
-        #expect(automationIDs { $0 == "com.apple.Music" } == ["com.apple.Music"])
-        #expect(automationIDs { _ in false } == [])
+    /// Every player is declared; Settings and onboarding show one only while it is installed (Core's
+    /// `AppIdentityResolver`), so a player installed while Cranny runs gets its rows without a relaunch.
+    @Test func everyPlayerIsDeclaredForAutomation() {
+        let ids = makeRegistry().permissionUses.compactMap { if case .automation(let id) = $0.kind { id } else { nil } }
+        #expect(ids == ["com.apple.Music", "com.spotify.client"])
     }
 
     /// Settings ▸ Permissions shows a reason under "Automation: <player>", and onboarding shows the first reason for
     /// all players in one row: so one reason that names no player (in either language).
     @Test func everyPlayerSharesAReasonThatNamesNoPlayer() {
-        let registry = ModuleRegistry(services: .preview())
-        registry.registerMedia(isInstalled: { _ in true })
-        let reasons = registry.permissionUses.compactMap { if case .automation = $0.kind { $0.reason } else { nil } }
+        let reasons = makeRegistry().permissionUses.compactMap { if case .automation = $0.kind { $0.reason } else { nil } }
         #expect(reasons.count == 2 && Set(reasons).count == 1)
         #expect(reasons.allSatisfy { reason in ["Music", "Музык", "Spotify"].allSatisfy { !reason.contains($0) } })
     }
 
-    @Test func systemAudioRecordingIsDeclaredEitherWay() {
-        let registry = ModuleRegistry(services: .preview())
-        registry.registerMedia(isInstalled: { _ in false })
-        #expect(registry.permissionUses.map(\.kind) == [.systemAudioRecording])
+    @Test func systemAudioRecordingIsDeclared() {
+        let registry = makeRegistry()
+        #expect(registry.permissionUses.map(\.kind).contains(.systemAudioRecording))
         #expect(registry.permissionUses.allSatisfy { $0.module == .media })
     }
-}
-
-private extension ModuleRegistry {
-    /// `register(MediaModule.self)` with a fake installation check (attribution to `.media` included).
-    func registerMedia(isInstalled: @escaping (String) -> Bool) {
-        MediaWithFakeInstalls.isInstalled = isInstalled
-        register(MediaWithFakeInstalls.self)
-    }
-}
-
-/// Registers Media through the registry (so uses are attributed to the module) with a fake installation check.
-@MainActor private enum MediaWithFakeInstalls: FeatureModule {
-    static var isInstalled: (String) -> Bool = { _ in true }
-    static var id: ModuleID { .media }
-    static func register(in registry: ModuleRegistry) { MediaModule.register(in: registry, isInstalled: isInstalled) }
 }

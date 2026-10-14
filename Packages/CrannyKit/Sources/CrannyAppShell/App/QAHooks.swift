@@ -11,6 +11,8 @@
 //                                         works where `screencapture` cannot, needs no Screen Recording access
 //   --qa-snapshot <file.png>              render the primary panel's canvas offscreen to that PNG (handled by
 //                                         CrannyNotchUI's NotchUIQAHooks; no Screen Recording access needed)
+//   --qa-defaults-suite <name>            keep every setting the run writes in that UserDefaults suite, never in
+//                                         the app's preferences (read at launch: QAHooks+Defaults.swift, ShellDefaults)
 //
 // Menu bar extra (parsed by `MenuBarQA.Options`):
 //   --qa-menu main|pause|showOn           open the menu bar extra's menu (or one of its submenus) after 1.5 s

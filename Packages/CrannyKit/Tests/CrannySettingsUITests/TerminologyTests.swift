@@ -130,6 +130,9 @@ private enum Terms {
         ("Show on", "Где показывать"),
         ("Display with the pointer", "На дисплее с указателем"),
         ("Never", "Никогда"),
+        // Taking an app off a list is «Убрать» (as «Убрать с полки»); «Удалить приложение» reads as uninstalling it.
+        ("Remove app", "Убрать приложение"),
+        ("Remove %@", "Убрать «%@»"),
     ]
 
     /// Wordings that were replaced; " stem" matches at a word start (« сбросить» does not contain " брос").

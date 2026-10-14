@@ -1,7 +1,8 @@
 // CrannyOnboarding/Model/WelcomeFlow.swift — the Welcome window's state and rules (DESIGN.md §12.1): the
 // current step, real detection on the notch through `NotchControl.addEventObserver`, the choices each step
 // writes (open mode, hover delay, Home layout — instantly, ARCHITECTURE.md D14), permission rows, the practice
-// notch, and how the window ends. Views read it; only it writes settings. Testable with `CrannyServices.preview()`.
+// notch, and how the window ends. Views read it; only it writes settings (a preset also sets Type to capture, ruling
+// E2). Testable with `CrannyServices.preview()`.
 import AppKit
 import CrannyCore
 import Foundation
@@ -32,6 +33,8 @@ private let log = Log.logger(.onboarding)
 
     @ObservationIgnored let registry: ModuleRegistry
     @ObservationIgnored private let permissions: any PermissionGateway
+    /// Which apps are installed (step 5 offers Automation only for those).
+    @ObservationIgnored private let identities: AppIdentityResolver
     @ObservationIgnored private let coach: TipRenderer
     @ObservationIgnored private let version: String
     @ObservationIgnored private let onFinish: @MainActor (WelcomeOutcome) -> Void
@@ -51,9 +54,10 @@ private let log = Log.logger(.onboarding)
 
     init(registry: ModuleRegistry, permissions: any PermissionGateway, coach: any TipPresenter, stage: StageScene,
          initialStep: WelcomeStep = .hello, version: String = AppInfo.current().version,
-         onFinish: @escaping @MainActor (WelcomeOutcome) -> Void) {
+         identities: AppIdentityResolver = .shared, onFinish: @escaping @MainActor (WelcomeOutcome) -> Void) {
         self.registry = registry
         self.permissions = permissions
+        self.identities = identities
         self.coach = TipRenderer(presenter: coach)
         self.stage = stage
         self.version = version
@@ -173,7 +177,7 @@ private let log = Log.logger(.onboarding)
         case .preset:
             stage.show(.open, reduceMotion: reduceMotion)
         case .permissions:
-            permissions.refresh()
+            refreshPermissions()
             watchActivation()
             stage.show(.open, reduceMotion: reduceMotion)
         case .done:
@@ -287,24 +291,35 @@ private let log = Log.logger(.onboarding)
     /// The preset Home matches now; nil for a layout of one's own (kept unless a preset is picked).
     var selectedPreset: NookPreset? { PresetLayout.matching(services.settings[CoreSettings.pages]) }
 
+    /// Rewrites Home with the preset and sets Type to capture to follow it (`PresetLayout.captureTarget`).
     func pick(_ preset: NookPreset) {
-        let pages = services.settings[CoreSettings.pages]
-        services.settings[CoreSettings.pages] = PresetLayout.applying(preset, to: pages)
+        let settings = services.settings
+        let pages = PresetLayout.applying(preset, to: settings[CoreSettings.pages])
+        settings[CoreSettings.pages] = pages
+        settings[CoreSettings.typeToCapture] = PresetLayout.captureTarget(
+            home: preset.items, pages: pages, current: settings[CoreSettings.typeToCapture], targets: registry.captureTargets)
         stage.refreshLayout()
     }
 
     // MARK: Step 5 · Permissions
 
-    /// Observed by the view: a row whose opt-in is switched on elsewhere (Settings) appears.
+    /// Observed by the view: a row whose opt-in is switched on elsewhere (Settings) appears, and an Automation kind
+    /// counts once its app is known to be installed.
     var permissionRows: [PermissionRow] {
         let settings = services.settings
         let items = PresetLayout.homeItems(settings[CoreSettings.pages])
+        let identities = identities
         return PermissionPlan.rows(uses: registry.permissionUses, modules: PermissionPlan.modules(for: items),
-                                   isOn: { settings[$0] })
+                                   isOn: { settings[$0] }, isAvailable: { kind in
+                                       guard case .automation(let bundleID) = kind else { return true }
+                                       return identities.identity(of: bundleID).isInstalled
+                                   })
     }
 
+    /// `.checking` while an Automation answer is still on its way (`knownStatus` is nil): never "Allow" for a player
+    /// that may already be allowed.
     func state(of row: PermissionRow) -> PermissionRowState {
-        PermissionRowState.combining(row.kinds.map { permissions.status($0) }, requested: requested.contains(row.group))
+        PermissionRowState.combining(row.kinds.map { permissions.knownStatus($0) }, requested: requested.contains(row.group))
     }
 
     /// "Allow": the system prompt, then and there (one kind after the other).
@@ -320,11 +335,18 @@ private let log = Log.logger(.onboarding)
         permissions.openSystemSettings(kind)
     }
 
+    /// Statuses and installed apps again: a player installed (or removed) since its first lookup gains (or loses) its
+    /// Automation kind, and a permission changed in System Settings shows its new state.
+    private func refreshPermissions() {
+        permissions.refresh()
+        identities.refresh()
+    }
+
     private func watchActivation() {
         guard activationObserver == nil else { return }
         activationObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.permissions.refresh() }                  // queue: .main
+            MainActor.assumeIsolated { self?.refreshPermissions() }                   // queue: .main
         }
     }
 

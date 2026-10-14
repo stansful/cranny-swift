@@ -41,28 +41,85 @@ public nonisolated enum PermissionStatus: String, Codable, Sendable {
 
 /// The one place that queries and requests permissions (`services.permissions`). Requests come only from an explicit
 /// user action (a widget's permission state, Settings ▸ Permissions, onboarding).
+///
+/// Automation answers are cached per app (§10.20 #27): `AEDeterminePermissionToAutomateTarget` is asked off the main
+/// actor, never from a view body, and only again on `refresh()` (Settings appearing, the app becoming active), after a
+/// request, or when a caller needs a fresh answer (`currentStatus`). Until an app's first answer lands, `knownStatus`
+/// is nil (rows show a spinner) and `status` reads `.unknown`. The other kinds are cheap synchronous queries.
 @MainActor @Observable public final class PermissionsCenter {
+    /// macOS's Automation answer for one app, computed off the main actor (`@concurrent`: awaiting it returns to the
+    /// main actor); `ask` false never prompts. The app uses `systemAutomationStatus`; tests inject a probe that records
+    /// its calls.
+    public typealias AutomationProbe = @concurrent @Sendable (_ bundleID: String, _ ask: Bool) async -> PermissionStatus
+
     /// The last known status of each permission (observable).
     public private(set) var statuses: [PermissionKind: PermissionStatus] = [:]
     @ObservationIgnored private var accessibilityWatch: Task<Void, Never>?
     @ObservationIgnored private var recorded: [PermissionKind: PermissionStatus] = [:]
+    @ObservationIgnored private let automationProbe: AutomationProbe
+    /// Per app, the number of the latest Automation query or answer; an older query that lands later is dropped.
+    @ObservationIgnored private var automationGeneration: [String: Int] = [:]
+    /// Apps whose first Automation query runs (`knownStatus` starts one at most).
+    @ObservationIgnored private var firstQueries: Set<String> = []
+    @ObservationIgnored private var activationObserver: (any NSObjectProtocol)?
 
-    /// Queries every permission once (cheap, never prompts).
-    public init() { refresh() }
-
-    /// The last known status, querying it if it was never asked for.
-    public func status(_ kind: PermissionKind) -> PermissionStatus {
-        statuses[kind] ?? query(kind)
+    /// Queries every permission except Automation once (cheap, never prompts). `automationProbe` answers Automation
+    /// questions off the main actor. With `refreshesOnActivation` (the app's one center), every activation of Cranny
+    /// refreshes the statuses: the user may have changed them in System Settings meanwhile.
+    public init(automationProbe: @escaping AutomationProbe = { await PermissionsCenter.systemAutomationStatus($0, ask: $1) },
+                refreshesOnActivation: Bool = false) {
+        self.automationProbe = automationProbe
+        refresh()
+        if refreshesOnActivation {
+            activationObserver = NotificationCenter.default.addObserver(
+                forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.refresh() }                     // queue: .main
+            }
+        }
     }
 
-    /// Re-query everything (call on app activation and when Settings ▸ Permissions appears).
-    public func refresh() {
-        var next: [PermissionKind: PermissionStatus] = [:]
-        for kind in [PermissionKind.accessibility, .calendar, .camera, .bluetooth, .systemAudioRecording] {
-            next[kind] = query(kind)
+    /// The last known status. Automation: the cached answer, `.unknown` until the first one lands (asking for it
+    /// starts the query off the main actor; never a synchronous Apple Events query). Other kinds are queried if
+    /// they were never asked for.
+    public func status(_ kind: PermissionKind) -> PermissionStatus {
+        if case .automation = kind { return knownStatus(kind) ?? .unknown }
+        return statuses[kind] ?? query(kind)
+    }
+
+    /// The last known status, or nil while an app's first Automation answer is still on its way (asking starts it;
+    /// views read this to show a spinner instead of a wrong status). Never blocks.
+    public func knownStatus(_ kind: PermissionKind) -> PermissionStatus? {
+        guard case .automation(let bundleID) = kind else { return status(kind) }
+        if let known = statuses[kind] { return known }
+        if firstQueries.insert(bundleID).inserted {
+            Task { [weak self] in
+                await self?.queryAutomation(bundleID)
+                self?.firstQueries.remove(bundleID)
+            }
         }
-        for (kind, _) in statuses { if case .automation = kind { next[kind] = query(kind) } }
-        statuses = next
+        return nil
+    }
+
+    /// Asks macOS now (Automation off the main actor; never prompts) and updates the cache: for a caller that must
+    /// not act on an answer older than this moment (the media fallback before its scripts).
+    public func currentStatus(_ kind: PermissionKind) async -> PermissionStatus {
+        guard case .automation(let bundleID) = kind else {
+            let answer = query(kind)
+            update(kind, to: answer)
+            return answer
+        }
+        return await queryAutomation(bundleID)
+    }
+
+    /// Re-query everything (Cranny became active, Settings ▸ Permissions appeared): the cheap kinds at once, the
+    /// Automation answers already known off the main actor (they land a moment later).
+    public func refresh() {
+        for kind in [PermissionKind.accessibility, .calendar, .camera, .bluetooth, .systemAudioRecording] {
+            update(kind, to: query(kind))
+        }
+        for case .automation(let bundleID) in statuses.keys {
+            Task { [weak self] in await self?.queryAutomation(bundleID) }
+        }
     }
 
     /// Shows the system prompt when one exists; otherwise opens System Settings. Returns the new status.
@@ -82,10 +139,13 @@ public nonisolated enum PermissionStatus: String, Codable, Sendable {
         case .systemAudioRecording:
             break   // prompted by AudioDeviceStart in CrannyMedia; it reports back via `record`
         case .automation(let bundleID):
-            _ = await Self.automationStatus(bundleID, ask: true)
+            let answer = await automationProbe(bundleID, true)           // off the main actor: it blocks while asking
+            _ = nextAutomationGeneration(bundleID)                       // the person's answer: queries begun before
+            update(kind, to: answer)                                     // it (during the prompt) are dropped
+            return answer
         }
         let s = query(kind)
-        statuses[kind] = s
+        update(kind, to: s)
         return s
     }
 
@@ -94,10 +154,34 @@ public nonisolated enum PermissionStatus: String, Codable, Sendable {
         if let url = kind.settingsURL { NSWorkspace.shared.open(url) }
     }
 
-    /// For kinds without a query API: the feature reports what it observed (tap delivered audio → granted).
+    /// For kinds without a query API, or an answer a feature observed (tap delivered audio → granted; an Apple Event
+    /// refused with −1743 → denied). An Automation query still running is superseded.
     public func record(_ status: PermissionStatus, for kind: PermissionKind) {
+        if case .automation(let bundleID) = kind { _ = nextAutomationGeneration(bundleID) }
         recorded[kind] = status
-        statuses[kind] = status
+        update(kind, to: status)
+    }
+
+    // MARK: Automation cache
+
+    /// Asks `automationProbe` (never prompts) and stores the answer unless a newer query or answer came meanwhile.
+    @discardableResult
+    private func queryAutomation(_ bundleID: String) async -> PermissionStatus {
+        let generation = nextAutomationGeneration(bundleID)
+        let answer = await automationProbe(bundleID, false)
+        if automationGeneration[bundleID] == generation { update(.automation(bundleID: bundleID), to: answer) }
+        return answer
+    }
+
+    private func nextAutomationGeneration(_ bundleID: String) -> Int {
+        let next = (automationGeneration[bundleID] ?? 0) + 1
+        automationGeneration[bundleID] = next
+        return next
+    }
+
+    /// Writes only a change, so observers (rows reading `statuses`) are not invalidated by every refresh.
+    private func update(_ kind: PermissionKind, to status: PermissionStatus) {
+        if statuses[kind] != status { statuses[kind] = status }
     }
 
     // MARK: Queries (cheap, never prompt)
@@ -131,8 +215,8 @@ public nonisolated enum PermissionStatus: String, Codable, Sendable {
             }
         case .systemAudioRecording:
             return recorded[kind] ?? .unknown
-        case .automation(let bundleID):
-            return Self.automationStatusSync(bundleID)
+        case .automation:
+            return statuses[kind] ?? .unknown         // never queried synchronously: see `queryAutomation`
         }
     }
 
@@ -148,18 +232,15 @@ public nonisolated enum PermissionStatus: String, Codable, Sendable {
         }
     }
 
-    private static func automationStatusSync(_ bundleID: String) -> PermissionStatus {
-        map(automationOSStatus(bundleID, ask: false))
-    }
-    /// `AEDeterminePermissionToAutomateTarget` blocks while its prompt is up: never on the main thread.
-    @concurrent private static func automationStatus(_ bundleID: String, ask: Bool) async -> PermissionStatus {
-        map(automationOSStatus(bundleID, ask: ask))
-    }
-    nonisolated private static func automationOSStatus(_ bundleID: String, ask: Bool) -> OSStatus {
+    /// macOS's Automation answer for `bundleID` (`AEDeterminePermissionToAutomateTarget`), off the main actor. It
+    /// sends nothing to the app; with `ask` it shows the system prompt and blocks until it is answered (never on the
+    /// main thread). `.unknown` while the app is not running (procNotFound).
+    @concurrent public nonisolated static func systemAutomationStatus(_ bundleID: String, ask: Bool) async -> PermissionStatus {
         let target = NSAppleEventDescriptor(bundleIdentifier: bundleID)
-        guard let desc = target.aeDesc else { return OSStatus(procNotFound) }
-        return AEDeterminePermissionToAutomateTarget(desc, typeWildCard, typeWildCard, ask)
+        guard let desc = target.aeDesc else { return .unknown }
+        return map(AEDeterminePermissionToAutomateTarget(desc, typeWildCard, typeWildCard, ask))
     }
+
     nonisolated private static func map(_ status: OSStatus) -> PermissionStatus {
         switch status {
         case noErr: .granted

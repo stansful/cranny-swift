@@ -69,10 +69,9 @@ import Testing
 
         #expect(registry.commandProviders.count == 1)
         let kinds = Set(registry.permissionUses.map(\.kind))
-        // Automation only for the players this Mac has (Music ships with macOS; AutomationDeclarationTests fakes the rest).
-        let installed = ScriptablePlayer.installed().map { PermissionKind.automation(bundleID: $0.bundleID) }
-        #expect(installed.contains(.automation(bundleID: "com.apple.Music")))
-        #expect(kinds == Set(installed + [.systemAudioRecording]))
+        // Automation for every player (the surfaces show only the installed ones), and the Live tap's permission.
+        let players = ScriptablePlayer.all.map { PermissionKind.automation(bundleID: $0.bundleID) }
+        #expect(kinds == Set(players + [.systemAudioRecording]))
         #expect(registry.permissionUses.allSatisfy { $0.module == .media && !$0.reason.isEmpty })
         // Automation serves only the off-by-default Apple Events fallback (onboarding asks only while it is on).
         for use in registry.permissionUses {

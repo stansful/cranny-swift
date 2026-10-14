@@ -1,6 +1,7 @@
 // Apps: the running set (event-driven, no polling), resolution and drop inspection. Lookups are read-only
 // (LaunchServices, Info.plist, icons); nothing is launched.
 import AppKit
+import CrannyCore
 import Foundation
 import Testing
 @testable import CrannyQuickApps
@@ -89,6 +90,8 @@ import Testing
     let resolver = WorkspaceAppResolver()
     let finder = try #require(await resolver.resolve("com.apple.finder"))
     #expect(finder.url.lastPathComponent == "Finder.app")
+    let core = try #require(await AppIdentityResolver.locate("com.apple.finder"))      // CrannyCore's lookup and name
+    #expect(finder.url == core.url && finder.name == core.name && finder.name != "com.apple.finder")
     #expect(await resolver.resolve("app.cranny.tests.not-installed") == nil)
     let icon = try #require(await resolver.icon(at: finder.url, pixelSize: 64))
     #expect(icon.width == 64)
@@ -101,4 +104,48 @@ import Testing
     await catalog.refresh(["fresh", "gone"])
     #expect(catalog.app("fresh") != nil)
     #expect(catalog.isMissing("gone"))
+}
+
+/// Quick Apps reads CrannyCore's explicit app state (§10.20 #11): not looked up yet, installed, or looked up and not
+/// found; an app installed meanwhile turns up on the next refresh.
+@Test func catalogKnowsWhetherAnAppIsLookedUpInstalledOrNotInstalled() async {
+    let resolver = FakeResolver(["a"])
+    let catalog = AppCatalog(resolver: resolver)
+    #expect(catalog.presence("a") == .pending && catalog.presence("gone") == .pending)
+    await catalog.refresh(["a", "gone"])
+    #expect(catalog.presence("a") == .installed && catalog.presence("gone") == .notInstalled)
+    #expect(catalog.presence("added") == .pending)                    // in the list, not looked up yet
+    resolver.install("gone")
+    await catalog.refresh(["a", "gone"])
+    #expect(catalog.presence("gone") == .installed)
+}
+
+/// Settings ▸ Shortcuts never shows a bundle identifier: an app's Finder name, "App not installed" once the lookup
+/// found nothing (in the title; no second line), and no name while the lookup runs.
+@Test func settingsRowsNeverShowABundleIdentifier() async {
+    let catalog = AppCatalog(resolver: FakeResolver(["com.example.here"]))
+    let gone = TileSettingsRow.Row.app(bundleID: "com.example.gone", app: nil)
+    #expect(gone.title(in: catalog).isEmpty && !gone.isMissing(in: catalog))            // still looking it up
+    #expect(gone.subtitle(in: catalog) != nil)
+
+    await catalog.refresh(["com.example.here", "com.example.gone"])
+    let title = gone.title(in: catalog)
+    #expect(["App not installed", "Приложение не установлено"].contains(title))           // the test runs in either
+    #expect(gone.isMissing(in: catalog) && gone.subtitle(in: catalog) == nil)
+    let here = TileSettingsRow.Row.app(bundleID: "com.example.here", app: catalog.app("com.example.here"))
+    #expect(here.title(in: catalog) == "here" && !here.isMissing(in: catalog))
+    for row in [gone, here] { #expect(!row.title(in: catalog).contains("com.example")) }
+}
+
+/// No icon is read from a protected folder (CrannyCore's `ProtectedLocations`, as for Settings' app rows): an app left
+/// in Downloads gets macOS's generic app icon, so the launcher raises no Files & Folders prompt. String work only: no
+/// protected folder is touched (the home folder is a temporary one).
+@Test func noIconIsReadFromAProtectedFolder() async throws {
+    let home = FileManager.default.temporaryDirectory.appending(path: "cranny-home-\(UUID().uuidString)", directoryHint: .isDirectory)
+    let isSafe: (URL) -> Bool = { ProtectedLocations.isSafeToRead($0, home: home) }
+    let downloaded = home.appending(path: "Downloads/Spotify.app", directoryHint: .isDirectory)
+    #expect(WorkspaceAppResolver.iconSource(for: downloaded, isSafeToRead: isSafe) == .genericApp)
+    let finder = URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app", isDirectory: true)
+    #expect(WorkspaceAppResolver.iconSource(for: finder, isSafeToRead: isSafe) == .bundle(finder))
+    #expect(WorkspaceAppResolver.iconSource(for: finder, isSafeToRead: { _ in false }) == .genericApp)
 }

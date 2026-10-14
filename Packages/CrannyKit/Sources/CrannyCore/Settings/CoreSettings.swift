@@ -233,8 +233,10 @@ public nonisolated enum CoreSettings {
     // Keyboard
     /// User overrides; a missing entry means the shortcut's `defaultCombo`; an explicit nil means "off".
     public static let shortcuts = SettingKey<[ShortcutID: KeyCombo?]>(.keyboard, "shortcuts", default: [:])
-    /// `CaptureTarget.id` ("notes", "todos") or nil = off.
-    public static let typeToCapture = SettingKey<String?>(.keyboard, "typeToCapture", default: "notes")
+    /// `CaptureTarget.id` ("notes", "todos") or nil = off. Off on a fresh install (ruling E2): onboarding's presets
+    /// that put Notes on Home set Notes (To-dos for a preset with To-dos and no Notes); an install from before the
+    /// ruling keeps Notes (`SettingsStore.upgradeStoredSettings`, revision 1).
+    public static let typeToCapture = SettingKey<String?>(.keyboard, "typeToCapture", default: nil)
 
     // Onboarding & updates
     /// The version whose Welcome flow the user finished (nil = never).

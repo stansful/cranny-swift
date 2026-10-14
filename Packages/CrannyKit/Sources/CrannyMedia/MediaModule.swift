@@ -12,14 +12,6 @@ public enum MediaModule: FeatureModule {
     /// Publishes `services.nowPlaying`, then the widget, the Now Playing activity (+ sample, + options row),
     /// Settings ▸ Media, ⌘K commands and the permissions the module may ask for.
     public static func register(in registry: ModuleRegistry) {
-        register(in: registry, isInstalled: ScriptablePlayer.isInstalled)
-    }
-
-    /// `isInstalled(bundleID)` decides which players get an Automation use: Settings ▸ Permissions and onboarding
-    /// list only players this Mac has (the app asks Launch Services, one lookup per player at launch: about 1 ms
-    /// for the first lookup in a process, microseconds after it). The registry is fixed after launch, so a player
-    /// installed while Cranny runs gets its row from the next launch.
-    static func register(in registry: ModuleRegistry, isInstalled: (String) -> Bool) {
         let services = registry.services
         let service = makeService(services)
         services.nowPlaying = service
@@ -41,11 +33,13 @@ public enum MediaModule: FeatureModule {
             })
         registry.add(commands: MediaCommands(service: service))
         // One reason for every player, naming none: Settings ▸ Permissions shows it under "Automation: <player>",
-        // and onboarding's single Automation row shows the first reason for all the players together.
+        // and onboarding's single Automation row shows the first reason for all the players together. Every player
+        // is declared; the surfaces show a player only while it is installed (Core's `AppIdentityResolver`, looked up
+        // again when they appear), so one installed while Cranny runs gets its rows without a relaunch.
         let automationReason = String(
             localized: "Read what’s playing and control playback when the media helper can’t. Only if you turn on the Apple Events fallback.",
             bundle: .module, comment: "Permissions pane: why Media may ask for Automation for a media app (the row names the app)")
-        for player in ScriptablePlayer.installed(isInstalled) {
+        for player in ScriptablePlayer.all {
             registry.declare(.automation(bundleID: player.bundleID), reason: automationReason,
                              optIn: MediaSettings.allowAppleEvents)    // off by default: onboarding asks only while on
         }

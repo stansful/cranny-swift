@@ -105,18 +105,7 @@ import Testing
     #expect(!safe(downloads.appendingPathComponent("w.jpg")))
 }
 
-/// App names and icons are looked up off the main actor, once per app; until then views show the identifier.
-@Test func appIdentitiesResolveOffTheMainActorOnce() async {
-    let identities = AppIdentityResolver()
-    let placeholder = identities.identity(of: "com.apple.finder")
-    #expect(placeholder.name == "com.apple.finder" && placeholder.icon == nil)
-    for _ in 0..<200 where identities.resolvedCount == 0 { try? await Task.sleep(for: .milliseconds(10)) }
-    let finder = identities.identity(of: "com.apple.finder")
-    #expect(finder.name != "com.apple.finder" && finder.icon != nil)
-    let unknown = identities.identity(of: "com.example.not-installed")
-    for _ in 0..<200 where identities.resolvedCount < 2 { try? await Task.sleep(for: .milliseconds(10)) }
-    #expect(unknown.name == "com.example.not-installed" && identities.identity(of: "com.example.not-installed").icon == nil)
-}
+// App names and icons: CrannyCore's AppIdentityTests (the resolver Settings uses).
 
 @Test func systemShortcutsLoadOffTheMainActor() async {
     let loaded = await SystemShortcuts.load()

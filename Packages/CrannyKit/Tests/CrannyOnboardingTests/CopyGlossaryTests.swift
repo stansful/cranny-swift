@@ -44,4 +44,19 @@ import Testing
             #expect(value.range(of: "щ[её]лк|щ[её]лч", options: [.regularExpression, .caseInsensitive]) == nil, "\(key) → \(value)")
         }
     }
+
+    @Test func theAutomationFallbackReasonNamesNoPlayer() throws {
+        // The Automation row stands for every player a module declared (§10.20 #28): its fallback reason names none,
+        // in either language (Media's own reason, shown first, names none either).
+        let english = "Control playback in your media apps when other ways fail. Cranny sends only playback commands."
+        let russianValue = try #require(try russian()[english])
+        #expect([english, russianValue].contains(PermissionGroup.automation.fallbackReason))   // the test runs in either
+        for text in [english, russianValue] {
+            for player in ["Music", "Музык", "Spotify"] {
+                #expect(text.range(of: player, options: .caseInsensitive) == nil, "\(text)")
+            }
+        }
+        // Media's Russian word for a media app is «плеер» («Открыть плеер», «Не видит плеер»).
+        #expect(russianValue.contains("плеерах") && !russianValue.contains("медиаприлож"), "\(russianValue)")
+    }
 }

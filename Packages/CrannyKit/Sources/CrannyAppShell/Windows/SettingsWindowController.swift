@@ -1,10 +1,10 @@
 // CrannyAppShell/Windows/SettingsWindowController.swift — the Settings window (ARCHITECTURE.md §5.9, D11; DESIGN.md §11.1).
 // An AppKit-managed NSWindow hosting `SettingsRootView`, so any pane (or row: "general#hoverDelay") can be opened
 // programmatically from an agent app (no SwiftUI `Settings` scene). 860 × 620 by default, 780 × 560 minimum; the frame
-// is autosaved and the last pane is restored. SwiftUI drives the toolbar and title (`sceneBridgingOptions`), so the
-// sidebar and toolbar get the system's Liquid Glass on macOS 26+ and Cranny adds none of its own. The window keeps one
-// `SettingsSession` for its lifetime: opening a pane navigates it, so the Reset All Undo offer, the search and the
-// preview stage survive.
+// is autosaved (not in a Debug QA run with its own defaults suite) and the last pane is restored (`ShellDefaults`).
+// SwiftUI drives the toolbar and title (`sceneBridgingOptions`), so the sidebar and toolbar get the system's Liquid
+// Glass on macOS 26+ and Cranny adds none of its own. The window keeps one `SettingsSession` for its lifetime: opening
+// a pane navigates it, so the Reset All Undo offer, the search and the preview stage survive.
 import AppKit
 import CrannyCore
 import CrannySettingsUI
@@ -16,15 +16,19 @@ import SwiftUI
 
     private let registry: ModuleRegistry
     private let defaults: UserDefaults
+    /// False in a QA run with its own suite: AppKit's frame autosave would write the standard domain.
+    private let autosavesFrame: Bool
     private var window: NSWindow?
     /// The window's state; `show(page:)` navigates it.
     private var session: SettingsSession?
     /// The app that was frontmost before Settings opened gets activation back on close.
     private var previousApp: NSRunningApplication?
 
-    init(registry: ModuleRegistry, defaults: UserDefaults = .standard) {
+    /// `defaults` is the app's `ShellDefaults` (tests pass an in-memory one).
+    init(registry: ModuleRegistry, defaults: ShellDefaults) {
         self.registry = registry
-        self.defaults = defaults
+        self.defaults = defaults.defaults
+        autosavesFrame = defaults.autosavesWindowFrames
     }
 
     /// Opens (or brings forward) Settings, showing `page` if given ("pane" or "pane#row"); nil restores the last pane.
@@ -41,7 +45,7 @@ import SwiftUI
         }
         let session = SettingsSession(registry: registry, initialPage: page ?? lastPage)
         let host = NSHostingController(rootView: SettingsRootView(session: session) { [weak self] shown in
-            self?.defaults.set(shown.rawValue, forKey: Self.lastPaneKey)
+            self?.rememberLastPane(shown)
         })
         host.sizingOptions = []
         host.sceneBridgingOptions = [.title, .toolbars]
@@ -58,7 +62,7 @@ import SwiftUI
         window.collectionBehavior.insert(.fullScreenNone)
         window.delegate = self
         window.center()
-        window.setFrameAutosaveName("CrannySettings")
+        if autosavesFrame { window.setFrameAutosaveName("CrannySettings") }
         self.window = window
         self.session = session
         NSApp.activate()
@@ -126,5 +130,10 @@ import SwiftUI
 
     private var lastPage: SettingsPageID? {
         defaults.string(forKey: Self.lastPaneKey).map(SettingsPageID.init(rawValue:))
+    }
+
+    /// Restored when Settings opens without a pane (kept in the app's `ShellDefaults`).
+    func rememberLastPane(_ page: SettingsPageID) {
+        defaults.set(page.rawValue, forKey: Self.lastPaneKey)
     }
 }

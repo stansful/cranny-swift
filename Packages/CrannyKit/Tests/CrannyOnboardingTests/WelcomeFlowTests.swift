@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import CrannyCore
 import Foundation
@@ -8,13 +9,14 @@ import Testing
     private final class Outcomes { var values: [WelcomeOutcome] = [] }
 
     private func makeFlow(trackpad: Bool = true, step: WelcomeStep = .hello,
-                          permissions: StaticPermissionGateway = StaticPermissionGateway())
+                          permissions: StaticPermissionGateway = StaticPermissionGateway(),
+                          identities: AppIdentityResolver = AppIdentityResolver(locate: { _ in nil }, icon: { _ in nil }))
         -> (WelcomeFlow, ModuleRegistry, RecordingTipPresenter, Outcomes) {
         let registry = makeRegistry(trackpad: trackpad)
         let coach = RecordingTipPresenter()
         let outcomes = Outcomes()
         let flow = WelcomeFlow(registry: registry, permissions: permissions, coach: coach, stage: makeStage(registry),
-                               initialStep: step, version: "9.9.9") { outcomes.values.append($0) }
+                               initialStep: step, version: "9.9.9", identities: identities) { outcomes.values.append($0) }
         return (flow, registry, coach, outcomes)
     }
 
@@ -213,11 +215,26 @@ import Testing
         flow.stop()
     }
 
+    @Test func pickingAPresetSetsTypeToCapture() {
+        let (flow, registry, _, _) = makeFlow(step: .preset)
+        registry.add(captureTarget: CaptureTarget(id: "notes", title: "Notes", symbol: "note.text", widget: .notes) { _ in .notes })
+        registry.add(captureTarget: CaptureTarget(id: "todos", title: "To-dos", symbol: "checklist", widget: .todos) { _ in .todos })
+        let settings = registry.services.settings
+        flow.start(reduceMotion: true)
+        #expect(settings[CoreSettings.typeToCapture] == nil)                 // a fresh install: Off (ruling E2)
+        flow.pick(.maker)
+        #expect(settings[CoreSettings.typeToCapture] == "notes")
+        flow.pick(.meetings)
+        #expect(settings[CoreSettings.typeToCapture] == nil)                 // Notes is on no page any more
+        flow.stop()
+    }
+
     // MARK: Step 5 · permissions
 
     @Test func permissionRowsFollowTheLayoutAndAskOnlyOnAllow() async throws {
         let gateway = StaticPermissionGateway([.calendar: .granted])
-        let (flow, registry, _, _) = makeFlow(step: .permissions, permissions: gateway)
+        let (flow, registry, _, _) = makeFlow(step: .permissions, permissions: gateway,
+                                              identities: await installedApps(["com.apple.Music", "com.spotify.client"]))
         flow.start(reduceMotion: true)
         #expect(gateway.refreshCount == 1)
         #expect(gateway.requested.isEmpty)                       // nothing is asked on its own
@@ -244,6 +261,69 @@ import Testing
         #expect(gateway.openedSettings == [.accessibility])
         settings[SamplePermissionOptIns.allBluetoothDevices] = false
         #expect(flow.permissionRows.map(\.group) == [.accessibility])
+        flow.stop()
+    }
+
+    /// Automation is offered only for players that are installed, once that is known (a player installed meanwhile
+    /// appears without a relaunch: `aPlayerInstalledMeanwhileIsOfferedWithoutARelaunch`).
+    @Test func automationIsOfferedOnlyForInstalledPlayers() async throws {
+        let (flow, registry, _, _) = makeFlow(step: .permissions, identities: await installedApps(["com.apple.Music"]))
+        flow.start(reduceMotion: true)
+        registry.services.settings[SamplePermissionOptIns.appleEvents] = true
+        let automation = try #require(flow.permissionRows.first { $0.group == .automation })
+        #expect(automation.kinds == [.automation(bundleID: "com.apple.Music")])               // Spotify is not installed
+        flow.stop()
+
+        let (pending, pendingRegistry, _, _) = makeFlow(step: .permissions,
+                                                        identities: AppIdentityResolver(locate: { _ in
+                                                            try? await Task.sleep(for: .seconds(60)); return nil
+                                                        }, icon: { _ in nil }))
+        pending.start(reduceMotion: true)
+        pendingRegistry.services.settings[SamplePermissionOptIns.appleEvents] = true
+        #expect(!pending.permissionRows.contains { $0.group == .automation })                // not known yet: no row
+        pending.stop()
+    }
+
+    /// Step 5 looks the apps up again when it appears and whenever Cranny becomes active (back from installing a
+    /// player), so a player installed after its first lookup gets its Automation kind without a relaunch.
+    @Test func aPlayerInstalledMeanwhileIsOfferedWithoutARelaunch() async throws {
+        let music = PermissionKind.automation(bundleID: "com.apple.Music")
+        let spotify = PermissionKind.automation(bundleID: "com.spotify.client")
+        let installs = FakeInstalls()
+        let identities = await installs.resolver(lookingUp: ["com.apple.Music", "com.spotify.client"])  // neither yet
+        let (flow, registry, _, _) = makeFlow(step: .preset, identities: identities)
+        registry.services.settings[SamplePermissionOptIns.appleEvents] = true
+        flow.start(reduceMotion: true)
+        func automationKinds() -> [PermissionKind] { flow.permissionRows.first { $0.group == .automation }?.kinds ?? [] }
+        #expect(automationKinds().isEmpty)
+
+        installs.install("com.apple.Music")                     // installed while step 4 shows
+        flow.goForward()                                         // step 5 appears: looked up again
+        #expect(flow.step == .permissions)
+        await settle { automationKinds() == [music] }
+        #expect(automationKinds() == [music])
+
+        installs.install("com.spotify.client")                  // installed while the window is open
+        NotificationCenter.default.post(name: NSApplication.didBecomeActiveNotification, object: nil)   // back in Cranny
+        await settle { automationKinds() == [music, spotify] }
+        #expect(automationKinds() == [music, spotify])
+        flow.stop()
+    }
+
+    /// The row waits for an Automation answer still on its way instead of offering "Allow" (the players may be allowed
+    /// already), then shows the answer.
+    @Test func anAutomationRowWaitsForItsFirstAnswer() async throws {
+        let music = PermissionKind.automation(bundleID: "com.apple.Music")
+        let gateway = StaticPermissionGateway([music: .granted])
+        gateway.checking = [music]
+        let (flow, registry, _, _) = makeFlow(step: .permissions, permissions: gateway,
+                                              identities: await installedApps(["com.apple.Music"]))
+        flow.start(reduceMotion: true)
+        registry.services.settings[SamplePermissionOptIns.appleEvents] = true
+        let automation = try #require(flow.permissionRows.first { $0.group == .automation })
+        #expect(flow.state(of: automation) == .checking)
+        gateway.checking = []                                    // the answer lands
+        #expect(flow.state(of: automation) == .granted)
         flow.stop()
     }
 

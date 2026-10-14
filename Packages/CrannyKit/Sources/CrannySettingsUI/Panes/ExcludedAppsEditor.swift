@@ -1,6 +1,8 @@
 // CrannySettingsUI/Panes/ExcludedAppsEditor.swift — General ▸ Excluded apps (DESIGN.md §3.7): while one of these apps
 // is in front, Cranny behaves as it does over full-screen apps. Add from the running apps or with an Open panel in
-// /Applications (the panel is the user's own choice, so it raises no prompt); remove with the row's button.
+// /Applications (the panel is the user's own choice, so it raises no prompt); remove with the row's button. Rows name
+// their app with CrannyCore's `AppIdentityResolver` and never show a bundle identifier: an app that is no longer
+// installed reads "App not installed" (it can still be removed), and a row whose lookup still runs shows no name yet.
 import AppKit
 import CrannyCore
 import Foundation
@@ -21,22 +23,11 @@ struct ExcludedAppsEditor: View {
                      isChanged: !ids.isEmpty)
         }
         .settingRow(GeneralRows.excludedApps, settings: settings, key: CoreSettings.excludedBundleIDs)
+        .onAppear { AppIdentityResolver.shared.refresh() }      // an app may have been installed or removed meanwhile
         ForEach(ids, id: \.self) { id in
-            let app = AppIdentityResolver.shared.identity(of: id)
-            HStack(spacing: 8) {
-                AppIconView(icon: app.icon)
-                Text(verbatim: app.name).lineLimit(1)
-                Spacer()
-                Button {
-                    settings[CoreSettings.excludedBundleIDs].removeAll { $0 == id }
-                } label: {
-                    Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
-                }
-                .buttonStyle(.borderless)
-                .accessibilityLabel(Text("Remove \(app.name)", bundle: .module,
-                                         comment: "Settings ▸ General ▸ Excluded apps: remove button (VoiceOver); the argument is an app name"))
+            ExcludedAppRow(identity: AppIdentityResolver.shared.identity(of: id)) {
+                settings[CoreSettings.excludedBundleIDs].removeAll { $0 == id }
             }
-            .padding(.leading, 16)
         }
     }
 
@@ -44,6 +35,42 @@ struct ExcludedAppsEditor: View {
         var ids = settings[CoreSettings.excludedBundleIDs]
         for id in bundleIDs where !ids.contains(id) { ids.append(id) }
         settings[CoreSettings.excludedBundleIDs] = ids
+    }
+}
+
+/// One excluded app: its icon and Finder's name, and the remove button.
+private struct ExcludedAppRow: View {
+    let identity: AppIdentity
+    let remove: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            AppIconView(icon: identity.icon)
+            if let name = identity.name {
+                Text(verbatim: name).lineLimit(1)
+            } else if identity.isNotInstalled {
+                Text("App not installed", bundle: .module,
+                     comment: "Settings ▸ General ▸ Excluded apps: row of an excluded app that is no longer installed")
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            Spacer()
+            Button(action: remove) {
+                Image(systemName: "minus.circle.fill").foregroundStyle(.secondary)
+            }
+            .buttonStyle(.borderless)
+            .accessibilityLabel(removeLabel)
+        }
+        .padding(.leading, 16)
+    }
+
+    private var removeLabel: Text {
+        if let name = identity.name {
+            return Text("Remove \(name)", bundle: .module,
+                        comment: "Settings ▸ General ▸ Excluded apps: remove button (VoiceOver); the argument is an app name")
+        }
+        return Text("Remove app", bundle: .module,
+                    comment: "Settings ▸ General ▸ Excluded apps: remove button (VoiceOver) of an app that is not installed or not looked up yet")
     }
 }
 
@@ -79,7 +106,7 @@ private struct AddAppMenu: View {
         let own = Bundle.main.bundleIdentifier
         return NSWorkspace.shared.runningApplications
             .filter { $0.activationPolicy == .regular }
-            .compactMap { app in app.bundleIdentifier.map { ($0, app.localizedName ?? $0) } }
+            .compactMap { app in app.bundleIdentifier.flatMap { id in app.localizedName.map { (id, $0) } } }   // named only
             .filter { $0.0 != own && !excluded.contains($0.0) }
             .sorted { $0.1.localizedStandardCompare($1.1) == .orderedAscending }
             .map { (bundleID: $0.0, name: $0.1) }

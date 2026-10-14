@@ -4,7 +4,8 @@
 // use) and System Audio Recording has no prompt to show (CrannyMedia records what it observes). A use that
 // serves an off-by-default switch (`PermissionUse.optIn`: Media's Apple Events fallback for Automation, every
 // Bluetooth device for Bluetooth) is offered only while that switch is on: otherwise the grant would change
-// nothing, and the switch in Settings asks for the permission when it is turned on.
+// nothing, and the switch in Settings asks for the permission when it is turned on. An Automation use counts only
+// while its app is installed (`isAvailable`: Core's `AppIdentityResolver`), as in Settings ▸ Permissions.
 import CrannyCore
 import Foundation
 
@@ -55,12 +56,13 @@ nonisolated enum PermissionPlan {
     }
 
     /// One row per group, in DESIGN.md's order, for the uses of `modules` that a grant makes work: `isOn` reads
-    /// the opt-in switch of a use that has one (`PermissionUse.optIn`).
-    static func rows(uses: [PermissionUse], modules: Set<ModuleID>,
-                     isOn: (SettingKey<Bool>) -> Bool) -> [PermissionRow] {
+    /// the opt-in switch of a use that has one (`PermissionUse.optIn`), and `isAvailable` drops a kind whose app is
+    /// not installed (or not looked up yet).
+    static func rows(uses: [PermissionUse], modules: Set<ModuleID>, isOn: (SettingKey<Bool>) -> Bool,
+                     isAvailable: (PermissionKind) -> Bool = { _ in true }) -> [PermissionRow] {
         var kinds: [PermissionGroup: [PermissionKind]] = [:]
         var reasons: [PermissionGroup: [String]] = [:]
-        for use in uses where modules.contains(use.module) && use.optIn.map(isOn) != false {
+        for use in uses where modules.contains(use.module) && use.optIn.map(isOn) != false && isAvailable(use.kind) {
             guard let group = PermissionGroup(use.kind) else { continue }
             if !(kinds[group] ?? []).contains(use.kind) { kinds[group, default: []].append(use.kind) }
             let reason = use.reason.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -83,10 +85,16 @@ nonisolated enum PermissionRowState: Equatable, Sendable {
     /// Asked, but the system could not decide yet (an Automation target that is not running): Cranny asks
     /// again when the feature needs it.
     case deferred
+    /// A status is still on its way (an app's first Automation answer, read off the main actor): a spinner, no
+    /// action, so "Allow" never shows for a player that is already allowed.
+    case checking
 
-    /// `requested`: the person already pressed Allow on this row.
-    static func combining(_ statuses: [PermissionStatus], requested: Bool) -> Self {
-        guard !statuses.isEmpty else { return .askable }
+    /// `known`: the known status of each kind, nil while one is on its way. `requested`: the person already
+    /// pressed Allow on this row.
+    static func combining(_ known: [PermissionStatus?], requested: Bool) -> Self {
+        guard !known.isEmpty else { return .askable }
+        let statuses = known.compactMap(\.self)
+        guard statuses.count == known.count else { return .checking }
         if statuses.allSatisfy({ $0 == .granted }) { return .granted }
         if statuses.contains(.notDetermined) { return .askable }
         if statuses.contains(.denied) { return .denied }

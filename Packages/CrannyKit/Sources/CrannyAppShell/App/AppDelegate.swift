@@ -2,7 +2,8 @@
 // Builds the ports and the registry (CompositionRoot), registers the shell's own contributions, then owns and
 // starts four components with final initializers: OverlayCoordinator, SettingsWindowController,
 // WelcomeWindowController and ShellAppServices. `--diagnostics` exits before any window exists, and
-// before any module launched, so no terminate hook runs then either (`LaunchGate`).
+// before any module launched, so no terminate hook runs then either (`LaunchGate`), and before the one-time settings
+// upgrade, so it writes no preference. `ShellDefaults` picks where settings live (a Debug QA run's own suite).
 import AppKit
 import CrannyCore
 import Foundation
@@ -27,17 +28,20 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Builds the registry, then starts the overlay, windows and app services (or writes `--diagnostics` and quits).
     public func applicationDidFinishLaunching(_ notification: Notification) {
-        let registry = CompositionRoot.makeRegistry(notch: notchControl, environment: environment, app: appControl)
+        let defaults = ShellDefaults.forLaunch()           // the user's preferences, or a Debug QA run's own suite
+        let registry = CompositionRoot.makeRegistry(notch: notchControl, environment: environment, app: appControl,
+                                                    defaults: defaults.defaults)
         self.registry = registry
         if let out = Diagnostics.argument("--diagnostics") {
             Task { await Diagnostics.write(to: out, registry: registry); NSApp.terminate(nil) }
             return
         }
+        registry.services.settings.upgradeStoredSettings()   // once per install and revision; never in --diagnostics
         environment.start(settings: registry.services.settings)
 
         let overlay = OverlayCoordinator(registry: registry, environment: environment)
         ShellContributions.register(in: registry, overlay: overlay)
-        let settingsWindow = SettingsWindowController(registry: registry)
+        let settingsWindow = SettingsWindowController(registry: registry, defaults: defaults)
         let welcomeWindow = WelcomeWindowController(registry: registry)
         let appServices = ShellAppServices(registry: registry, appControl: appControl, overlay: overlay,
                                            settingsWindow: settingsWindow, welcomeWindow: welcomeWindow)

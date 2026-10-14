@@ -133,6 +133,17 @@
         }
       }
     },
+    "App not installed" : {
+      "comment" : "Settings ▸ Shortcuts: title of a row whose app is no longer installed (its name is not known)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приложение не установлено"
+          }
+        }
+      }
+    },
     "Apps" : {
       "comment" : "Settings search: keyword for the Shortcuts pane",
       "localizations" : {
@@ -470,17 +481,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Нет в «Быстрых командах»"
-          }
-        }
-      }
-    },
-    "Not installed" : {
-      "comment" : "Settings ▸ Shortcuts: an app in the list that is not on this Mac",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Не установлено"
           }
         }
       }

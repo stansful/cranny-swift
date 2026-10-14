@@ -135,12 +135,6 @@ public nonisolated enum CrannyMotion {
         return sign * (1 - 1 / (abs(offset) * c / limit + 1)) * limit
     }
 
-    /// Hand the gesture's velocity (pt/s) to the spring so a release never "restarts".
-    public static func release(velocity: CGFloat, remaining distance: CGFloat) -> Animation {
-        let v = abs(distance) < 0.5 ? 0 : Double(velocity / distance)
-        return .interpolatingSpring(duration: 0.40, bounce: 0.14, initialVelocity: v)
-    }
-
     /// The gulp, the one delight that is shape motion (DESIGN.md §5.5: a file caught). Never under Instant; under
     /// Calm and Reduce Motion its variant is "no gulp, the haptic stays". The other moments (first light, song change,
     /// timer done, charger connected) and their Calm / Reduce Motion variants are timed by CrannyEffects.

@@ -110,8 +110,8 @@ enum MediaPaneStrings {
                comment: "Settings ▸ Media: permission status (Automation for a player, System Audio Recording for Live)") }
     static var allow: String { String(localized: "Allow…", bundle: .module,
                comment: "Settings ▸ Media: button that asks for Automation permission") }
-    static var notInstalled: String { String(localized: "Not installed", bundle: .module,
-               comment: "Settings ▸ Media: Automation row of a player that is not installed") }
+    static var appNotInstalled: String { String(localized: "App not installed", bundle: .module,
+               comment: "Settings ▸ Media ▸ Ignore apps: row of an ignored app that is no longer installed") }
     static var openToAllow: String { String(localized: "Open the app to allow", bundle: .module,
                comment: "Settings ▸ Media: Automation row while the player is not running") }
 

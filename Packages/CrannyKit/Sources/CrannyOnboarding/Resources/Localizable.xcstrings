@@ -216,13 +216,13 @@
         }
       }
     },
-    "Control Music and Spotify when other ways fail. Cranny sends only playback commands." : {
-      "comment" : "Welcome step 5: fallback reason for the Automation permission",
+    "Control playback in your media apps when other ways fail. Cranny sends only playback commands." : {
+      "comment" : "Welcome step 5: fallback reason for the Automation permission (names no app: the row stands for every player)",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Управлять «Музыкой» и Spotify, если другие способы не сработали. Cranny отправляет только команды воспроизведения."
+            "value" : "Управлять воспроизведением в плеерах, если другие способы не сработали. Cranny отправляет только команды воспроизведения."
           }
         }
       }

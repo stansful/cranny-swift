@@ -2,7 +2,9 @@
 // per permission a module declared (`registry.permissionUses`), with a status pill (Granted / Not yet / Denied), the
 // one-line why, and Grant… or Open System Settings. Statuses are read with `PermissionsCenter` (never prompts) when the
 // pane appears and whenever the app becomes active; a system prompt appears only after a click on Grant…. An Automation
-// row is named after its app and shown only while that app is installed (`AutomationApps`).
+// row is named after its app (CrannyCore's `AppIdentityResolver`: Finder's name, never the bundle identifier) and shown
+// only while that app is installed. Automation statuses come from `PermissionsCenter`'s cache, read off the main actor:
+// a row shows a small spinner until its first answer lands, and no view body runs an Apple Events query.
 import AppKit
 import CrannyCore
 import Foundation
@@ -54,30 +56,32 @@ enum PermissionsRows {
 
     /// The row's title, or nil while the row is not shown: an Automation row is named after its app ("Automation:
     /// Music") once the app is known to be installed, and never after its bundle identifier (§10.20 issue 11).
-    static func title(_ kind: PermissionKind, app: (String) -> AutomationApp) -> String? {
+    static func title(_ kind: PermissionKind, app: (String) -> AppIdentity) -> String? {
         guard case .automation(let bundleID) = kind else { return kind.title }
-        return app(bundleID).name.map {
+        let identity = app(bundleID)
+        guard identity.isInstalled else { return nil }
+        return identity.name.map {
             String(localized: "Automation: \($0)", bundle: .module,
                    comment: "Settings ▸ Permissions: Apple Events permission for one app; the argument is the app's name (Music, Spotify)")
         }
     }
 
     /// The rows the pane shows, with their titles, in the design's order.
-    static func shown(_ entries: [PermissionEntry], app: (String) -> AutomationApp) -> [(entry: PermissionEntry, title: String)] {
+    static func shown(_ entries: [PermissionEntry], app: (String) -> AppIdentity) -> [(entry: PermissionEntry, title: String)] {
         entries.compactMap { entry in title(entry.kind, app: app).map { (entry, $0) } }
     }
 
     /// An Automation row still waits for its app's lookup.
-    static func isWaiting(_ entries: [PermissionEntry], app: (String) -> AutomationApp) -> Bool {
+    static func isWaiting(_ entries: [PermissionEntry], app: (String) -> AppIdentity) -> Bool {
         entries.contains { entry in
-            if case .automation(let bundleID) = entry.kind { return app(bundleID) == .pending }
+            if case .automation(let bundleID) = entry.kind { return app(bundleID).isPending }
             return false
         }
     }
 
     /// The search rows: exactly the rows the pane shows.
-    static func all(registry: ModuleRegistry, apps: AutomationApps = .shared) -> [SettingsRowInfo] {
-        shown(PermissionEntry.entries(registry.permissionUses), app: apps.app).map {
+    static func all(registry: ModuleRegistry, identities: AppIdentityResolver = .shared) -> [SettingsRowInfo] {
+        shown(PermissionEntry.entries(registry.permissionUses), app: identities.identity(of:)).map {
             SettingsRowInfo(.permissions, $0.entry.id, title: $0.title)
         }
     }
@@ -85,14 +89,14 @@ enum PermissionsRows {
 
 struct PermissionsPane: View {
     let registry: ModuleRegistry
-    private var apps: AutomationApps { .shared }
+    private var identities: AppIdentityResolver { .shared }
 
     var body: some View {
         let entries = PermissionEntry.entries(registry.permissionUses)
-        let rows = PermissionsRows.shown(entries, app: apps.app)
+        let rows = PermissionsRows.shown(entries, app: identities.identity(of:))
         SettingsForm(.permissions) {
             Section {
-                if rows.isEmpty && !PermissionsRows.isWaiting(entries, app: apps.app) {
+                if rows.isEmpty && !PermissionsRows.isWaiting(entries, app: identities.identity(of:)) {
                     Label {
                         Text("No feature has asked for a permission.", bundle: .module, comment: "Settings ▸ Permissions: no module declared a permission")
                     } icon: {
@@ -116,7 +120,7 @@ struct PermissionsPane: View {
     /// Statuses and Automation apps may have changed while the pane was away (System Settings, an installer).
     private func refresh() {
         registry.services.permissions.refresh()
-        apps.refresh()
+        identities.refresh()
     }
 }
 
@@ -127,13 +131,15 @@ private struct PermissionRow: View {
     @State private var isRequesting = false
 
     var body: some View {
-        let status = permissions.status(entry.kind)
+        let status = permissions.knownStatus(entry.kind)
         LabeledContent {
             HStack(spacing: 10) {
-                PermissionStatusPill(status: status)
-                if isRequesting {
-                    ProgressView().controlSize(.small)
-                } else if let action = PermissionAction(kind: entry.kind, status: status) {
+                if let status {
+                    PermissionStatusPill(status: status)
+                }
+                if isRequesting || status == nil {
+                    ProgressView().controlSize(.small)          // a request, or the first Automation answer, runs
+                } else if let status, let action = PermissionAction(kind: entry.kind, status: status) {
                     Button {
                         perform(action)
                     } label: {

@@ -47,6 +47,54 @@ import Testing
     }
 }
 
+/// Type to capture follows the preset (ruling E2, §10.20 #24): the Keyboard warning never follows from a preset.
+@MainActor @Suite struct PresetCaptureTests {
+    private let targets = [
+        CaptureTarget(id: "notes", title: "Notes", symbol: "note.text", widget: .notes) { _ in .notes },
+        CaptureTarget(id: "todos", title: "To-dos", symbol: "checklist", widget: .todos) { _ in .todos },
+    ]
+    private let todosPage = NookPage(id: "page.5678", title: "Lists", symbol: "checklist", items: [NookItem(.todos, cells: 3)])
+
+    private func target(_ preset: NookPreset, current: String?, userPages: [NookPage] = []) -> String? {
+        let pages = PresetLayout.applying(preset, to: [NookPreset.listener.page] + userPages)
+        return PresetLayout.captureTarget(home: preset.items, pages: pages, current: current, targets: targets)
+    }
+
+    @Test func aPresetWithNotesSetsNotes() {
+        #expect(NookPreset.maker.items.contains { $0.widget == .notes })
+        #expect(target(.maker, current: nil) == "notes")                  // a fresh install picking Maker
+        #expect(target(.maker, current: "todos") == "notes")              // Maker has both: Notes wins
+    }
+
+    @Test func aPresetWithToDosButNoNotesSetsToDos() {
+        // No built-in preset has To-dos without Notes today; the rule holds for any Home that does.
+        let home = [NookItem(.calendar, cells: 4), NookItem(.todos, cells: 3)]
+        let pages = [NookPage(id: .nook, symbol: "square.grid.2x2.fill", items: home)]
+        #expect(PresetLayout.captureTarget(home: home, pages: pages, current: nil, targets: targets) == "todos")
+        #expect(PresetLayout.captureTarget(home: home, pages: pages, current: "notes", targets: targets) == "todos")
+    }
+
+    @Test func aPresetWithNeitherTurnsCaptureOffUnlessItsWidgetStaysOnAPage() {
+        for preset in [NookPreset.listener, .meetings, .minimal] {
+            #expect(target(preset, current: nil) == nil)
+            #expect(target(preset, current: "notes") == nil)                // Maker, then Listener: back to Off
+            #expect(target(preset, current: "todos", userPages: [todosPage]) == "todos")   // a user page keeps To-dos
+            #expect(target(preset, current: "journal") == "journal")        // not registered here: left alone
+        }
+    }
+
+    @Test func noPresetLeavesATargetWhoseWidgetIsOnNoPage() {
+        for preset in NookPreset.allCases {
+            for current in [nil, "notes", "todos"] {
+                let pages = PresetLayout.applying(preset, to: [NookPreset.listener.page])
+                guard let id = PresetLayout.captureTarget(home: preset.items, pages: pages, current: current, targets: targets),
+                      let widget = targets.first(where: { $0.id == id })?.widget else { continue }
+                #expect(pages.contains { $0.items.contains { $0.widget == widget } }, "\(preset) \(String(describing: current))")
+            }
+        }
+    }
+}
+
 @Suite struct PermissionPlanTests {
     private static let appleEvents = SettingKey<Bool>(.media, "allowAppleEvents", default: false)
     private static let allDevices = SettingKey<Bool>(.system, "showsAllBluetoothDevices", default: false)
@@ -112,5 +160,8 @@ import Testing
         #expect(PermissionRowState.combining([.restricted], requested: false) == .restricted)
         #expect(PermissionRowState.combining([.unknown], requested: false) == .askable)
         #expect(PermissionRowState.combining([.unknown, .granted], requested: true) == .deferred)
+        // An Automation answer still on its way: a spinner, never "Allow" for a player that may be allowed already.
+        #expect(PermissionRowState.combining([.granted, nil], requested: false) == .checking)
+        #expect(PermissionRowState.combining([nil, .notDetermined], requested: true) == .checking)
     }
 }

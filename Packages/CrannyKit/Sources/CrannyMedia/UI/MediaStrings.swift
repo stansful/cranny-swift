@@ -34,6 +34,12 @@ enum MediaStrings {
     static var paused: String { String(localized: "Paused", bundle: .module, comment: "Media: VoiceOver value while playback is paused") }
     static var retry: String { String(localized: "Retry", bundle: .module, comment: "Media widget: error state button") }
 
+    static var openPlayer: String {
+        String(localized: "Open the player", bundle: .module,
+               comment: "Media: tooltip and VoiceOver action on the artwork while the player's name is not known")
+    }
+    /// "Open in Music", or "Open the player" while no name is known.
+    static func openAction(_ app: String?) -> String { app.map { openIn($0) } ?? openPlayer }
     static func openIn(_ app: String) -> String {
         String(localized: "Open in \(app)", bundle: .module, comment: "Media: tooltip and VoiceOver action on the artwork; argument is the player's name")
     }
