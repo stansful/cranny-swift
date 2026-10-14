@@ -15,8 +15,9 @@ public enum TimerSettings {
     /// The widget shows four preset chips (a 2 × 2 grid, or a column at 3 cells).
     public static let maximumPresets = 4
 
-    /// The classic macOS alert sounds in /System/Library/Sounds, offered by the sound picker. Names are what
-    /// `NSSound(named:)` resolves; they are proper names and are shown untranslated.
+    /// The classic macOS alert sounds in /System/Library/Sounds, offered by the sound picker. These are the file
+    /// names `NSSound(named:)` resolves and `sound` stores; the picker shows the names System Settings ▸ Sound
+    /// gives them, localized (`TimerCopy.soundName`: "Glass" is Crystal / Кристалл).
     public static let systemSounds = ["Basso", "Blow", "Bottle", "Frog", "Funk", "Glass", "Hero", "Morse",
                                       "Ping", "Pop", "Purr", "Sosumi", "Submarine", "Tink"]
 }
