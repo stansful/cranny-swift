@@ -57,7 +57,7 @@ struct NookView: View {
                 width: theme.grid.width(cells: model.openColumns), height: theme.grid.height),
                 isPreview: model.context.isPreview, redactsPersonalData: model.context.redactsPersonalData))
         } else {
-            PlaceholderPage(symbol: pageID == .tray ? "tray.full.fill" : "square.grid.2x2.fill")
+            PlaceholderPage(symbol: pageID == .tray ? "tray.full.fill" : "square.grid.2x2.fill", columns: model.openColumns)
         }
     }
 }
@@ -78,14 +78,18 @@ private struct GridPage: View {
     }
 }
 
-/// A page whose module is not built yet (e.g. `--qa-page tray` before WP8).
+/// A page that disappeared while the panel was open (its module or user page went away). The shell opens
+/// only pages that exist, so this is a fallback, never a destination.
 private struct PlaceholderPage: View {
     @Environment(\.cranny) private var theme
     let symbol: String
+    let columns: Int
     var body: some View {
         WidgetStateView(.empty, symbol: symbol,
-                        message: String(localized: "Nothing here yet", bundle: .module, comment: "Open panel: page placeholder"))
-            .frame(height: theme.grid.height)
+                        message: String(localized: "Nothing here yet", bundle: .module, comment: "Open panel: placeholder for a page that is gone"))
+            .crannyCard(cells: columns)
+            // Light never sits behind text without a card or a scrim (DESIGN.md §5): Flat style draws no card.
+            .background { if theme.widgetStyle != .cards { theme.palette.scrim } }
     }
 }
 

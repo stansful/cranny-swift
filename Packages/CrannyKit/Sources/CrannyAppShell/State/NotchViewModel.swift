@@ -58,11 +58,18 @@ import Foundation
     }
 
     private func reduce(_ input: NotchInput) {
+        var input = input
+        // Only pages that exist are opened: a module page whose module is not registered, or a deleted user
+        // page, falls back to the last page (and that to the first grid page), so a tab is always selected.
+        switch input {
+        case let .open(page?, focus, reason) where !pageExists(page): input = .open(page: nil, focus: focus, reason: reason)
+        case .selectPage(let page) where !pageExists(page): return
+        default: break
+        }
         let config = currentConfig()
         let (next, effects) = NotchMachine.reduce(state, input, now: ProcessInfo.processInfo.systemUptime, config: config)
         state = next
-        if case .selectPage(let page) = input, registry.services.settings[CoreSettings.lastPage] != page,
-           registry.services.settings[CoreSettings.pages].contains(where: { $0.id == page }) || registry.pages.contains(where: { $0.id == page }) {
+        if case .selectPage(let page) = input, registry.services.settings[CoreSettings.lastPage] != page {
             registry.services.settings[CoreSettings.lastPage] = page
         }
         for effect in effects { perform(effect) }
@@ -121,12 +128,18 @@ import Foundation
             isFileDrag: false, fullScreenSpace: registry.services.environment.isFullScreenInFront)
     }
 
+    /// A grid page from `CoreSettings.pages` or a page a registered module contributes.
+    private func pageExists(_ page: PageID) -> Bool {
+        registry.services.settings[CoreSettings.pages].contains { $0.id == page } || registry.pages.contains { $0.id == page }
+    }
+
     private func currentConfig() -> NotchMachineConfig {
         let settings = registry.services.settings
+        let lastPage = settings[CoreSettings.lastPage]
         return NotchMachineConfig(
             openMode: settings[CoreSettings.openMode], hoverDelay: settings[CoreSettings.hoverDelay].seconds,
             closeOnLeave: settings[CoreSettings.closeOnLeave], quickPeekOnHover: settings[CoreSettings.quickPeekOnHover],
-            lastPage: settings[CoreSettings.lastPage], voiceOverRunning: NSWorkspace.shared.isVoiceOverEnabled,
+            lastPage: pageExists(lastPage) ? lastPage : settings[CoreSettings.pages].first?.id ?? .nook, voiceOverRunning: NSWorkspace.shared.isVoiceOverEnabled,
             hasPrimaryActivity: scene.primary != nil)
     }
 

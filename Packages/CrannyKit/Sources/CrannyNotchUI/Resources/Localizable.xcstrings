@@ -12,17 +12,6 @@
         }
       }
     },
-    "Command palette" : {
-      "comment" : "Open panel: header button (⌘K)",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Палитра команд"
-          }
-        }
-      }
-    },
     "Files" : {
       "comment" : "Widget placeholder name",
       "localizations" : {
@@ -90,7 +79,7 @@
       }
     },
     "Nothing here yet" : {
-      "comment" : "Open panel: page placeholder",
+      "comment" : "Open panel: placeholder for a page that is gone",
       "localizations" : {
         "ru" : {
           "stringUnit" : {

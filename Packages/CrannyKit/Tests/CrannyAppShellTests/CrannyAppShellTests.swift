@@ -104,6 +104,22 @@ private func run(_ inputs: [NotchInput], from start: NotchMachineState = NotchMa
     #expect(viewModel.state.graceDeadline == nil)
 }
 
+/// A page that is not there (module not registered, user page deleted) never opens: no tab would be selected
+/// and the light would sit behind a bare placeholder.
+@Test func onlyExistingPagesOpen() {
+    let registry = ModuleRegistry(services: .preview())
+    let viewModel = NotchViewModel(scene: NotchSceneModel(layout: NotchLayout(metrics: .reference), theme: CrannyTheme()),
+                                   registry: registry)
+    viewModel.send(.open(page: .tray, focus: nil, reason: .programmatic))           // no Tray module registered
+    #expect(viewModel.state.surface == .open(OpenState(page: .nook, reason: .programmatic)))
+    viewModel.send(.selectPage("page.gone"))
+    #expect(viewModel.scene.open?.page == .nook && registry.services.settings[CoreSettings.lastPage] == .nook)
+    viewModel.send(.close)
+    registry.services.settings[CoreSettings.lastPage] = "page.deleted"                // stale persisted value
+    viewModel.send(.hotKey)
+    #expect(viewModel.scene.open?.page == .nook)
+}
+
 @Test func escapeLeavesModesFirstThenClosesAndHandsFocusBack() {
     let (open, fx) = run([.hotKey])
     #expect(open.surface == .open(OpenState(page: .nook, reason: .keyboard)) && fx.contains(.makeKey))

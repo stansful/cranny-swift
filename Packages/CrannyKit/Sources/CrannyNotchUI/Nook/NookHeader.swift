@@ -1,6 +1,7 @@
 // CrannyNotchUI/Nook/NookHeader.swift — the header row in the band (DESIGN.md §6.2): page tabs left of the
 // camera, the empty camera zone (time and date on displays without a notch), actions on the right.
-// WP0 skeleton; WP12 adds badges, collapsing titles, matched-geometry selection and hold-⌘ hints.
+// WP0 skeleton; WP12 adds badges, collapsing titles, matched-geometry selection, hold-⌘ hints and the
+// ⌕ Command palette button (⌘K), which ships with the palette itself (DESIGN.md §6.2, §6.4).
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -41,6 +42,11 @@ struct NookHeader: View {
         return gridPages + modulePages
     }
 
+    /// Visual height of a tab segment (DESIGN.md §6.2).
+    static let segmentHeight: CGFloat = 22
+    /// How far the tap area reaches beyond the segment so it is ≥ 24 pt tall (DESIGN.md §16).
+    static let hitOutset = max(0, (HitTarget.band.height - segmentHeight) / 2)
+
     private var tabs: some View {
         let p = theme.palette
         let selected = model.open?.page ?? .nook
@@ -53,9 +59,12 @@ struct NookHeader: View {
                         .lineLimit(1)
                         .foregroundStyle(tab.id == selected ? p.label : p.secondaryLabel)
                         .padding(.horizontal, Space.m + 2)
-                        .frame(height: 22)
+                        .frame(minWidth: HitTarget.band.width)
+                        .frame(height: Self.segmentHeight)
                         .background { if tab.id == selected { Capsule(style: .continuous).fill(p.controlPressed) } }
-                        .contentShape(Capsule(style: .continuous))
+                        // The segment is 22 pt (DESIGN.md §6.2); the hit target reaches 24 pt (§16, band) into the
+                        // track's inset without changing the layout.
+                        .contentShape(Rectangle().inset(by: -Self.hitOutset))
                 }
                 .buttonStyle(.plain)
                 .accessibilityAddTraits(tab.id == selected ? .isSelected : [])
@@ -79,10 +88,6 @@ struct NookHeader: View {
 
     private var buttons: some View {
         HStack(spacing: Space.xs) {
-            Button(action: actions.showPalette) { Image(systemName: "magnifyingglass") }
-                .buttonStyle(CrannyIconButtonStyle(.plain))
-                .accessibilityLabel(Text("Command palette", bundle: .module, comment: "Open panel: header button (⌘K)"))
-                .help(String(localized: "Command palette", bundle: .module, comment: "Open panel: header button (⌘K)"))
             Button(action: actions.togglePin) { Image(systemName: model.pinned ? "pin.fill" : "pin") }
                 .buttonStyle(CrannyIconButtonStyle(model.pinned ? .filled : .plain))
                 .accessibilityLabel(Text("Keep Cranny open", bundle: .module, comment: "Open panel: pin button (⌘P)"))

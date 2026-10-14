@@ -65,13 +65,13 @@ you can screenshot every presentation from a script. They are compiled out of Re
 | Argument | Effect |
 |---|---|
 | `--qa-state closed\|compact\|peek\|open` | Forces that state on the primary display and holds it regardless of the pointer. `compact` and `peek` show a sample activity ("Hi"). |
-| `--qa-page <page id>` | With `open`: shows that page — `nook` (Home), `tray`, or a user page `page.<uuid>`. |
+| `--qa-page <page id>` | With `open`: shows that page — `nook` (Home), a module page such as `tray` once its module registers it, or a user page `page.<uuid>`. A page that does not exist opens the last page instead, as it does for users. |
 | `--qa-exit-after <seconds>` | Quits after that many seconds. |
 | `--qa-settings <pane id>` | Also opens Settings at that pane (`general`, `appearance`, `about`, …). |
 | `-CrannyDisableShaders YES` | Forces every effect onto its SwiftUI fallback (also in Release builds: QA and energy A/B runs). |
 
 ```sh
-scripts/run.sh -- --qa-state open --qa-page tray --qa-exit-after 8
+scripts/run.sh -- --qa-state open --qa-page nook --qa-exit-after 8
 ```
 
 Screenshot the panel by window id: it is the app's only window at layer 26 (find it with
