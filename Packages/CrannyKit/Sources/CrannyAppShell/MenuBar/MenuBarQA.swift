@@ -34,16 +34,14 @@ private let log = Log.logger(.app)
         }
 
         init(arguments: [String]) {
-            func value(_ name: String) -> String? {
-                guard let i = arguments.firstIndex(of: name), i + 1 < arguments.count else { return nil }
-                return arguments[i + 1]
-            }
+            let parsed = LaunchArguments(arguments)
+            func value(_ name: String) -> String? { parsed.value(after: name) }
             self.init(menu: value("--qa-menu").flatMap(Target.init(rawValue:)),
                       demo: value("--qa-demo").flatMap { ["on": true, "off": false][$0] },
                       updateCheck: arguments.contains("--qa-update-check"),
                       openCranny: value("--qa-open-cranny").flatMap(Double.init),
-                      // A `.png` path is NotchUI's panel snapshot; only a directory is ours (QAHooks.swift).
-                      snapshotDirectory: value("--qa-snapshot").flatMap { $0.lowercased().hasSuffix(".png") ? nil : $0 },
+                      // A `.png` path is NotchUI's panel snapshot; only a directory is ours (`LaunchArguments`).
+                      snapshotDirectory: parsed.qaSnapshotDirectory,
                       snapshotTimes: value("--qa-snapshot-at").map { $0.split(separator: ",").compactMap { Double($0) } } ?? [3])
         }
 

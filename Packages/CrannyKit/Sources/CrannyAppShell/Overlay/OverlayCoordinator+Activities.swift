@@ -153,11 +153,11 @@ extension OverlayCoordinator {
         controller.viewModel.send(.autoPeek(id, until: until))
     }
 
-    /// P1 alerts only, ≤ 1 per 10 s, only while VoiceOver runs (DESIGN.md §16).
+    /// P1 alerts only, only while VoiceOver runs, through the app-wide limit of one alert or result per 10 s
+    /// (`services.announcer`, DESIGN.md §16).
     private func announce(_ id: ActivityID) {
-        guard NSWorkspace.shared.isVoiceOverEnabled, let activity = registry.activity(id)?.activity,
-              announcements.allow(now: ProcessInfo.processInfo.systemUptime) else { return }
-        AccessibilityNotification.Announcement(activity.accessibilityLabel).post()
+        guard NSWorkspace.shared.isVoiceOverEnabled, let activity = registry.activity(id)?.activity else { return }
+        registry.services.announcer.announce(activity.accessibilityLabel, kind: .alert)
     }
 
     /// The caps of §4.6 step 7 (one at a time, not paused, not behind full screen, not on a hidden panel, not

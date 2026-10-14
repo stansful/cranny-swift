@@ -66,10 +66,8 @@ enum QAHooks {
         }
 
         init(arguments: [String]) {
-            func value(_ name: String) -> String? {
-                guard let i = arguments.firstIndex(of: name), i + 1 < arguments.count else { return nil }
-                return arguments[i + 1]
-            }
+            let parsed = LaunchArguments(arguments)
+            func value(_ name: String) -> String? { parsed.value(after: name) }
             self.init(state: value("--qa-state").flatMap(State.init(rawValue:)),
                       page: value("--qa-page").map(PageID.init(rawValue:)),
                       exitAfter: value("--qa-exit-after").flatMap(Double.init).flatMap { $0 > 0 ? $0 : nil },
@@ -87,10 +85,11 @@ enum QAHooks {
                 && welcomeStep == nil && tutorialStep == nil
         }
 
-        /// `--qa-snapshot <dir>` (not a `.png` file, which is NotchUI's panel snapshot).
+        /// `--qa-snapshot <dir>` (not a `.png` file, which is NotchUI's panel snapshot; the rule is
+        /// `LaunchArguments.qaSnapshotDirectory`).
         var snapshotDirectory: URL? {
-            guard let snapshotPath, !snapshotPath.lowercased().hasSuffix(".png") else { return nil }
-            return URL(fileURLWithPath: snapshotPath, isDirectory: true)
+            LaunchArguments(["--qa-snapshot", snapshotPath].compactMap { $0 }).qaSnapshotDirectory
+                .map { URL(fileURLWithPath: $0, isDirectory: true) }
         }
     }
 

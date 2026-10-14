@@ -168,12 +168,6 @@ private func filter(_ key: DisplayKey = here, pointer: Bool = true, restricted: 
     #expect(PeekScheduler.target(for: "media", among: [display(here, pointer: true)], paused: false) == nil)   // not shown there
 }
 
-@Test func announcementsAreRateLimitedToOnePerTenSeconds() {
-    var limiter = AnnouncementLimiter()
-    let first = limiter.allow(now: 100), second = limiter.allow(now: 105), third = limiter.allow(now: 110)
-    #expect(first && !second && third)
-}
-
 // MARK: - Delight caps (§4.6 step 7, DESIGN.md §5.5)
 
 @Test func oneDelightAtATimeAndNoneUnderTheCaps() {
