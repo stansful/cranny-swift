@@ -102,7 +102,8 @@ final class NotesTextView: NSTextView {
     }
 
     override func insertNewline(_ sender: Any?) {
-        guard isCodeMode, let text = textStorage?.string as NSString? else { return super.insertNewline(sender) }
+        // Read only, before the insertion: the storage's own string, no copy of the note.
+        guard isCodeMode, let text = textStorage?.mutableString else { return super.insertNewline(sender) }
         let caret = selectedRange().location
         let line = text.lineRange(for: NSRange(location: caret, length: 0))
         var indentEnd = line.location

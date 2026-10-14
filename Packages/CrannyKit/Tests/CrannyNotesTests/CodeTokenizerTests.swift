@@ -157,6 +157,17 @@ import Testing
         #expect(h.has(.string, "'Riga'"))
         #expect(h.has(.comment, "/* done */"))
         #expect(highlights("select * from t", .sql).has(.keyword, "select"))
+        #expect(highlights("Select * From t", .sql).has(.keyword, "From"))
+    }
+
+    /// The tokenizer lowercases words of a case-insensitive spec and looks them up as listed, so such a spec must list
+    /// its keywords in lowercase.
+    @Test func caseInsensitiveSpecsListLowercaseKeywords() {
+        let specs = CodeLanguage.allCases.compactMap(LanguageSpec.spec(for:)) + [.generic]
+        #expect(specs.contains { $0.caseInsensitiveKeywords })
+        for spec in specs where spec.caseInsensitiveKeywords {
+            #expect(spec.keywords.allSatisfy { $0 == $0.lowercased() })
+        }
     }
 
     @Test func genericCodeIgnoresApostrophes() {

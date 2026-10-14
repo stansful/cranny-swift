@@ -1,6 +1,8 @@
 // CrannyNotes/Editor/TypingEffectRenderer.swift — draws `TypingEffect` with TextKit 2 rendering attributes
 // (`NSTextLayoutManager.addRenderingAttribute`), stepped by one display link that runs only while characters are
-// still settling (≤ 300 ms after the last keystroke) and is paused otherwise: zero work while idle (§9.2).
+// still settling (≤ 300 ms after the last keystroke) and is paused otherwise: zero work while idle (§9.2). It asks
+// for at most 30 frames per second, like every animated effect in the app (§9.2), not the display's 120 or 240 Hz:
+// progress is read from the clock, so the fade keeps its 300 ms and its colours, in fewer steps.
 // The text storage, its attributes and the undo stack are never touched.
 import AppKit
 import CrannyCore
@@ -13,6 +15,10 @@ import QuartzCore
     private var accent: (rgb: RGB, alpha: Double) = (RGB(hex: 0x409CFF), 1)
     /// The clock (seconds); tests inject one.
     var now: () -> TimeInterval = { CACurrentMediaTime() }
+
+    /// The display link's pace: 30 fps (the effects' cap on AC, ARCHITECTURE.md §9.2), down to 15 when the system
+    /// needs to save more. The first frame of a keystroke is drawn at once (`typed`), not on the link.
+    static let frameRates = CAFrameRateRange(minimum: 15, maximum: 30, preferred: 30)
 
     /// Off: setting off, Reduce Motion or Instant motion (DESIGN.md §4.2). Turning it off clears what is drawn.
     var isEnabled = true {
@@ -83,6 +89,7 @@ import QuartzCore
             displayLink.isPaused = false
         } else if let textView, textView.window != nil {                         // a display link needs a screen
             let link = textView.displayLink(target: self, selector: #selector(step(_:)))
+            link.preferredFrameRateRange = Self.frameRates
             link.add(to: .main, forMode: .common)
             displayLink = link
         }

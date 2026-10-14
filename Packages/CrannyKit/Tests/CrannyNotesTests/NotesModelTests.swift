@@ -140,13 +140,13 @@ import Testing
         #expect(model.entry(id)?.detectedLanguage == nil)
     }
 
-    /// Polls `condition` for up to 3 s (saves run off the main actor).
+    /// Polls `condition` for up to 10 s (saves run off the main actor, at utility priority; suites run in parallel).
     private func waitUntil(_ condition: () throws -> Bool) async throws {
-        for _ in 0..<150 {
+        for _ in 0..<500 {
             if try condition() { return }
             try await Task.sleep(for: .milliseconds(20))
         }
-        Issue.record("condition not met within 3 s")
+        Issue.record("condition not met within 10 s")
     }
 
     // MARK: Deleting
@@ -212,6 +212,41 @@ import Testing
         let relaunched = await loadedModel()                                   // what a kill -9 + relaunch reads
         #expect(relaunched.text(of: id) == "first line\nsecond")
         #expect(relaunched.selectedID == id)                                    // lastNoteID
+    }
+
+    @Test func typingWritesTheTextButNotTheIndex() async throws {
+        let model = await loadedModel()
+        let id = model.newNote()
+        await model.saveNow()?.value                                            // the new note is listed
+        model.setText("typed", for: id)
+        let change = try #require(model.makeChangeSet())
+        #expect(change.texts[id] == "typed")
+        #expect(change.index == nil)                                            // a new modification date alone
+        model.setText("typed more", for: id)
+        model.setLanguage(.swift, for: id)                                      // a real index change…
+        let renamed = try #require(model.makeChangeSet())
+        #expect(renamed.index?.notes.first { $0.id == id }?.modifiedAt == model.note(id)?.modifiedAt)   // …carries it
+        #expect(model.makeChangeSet() == nil)
+    }
+
+    @Test func theDatesTypingMovedAreSavedWhenThePanelClosesAndOnQuit() async throws {
+        let model = await loadedModel()
+        let id = model.newNote()
+        await model.saveNow()?.value
+        model.setText("typed", for: id)
+        _ = model.makeChangeSet()                                               // autosave: the text only
+        model.autosave.cancel()
+        model.panelClosed()
+        #expect(model.autosave.isPending)                                       // the index follows soon
+        let onClose = try #require(model.makeChangeSet())
+        #expect(onClose.index?.notes.first { $0.id == id }?.modifiedAt == model.note(id)?.modifiedAt)
+        model.autosave.cancel()
+        model.panelClosed()                                                     // nothing typed since: no write
+        #expect(!model.autosave.isPending)
+        model.setText("typed again", for: id)
+        _ = model.makeChangeSet()
+        let onQuit = try #require(model.makeFinalChangeSet())
+        #expect(onQuit.index?.notes.first { $0.id == id }?.modifiedAt == model.note(id)?.modifiedAt)
     }
 
     @Test func flushOnTerminateIsSynchronous() async throws {

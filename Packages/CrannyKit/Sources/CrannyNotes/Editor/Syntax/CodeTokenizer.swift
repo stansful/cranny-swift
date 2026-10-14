@@ -3,13 +3,9 @@
 import Foundation
 
 nonisolated struct CodeTokenizer {
+    /// The language's table. A tokenizer is made for every pass (each keystroke, each fence), so it keeps nothing
+    /// else: the spec's word sets are built once (a case-insensitive spec lists its keywords in lowercase).
     let spec: LanguageSpec
-    private let keywords: Set<String>
-
-    init(spec: LanguageSpec) {
-        self.spec = spec
-        keywords = spec.caseInsensitiveKeywords ? Set(spec.keywords.map { $0.lowercased() }) : spec.keywords
-    }
 
     private enum ASCII {
         static let quote: UInt16 = 0x22, apostrophe: UInt16 = 0x27, hash: UInt16 = 0x23, dollar: UInt16 = 0x24
@@ -242,7 +238,7 @@ nonisolated struct CodeTokenizer {
     }
 
     private func classify(_ word: String, _ s: SourceText, at i: Int, wordEnd: Int) -> SyntaxKind? {
-        if keywords.contains(spec.caseInsensitiveKeywords ? word.lowercased() : word) { return .keyword }
+        if spec.keywords.contains(spec.caseInsensitiveKeywords ? word.lowercased() : word) { return .keyword }
         if spec.types.contains(word) { return .type }
         if spec.capitalizedTypes && SourceText.isUpper(s[i]) { return .type }
         if spec.rust && s[wordEnd] == ASCII.bang

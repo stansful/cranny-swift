@@ -56,6 +56,10 @@ private let log = Log.logger(.notes)
     @ObservationIgnored var dirtyTexts = Set<UUID>()
     @ObservationIgnored var removedNotes = Set<UUID>()
     @ObservationIgnored var indexDirty = false
+    /// Only modification dates changed since `index.json` was written (typing). They ride along with the next index
+    /// write and are written when the panel closes and on quit, but never cause a write on their own while typing:
+    /// nothing shows them, and the text files carry the edits.
+    @ObservationIgnored var datesDirty = false
     @ObservationIgnored var heldReasons = Set<String>()
     /// The caret/selection of each note, restored when it is shown again (this session only).
     @ObservationIgnored var selections: [UUID: NSRange] = [:]
@@ -176,7 +180,8 @@ private let log = Log.logger(.notes)
     }
 
     /// From the editor, after every change of its characters. O(1): no comparison with the previous text (the
-    /// editor reports only real changes, and comparing a long note on every keystroke cost milliseconds).
+    /// editor reports only real changes, and comparing a long note on every keystroke cost milliseconds). Autosave
+    /// writes the note's text file; the new modification date waits for the next index write (`datesDirty`).
     func setText(_ text: String, for id: UUID) {
         guard var note = documents[id] else { return }
         note.text = text
@@ -186,7 +191,7 @@ private let log = Log.logger(.notes)
             if text.isEmpty { emptyNotes.insert(id) } else { emptyNotes.remove(id) }
         }
         dirtyTexts.insert(id)
-        indexDirty = true
+        datesDirty = true
         autosave.schedule()
         if note.mode == .code {
             undetectedNotes.insert(id)

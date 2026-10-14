@@ -1,5 +1,6 @@
 // CrannyNotes/Editor/Syntax/CodeLanguage.swift — the languages code mode highlights (DESIGN.md §7.5: Markdown
-// plus common languages). Raw values are persisted in `index.json`: never rename one.
+// plus common languages). Raw values are persisted in `index.json`: never rename one. Fence names and file
+// extensions are looked up in tables built once (every fence is resolved on every keystroke in a Markdown note).
 import Foundation
 
 /// A language code mode can highlight. `nil` in a note means "Automatic" (`LanguageDetector`).
@@ -86,8 +87,9 @@ nonisolated enum CodeLanguage: String, Codable, CaseIterable, Sendable, Identifi
 
     /// The language a fence info string or shebang interpreter names ("Swift", "c++", "python3").
     init?(alias: String) {
-        let name = alias.trimmingCharacters(in: .whitespaces).lowercased()
-        guard !name.isEmpty, let match = Self.allCases.first(where: { $0.aliases.contains(name) }) else { return nil }
+        guard !alias.isEmpty, let match = Self.byAlias[alias.trimmingCharacters(in: .whitespaces).lowercased()] else {
+            return nil
+        }
         self = match
     }
 
@@ -95,7 +97,16 @@ nonisolated enum CodeLanguage: String, Codable, CaseIterable, Sendable, Identifi
     init?(fileName: String) {
         guard let dot = fileName.lastIndex(of: "."), dot != fileName.startIndex else { return nil }
         let ext = fileName[fileName.index(after: dot)...].trimmingCharacters(in: .whitespaces).lowercased()
-        guard !ext.isEmpty, let match = Self.allCases.first(where: { $0.fileExtensions.contains(ext) }) else { return nil }
+        guard let match = Self.byExtension[ext] else { return nil }
         self = match
+    }
+
+    /// Every alias → its language. A name two languages list belongs to the first in `allCases` order.
+    private static let byAlias = table(\.aliases)
+    /// Every file extension → its language, with the same precedence.
+    private static let byExtension = table(\.fileExtensions)
+
+    private static func table(_ names: (CodeLanguage) -> [String]) -> [String: CodeLanguage] {
+        Dictionary(allCases.flatMap { language in names(language).map { ($0, language) } }, uniquingKeysWith: { first, _ in first })
     }
 }

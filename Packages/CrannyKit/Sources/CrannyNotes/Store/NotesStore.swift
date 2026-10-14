@@ -149,10 +149,11 @@ nonisolated final class NotesStore: Sendable {
 
     // MARK: Coding
 
-    private static var encoder: JSONEncoder {
+    /// One encoder for every index write (configured once; `write(_:)` encodes under the lock anyway).
+    private static let encoder: JSONEncoder = {
         let e = JSONEncoder()
         e.outputFormatting = [.prettyPrinted, .sortedKeys]
         e.dateEncodingStrategy = .iso8601
         return e
-    }
+    }()
 }

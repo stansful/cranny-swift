@@ -85,6 +85,9 @@ import Testing
         #expect(commands.commands(matching: "groc").map(\.title) == [NotesStrings.open("Groceries")])
         #expect(commands.commands(matching: "DEPLOY").count == 1)
         #expect(commands.commands(matching: "zzz").isEmpty)
+        // The whole localized title counts, not only the note's title; "New note" also matches its kind.
+        #expect(commands.commands(matching: NotesStrings.open("deploy.md")).map(\.title) == [NotesStrings.open("deploy.md")])
+        #expect(commands.commands(matching: NotesStrings.notes).first?.title == NotesStrings.newNote)
         commands.commands(matching: "Groceries").first?.perform()
         #expect(model.selectedEntry?.title == "Groceries")
         let notch = services.notch as? PreviewNotchControl

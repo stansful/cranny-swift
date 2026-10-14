@@ -17,6 +17,7 @@ nonisolated struct LanguageSpec: Sendable {
     var types: Set<String> = []
     /// `Capitalized` identifiers are types (Swift, Kotlin, Java, TypeScript, Rust, Python classes).
     var capitalizedTypes = false
+    /// Keywords match in any case (SQL). Such a spec lists `keywords` in lowercase: words are lowercased to match.
     var caseInsensitiveKeywords = false
     var lineComments: [String] = []
     /// Shell: `#` opens a comment only at the start of a line or after whitespace (`a#b` is a word).

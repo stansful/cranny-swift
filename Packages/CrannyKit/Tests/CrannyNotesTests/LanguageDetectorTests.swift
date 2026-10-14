@@ -77,5 +77,22 @@ import Testing
         #expect(CodeLanguage(alias: "objective-c") == .objectiveC)
         #expect(CodeLanguage(alias: "brainfuck") == nil)
         #expect(CodeLanguage(alias: "") == nil)
+        #expect(CodeLanguage(alias: "  Python3 ") == .python)
+        #expect(CodeLanguage(alias: "   ") == nil)
+    }
+
+    /// The lookup tables give what a search of `allCases` in order gives, for every name any language lists.
+    @Test func everyNameResolvesToTheFirstLanguageListingIt() {
+        for language in CodeLanguage.allCases {
+            for alias in language.aliases {
+                #expect(CodeLanguage(alias: alias) == CodeLanguage.allCases.first { $0.aliases.contains(alias) })
+                #expect(CodeLanguage(alias: alias.uppercased()) == CodeLanguage(alias: alias))
+            }
+            for ext in language.fileExtensions {
+                #expect(CodeLanguage(fileName: "a.\(ext)") == CodeLanguage.allCases.first { $0.fileExtensions.contains(ext) })
+                #expect(CodeLanguage(fileName: "A.\(ext.uppercased())") == CodeLanguage(fileName: "a.\(ext)"))
+            }
+        }
+        #expect(CodeLanguage(fileName: "notes.") == nil)
     }
 }

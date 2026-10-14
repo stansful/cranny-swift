@@ -1,5 +1,8 @@
 // CrannyNotes/Model/NotesModel+Saving.swift — turning edits into change sets for `NotesStore`: autosave (at
 // most 0.5 s after the first unsaved change), retry after a failure, and the synchronous flush on terminate.
+//   • Typing writes the note's text file only. `index.json` (titles, modes, order, dates) is written when one of those
+//     changes; the modification dates typing moves ride along then, and when the panel closes or the app quits.
+//   • Saves run at utility priority: nobody waits for them (the terminate flush is synchronous).
 //   • Saves run one after another (each waits for the previous), so change sets reach the disk in revision order:
 //     a newer index never lands before the text file of a note it lists.
 //   • A change set stays in `savesInFlight` until its save finished; `flush()` writes those again with everything
@@ -29,6 +32,7 @@ extension NotesModel {
         if writesIndex {
             change.index = currentIndex()
             indexDirty = false
+            datesDirty = false                                                  // the index carries the current dates
         }
         dirtyTexts.removeAll()
         removedNotes.removeAll()
@@ -46,7 +50,7 @@ extension NotesModel {
         savesInFlight[change.revision] = change
         let store = store
         let previous = lastSave
-        let save = Task { [weak self] in
+        let save = Task(priority: .utility) { [weak self] in
             await previous?.value
             do {
                 try await store.save(change)
@@ -75,14 +79,24 @@ extension NotesModel {
         }
     }
 
-    /// Pending edits plus every change set still in flight, at a new revision, from the current texts.
+    /// Pending edits plus every change set still in flight, at a new revision, from the current texts, with the
+    /// index if any date is newer than the one on disk.
     func makeFinalChangeSet() -> NotesChangeSet? {
         for change in savesInFlight.values {
             dirtyTexts.formUnion(change.texts.keys.filter { documents[$0] != nil })
             removedNotes.formUnion(change.removed)
             if change.index != nil { indexDirty = true }
         }
+        if datesDirty { indexDirty = true }
         return makeChangeSet()
+    }
+
+    /// The panel closed: the dates typing moved are written with the index now (one write per session of typing),
+    /// so `index.json` is never behind by more than the time the panel is open.
+    func saveDatesSoon() {
+        guard datesDirty else { return }
+        indexDirty = true
+        autosave.schedule()
     }
 
     /// The warning's retry button and the Nook opening after a failure: try again now, with a fresh backoff.

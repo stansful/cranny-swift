@@ -1,6 +1,7 @@
 // CrannyNotes/Editor/LineNumberRuler.swift — line numbers in code mode at 6 cells and wider (DESIGN.md §6.7,
 // §7.5): quaternary, right-aligned, one per logical line (wrapped lines are not numbered), read from TextKit 2
-// layout fragments of the visible part only. Transparent: the text sits directly on the card.
+// layout fragments of the visible part only. Transparent: the text sits directly on the card. Per keystroke it only
+// updates the line starts around the edit: the digit width and the drawing attributes are worked out once per style.
 import AppKit
 import CrannyCore
 
@@ -11,6 +12,10 @@ final class LineNumberRuler: NSRulerView {
     private var font = NSFont.monospacedDigitSystemFont(ofSize: 10, weight: .regular)
     private var color = NSColor.clear                                          // set by `apply(style:)`
     private var lineHeight: CGFloat = 16
+    /// The width of one digit in `font` (measuring text is a CoreText layout: done once per style).
+    private var digitWidth: CGFloat = 0
+    /// What the numbers are drawn with (`font`, `color`, right-aligned), built once per style.
+    private var labelAttributes: [NSAttributedString.Key: Any] = [:]
 
     init(scrollView: NSScrollView, textView: NSTextView) {
         self.textView = textView
@@ -19,10 +24,12 @@ final class LineNumberRuler: NSRulerView {
         clipsToBounds = true                                                    // macOS 14+ views draw outside by default
         reservedThicknessForMarkers = 0
         reservedThicknessForAccessoryView = 0
+        updateMetrics()
     }
 
     required init(coder: NSCoder) {
         super.init(coder: coder)
+        updateMetrics()
     }
 
     override var isFlipped: Bool { true }
@@ -34,23 +41,39 @@ final class LineNumberRuler: NSRulerView {
 
     /// Width of the ruler for `digits` digits plus a gap before the text.
     static func thickness(digits: Int, font: NSFont) -> CGFloat {
-        let digitWidth = ("8" as NSString).size(withAttributes: [.font: font]).width
-        return (CGFloat(max(digits, 2)) * digitWidth + Space.m).rounded(.up)
+        thickness(digits: digits, digitWidth: digitWidth(of: font))
+    }
+
+    private static func thickness(digits: Int, digitWidth: CGFloat) -> CGFloat {
+        (CGFloat(max(digits, 2)) * digitWidth + Space.m).rounded(.up)
+    }
+
+    private static func digitWidth(of font: NSFont) -> CGFloat {
+        ("8" as NSString).size(withAttributes: [.font: font]).width
     }
 
     func apply(style: EditorStyle) {
         font = Self.font(for: style)
         color = style.lineNumberColor
         lineHeight = style.lineHeight
+        updateMetrics()
         updateThickness()
         needsDisplay = true
+    }
+
+    /// The digit width and the drawing attributes of the current font and colour.
+    private func updateMetrics() {
+        digitWidth = Self.digitWidth(of: font)
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .right
+        labelAttributes = [.font: font, .foregroundColor: color, .paragraphStyle: paragraph]
     }
 
     /// Updates the line starts after `edit` (only while the ruler is shown): the edited stretch is scanned, the
     /// other starts are kept or shifted, so typing in a long note never rescans its text. nil = recompute from the
     /// whole text (a note loaded, the ruler shown again).
     func textDidChange(_ edit: TextEdit? = nil) {
-        guard let text = textView?.textStorage?.string as NSString? else { return }
+        guard let text = textView?.textStorage?.mutableString else { return }      // read only: no copy of the note
         lineStarts = edit.map { Self.lineStarts(lineStarts, after: $0, in: text) } ?? Self.lineStarts(in: text)
         updateThickness()
         needsDisplay = true
@@ -99,7 +122,7 @@ final class LineNumberRuler: NSRulerView {
     }
 
     private func updateThickness() {
-        let thickness = Self.thickness(digits: String(lineStarts.count).count, font: font)
+        let thickness = Self.thickness(digits: String(lineStarts.count).count, digitWidth: digitWidth)
         if abs(ruleThickness - thickness) > 0.5 { ruleThickness = thickness }
     }
 
@@ -113,9 +136,7 @@ final class LineNumberRuler: NSRulerView {
         guard let textView, let layout = textView.textLayoutManager, let content = textView.textContentStorage else { return }
         let visible = textView.visibleRect
         let origin = textView.textContainerOrigin
-        let paragraph = NSMutableParagraphStyle()
-        paragraph.alignment = .right
-        let attributes: [NSAttributedString.Key: Any] = [.font: font, .foregroundColor: color, .paragraphStyle: paragraph]
+        let attributes = labelAttributes
         let start = layout.textViewportLayoutController.viewportRange?.location ?? layout.documentRange.location
         layout.enumerateTextLayoutFragments(from: start, options: [.ensuresLayout, .ensuresExtraLineFragment]) { fragment in
             let frame = fragment.layoutFragmentFrame

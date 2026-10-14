@@ -122,4 +122,11 @@ import Testing
         renderer.typed(NSRange(location: 0, length: 1))                         // ignored while off
         #expect(renderer.state.isIdle)
     }
+
+    /// The display link is paced like every animated effect (ARCHITECTURE.md §9.2), never at the display's 120/240 Hz.
+    @Test func theDisplayLinkKeepsTheEffectsFrameRateCap() {
+        #expect(TypingEffectRenderer.frameRates.maximum == 30)
+        #expect(TypingEffectRenderer.frameRates.preferred == 30)
+        #expect(TypingEffectRenderer.frameRates.minimum <= 30)
+    }
 }

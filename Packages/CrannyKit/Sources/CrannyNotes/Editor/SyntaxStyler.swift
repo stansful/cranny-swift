@@ -12,7 +12,8 @@
 // `tokens` (or the backlog's `shown`) always lists exactly what the storage shows over the base attributes, which
 // is what `changedRange` needs. Only attributes change here: never the characters, so undo is untouched. Inside
 // the storage delegate's `didProcessEditing` attributes are set directly (they join the edit being processed);
-// everywhere else the writes are grouped in `beginEditing`/`endEditing`.
+// everywhere else the writes are grouped in `beginEditing`/`endEditing`. The tokenizer reads the storage through
+// `mutableString` (no `String` copy of the whole note per keystroke); the background pass gets its own snapshot.
 import AppKit
 import Foundation
 
@@ -74,7 +75,7 @@ import Foundation
         applied = []
         guard code, all.length > 0 else { return }
         if all.length <= synchronousLimit {
-            write(SyntaxHighlighter.tokens(in: SourceText(storage.string as NSString), language: self.language), over: all)
+            write(SyntaxHighlighter.tokens(in: SourceText(storage.mutableString), language: self.language), over: all)
         } else {
             pending = TextEdit(range: all, delta: 0)                              // everything is new to `applied` = []
             startWork()
@@ -95,7 +96,7 @@ import Foundation
             return
         }
         if pending == nil && storage.length <= synchronousLimit {
-            let fresh = SyntaxHighlighter.tokens(in: SourceText(storage.string as NSString), language: language)
+            let fresh = SyntaxHighlighter.tokens(in: SourceText(storage.mutableString), language: language)
             write(fresh, over: SyntaxHighlighter.changedRange(old: applied, new: fresh, edit: edit, length: storage.length))
         } else {
             storage.setAttributes(attributes.base, range: edit.range)          // until the background pass lands
@@ -187,7 +188,7 @@ import Foundation
     /// A pending edit first (a backlog never outlives an edit), then the backlog's next slice.
     private func nextStep() -> Step? {
         if let pending, let storage {
-            return .tokenize(RestyleJob(source: SourceText(storage.string as NSString), language: language, old: applied,
+            return .tokenize(RestyleJob(source: SourceText(storage.mutableString), language: language, old: applied,
                                         edit: pending, generation: generation))
         }
         return backlog == nil ? nil : .writeSlice

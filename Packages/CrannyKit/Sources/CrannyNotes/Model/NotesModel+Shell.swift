@@ -54,10 +54,12 @@ extension NotesModel {
     }
 
     /// The panel closed (`NotchEvent.closed`): a focus request that no editor took (the widget was on another
-    /// page) must not make the panel key the next time it opens by hover.
+    /// page) must not make the panel key the next time it opens by hover. The modification dates of what was typed
+    /// are saved with the index (`saveDatesSoon`).
     func panelClosed() {
         if focusRequested { consumeFocusRequest() }
         widgetDisappeared()
+        saveDatesSoon()
     }
 
     /// Makes the panel key without activating the app, so typing reaches the editor (new note from a button).
