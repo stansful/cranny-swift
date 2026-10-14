@@ -77,6 +77,40 @@ private struct Document: Codable, Equatable, Sendable {
     #expect(ProbeModule.launched == ["probe"])
 }
 
+@MainActor private enum SlowModule: FeatureModule {
+    static var id: ModuleID { "slow" }
+    static func register(in registry: ModuleRegistry) {
+        registry.onLaunch {
+            log.append("slow.start")
+            try? await Task.sleep(for: .milliseconds(300))            // file I/O on a slow volume
+            log.append("slow.end")
+        }
+        registry.onLaunch { log.append("slow.second") }
+    }
+    static var log: [String] = []
+}
+
+@MainActor private enum QuickModule: FeatureModule {
+    static var id: ModuleID { "quick" }
+    static func register(in registry: ModuleRegistry) {
+        registry.onLaunch { SlowModule.log.append("quick") }          // the HUD's event tap: synchronous
+    }
+}
+
+@MainActor @Test func launchHooksRunConcurrentlyAndRecordWhoFinished() async throws {
+    let registry = ModuleRegistry(services: .preview())
+    registry.register(SlowModule.self)
+    registry.register(QuickModule.self)
+    #expect(registry.launchedModules.isEmpty)
+    await registry.runLaunchHooks()
+    // A later module's synchronous start does not wait for an earlier module's I/O.
+    let quick = try #require(SlowModule.log.firstIndex(of: "quick"))
+    let slowEnd = try #require(SlowModule.log.firstIndex(of: "slow.end"))
+    #expect(quick < slowEnd)
+    #expect(SlowModule.log.first == "slow.start")                      // still started in registration order
+    #expect(registry.launchedModules == ["slow", "quick"])             // every hook finished (both of "slow")
+}
+
 // MARK: - Settings value types
 
 @MainActor @Test func settingsRoundTripNestedKeyedValues() throws {
