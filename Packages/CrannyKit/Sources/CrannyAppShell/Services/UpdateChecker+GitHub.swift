@@ -203,11 +203,11 @@ nonisolated protocol UpdateTransport: Sendable {
 }
 
 /// An ephemeral session: no cookies, no URL cache, no credential storage; nothing persists between checks
-/// except the ETag Cranny stores itself.
+/// except the ETag Cranny stores itself. The session is created on the first request, not with the transport (which
+/// exists at every launch, also in builds that have no update check).
 nonisolated final class URLSessionUpdateTransport: UpdateTransport {
-    private let session: URLSession
-
-    init() {
+    /// Built once, lazily and thread-safely (a `static let`), on the first `fetch`.
+    private static let session: URLSession = {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.httpCookieStorage = nil
         configuration.httpShouldSetCookies = false
@@ -217,11 +217,13 @@ nonisolated final class URLSessionUpdateTransport: UpdateTransport {
         configuration.timeoutIntervalForRequest = 15
         configuration.timeoutIntervalForResource = 30
         configuration.waitsForConnectivity = false
-        session = URLSession(configuration: configuration)
-    }
+        return URLSession(configuration: configuration)
+    }()
+
+    init() {}
 
     @concurrent func fetch(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await Self.session.data(for: request)
         guard let http = response as? HTTPURLResponse else { throw UpdateFailure.unreadable }
         return (data, http)
     }

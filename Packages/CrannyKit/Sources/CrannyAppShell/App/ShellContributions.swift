@@ -1,7 +1,8 @@
 // CrannyAppShell/App/ShellContributions.swift — the shell's own contributions (ARCHITECTURE.md §10.0).
 // Global shortcuts: Open Cranny (⌃⌥N) and Toggle pin → the overlay; Pause activities → `PauseController`.
 // ⌘K: Pause Live Activities for 1 hour (or Resume), Demo mode, Keep Cranny open, Show tutorial, and every
-// Settings pane — and nothing else. Commands resolve state at query time, so their titles always say what they do.
+// Settings pane — and nothing else. Commands resolve state at query time, so their titles always say what they do;
+// the localized pane list and search words are built once (the process's language never changes).
 // Pausing and resuming confirm themselves (`OverlayCoordinator.confirmPause`: the flash and VoiceOver); the other
 // commands change what the panel or the menu already shows.
 import Carbon.HIToolbox
@@ -102,7 +103,8 @@ import Foundation
         let modulePages = (registry?.settingsPages ?? []).map {
             ShellPane(id: $0.id, title: $0.title, symbol: $0.symbol, group: $0.group, order: $0.order, keywords: $0.keywords)
         }
-        let all = (ShellPane.shellPanes + modulePages.filter { page in !ShellPane.shellPanes.contains { $0.id == page.id } })
+        let shellIDs = Set(ShellPane.shellPanes.map(\.id))
+        let all = (ShellPane.shellPanes + modulePages.filter { !shellIDs.contains($0.id) })
             .sorted { ($0.group, $0.order) < ($1.group, $1.order) }
         return all.map { pane in
             PaletteCommand(id: CommandID("shell.settings.\(pane.id.rawValue)"), title: pane.title, kind: kind, symbol: pane.symbol,
@@ -114,16 +116,23 @@ import Foundation
 
     /// Localized search words, comma-separated in the catalog so translators can add synonyms.
     private static func keywords(_ topic: Topic) -> [String] {
-        let list = switch topic {
-        case .pause: String(localized: "pause, silence, quiet, resume, live activities", bundle: .module,
-                            comment: "⌘K: search words for Pause/Resume Live Activities, comma-separated")
-        case .demo: String(localized: "demo, presentation, recording, screen sharing", bundle: .module,
-                           comment: "⌘K: search words for Demo mode, comma-separated")
-        case .pin: String(localized: "pin, keep open, stay", bundle: .module, comment: "⌘K: search words for Keep Cranny open, comma-separated")
-        case .tutorial: String(localized: "tutorial, tour, help, learn", bundle: .module, comment: "⌘K: search words for Show tutorial, comma-separated")
+        switch topic {
+        case .pause: pauseKeywords
+        case .demo: demoKeywords
+        case .pin: pinKeywords
+        case .tutorial: tutorialKeywords
         }
-        return ShellPane.split(list)
     }
+
+    // Looked up and split once, not on every keystroke.
+    private static let pauseKeywords = ShellPane.split(String(localized: "pause, silence, quiet, resume, live activities", bundle: .module,
+                                                              comment: "⌘K: search words for Pause/Resume Live Activities, comma-separated"))
+    private static let demoKeywords = ShellPane.split(String(localized: "demo, presentation, recording, screen sharing", bundle: .module,
+                                                             comment: "⌘K: search words for Demo mode, comma-separated"))
+    private static let pinKeywords = ShellPane.split(String(localized: "pin, keep open, stay", bundle: .module,
+                                                            comment: "⌘K: search words for Keep Cranny open, comma-separated"))
+    private static let tutorialKeywords = ShellPane.split(String(localized: "tutorial, tour, help, learn", bundle: .module,
+                                                                 comment: "⌘K: search words for Show tutorial, comma-separated"))
 }
 
 /// A Settings pane as the palette lists it. The shell's own panes live in CrannySettingsUI (not importable as a
@@ -136,42 +145,41 @@ struct ShellPane {
     let order: Int
     let keywords: [String]
 
-    static var shellPanes: [ShellPane] {
-        [
-            ShellPane(id: .general, title: String(localized: "General", bundle: .module, comment: "⌘K: Settings pane name (as in the Settings sidebar)"),
-                      symbol: "gearshape.fill", group: .top, order: 0,
-                      keywords: split(String(localized: "launch at login, displays, hover, full screen, demo, sounds, menu bar icon, updates", bundle: .module,
-                                             comment: "⌘K: search words for Settings ▸ General, comma-separated"))),
-            ShellPane(id: .appearance, title: String(localized: "Appearance", bundle: .module, comment: "⌘K: Settings pane name (as in the Settings sidebar)"),
-                      symbol: "paintbrush.fill", group: .top, order: 1,
-                      keywords: split(String(localized: "accent, color, text size, motion, ambient light, notch fit, density", bundle: .module,
-                                             comment: "⌘K: search words for Settings ▸ Appearance, comma-separated"))),
-            ShellPane(id: .keyboard, title: String(localized: "Keyboard", bundle: .module, comment: "⌘K: Settings pane name (as in the Settings sidebar)"),
-                      symbol: "keyboard", group: .top, order: 2,
-                      keywords: split(String(localized: "shortcuts, hot keys, keys", bundle: .module,
-                                             comment: "⌘K: search words for Settings ▸ Keyboard, comma-separated"))),
-            ShellPane(id: .nookAndWidgets, title: String(localized: "Layout & Widgets", bundle: .module, comment: "⌘K: Settings pane name (as in the Settings sidebar)"),
-                      symbol: "square.grid.2x2.fill", group: .notch, order: 0,
-                      keywords: split(String(localized: "widgets, pages, grid, layout", bundle: .module,
-                                             comment: "⌘K: search words for Settings ▸ Layout & Widgets, comma-separated"))),
-            ShellPane(id: .liveActivities, title: String(localized: "Live Activities", bundle: .module, comment: "⌘K: Settings pane name (as in the Settings sidebar)"),
-                      symbol: "capsule.tophalf.filled", group: .notch, order: 1,
-                      keywords: split(String(localized: "peek, priority, satellite, activities", bundle: .module,
-                                             comment: "⌘K: search words for Settings ▸ Live Activities, comma-separated"))),
-            ShellPane(id: .gestures, title: String(localized: "Gestures", bundle: .module, comment: "⌘K: Settings pane name (as in the Settings sidebar)"),
-                      symbol: "hand.draw.fill", group: .notch, order: 3,
-                      keywords: split(String(localized: "swipe, trackpad, haptics", bundle: .module,
-                                             comment: "⌘K: search words for Settings ▸ Gestures, comma-separated"))),
-            ShellPane(id: .permissions, title: String(localized: "Permissions", bundle: .module, comment: "⌘K: Settings pane name (as in the Settings sidebar)"),
-                      symbol: "hand.raised.fill", group: .bottom, order: 0,
-                      keywords: split(String(localized: "privacy, access, calendar, camera, accessibility", bundle: .module,
-                                             comment: "⌘K: search words for Settings ▸ Permissions, comma-separated"))),
-            ShellPane(id: .about, title: String(localized: "About", bundle: .module, comment: "⌘K: Settings pane name (as in the Settings sidebar)"),
-                      symbol: "info.circle.fill", group: .bottom, order: 1,
-                      keywords: split(String(localized: "version, updates, license, acknowledgments", bundle: .module,
-                                             comment: "⌘K: search words for Settings ▸ About, comma-separated"))),
-        ]
-    }
+    /// Built once (16 catalog lookups and 8 splits); ⌘K reads it on every keystroke.
+    static let shellPanes: [ShellPane] = [
+        ShellPane(id: .general, title: String(localized: "General", bundle: .module, comment: "⌘K: Settings pane name (as in the Settings sidebar)"),
+                  symbol: "gearshape.fill", group: .top, order: 0,
+                  keywords: split(String(localized: "launch at login, displays, hover, full screen, demo, sounds, menu bar icon, updates", bundle: .module,
+                                         comment: "⌘K: search words for Settings ▸ General, comma-separated"))),
+        ShellPane(id: .appearance, title: String(localized: "Appearance", bundle: .module, comment: "⌘K: Settings pane name (as in the Settings sidebar)"),
+                  symbol: "paintbrush.fill", group: .top, order: 1,
+                  keywords: split(String(localized: "accent, color, text size, motion, ambient light, notch fit, density", bundle: .module,
+                                         comment: "⌘K: search words for Settings ▸ Appearance, comma-separated"))),
+        ShellPane(id: .keyboard, title: String(localized: "Keyboard", bundle: .module, comment: "⌘K: Settings pane name (as in the Settings sidebar)"),
+                  symbol: "keyboard", group: .top, order: 2,
+                  keywords: split(String(localized: "shortcuts, hot keys, keys", bundle: .module,
+                                         comment: "⌘K: search words for Settings ▸ Keyboard, comma-separated"))),
+        ShellPane(id: .nookAndWidgets, title: String(localized: "Layout & Widgets", bundle: .module, comment: "⌘K: Settings pane name (as in the Settings sidebar)"),
+                  symbol: "square.grid.2x2.fill", group: .notch, order: 0,
+                  keywords: split(String(localized: "widgets, pages, grid, layout", bundle: .module,
+                                         comment: "⌘K: search words for Settings ▸ Layout & Widgets, comma-separated"))),
+        ShellPane(id: .liveActivities, title: String(localized: "Live Activities", bundle: .module, comment: "⌘K: Settings pane name (as in the Settings sidebar)"),
+                  symbol: "capsule.tophalf.filled", group: .notch, order: 1,
+                  keywords: split(String(localized: "peek, priority, satellite, activities", bundle: .module,
+                                         comment: "⌘K: search words for Settings ▸ Live Activities, comma-separated"))),
+        ShellPane(id: .gestures, title: String(localized: "Gestures", bundle: .module, comment: "⌘K: Settings pane name (as in the Settings sidebar)"),
+                  symbol: "hand.draw.fill", group: .notch, order: 3,
+                  keywords: split(String(localized: "swipe, trackpad, haptics", bundle: .module,
+                                         comment: "⌘K: search words for Settings ▸ Gestures, comma-separated"))),
+        ShellPane(id: .permissions, title: String(localized: "Permissions", bundle: .module, comment: "⌘K: Settings pane name (as in the Settings sidebar)"),
+                  symbol: "hand.raised.fill", group: .bottom, order: 0,
+                  keywords: split(String(localized: "privacy, access, calendar, camera, accessibility", bundle: .module,
+                                         comment: "⌘K: search words for Settings ▸ Permissions, comma-separated"))),
+        ShellPane(id: .about, title: String(localized: "About", bundle: .module, comment: "⌘K: Settings pane name (as in the Settings sidebar)"),
+                  symbol: "info.circle.fill", group: .bottom, order: 1,
+                  keywords: split(String(localized: "version, updates, license, acknowledgments", bundle: .module,
+                                         comment: "⌘K: search words for Settings ▸ About, comma-separated"))),
+    ]
 
     /// "a, b ,c" → ["a", "b", "c"].
     static func split(_ list: String) -> [String] {

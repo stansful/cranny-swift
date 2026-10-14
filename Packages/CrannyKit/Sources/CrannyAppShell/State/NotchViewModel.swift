@@ -183,14 +183,14 @@ import SwiftUI
 
     // MARK: Reduction
 
+    /// One `currentConfig()` per input: the open request resolves against the same config the machine reduces with.
     private func reduce(_ input: NotchInput) {
-        var input = input
-        switch input {
-        case let .open(page, focus, reason): input = resolvedOpen(page: page, focus: focus, reason: reason)
-        case .selectPage(let page) where !pageExists(page): return
-        default: break
-        }
+        if case .selectPage(let page) = input, !pageExists(page) { return }
         let config = currentConfig()
+        var input = input
+        if case let .open(page, focus, reason) = input {
+            input = resolvedOpen(page: page, focus: focus, reason: reason, lastPage: config.lastPage)
+        }
         let (next, effects) = NotchMachine.reduce(state, input, now: ProcessInfo.processInfo.systemUptime, config: config)
         state = next
         if case .selectPage(let page) = input, registry.services.settings[CoreSettings.lastPage] != page {
@@ -204,12 +204,13 @@ import SwiftUI
     /// or a deleted user page, falls back to the last page (and that to the first grid page), so a tab is always
     /// selected. A focused widget is shown (`NotchControl.open(focus:)`): when the page that would open does not
     /// hold it, the grid page that does opens instead, whatever page the caller named ("Show today's events" asks
-    /// for Home, the widget may be on another page). A widget that is on no page cannot take focus.
-    private func resolvedOpen(page: PageID?, focus: WidgetID?, reason: OpenReason) -> NotchInput {
+    /// for Home, the widget may be on another page). A widget that is on no page cannot take focus. `lastPage` is the
+    /// config's (`NotchMachineConfig.lastPage`).
+    private func resolvedOpen(page: PageID?, focus: WidgetID?, reason: OpenReason, lastPage: PageID) -> NotchInput {
         var page = page.flatMap { pageExists($0) ? $0 : nil }
         var focus = focus
         if let widget = focus {
-            let shown = page ?? state.openState?.page ?? currentConfig().lastPage
+            let shown = page ?? state.openState?.page ?? lastPage
             if !self.page(shown, holds: widget) {
                 if let holder = self.page(containing: widget) {
                     page = holder
