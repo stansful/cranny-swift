@@ -185,7 +185,7 @@ private struct AutomationRow: View {
             case .notDetermined:
                 Button { Task { await permissions.request(kind) } } label: { Text(verbatim: MediaPaneStrings.allow) }
             case .unknown:
-                Text(verbatim: PlayerApps.url(for: bundleID) == nil ? MediaPaneStrings.notInstalled : MediaPaneStrings.openToAllow)
+                Text(verbatim: PlayerApps.isMissing(bundleID) ? MediaPaneStrings.notInstalled : MediaPaneStrings.openToAllow)
                     .foregroundStyle(.secondary)
             }
         } label: {

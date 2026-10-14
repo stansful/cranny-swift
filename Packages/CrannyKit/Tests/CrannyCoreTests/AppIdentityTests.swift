@@ -7,7 +7,7 @@ import Testing
 @MainActor @Test func appIdentitiesResolveOffTheMainActorOnce() async {
     let resolver = AppIdentityResolver()
     let placeholder = resolver.identity(of: "com.apple.finder")
-    #expect(placeholder.name == "com.apple.finder" && placeholder.icon == nil && !placeholder.isResolved)
+    #expect(placeholder.name == "com.apple.finder" && placeholder.icon == nil && !placeholder.isResolved && !placeholder.isLookedUp)
     for _ in 0..<200 where resolver.resolvedCount == 0 { try? await Task.sleep(for: .milliseconds(10)) }
     let finder = resolver.identity(of: "com.apple.finder")
     #expect(finder.isResolved && finder.name != "com.apple.finder" && finder.icon != nil)
@@ -15,7 +15,7 @@ import Testing
     let unknown = resolver.identity(of: "com.example.not-installed")
     for _ in 0..<200 where resolver.resolvedCount < 2 { try? await Task.sleep(for: .milliseconds(10)) }
     let missing = resolver.identity(of: "com.example.not-installed")
-    #expect(unknown.name == "com.example.not-installed" && !missing.isResolved && missing.icon == nil)
+    #expect(unknown.name == "com.example.not-installed" && !missing.isResolved && missing.icon == nil && missing.isLookedUp)
     #expect(await AppIdentityResolver.applicationURL(for: "com.example.not-installed") == nil)
 }
 

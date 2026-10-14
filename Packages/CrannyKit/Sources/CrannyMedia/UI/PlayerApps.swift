@@ -27,6 +27,12 @@ private nonisolated let log = Log.logger(.media)
     /// The app's icon, nil until known.
     static func icon(for bundleID: String) -> NSImage? { resolver.identity(of: bundleID).icon }
 
+    /// The lookup finished and found no app (false while it runs).
+    static func isMissing(_ bundleID: String) -> Bool {
+        let identity = resolver.identity(of: bundleID)
+        return identity.isLookedUp && !identity.isResolved
+    }
+
     static func isRunning(_ bundleID: String) -> Bool {
         !NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).isEmpty
     }

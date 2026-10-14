@@ -18,13 +18,17 @@ public struct AppIdentity {
     public let name: String
     /// The app's icon (rendered lazily by Icon Services when drawn); nil until known.
     public let icon: NSImage?
+    /// The lookup has finished (false while it runs): with `isResolved` false, the app is not installed (or sits in
+    /// a protected folder).
+    public let isLookedUp: Bool
 
     /// A resolved app: its location is known (and safe to read).
     public var isResolved: Bool { url != nil }
 
     /// An identity; `name` defaults to the bundle identifier.
-    public init(bundleID: String, url: URL? = nil, name: String? = nil, icon: NSImage? = nil) {
+    public init(bundleID: String, url: URL? = nil, name: String? = nil, icon: NSImage? = nil, isLookedUp: Bool = false) {
         self.bundleID = bundleID; self.url = url; self.name = name ?? bundleID; self.icon = icon
+        self.isLookedUp = isLookedUp
     }
 
     /// Finder's localized name of the app bundle at `url`, without the ".app" extension. Reads the bundle: call it
@@ -58,7 +62,8 @@ public struct AppIdentity {
             Task { [weak self] in
                 let location = await Self.locate(bundleID)
                 let icon = location.map { NSWorkspace.shared.icon(forFile: $0.url.path) }   // drawn lazily
-                self?.resolved[bundleID] = AppIdentity(bundleID: bundleID, url: location?.url, name: location?.name, icon: icon)
+                self?.resolved[bundleID] = AppIdentity(bundleID: bundleID, url: location?.url, name: location?.name, icon: icon,
+                                                       isLookedUp: true)
                 self?.pending.remove(bundleID)
             }
         }
