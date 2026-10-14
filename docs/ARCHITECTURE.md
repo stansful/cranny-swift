@@ -4,15 +4,15 @@
 
 | | |
 |---|---|
-| Status | **v1.0, adopted** (2026-10-14), **reviewed** the same day and **amended** for the project owner's Metal decision (D13); see "Changelog" at the end. The definitive engineering reference. `docs/DESIGN.md` remains the single source of truth for pixels, colours, motion and copy; this document owns code structure, contracts, threading, build and the work plan. |
+| Status | **v1.0, adopted** (2026-10-14), **reviewed** the same day, **amended** for the project owner's Metal decision (D13) and **synced with the repo after WP0** (WP0 done 2026-10-14, §10.1); see "Changelog" at the end. The definitive engineering reference. `docs/DESIGN.md` remains the single source of truth for pixels, colours, motion and copy; this document owns code structure, contracts, threading, build and the work plan. Where a code listing here and a file in the repo differ, the repo wins (Appendix A). |
 | Toolchain | Xcode 27.0 (27A266a), Swift 6.4, MacOSX27 SDK. Minimum supported toolchain: **Xcode 26 / Swift 6.2** (`swift-tools-version: 6.2`, `.defaultIsolation`, `@concurrent`, `.icon`, `#bundle`) **plus the Metal Toolchain component** (D13). |
 | Platform | macOS 14.0 deployment target, universal (arm64 + x86_64). Newer APIs only behind `#available`. Not sandboxed, hardened runtime, agent app (`LSUIElement`). |
 | Licence | MIT, clean room. No NotchNook code, assets, names or UI text; no GPL code (boring.notch); zero third-party dependencies. |
-| Evidence | Research R1 (overlay window), R2 (media), R3 (system services), R4 (build) and their PoCs live in the research session's scratchpad, **not in the repo**; everything a work package needs from them is restated here. DESIGN.md. Every contract in §2–§3 and every file in the appendices was **compiled and run** for this document (Appendix C). |
+| Evidence | The reports of research R1 (overlay window), R2 (media), R3 (system services), R4 (build) and `X-metal-verified.md` are in `docs/research/`; their PoCs stayed in the research session's scratchpad. Everything a work package needs from them is restated here. DESIGN.md. Every contract in §2–§3 was **compiled and run** for this document, and since WP0 the same code is in the repo, built and tested by the scripts of Appendix B (Appendix C). |
 
 Status tags: **[VERIFIED]** built or run on macOS 27.0.1 (this document or R1–R4) · **[SDK]** checked in the SDK · **[UNVERIFIED]** reasoned or documented only — the owning work package must confirm it.
 
-**Contents.** 0 Decisions · 1 Repository · 2 Package · 3 CrannyCore API · 4 State machine · 5 Windows · 6 Media · 7 System services · 8 Build, packaging, localization · 9 Engineering rules · 10 Work breakdown · 11 Risks & hardware checklist · Appendix A Core sources · Appendix B Project & tooling files · Appendix C Verification log.
+**Contents.** 0 Decisions · 1 Repository · 2 Package · 3 CrannyCore API · 4 State machine · 5 Windows · 6 Media · 7 System services · 8 Build, packaging, localization · 9 Engineering rules · 10 Work breakdown (WP0 status and open issues in §10.1) · 11 Risks & hardware checklist · Appendix A Core files · Appendix B Project & tooling files · Appendix C Verification log.
 
 ---
 
@@ -32,7 +32,7 @@ Status tags: **[VERIFIED]** built or run on macOS 27.0.1 (this document or R1–
 | D10 | **HUD: "never two HUDs".** Cranny draws a HUD only when its Accessibility event tap replaces the system OSD; there is no passive tier. | DESIGN.md §10 overrides R3's passive mode; R3 verified OSD suppression. |
 | D11 | **Settings and Welcome windows are AppKit-managed `NSWindow`s hosting SwiftUI**, not a SwiftUI `Settings` scene. The app's `App.body` contains only the `MenuBarExtra`. | We must open Settings at a specific pane from the Nook, Permissions flows and reopen events; programmatic opening of the `Settings` scene from an agent app is unreliable on macOS 14 [UNVERIFIED community reports] — AppKit windows avoid the question. |
 | D12 | **No hidden Edit menu needed.** With the SwiftUI `App` lifecycle, `NSApp.mainMenu` already contains Edit with ⌘Z/X/C/V/A. `scripts/smoke.sh` asserts it on every CI run. | Diagnostics of the built app listed the menu [VERIFIED]; R1's gotcha applied to a pure-AppKit app. |
-| D13 | **Metal shaders are allowed in `CrannyEffects`, and only there**, as SwiftPM resources (`Sources/CrannyEffects/Shaders/*.metal` + the shared `CrannyShaders.h`), loaded via `ShaderLibrary.bundle(.module)` (wrapped as `ShaderEffects.library`). They are SwiftUI stitchable functions only (`.colorEffect`, `.layerEffect`, `.distortionEffect`; macOS 14+); there is no `MTKView`, no compute pipeline and no runtime `makeLibrary(source:)`. The **Metal Toolchain** component is a **build requirement**: `scripts/lib.sh` `ensure_metal_toolchain` stops early with the install command, and CI installs it with `xcodebuild -downloadComponent MetalToolchain`. **Every shader effect keeps a SwiftUI fallback** (DESIGN.md §5.3–§5.5 and App. B.1: MeshGradient, Canvas, gradients). The fallback is used under Reduce Motion, under Low Power / `thermalState ≥ .serious`, and on shader load failure (`ShaderEffects.isAvailable == false`); the switch is `ShaderEffects.usesShader(_:)` (DESIGN.md §5.6, App. B.2). | Decision of the project owner (2026-10-14), **reversing** the earlier "no `.metal` in v1" rule and its `check-modules.sh` guard. Verified in this layout (Appendix C): SwiftPM's built-in rule compiles the `.metal` files into `CrannyKit_CrannyEffects.bundle/…/default.metallib` with no `Package.swift` change; the universal Release app embeds it in `Contents/Resources` and `codesign --verify --deep --strict` passes; inside the built app `ShaderEffects.isAvailable` is true (the generated `Bundle.module` looks in `Bundle.main.resourceURL` first; `research/X-metal-verified.md`). `ImageRenderer` rasterizes all three effect kinds in `swift test`, so parity tests are possible. Why: dithered, banding-free light, real domain-warped aurora and metaball necks that the SwiftUI path can only approximate, at lower CPU cost. Cost: a ≈ 0.9 GB Xcode component on every build machine (risk 15). |
+| D13 | **Metal shaders are allowed in `CrannyEffects`, and only there**, as SwiftPM resources (`Sources/CrannyEffects/Shaders/*.metal` + the shared `CrannyShaders.h`), loaded via `ShaderLibrary.bundle(.module)` (wrapped as `ShaderEffects.library`). They are SwiftUI stitchable functions only (`.colorEffect`, `.layerEffect`, `.distortionEffect`; macOS 14+); there is no `MTKView`, no compute pipeline and no runtime `makeLibrary(source:)`. The **Metal Toolchain** component is a **build requirement**: `scripts/lib.sh` `ensure_metal_toolchain` stops early with the install command, and CI installs it with `xcodebuild -downloadComponent MetalToolchain`. **Every shader effect keeps a SwiftUI fallback** (DESIGN.md §5.3–§5.5 and App. B.1: MeshGradient, Canvas, gradients). The fallback is used under Reduce Motion, under Low Power / `thermalState ≥ .serious`, and on shader load failure (`ShaderEffects.isAvailable == false`); the switch is `ShaderEffects.usesShader(_:)` (DESIGN.md §5.6, App. B.2). **In the repo since WP0:** `Shaders/{CrannyShaders.h, Dither.metal, Aurora.metal}`, `ShaderEffects.swift` (internal; `requiredFunctions` = `crannyDither`, `auroraField`), `EffectsDiagnostics.swift` (public `shaderStatus`, for `--diagnostics`) and the shader branch of `AuroraField`. Only `default.metallib` ships; no `.metal` or `.h` file reaches the app (§8.8). | Decision of the project owner (2026-10-14), **reversing** the earlier "no `.metal` in v1" rule and its `check-modules.sh` guard. Verified in this layout (Appendix C): SwiftPM's built-in rule compiles the `.metal` files into `CrannyKit_CrannyEffects.bundle/…/default.metallib` with no `Package.swift` change; the universal Release app embeds it in `Contents/Resources` and `codesign --verify --deep --strict` passes; inside the built app `ShaderEffects.isAvailable` is true (the generated `Bundle.module` looks in `Bundle.main.resourceURL` first; `research/X-metal-verified.md`). `ImageRenderer` rasterizes all three effect kinds in `swift test`, so parity tests are possible. Why: dithered, banding-free light, real domain-warped aurora and metaball necks that the SwiftUI path can only approximate, at lower CPU cost. Cost: a ≈ 0.9 GB Xcode component on every build machine (risk 15). |
 | D14 | **Settings apply instantly** (macOS convention). The Settings preview stage renders the real notch views with the live values plus sample activities; there is no draft store. "Reset All" is undoable for 10 s through `SettingsStore.snapshot()/restore(_:)` (A.1). | Simplest consistent model; DESIGN.md §11.2 was aligned to it. |
 | D15 | **Launch at login = `SMAppService.mainApp` only** (no LaunchAgent fallback in v1). | R3 §9; fallback adds a second background item. Failure shows "Open Login Items…". |
 | D16 | **Bundle id `app.cranny.Cranny`, log subsystem identical.** Never change it after the first public release: TCC grants and defaults are keyed by it. Before that release WP-Final confirms the project controls the `cranny.app` domain; if not, switch once to `io.github.<owner>.Cranny` (a foreign reverse-DNS id risks TCC/defaults collisions with a real app). | R4 verified; `tccutil reset All app.cranny.Cranny` for testing. |
@@ -56,16 +56,16 @@ Cranny/                                   ← repo root
 │  ├─ Info.plist                          ← partial plist merged with generated keys (membership exception)
 │  ├─ InfoPlist.xcstrings                 ← usage descriptions, en + ru
 │  ├─ Cranny.entitlements                 ← hardened-runtime resource access, no sandbox
-│  ├─ AppIcon.icon/                       ← Icon Composer document (macOS 26+; Xcode generates the 14/15 fallback)
+│  ├─ AppIcon.icon/                       ← Icon Composer document (macOS 26+; Xcode generates the 14/15 fallback); layers from scripts/render-icon.swift
 │  └─ Assets.xcassets/                    ← AccentColor only (package code never reads Bundle.main assets, §8.8)
 ├─ Packages/
 │  └─ CrannyKit/                          ← local Swift package with ALL code
 │     ├─ Package.swift                    ← owner WP0 (§2.2); nobody else edits it
 │     ├─ Sources/<Target>/…               ← one folder per target (§2.1), each with Resources/Localizable.xcstrings
 │     └─ Tests/<Target>Tests/…            ← one test target per Swift target (Swift Testing)
-├─ scripts/                               ← lib.sh build.sh run.sh smoke.sh dist.sh check-modules.sh sync-strings.sh
-├─ docs/                                  ← DESIGN.md, ARCHITECTURE.md (+ CONTRIBUTING.md, PRIVACY.md from WP-Final)
-├─ .github/workflows/                     ← ci.yml, release.yml
+├─ scripts/                               ← lib.sh build.sh run.sh smoke.sh dist.sh check-modules.sh sync-strings.sh name-probe.sh render-icon.swift
+├─ docs/                                  ← DESIGN.md, ARCHITECTURE.md, CONTRIBUTING.md (WP0), research/ (R1–R4 reports); PRIVACY.md from WP-Final
+├─ .github/workflows/                     ← ci.yml (jobs build + build-macos-26), release.yml
 ├─ VERSION                                ← marketing version, e.g. 0.1.0 (scripts/build.sh reads it; release tag must match)
 ├─ LICENSE                                ← MIT
 ├─ README.md                              ← install (Gatekeeper "Open Anyway" / xattr), build (Xcode + Metal Toolchain, D13), permissions FAQ ("perl" helper)
@@ -103,7 +103,7 @@ Rules (enforced by `Package.swift`; a PR that adds an edge is rejected):
 3. The app target links only the static product `CrannyAppShell`. No `.dynamic` product is ever linked into the app (Release crash: "different Team IDs", R4 §7).
 4. New targets are architecture changes. All 17 targets and 16 test targets exist from WP0 on, with placeholder sources, so nobody edits `Package.swift` during the parallel phase.
 
-### 2.2 `Packages/CrannyKit/Package.swift` [VERIFIED: every target builds alone; `swift test` passes]
+### 2.2 `Packages/CrannyKit/Package.swift` [VERIFIED: every target builds alone; `swift test` passes; byte-identical to the repo file at WP0]
 
 ```swift
 // swift-tools-version: 6.2
@@ -207,7 +207,7 @@ swift test --scratch-path .build-test --filter CrannyTimerTests             # bu
 
 **Toolchain selection.** `xcode-select` may point at `/Library/Developer/CommandLineTools`, and changing it needs `sudo`. Every manual `swift`/`xcodebuild`/`xcrun` command therefore starts with `export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`; the scripts do it themselves (`ensure_xcode`, B.7). The CLT ship Swift 6.4 too and can compile modules, but they lack `xcstringstool`, `actool`, `ictool` and the Xcode test frameworks, so mixing toolchains between scratch dirs is not allowed. Agents and anyone whose shell profile prints errors (for example `GVM_ROOT not set`) run important commands as separate invocations and check each exit status instead of chaining them with `&&`.
 
-**Metal Toolchain (D13).** `CrannyEffects`, and every target that depends on it (`CrannyNotchUI`, `CrannySettingsUI`, `CrannyOnboarding`, `CrannyAppShell`, the app), compiles `.metal` files and needs the Xcode component. `xcodebuild -showComponent MetalToolchain` must print `Status: installed`; if not, run `xcodebuild -downloadComponent MetalToolchain` once (≈ 0.9 GB installed). The scripts check this for you (`ensure_metal_toolchain`, §8.5).
+**Metal Toolchain (D13).** `CrannyEffects`, and every target that depends on it (`CrannyNotchUI`, `CrannySettingsUI`, `CrannyOnboarding`, `CrannyAppShell`, the app), compiles `.metal` files and needs the Xcode component. `xcodebuild -showComponent MetalToolchain` must print `Status: installed` and `xcrun metal -v` must run; if not, run `xcodebuild -downloadComponent MetalToolchain` once (≈ 0.9 GB installed), with the `DEVELOPER_DIR` export above when `xcode-select` points at the CLT. The scripts check this for you and print that exact command (`ensure_metal_toolchain`, §8.5).
 
 `swift build --target` on the Objective-C target only produces the object file; `swift build --product CrannyMediaBridge` produces `libCrannyMediaBridge.dylib` (arm64, ad-hoc signed by the linker) for CLI experiments (R4 §3.3). Everything also opens in Xcode (open `Packages/CrannyKit/Package.swift` for package-only work with `#Preview`, or `Cranny.xcodeproj` for the app).
 
@@ -215,16 +215,17 @@ swift test --scratch-path .build-test --filter CrannyTimerTests             # bu
 
 ## 3. CrannyCore public API
 
-Everything in this section is the **contract** between work packages. The code blocks are the verified source files (built with zero warnings under the settings of §2.3; see Appendix C). WP0 copies them into the repo as they are; later changes are additive only (§10.0).
+Everything in this section is the **contract** between work packages. The code blocks are the repo's source files: WP0 copied them unchanged (byte-identical, zero warnings under the settings of §2.3; Appendix C). If a listing and its file ever differ, the file wins and the listing is corrected. Later changes are additive only (§10.0).
 
 ### 3.1 Directory map of `Sources/CrannyCore/`
 
 | Folder / file | Contents | Section |
 |---|---|---|
 | `CrannyCore.swift` | Module overview, `PermissionKind.title` (Core's only localized strings) | A.9 |
-| `DesignSystem/Color.swift`, `Typography.swift`, `Layout.swift`, `Motion.swift`, `Notch.swift`, `Theme.swift`, `Components.swift` | **Verbatim from DESIGN.md** §2.1–§4.2 and Appendix A, with two amendments (§3.2) | DESIGN.md |
+| `DesignSystem/Color.swift`, `Typography.swift`, `Layout.swift`, `Motion.swift`, `Notch.swift`, `Theme.swift`, `Components.swift` | **Verbatim from DESIGN.md** §2.1–§4.2 and Appendix A, with three amendments (§3.2) | DESIGN.md |
 | `DesignSystem/AmbientPalette.swift` | `AmbientPalette` (+ `extract(from:)`) and `EffectBudget`, moved out of DESIGN.md Appendix B so Media, Effects and the shell share them. `AuroraField` lives in `CrannyEffects`. | DESIGN.md App. B |
 | `DesignSystem/SharedComponents.swift` | `WidgetStateView`, `CrannyChipButtonStyle`, `Scrubber`, `MarqueeText` | A.8 |
+| `DesignSystem/EffectClock.swift` | `EffectClock`: the frame clock of continuously animated views, woken only at the budget interval (added by WP0) | 9.2, A.11 |
 | `Contracts/Identifiers.swift` | `CrannyID<Tag>` and all well-known IDs | 3.3 |
 | `Contracts/FeatureModule.swift` | `FeatureModule`, `ModuleRegistry` | 3.4 |
 | `Contracts/Widget.swift` | `NookWidget`, `WidgetSizes`, `WidgetContext`, `AnyNookWidget`, `PageDescriptor` | 3.5 |
@@ -238,7 +239,7 @@ Everything in this section is the **contract** between work packages. The code b
 | `Platform/Platform.swift`, `Platform/Concurrency.swift` | `Log`, `Haptics`, `AppPaths`, `JSONFileStore`, `AppInfo`, `SemanticVersion`, `observe(_:onChange:)`, `Debouncer`, `ProcessRunner` | 3.13, A.6–A.7 |
 | `Resources/Localizable.xcstrings` | Core's catalog (en + ru) | 8.7 |
 
-### 3.2 Design system placement and the two amendments
+### 3.2 Design system placement and the three amendments
 
 The DesignSystem files are DESIGN.md's code, copied verbatim. Three amendments were made for this architecture and are **already applied in DESIGN.md** (keep them):
 1. `DropZone.title` is `String`, not `LocalizedStringKey` (a `LocalizedStringKey` passed into a package view is looked up in `Bundle.main` and stays English — R4 §3.4). **Rule for all Core components: they take already-localized `String`s or `Text`s.**
@@ -1263,7 +1264,7 @@ import Observation
 
 - `SettingKey<Value: Codable & Sendable & Equatable>(module, name, default:)`; id `"<module>.<name>"`; stored as JSON `Data` under **`cranny.<module>.<name>`** in `UserDefaults.standard` (domain `app.cranny.Cranny`). Writing the default removes the key.
 - `SettingsStore` (`@MainActor`): `subscript(key)`, `binding(_:)`, `isDefault(_:)`, `reset(_:)`, `reset(module:)`, `resetAll()`, `snapshot()` / `restore(_:)` (the 10-s Undo of Reset All). One `@Observable` box per key, so a view is invalidated only by the keys it reads; reset and restore reload every live box from disk. Undecodable values fall back to the default and log. Tests inject `UserDefaults(suiteName:)`. Settings apply instantly (D14). Side effects of settings (hot keys, login item is *not* a setting, display panels) are driven by observing keys (`observe(_:onChange:)`), never by imperative calls from Settings, so Reset/Undo/Onboarding presets all just write keys.
-- **Ownership:** shell-level keys are in `CoreSettings` (A.2). Each module declares its keys in `public enum <Module>Settings` in its own target (lists in §10); every value type used in a public key is `public` too (listed under "Public types"). A key a module owns but that DESIGN.md shows in a shell pane is surfaced through `registry.add(activity:…, options:)` (Live Activities) or `NookWidget.makeOptions()` (Layout & Widgets), never by importing the module. Namespaces = `ModuleID`s (`general`, `appearance`, `displays`, `nook`, `activities`, `gestures`, `keyboard`, `onboarding`, `updates`, plus one per module). **Never rename a key or change its type**; add a new key and migrate in `onLaunch`.
+- **Ownership:** shell-level keys are in `CoreSettings` (A.2). Each module declares its keys in `public enum <Module>Settings` in its own target (lists in §10); every value type used in a public key is `public` too (listed under "Public types"). A key a module owns but that DESIGN.md shows in a shell pane is surfaced through `registry.add(activity:…, options:)` (Live Activities) or `NookWidget.makeOptions()` (Layout & Widgets), never by importing the module. Namespaces = `ModuleID`s (`general`, `appearance`, `displays`, `nook`, `activities`, `gestures`, `keyboard`, `onboarding`, `updates`, plus one per module). A shell key lives in the namespace of the Settings pane whose "Reset ‹Pane›…" must reset it (§10.15); that is why Notch fit is `appearance.notchFit`. **Never rename a key or change its type**; add a new key and migrate in `onLaunch`.
 - Content is not settings: notes, to-dos, tray items and timer state are JSON files under `AppPaths` (§3.13). "Reset All Settings" keeps them.
 
 ### 3.12 Permissions (source in A.5)
@@ -1340,7 +1341,7 @@ import Observation
 
 ### 3.17 Reference module (verified)
 
-`CrannyTimer`'s skeleton below compiles in the real package layout and exercises every contract: settings keys, a widget with a `#Preview`, an observable activity with a Live Activities option row, a command provider, a global shortcut and launch/terminate hooks. WP7 grows it into the full Timer (incl. `TimerDoneActivity` with `delight = .emberBurst`); other packages copy its shape.
+`CrannyTimer`'s skeleton below is `Sources/CrannyTimer/TimerModule.swift` as WP0 shipped it (commit `1e536c5`). It exercises every contract: settings keys, a widget with a `#Preview`, an observable activity with a Live Activities option row, a command provider, a global shortcut and launch/terminate hooks. Its translator comments follow the §10.0 "Surface: purpose" scheme, one comment per key ("Timer" is shared by the widget, the activity and the ⌘K kind). WP7 grows it into the full Timer (incl. `TimerDoneActivity` with `delight = .emberBurst`); other packages copy its shape. After WP7 the file differs from this snapshot; `git show 1e536c5:Packages/CrannyKit/Sources/CrannyTimer/TimerModule.swift` shows the skeleton. Its 1-Hz `TimelineView`s are open issue 2 (§10.1).
 
 ```swift
 // CrannyTimer/TimerModule.swift — reference skeleton showing every contract (ARCHITECTURE.md §3.17).
@@ -1358,13 +1359,13 @@ public enum TimerModule: FeatureModule {
         registry.add(widget: TimerWidget(model: model))
         registry.add(activity: TimerRunningActivity(model: model), kind: ActivityKind(
             id: .timerRunning, module: .timer,
-            title: String(localized: "Timer", bundle: .module, comment: "Live activity name"),
+            title: String(localized: "Timer", bundle: .module, comment: "Timer: module name (widget, live activity, ⌘K result kind)"),
             symbol: "timer", defaultPriority: .ongoing, canPeekOnChange: true, peeksOnChangeByDefault: true),
             options: { AnyView(Toggle(isOn: services.settings.binding(TimerSettings.peeksAtOneMinute)) {
                 Text("Peek at one minute left", bundle: .module, comment: "Live Activities pane: timer option") }) })
         registry.add(commands: TimerCommands(model: model))
         registry.add(shortcut: GlobalShortcut(
-            id: .startTimer, title: String(localized: "Start timer", bundle: .module, comment: "Global shortcut name")) {
+            id: .startTimer, title: String(localized: "Start timer", bundle: .module, comment: "Settings ▸ Keyboard: shortcut name")) {
                 model.start(seconds: services.settings[TimerSettings.presets].first ?? 300)
                 services.notch.open(page: .nook, focus: .timer, reason: .keyboard)
             })
@@ -1418,9 +1419,9 @@ final class TimerWidget: NookWidget {
     let model: TimerModel
     init(model: TimerModel) { self.model = model }
     let id: WidgetID = .timer
-    var title: String { String(localized: "Timer", bundle: .module, comment: "Widget name") }
+    var title: String { String(localized: "Timer", bundle: .module, comment: "Timer: module name (widget, live activity, ⌘K result kind)") }
     let symbol = "timer"
-    var summary: String { String(localized: "Countdowns with presets", bundle: .module, comment: "Widget library description") }
+    var summary: String { String(localized: "Countdowns with presets", bundle: .module, comment: "Widget library: Timer description") }
     let sizes = WidgetSizes(minimum: 2, preferred: 2, maximum: 3)
 
     func makeBody(context: WidgetContext) -> some View { TimerFace(model: model, context: context) }
@@ -1457,9 +1458,9 @@ struct TimerFace: View {
     var revision: Int { model.revision }
     var palette: AmbientPalette? { .timer }
     var opensWidget: WidgetID? { .timer }
-    var accessibilityLabel: String { String(localized: "Timer running", bundle: .module, comment: "VoiceOver label") }
+    var accessibilityLabel: String { String(localized: "Timer running", bundle: .module, comment: "Timer activity: VoiceOver label") }
     var actions: [ActivityAction] {
-        [ActivityAction(id: "stop", title: String(localized: "Stop timer", bundle: .module, comment: "VoiceOver action"),
+        [ActivityAction(id: "stop", title: String(localized: "Stop timer", bundle: .module, comment: "Timer activity: VoiceOver action"),
                         symbol: "stop.fill") { [model] in model.stop() }]
     }
 
@@ -1498,8 +1499,8 @@ final class TimerCommands: PaletteCommandProvider {
     let model: TimerModel
     init(model: TimerModel) { self.model = model }
     func commands(matching query: String) -> [PaletteCommand] {
-        [PaletteCommand(id: "timer.start25", title: String(localized: "Start 25-minute timer", bundle: .module, comment: "Command palette"),
-                        kind: String(localized: "Timer", bundle: .module, comment: "Command palette kind"),
+        [PaletteCommand(id: "timer.start25", title: String(localized: "Start 25-minute timer", bundle: .module, comment: "Command palette: Timer command"),
+                        kind: String(localized: "Timer", bundle: .module, comment: "Timer: module name (widget, live activity, ⌘K result kind)"),
                         symbol: "timer") { [model] in model.start(seconds: 1500) }]
             .filter { query.isEmpty || $0.title.localizedCaseInsensitiveContains(query) }
     }
@@ -1520,17 +1521,17 @@ final class TimerCommands: PaletteCommandProvider {
 
 ## 4. App state machine
 
-The shell keeps **one state machine per display panel** (`NotchViewModel`, AppShell/State) and one global `ActivityArbiter`. Both are pure value-type reducers (`reduce(state, input, now) -> (state, [Effect])`) so they are unit-tested without windows; the view model executes the effects (timers, key focus, haptics, announcements, `NotchEvent`s) and writes the result into a `NotchSceneModel` (§4.12) that `CrannyNotchUI` renders. Timing constants come from DESIGN.md (`HoverIntent`, `GestureSpec`); where R1 and DESIGN differ (close delay 250 vs 300 ms), DESIGN wins.
+The shell keeps **one state machine per display panel** (`NotchViewModel` around the pure `NotchMachine`, AppShell/State) and one global `ActivityArbiter` (WP13; at WP0 a minimal ranking inside `OverlayCoordinator`). Both are pure value-type reducers (`reduce(state, input, now) -> (state, [Effect])`) so they are unit-tested without windows; the view model executes the effects (timers, key focus, haptics, announcements, `NotchEvent`s) and writes the result into a `NotchSceneModel` (§4.12) that `CrannyNotchUI` renders. Timing constants come from DESIGN.md (`HoverIntent`, `GestureSpec`); where R1 and DESIGN differ (close delay 250 vs 300 ms), DESIGN wins.
 
 ### 4.1 State
 
 ```swift
-// CrannyAppShell/State/NotchMachine.swift (WP13) — shape of the state; pure, Equatable.
-struct NotchMachineState: Equatable {
-    enum Surface: Equatable { case closed, peek(Peek), open(OpenState) }      // OpenState: §4.12
-    enum Peek: Equatable { case hover, auto(ActivityID, until: TimeInterval) }
-    enum Hover: Equatable { case outside, dwelling(since: TimeInterval), inside }
-    enum Hidden: Equatable { case fullScreen, excludedApp, locked, displaysAsleep, idleHandle, notThisDisplay }
+// CrannyAppShell/State/NotchMachine.swift — the state, as in the repo since WP0; pure, Equatable, nonisolated.
+nonisolated struct NotchMachineState: Equatable {
+    nonisolated enum Surface: Equatable { case closed, peek(Peek), open(OpenState) }      // OpenState: §4.12
+    nonisolated enum Peek: Equatable { case hover, auto(ActivityID, until: TimeInterval) }
+    nonisolated enum Hover: Equatable { case outside, dwelling(since: TimeInterval), inside }
+    nonisolated enum Hidden: Equatable { case fullScreen, excludedApp, locked, displaysAsleep, idleHandle, notThisDisplay }
 
     var surface: Surface = .closed
     var hover: Hover = .outside
@@ -1538,8 +1539,20 @@ struct NotchMachineState: Equatable {
     var pinned = false
     var holds: Set<String> = []          // NotchControl.setHoldOpen reasons + "menu", "drag", "typing"
     var graceDeadline: TimeInterval?     // pending close after leaving the exit zone
+
+    var isOpen: Bool { if case .open = surface { true } else { false } }
+    var isClosed: Bool { surface == .closed }
+
+    // MARK: Shell-owned hold reasons (§4.5); module reasons are namespaced ("notes.editing").
+
+    /// The panel is key (opened by the hot key, a text field clicked, `requestKeyboardFocus`): §4.4 "panel not key".
+    static let typingHold = "typing"
+    /// An `NSMenu` is tracking (a context menu in the panel, the menu bar extra's menu).
+    static let menuHold = "menu"
 }
 ```
+
+The reducer is in the same file and, like the state, is `nonisolated` and pure, so tests drive it without windows: `NotchMachine.reduce(_:_:now:config:) -> (NotchMachineState, [NotchEffect])` and `NotchMachine.phase(_:config:)` (§4.2). `NotchMachineConfig` is the snapshot of what the reducer reads: open mode, hover delay, close on leave, quick peek, last page, VoiceOver, and whether this display shows a primary activity. `NotchInput` covers pointer enter/leave, dwell and grace elapsed, click, hot key, Esc, open/close, pin, holds, mode, page selection and auto-peek. `NotchEffect` covers dwell/grace scheduling, `makeKey`/`relinquishKey` and `NotchEvent` emission. WP0 implements the §4.4 rows for hover-open, close on leave after the grace period, click, hot key, Esc, pin and holds; WP13 adds cases for the rest (arbiter peeks, swipes, drags, hiding, timeouts). `NotchViewModel` executes the effects. It queues any input that an effect feeds back synchronously (for example `makeKey` posting a key-window notification) and reduces it after the current one, in order.
 
 ### 4.2 Phase derivation (what is drawn)
 
@@ -1615,6 +1628,8 @@ Every geometry change animates with DESIGN.md §4.1 springs (`open` grows with b
 
 Pinned · Demo mode · panel is key (typing) · an `NSMenu` is tracking or an `NSPopover` is shown inside the panel (shell observes `NSMenu.didBeginTrackingNotification` / `didEndTrackingNotification` and `NSPopover.willShow/didClose` for windows owned by the panel) · a file drag is in progress · ⌘K palette or edit mode is active · any `setHoldOpen(true, reason:)` (Notes editing/focus, Mirror running a permission prompt, Tray pipeline progress sheet) · a share or AirDrop sheet presented by `NotchControl`.
 
+Since WP0 the panel's key status and NSMenu tracking are ordinary holds: `NotchPanelController` sends `.hold(NotchMachineState.typingHold, isKey)` on `didBecomeKey`/`didResignKey`, and `OverlayCoordinator` sends `.hold(NotchMachineState.menuHold, …)` while any `NSMenu` tracks (this covers the menu bar extra's menu). WP13 adds the popover, drag and sheet holds the same way.
+
 ### 4.6 Activity arbitration (global, one per app)
 
 ```
@@ -1661,7 +1676,7 @@ Transient P0/P1 activities therefore take the wings and hand them back automatic
 
 ### 4.9 Multi-display policy
 
-- **Panels:** one `NotchPanelController` per eligible display, keyed by `DisplayKey` (display UUID). Eligible = selected by `CoreSettings.displaySelection` and style ≠ `.off`: `.builtIn` → the built-in display if online, else the primary display (`NSScreen.screens[0]`; clamshell removes the built-in screen, R1 §2.6) · `.pointer` → panels on all displays, only the pointer's one is visible (others `hidden(.notThisDisplay)`), switching when the pointer changes display · `.all` · `.custom([DisplayKey])`.
+- **Panels:** one `NotchPanelController` per eligible display, keyed by `DisplayKey` (display UUID). Eligible = selected by `CoreSettings.displaySelection` and style ≠ `.off`: `.builtIn` → the built-in display if online, else the primary display (`NSScreen.screens[0]`; clamshell removes the built-in screen, R1 §2.6) · `.pointer` → panels on all displays, only the pointer's one is visible (others `hidden(.notThisDisplay)`), switching when the pointer changes display (WP13; until then `.pointer` behaves like `.all`) · `.all` · `.custom([DisplayKey])`.
 - **Style per display:** hardware notch → attached notch; otherwise `DisplayPreferences.style ?? CoreSettings.noNotchStyle` (Floating island default). `NotchLayout` per display from `NotchMetrics.measure(screen)` + `notchFit[model]` + density/text size.
 - **Content per display:** compact activities on every visible display (per-display toggle); **peeks, alerts and the HUD only on the pointer's display**; at most **one open Nook** — opening on display A closes any other.
 - **Reconfiguration:** `didChangeScreenParametersNotification` + `CGDisplayRegisterReconfigurationCallback`, debounced 250 ms (R1 §2.6): update existing controllers (geometry applied only while closed; pending otherwise), create new ones, close removed ones. Also re-validate on wake and `activeSpaceDidChange`.
@@ -1671,7 +1686,7 @@ Transient P0/P1 activities therefore take the wings and hand them back automatic
 - The panel becomes key only when a text view is clicked (`becomesKeyOnlyIfNeeded`), when opened by the hot key, or via `requestKeyboardFocus()`. Programmatic `makeKey()` on the non-activating panel without activating the app is expected to work like a clicked text field [UNVERIFIED — WP13 confirms with the R1 interaction harness].
 - On every close the shell calls `orderOut` + `orderFrontRegardless` if the panel is key, which returns key status to the previous app's window [VERIFIED R1].
 - Never use `NSApp.isActive` to decide who is frontmost (true while our panel is key); use `NSWorkspace.frontmostApplication` [VERIFIED R1].
-- In-Nook keys (DESIGN.md §16 keyboard map) are handled in NotchUI with `.onKeyPress`/`.keyboardShortcut` while the panel is key. Hold-⌘ hints: a local `flagsChanged` monitor (0.5 s) sets `NotchContext.showsCommandHints`. Type-to-capture: when opened by keyboard and nothing is focused, the first printable `keyDown` goes to `CaptureTarget.capture(_:)` of `CoreSettings.typeToCapture`, then focus moves to the returned widget.
+- In-Nook keys (DESIGN.md §16 keyboard map) are handled in NotchUI with `.onKeyPress`/`.keyboardShortcut` while the panel is key. WP0 handles only Esc, through a local `keyDown` monitor in `NotchPanelController` that sends `.escape`; WP12 moves the Esc chain into NotchUI with the other keys. Hold-⌘ hints: a local `flagsChanged` monitor (0.5 s) sets `NotchContext.showsCommandHints`. Type-to-capture: when opened by keyboard and nothing is focused, the first printable `keyDown` goes to `CaptureTarget.capture(_:)` of `CoreSettings.typeToCapture`, then focus moves to the returned widget.
 - Global shortcuts: Carbon `RegisterEventHotKey` on `GetApplicationEventTarget()` — no Accessibility needed; compiled and registered ⌃⌥N on macOS 27 in Swift 6 mode [VERIFIED, Appendix C; key delivery inside the running app is confirmed by WP13]. Registration failure = conflict → `ShortcutState.conflict` shown in Settings ▸ Keyboard.
 
 ### 4.11 The HUD while the Nook is open
@@ -1680,7 +1695,7 @@ If a HUD activity becomes primary while the Nook is open, NotchUI renders its le
 
 ### 4.12 Render contract: `NotchSceneModel` (CrannyNotchUI) [VERIFIED compile]
 
-The shell (one per display), the Settings preview stage and the onboarding stage each own a `NotchSceneModel` and render it with `NotchCanvasView(model:registry:actions:)`. Only the owner writes it. WP12 implements the views behind this API; WP13–WP15 code against it from day one.
+The shell (one per display), the Settings preview stage and the onboarding stage each own a `NotchSceneModel` and render it with `NotchCanvasView(model:registry:actions:)`. Only the owner writes it. WP12 implements the views behind this API; WP13–WP15 code against it from day one. Both listings below are byte-identical to the repo files at WP0. Known gap: the model has no input for the width of the floating-island middle label (`LiveActivity.middleLabel`), so `geometry` calls `layout.compact(primarySlot)` with no label and WP0 draws none (open issue 3, §10.1).
 
 ```swift
 // CrannyNotchUI/NotchScene.swift — the render model of one notch (one per display panel, one per stage).
@@ -1928,6 +1943,8 @@ final class NotchHostingView<Content: View>: NSHostingView<Content> {
 
 ### 5.3 One controller per display (outline for WP13)
 
+The WP0 skeleton is `Overlay/NotchPanelController.swift`: layout, theme and light from `ThemeResolver` (observed), the top-centred frame, the hosting view and `interactiveRect` = the shape's bounds. WP13 adds the scroll interceptor, drops, the satellite and drag zones, and calibration. The skeleton also installs the Esc monitor and the `typing` hold (§4.5, §4.10).
+
 ```swift
 @MainActor final class NotchPanelController {
     let key: DisplayKey
@@ -1935,7 +1952,7 @@ final class NotchHostingView<Content: View>: NSHostingView<Content> {
     let root: NotchRootView                     // hitTest + NSDraggingDestination (+ file promises)
     let scene: NotchSceneModel                  // §4.12, rendered by NotchCanvasView
     let viewModel: NotchViewModel               // §4 reducer + effects
-    init(screen: NSScreen, registry: ModuleRegistry) {
+    init(screen: NSScreen, key: DisplayKey, style: NoNotchStyle, registry: ModuleRegistry) {
         // layout = ThemeResolver.layout(metrics: .measure(screen), displayModel: ThemeResolver.displayModelKey(screen), …)
         // theme  = ThemeResolver.theme(settings:albumAccent:notchUnit:isFloatingDisplay:)   (re-run on observed key changes)
         // frame  = top-centred canvasSize, backingAlignedRect(.alignAllEdgesNearest), clamped to screen.frame
@@ -1945,14 +1962,14 @@ final class NotchHostingView<Content: View>: NSHostingView<Content> {
         // panel.scrollInterceptor = viewModel.handleScroll(_:)         (§5.6)
         // panel.orderFrontRegardless()                                 (never activates the app)
     }
-    func update(screen: NSScreen)   // geometry changes applied only while closed
+    func update(screen: NSScreen, style: NoNotchStyle)   // geometry changes applied only while closed
     func close()                    // orderOut + close on display removal
 }
 ```
 
 ### 5.4 Coordinator and displays
 
-`OverlayCoordinator` owns `[DisplayKey: NotchPanelController]`, rebuilds on screen changes (debounced 250 ms; keys from `ThemeResolver.displayKey(_:)` = `CGDisplayCreateUUIDFromDisplayID` of `NSScreenNumber` [VERIFIED R1, compiled in this review] — the same helper the Settings ▸ General display table uses), applies the display selection policy (§4.9), routes pointer events to controllers, and enforces "one open Nook". Menu-bar height for no-notch displays: `frame.maxY − visibleFrame.maxY` > 0, else the Window Server layer-24 window height, else 30 (never `NSStatusBar.thickness`, which says 22 on macOS 27 [VERIFIED R1]); `NotchMetrics.measure` implements the first and last; WP13 adds the layer-24 fallback for auto-hidden menu bars.
+`OverlayCoordinator` owns `[DisplayKey: NotchPanelController]`, rebuilds on screen changes (debounced 250 ms; keys from `ThemeResolver.displayKey(_:)` = `CGDisplayCreateUUIDFromDisplayID` of `NSScreenNumber` [VERIFIED R1, compiled in this review] — the same helper the Settings ▸ General display table uses), applies the display selection policy (§4.9), routes pointer events to controllers, and enforces "one open Nook". At WP0 it also runs a minimal arbitration (enabled, active, unexpired, not paused; ranked by priority and `activityOrder`) until WP13's `ActivityArbiter`, registers the shell's flash activity, and shows a flash on one display only (§10.0). Menu-bar height for no-notch displays: `frame.maxY − visibleFrame.maxY` > 0, else the Window Server layer-24 window height, else 30 (never `NSStatusBar.thickness`, which says 22 on macOS 27 [VERIFIED R1]); `NotchMetrics.measure` implements the first and last; WP13 adds the layer-24 fallback for auto-hidden menu bars.
 
 ### 5.5 Pointer, hover and file-drag detection
 
@@ -1985,7 +2002,7 @@ Evaluate 0.6 s after `activeSpaceDidChange`, `didActivateApplication`, screen-pa
 | Tutorial bubble | small non-activating `NSPanel` at level 26 positioned 10 pt under `NotchControl.shapeFrameOnScreen()` | Owned by CrannyOnboarding's `TutorialController` (it may create AppKit windows), positioned via the port. |
 | AirDrop anchor | transparent, normal-level, on-screen window centred under the notch (or the open Nook panel if ≥ 400 × 300) passed as `sourceWindowForShareItems` | R3 §7: the AirDrop sheet centres on its source window and inherits its level. |
 | Calibration outline | drawn inside the panel (1-px accent outline of the closed shape + 2× loupe) while `setCalibrationOverlay(true)` | Appearance ▸ Notch fit. |
-| Menu bar extra | SwiftUI `MenuBarExtra(isInserted:)` `.menuBarExtraStyle(.menu)` — the only scene in `App.body` | DESIGN.md §13. "Settings…" is a `Button` calling `AppControl.openSettings(nil)` with `.keyboardShortcut(",")` — never `SettingsLink`/`openSettings` (there is no `Settings` scene, D11). The template icon is drawn in code (`NSImage(size:flipped:drawingHandler:)` with `NotchShape`, `isTemplate = true`), so no asset is read from `Bundle.main`. If the icon is hidden, `applicationShouldHandleReopen` opens Settings. |
+| Menu bar extra | SwiftUI `MenuBarExtra(isInserted:)` `.menuBarExtraStyle(.menu)` — the only scene in `App.body` | DESIGN.md §13. "Settings…" is a `Button` calling `AppControl.openSettings(nil)` with `.keyboardShortcut(",")` — never `SettingsLink`/`openSettings` (there is no `Settings` scene, D11). The template icon is drawn in code (`NSImage(size:flipped:drawingHandler:)` with `NotchShape`, `isTemplate = true`), so no asset is read from `Bundle.main`. If the icon is hidden, `applicationShouldHandleReopen` opens Settings. WP0 ships only the items that work yet (Open Cranny, Keep Cranny Open, Settings…, About Cranny, Quit Cranny) and the code-drawn icon (`MenuBar/MenuBarIcon.swift`); WP16 adds the rest. |
 
 ---
 
@@ -2026,7 +2043,7 @@ R2's verified `MediaProvider` protocol and `ProviderEvent` (`.nowPlaying(NowPlay
 
 - **Failover:** on `.unavailable`, restart the same provider after 0.5 s, 2 s, 8 s; 3 failures within 60 s → next provider [VERIFIED R2 demo]. AppleScript is used only if `MediaSettings.allowAppleEvents` (default **off**: it needs per-app Automation prompts); it never launches a player (checks `runningApplications` first), wraps scripts in `with timeout of 2 seconds`, treats −1743 as "denied" and reports it to `PermissionsCenter`.
 - **Commands:** play/pause/toggle/seek update `nowPlaying` optimistically; the next provider state (60–75 ms) is authoritative. Commands are acknowledged in ≈ 12 ms.
-- **Progress:** `NowPlaying.position(at:)` interpolation; a `TimelineView` ticks only in visible views; MediaRemote is never polled.
+- **Progress:** `NowPlaying.position(at:)` interpolation; a 1-Hz tick only in visible views (`TimelineView` or `EffectClock(minimumInterval: 1)`, whichever measures cheaper: open issue 2, §10.1); MediaRemote is never polled.
 - **Track change → peek:** `trackChangeCount` increments when `trackKey` changes, debounced 300 ms, only while playing, never for the first snapshot after launch. The Now Playing activity bumps its `revision` on it (the shell peeks if "Peek on change" is on).
 - **Artwork:** decode off the main actor with `CGImageSourceCreateThumbnailAtIndex` (max 512 px, transform applied); palette with Core's `AmbientPalette.extract(from:)` (0.021 ms per artwork in release, DESIGN App. C); LRU of 16 by `trackKey`; late artwork for the current track is applied, never cleared for the same track key (seek glitch).
 - **Filters:** `MediaSettings.ignoredBundleIDs`, `showsBrowserMedia` (browser bundle IDs filtered when off). Sessions without a title count as nothing playing.
@@ -2147,7 +2164,7 @@ All private symbols are resolved at runtime with `dlopen`/`dlsym` or `responds(t
 
 ### 8.1 Xcode project facts [VERIFIED]
 
-- Hand-written `project.pbxproj`, **objectVersion 77** (Xcode 16+ buildable folders), full text in Appendix B.1. Objects: `PBXFileSystemSynchronizedRootGroup` "App" (`path = App`) with a `PBXFileSystemSynchronizedBuildFileExceptionSet` excluding `Info.plist` from Copy Bundle Resources; a second synchronized group pointing **into the package** at `Packages/CrannyKit/Sources/CrannyMediaBridge` for the dylib target; `XCLocalSwiftPackageReference` (`relativePath = Packages/CrannyKit`) and `XCSwiftPackageProductDependency` `CrannyAppShell` (no `package =` key needed for local packages).
+- Hand-written `project.pbxproj`, **objectVersion 77** (Xcode 16+ buildable folders), in the repo at `Cranny.xcodeproj/project.pbxproj` (Appendix B.1). Objects: `PBXFileSystemSynchronizedRootGroup` "App" (`path = App`) with a `PBXFileSystemSynchronizedBuildFileExceptionSet` excluding `Info.plist` from Copy Bundle Resources; a second synchronized group pointing **into the package** at `Packages/CrannyKit/Sources/CrannyMediaBridge` for the dylib target; `XCLocalSwiftPackageReference` (`relativePath = Packages/CrannyKit`) and `XCSwiftPackageProductDependency` `CrannyAppShell` (no `package =` key needed for local packages).
 - Targets: **Cranny** (application; phases Sources, Frameworks, Resources, "Embed Media Bridge" Copy Files → Frameworks with `CodeSignOnCopy`; target dependency on the bridge) and **CrannyMediaBridge** (`library.dynamic`). Every product in `packageProductDependencies` is linked automatically; dynamic products are not embedded automatically — another reason to link only the static `CrannyAppShell`.
 - Schemes: shared `Cranny` (Appendix B.2) + auto-generated package schemes. `xcodebuild -list` shows targets Cranny and CrannyMediaBridge.
 - **Universal builds need `-destination 'generic/platform=macOS'`**; without it xcodebuild silently builds arm64 only [VERIFIED R4 §5]. `scripts/build.sh` passes it.
@@ -2172,6 +2189,7 @@ All private symbols are resolved at runtime with `dlopen`/`dlsym` or `responds(t
 | `ASSETCATALOG_COMPILER_APPICON_NAME` / `…GLOBAL_ACCENT_COLOR_NAME` | AppIcon / AccentColor | `AppIcon.icon` wins over an `.appiconset` of the same name |
 | `LD_RUNPATH_SEARCH_PATHS` | `$(inherited) @executable_path/../Frameworks` | |
 | `ONLY_ACTIVE_ARCH` | YES Debug / NO Release (+ `-destination generic`) | |
+| `DEPLOYMENT_POSTPROCESSING`, `STRIP_INSTALLED_PRODUCT` | YES, passed by `scripts/build.sh` for Release only (not in the project) | strip like an archive: no debug-map stabs (builder paths) in shipped binaries; the dSYM keeps the symbols; the bridge keeps `_cranny_bridge_main` [VERIFIED WP0] |
 | Bridge target: `EXECUTABLE_PREFIX`, `SKIP_INSTALL`, `DYLIB_INSTALL_NAME_BASE`, `GCC_SYMBOLS_PRIVATE_EXTERN`, `USER_HEADER_SEARCH_PATHS` | lib / YES / @rpath / **YES** / `$(SRCROOT)/Packages/CrannyKit/Sources/CrannyMediaBridge/include` | exports only `cranny_bridge_main` [VERIFIED] |
 
 **Debug vs Release hardening:** with ad-hoc signing and `ENABLE_XOJIT_PREVIEWS = YES` (the Debug default), Xcode disables hardened runtime for Debug, so library-validation and missing-entitlement bugs only reproduce in Release. `scripts/run.sh` builds Debug with `ENABLE_XOJIT_PREVIEWS=NO` → `flags=0x10002(adhoc,runtime)` [VERIFIED in the new layout]. Xcode IDE runs keep previews working.
@@ -2182,23 +2200,25 @@ All private symbols are resolved at runtime with `dlopen`/`dlsym` or `responds(t
 
 ### 8.4 Icon and assets
 
-`App/AppIcon.icon` (Icon Composer) is the single icon source; actool generates `AppIcon.icns` (16–256 px) and `Assets.car` renditions for macOS 14/15 [VERIFIED R4 §6]. The final artwork follows DESIGN.md §15 ("Light from the nook"); WP-Final authors it in Icon Composer (`ictool` renders previews: `/Applications/Xcode.app/Contents/Applications/Icon Composer.app/Contents/Executables/ictool`). `Assets.xcassets` holds `AccentColor` only. Module images, if any, go in the module's `Resources/` (prefer SF Symbols and code-drawn shapes; no videos, GIFs or Lottie). About and onboarding show the real icon with `NSApp.applicationIconImage` (no second renderer); the menu-bar template icon is drawn in code (§5.9). DESIGN.md §15's CoreGraphics `CrannyIconRenderer` is optional tooling, not part of v1. Never bundle SF Pro/SF Mono or any Apple font (system fonts are used at runtime only).
+`App/AppIcon.icon` (Icon Composer) is the single icon source; actool generates `AppIcon.icns` (16–256 px) and `Assets.car` renditions for macOS 14/15 [VERIFIED R4 §6, again with WP0's icon]. WP0 shipped final-style artwork per DESIGN.md §15 ("Light from the nook"): `icon.json` (two groups, a fill plus a dark-appearance fill) and two 1024² layers, `Assets/notch.png` and `Assets/light.png`, which `scripts/render-icon.swift` draws with CoreGraphics (`make icon`; edit the script, never the PNGs). WP-Final reviews it on hardware, including the Tinted and Clear appearances (`ictool` renders previews: `/Applications/Xcode.app/Contents/Applications/Icon Composer.app/Contents/Executables/ictool`). `Assets.xcassets` holds `AccentColor` only. Module images, if any, go in the module's `Resources/` (prefer SF Symbols and code-drawn shapes; no videos, GIFs or Lottie). About and onboarding show the real icon with `NSApp.applicationIconImage` (no second renderer); the menu-bar template icon is drawn in code (§5.9). DESIGN.md §15's flat `CrannyIconRenderer` is not built; `render-icon.swift` is the only icon tooling, and it never ships. Never bundle SF Pro/SF Mono or any Apple font (system fonts are used at runtime only).
 
-### 8.5 Scripts and Makefile (Appendix B.7–B.14)
+### 8.5 Scripts and Makefile (Appendix B.7–B.14, B.21–B.22)
 
 | Command | Script | Does |
 |---|---|---|
-| `make build` | `scripts/build.sh` | Universal Release → `build/Cranny.app` + dSYM; version from `VERSION`; verifies the signature; ≈ 21 s clean on M4 Max |
+| `make build` | `scripts/build.sh` | Universal Release → `build/Cranny.app` + dSYM; version from `VERSION`; Release binaries stripped (fails on a stale unstripped binary, §8.2); verifies the signature; ≈ 21–25 s clean on M4 Max |
 | `make debug` | `CONFIGURATION=Debug ARCHS=$(uname -m) scripts/build.sh` | Debug build |
 | `make run` | `scripts/run.sh` | Debug (hardened), quits the previous dev instance, launches with `open -n` so TCC attributes prompts to Cranny, not the terminal [VERIFIED R4 §8]; `DEV_SIGN_IDENTITY="Cranny Dev"` signs with a stable identity |
-| `make smoke` | `scripts/smoke.sh` | Runs `Cranny --diagnostics` (no UI), checks all 16 resource bundles, the bridge dylib and the Edit menu [VERIFIED]; also checks that `CrannyKit_CrannyEffects.bundle/Contents/Resources/default.metallib` exists (D13) |
-| `make check` | `scripts/check-modules.sh [Target…]` | `swift build --target` per target in its own scratch dir; `JOBS=N`, `TEST=1` |
-| `make test` | `swift test` | Swift Testing |
+| `make smoke` | `scripts/smoke.sh` | Runs `Cranny --diagnostics` (no UI), checks all 16 resource bundles, the bridge dylib and the Edit menu [VERIFIED]; also that `CrannyKit_CrannyEffects.bundle/Contents/Resources/default.metallib` exists, that the diagnostics `shaders` status is `ok`, and that no `.metal` or `.h` file ships (D13, §8.8) |
+| `make check` | `scripts/check-modules.sh [Target…]` | `swift build --target` per target in its own scratch dir; **any compiler warning fails the target** (`-Xswiftc -warnings-as-errors`, `-Xcc -Werror` for Objective-C; `ALLOW_WARNINGS=1` only reports); `JOBS=N`, `TEST=1` |
+| `make test` | `swift test` | Swift Testing; on-screen tests run only with `CRANNY_INTEGRATION=1` (§9.6) |
 | `make strings` / `make strings-check` | `scripts/sync-strings.sh` | Adds new keys from the compiler's `.stringsdata` to each catalog with `xcstringstool sync`; `CHECK=1` fails CI when stale (≈ 25 s for all targets) |
 | `make dist` | `scripts/dist.sh` | zip (`ditto --norsrc --keepParent`) + APFS DMG + sha256; notarizes and staples when `SIGN_IDENTITY`, `TEAM_ID`, `NOTARY_PROFILE` are set |
+| `make probe` / `make probe-check` | `scripts/name-probe.sh` | Regenerates / checks the SDK name-collision probe (§9.4); CI runs the check |
+| `make icon` | `scripts/render-icon.swift` | Re-renders the two layers of `App/AppIcon.icon` (§8.4) |
 | `make list`, `make clean`, `make distclean` | | |
 
-Scripts target `/bin/bash` 3.2, source `scripts/lib.sh`, find Xcode even when `xcode-select` points at the Command Line Tools (`DEVELOPER_DIR`), and require Xcode ≥ 26. They also require **the Metal Toolchain component** (D13). `lib.sh` `ensure_metal_toolchain` runs right after `ensure_xcode` in every script that compiles CrannyKit and in `make test`. It checks `xcodebuild -showComponent MetalToolchain` for `Status: installed` (≈ 0.7 s). If the component is missing, it stops with "Metal Toolchain missing — run: xcodebuild -downloadComponent MetalToolchain"; it never downloads anything itself. Without the check, Xcode's own error appears only deep inside the package build. Any target that holds Metal resources makes SwiftPM 6.4's CLI print one build-system line, `warning: missing creator for mutated node: (…/CrannyKit_CrannyEffects.bundle/Contents/MacOS)`. It is not a compiler warning, xcodebuild does not print it, and it does not count against the zero-warnings rule (§9.7) [VERIFIED]. **Exception:** `make strings`/`strings-check` read the swift-build backend's `out/Intermediates.noindex` layout; the script now passes `--build-system swiftbuild` explicitly (VERIFIED on Swift 6.4), which Xcode 26's SwiftPM 6.2 may not support [UNVERIFIED] — treat Xcode 27 as the minimum for the strings steps (CI pins it, §8.9). Bash scripts are not affected by zsh profile noise (`#!/usr/bin/env bash` is non-interactive).
+Scripts target `/bin/bash` 3.2, source `scripts/lib.sh`, find Xcode even when `xcode-select` points at the Command Line Tools (`DEVELOPER_DIR`), and require Xcode ≥ 26. They also require **the Metal Toolchain component** (D13). `lib.sh` `ensure_metal_toolchain` runs right after `ensure_xcode` in every script that compiles CrannyKit and in `make test`. It checks `xcodebuild -showComponent MetalToolchain` for `Status: installed` and that `xcrun metal -v` runs (≈ 0.7 s). If either fails, it stops with "Metal Toolchain missing — run: xcodebuild -downloadComponent MetalToolchain", prefixed with `DEVELOPER_DIR=…` when the script found Xcode through it (a bare `xcodebuild` fails while `xcode-select` points at the CLT). It never downloads anything itself. Without the check, Xcode's own error appears only deep inside the package build. Any target that holds Metal resources makes SwiftPM 6.4's CLI print one build-system line, `warning: missing creator for mutated node: (…/CrannyKit_CrannyEffects.bundle/Contents/MacOS)`. It is not a compiler warning, xcodebuild does not print it, and it does not count against the zero-warnings rule (§9.7) [VERIFIED]; `check-modules.sh` allowlists exactly this line. **Exception:** `make strings`/`strings-check` read the swift-build backend's `out/Intermediates.noindex` layout; the script now passes `--build-system swiftbuild` explicitly (VERIFIED on Swift 6.4), which Xcode 26's SwiftPM 6.2 may not support [UNVERIFIED] — treat Xcode 27 as the minimum for the strings steps (CI pins it, §8.9). Bash scripts are not affected by zsh profile noise (`#!/usr/bin/env bash` is non-interactive).
 
 ### 8.6 Signing, distribution and TCC during development
 
@@ -2242,11 +2262,11 @@ Scripts target `/bin/bash` 3.2, source `scripts/lib.sh`, find Xcode even when `x
 
 Each target declares `resources: [.process("Resources")]` and must keep that folder (with at least the catalog). Access resources only through `Bundle.module` (the generated accessor is `nonisolated` and finds `CrannyKit_<Target>.bundle` in `Contents/Resources` [VERIFIED]). No `Bundle.main` lookups for package resources; no absolute paths. Sounds are system sounds only (DESIGN.md §14.3); Cranny ships no audio, video or Lottie files.
 
-**Shaders (D13).** `CrannyEffects` also keeps `Shaders/*.metal` and the shared header `Shaders/CrannyShaders.h`. SwiftPM's built-in rule compiles every `.metal` file of the target into one `default.metallib` inside `CrannyKit_CrannyEffects.bundle`, so `Package.swift` needs no entry: §2.2 stays as it is, and an explicit `.process("Shaders")` gives the same result. Quoted `#include`s resolve next to the `.metal` file, and the header is not copied into the bundle [VERIFIED]. Code reaches the library only through `ShaderEffects.library` (= `ShaderLibrary.bundle(.module)`), never `ShaderLibrary.default`, which is the app bundle's library and does not exist. No other target contains `.metal` files (§9.4).
+**Shaders (D13).** `CrannyEffects` also keeps `Shaders/*.metal` and the shared header `Shaders/CrannyShaders.h`. SwiftPM's built-in rule compiles every `.metal` file of the target into one `default.metallib` inside `CrannyKit_CrannyEffects.bundle`, so `Package.swift` needs no entry and must not get one: §2.2 stays as it is. Quoted `#include`s resolve next to the `.metal` file, and the header is not copied into the bundle [VERIFIED]. An explicit `.process("Shaders")` is **not** equivalent: it also copies `CrannyShaders.h` into the app (seen in WP0's first cut). Only `default.metallib` ships; the `bundleShipsNoShaderSources` test and `smoke.sh` fail if any `.metal` or `.h` file reaches a bundle. Code reaches the library only through `ShaderEffects.library` (= `ShaderLibrary.bundle(.module)`), never `ShaderLibrary.default`, which is the app bundle's library and does not exist. No other target contains `.metal` files (§9.4).
 
 ### 8.9 CI (Appendix B.15–B.16)
 
-`ci.yml` (push to main, PRs, manual) on the GitHub `xcode-27` image (arm64, macOS 27.0.1, Xcode 27.0; public preview; fallback `macos-26` with Xcode 26.6): toolchain info → `JOBS=3 TEST=1 scripts/check-modules.sh` → `CHECK=1 scripts/sync-strings.sh` → universal `scripts/build.sh` → **`scripts/smoke.sh`** → `scripts/dist.sh` → upload zip/dmg/sha256 (logs on failure). `release.yml` (tags `v*`): checks the tag equals `VERSION`, optionally imports Developer ID + notary key, builds, smoke-tests, packages/notarizes and publishes a GitHub Release with generated notes. Both YAML files parse [VERIFIED]; neither has run on GitHub yet [UNVERIFIED], including the runner label and the `actions/*@v7` major versions — WP0 pins whatever exists on its first green run. The `macos-26` fallback job runs everything **except** `strings-check` (Xcode 27 only, §8.5). Both workflows, and the fallback job, add a **Metal Toolchain** step right after "Toolchain" (D13): `xcodebuild -showComponent MetalToolchain | grep -q 'Status: installed' || xcodebuild -downloadComponent MetalToolchain`. It is a no-op when the image already has the component. Whether the runner images ship it, and how long the download takes (≈ 0.9 GB installed), are [UNVERIFIED]; WP0 records both on the first green run. Shader tests that need a GPU skip themselves when `MTLCreateSystemDefaultDevice()` is nil (VM runners [UNVERIFIED]). The bundled-metallib test and the smoke check never skip. x86_64 slices are built but never executed (no Rosetta here): WP-Final adds an Intel smoke job (`--diagnostics`) if an Intel runner label is available [UNVERIFIED]. `hdiutil create` prints a deprecation warning on macOS 27 (still works); move `dist.sh` to `diskutil image create` when it breaks.
+`ci.yml` (push to main, PRs, manual) has two jobs. **`build`** runs on the GitHub `xcode-27` image (arm64, macOS 27.0.1, Xcode 27.0; public preview): toolchain info → **Metal Toolchain** → `JOBS=3 TEST=1 scripts/check-modules.sh` → `CHECK=1 scripts/name-probe.sh` → `CHECK=1 scripts/sync-strings.sh` → universal `scripts/build.sh` → **`scripts/smoke.sh`** → `scripts/dist.sh` → upload zip/dmg/sha256 (logs on failure). **`build-macos-26`** is the fallback and minimum-toolchain job (`macos-26`, Xcode 26.x): the same steps **except** `strings-check` (Xcode 27 only, §8.5). It has `continue-on-error: true` until its first green run; then that line is removed and the run is recorded here. `release.yml` (tags `v*`): checks the tag equals `VERSION`, optionally imports Developer ID + notary key, installs the Metal Toolchain, builds, smoke-tests, packages/notarizes and publishes a GitHub Release with generated notes. The **Metal Toolchain** step (D13) is `xcodebuild -showComponent MetalToolchain | grep -q 'Status: installed' || xcodebuild -downloadComponent MetalToolchain`, followed by `xcodebuild -showComponent MetalToolchain` and `xcrun metal -v` for the log; it is a no-op when the image already has the component. Both YAML files parse [VERIFIED]. **Neither has run on GitHub yet** (the repo had no remote when WP0 landed) [UNVERIFIED]: the runner labels, the `actions/*@v7` major versions, whether the images ship the Metal Toolchain and how long its download takes (≈ 0.9 GB installed). Whoever pushes first records all of these on the first green run and pins what exists (open issue 6, §10.1). Shader tests that need a GPU skip themselves when `MTLCreateSystemDefaultDevice()` is nil (VM runners [UNVERIFIED]). The bundled-metallib test and the smoke check never skip. x86_64 slices are built but never executed (no Rosetta here): WP-Final adds an Intel smoke job (`--diagnostics`) if an Intel runner label is available [UNVERIFIED]. `hdiutil create` prints a deprecation warning on macOS 27 (still works); move `dist.sh` to `diskutil image create` when it breaks.
 
 ---
 
@@ -2265,11 +2285,11 @@ Each target declares `resources: [.process("Resources")]` and must keep that fol
 ### 9.2 Performance and energy (release gate, DESIGN.md §4.7)
 
 - **Closed with nothing playing = zero work:** no timers, no `TimelineView`, no Canvas, no polling. Everything is event-driven (notifications, KVO, CoreAudio/IOKit callbacks, MR notifications through the bridge).
-- **Timers only while visible:** `TimelineView(.animation(minimumInterval:paused:))` with `paused` bound to visibility/need; compact visualizer on Core Animation; open-Nook effects ≤ 30 fps on AC, ≤ 20 fps on battery, static halo in Low Power Mode or `thermalState ≥ .serious`, paused when occluded (`NSWindow.occlusionState`) or a full-screen app is in front; Reduce Motion freezes a resting frame. **Metal shader effects (D13) obey the same budget.** Their `time` uniform comes from the effect's `TimelineView` (throttled or paused by `EffectBudget`), never from a clock inside the shader. GPU time is ≤ 1.5 ms per frame at the largest open size. The SwiftUI fallback renders under Reduce Motion, under Low Power / thermal, and when shaders are unavailable (DESIGN.md §5.6).
+- **Timers only while visible:** continuously animated views (the light layer, open-Nook visualizers, anything redrawn more often than about twice a second) take their time from **`EffectClock(minimumInterval:)`** (Core, A.11), fed with `EffectBudget.minimumInterval` (nil = paused, no wake-ups). Do not use `TimelineView(.animation(minimumInterval:paused:))` or `.periodic` for them: SwiftUI then keeps updating the hosting view at the display's refresh rate (up to 240 Hz) and only filters the content by the interval — measured 11.4 % CPU at 30 fps and still 9 % at 5 fps, against 5.0 % / 3.6 % (30 / 20 fps) with `EffectClock` (Appendix C, WP0). Compact visualizer on Core Animation; open-Nook effects ≤ 30 fps on AC, ≤ 20 fps on battery, static halo in Low Power Mode or `thermalState ≥ .serious`, paused when occluded (`NSWindow.occlusionState`) or a full-screen app is in front; Reduce Motion freezes a resting frame. **Metal shader effects (D13) obey the same budget.** Their `time` uniform comes from the effect's `EffectClock` (throttled or paused by `EffectBudget`), never from a clock inside the shader. GPU time is ≤ 1.5 ms per frame at the largest open size. The SwiftUI fallback renders under Reduce Motion, under Low Power / thermal, and when shaders are unavailable (DESIGN.md §5.6).
 - **Allowed polling (exhaustive):** Accessibility grant check every 1.5 s for ≤ 2 min after a request; accessory batteries every 60 s only while the Bluetooth activity is visible; passive brightness at 2 Hz only while a brightness HUD is visible.
 - **Hardware only while visible:** camera, audio tap; stop on close, lock, sleep, page change.
 - **No I/O on the main actor** except tiny settings reads (UserDefaults). Decode images off-main; cache thumbnails and artwork (LRU).
-- Targets: Activity Monitor Energy Impact < 1.0 idle; open + aurora ≤ 3 % CPU; no hitches at 120 Hz; measured with Instruments before each release (WP-Final).
+- Targets: Activity Monitor Energy Impact < 1.0 idle; open + aurora ≤ 3 % CPU; no hitches at 120 Hz; measured with Instruments before each release (WP-Final). **Not met at WP0:** open + aurora costs ≈ 5–10 % CPU on a 240-Hz display even with `EffectClock` (≈ 1.7–3.2 ms of CPU per frame); open issue 1 (§10.1).
 
 ### 9.3 Errors and logging
 
@@ -2288,7 +2308,7 @@ Each target declares `resources: [.process("Resources")]` and must keep that fol
 - Every view file ends with `#Preview` blocks on black with `.crannyThemeRoot(CrannyTheme())` and `CrannyServices.preview()` data (they compile in `swift build --target` [VERIFIED R4]).
 - Access control: module internals `internal`; only the `FeatureModule` type, settings enums and what tests need are `public` (tests use `@testable import`).
 - No third-party dependencies; no new targets; no edits outside your package (§10.0).
-- Never give a `public` type a name that an Apple framework also exports (Core's `ScrollPhase` collided with `SwiftUI.ScrollPhase` and broke every file importing both; it is `SwipePhase` now). A Core change request lists new public names; the reviewer compiles a probe file that imports `AppKit`, `SwiftUI`, `AVFoundation`, `EventKit`, `CoreAudio`, `IOKit` and `CrannyCore` and aliases each new name (the review's probe found no other collision).
+- Never give a `public` type a name that an Apple framework also exports (Core's `ScrollPhase` collided with `SwiftUI.ScrollPhase` and broke every file importing both; it is `SwipePhase` now). A Core change request lists new public names and runs `make probe` (`scripts/name-probe.sh`, B.21). It regenerates `Tests/CrannyCoreTests/SDKNameCollisionProbe.swift`, a file that imports the 16 Apple frameworks the modules use plus `CrannyCore` and aliases every top-level public Core type (153 names at WP0), so `swift test` fails on any ambiguity. CI's `make probe-check` fails when the committed probe is stale. The review's probe found no collision besides `ScrollPhase`.
 - **Metal only in `CrannyEffects`** (D13).
   - **Where:** `Sources/CrannyEffects/Shaders/*.metal`. Shared helpers go in `CrannyShaders.h` (`namespace cranny`, `static inline`).
   - **What:** SwiftUI stitchable functions only (`#include <SwiftUI/SwiftUI_Metal.h>`, `[[ stitchable ]]`), called through `ShaderEffects.library`, never `ShaderLibrary.default`. Every function is listed in `ShaderEffects.requiredFunctions` and has a render test: a missing function or an argument mismatch renders *transparent* without an error.
@@ -2304,12 +2324,13 @@ Every control has an accessibility label (localized), every widget is a VoiceOve
 
 - **Swift Testing** (`import Testing`, `@Test`, `#expect`, `#require`) in `Tests/<Target>Tests`. Test pure logic exhaustively: state machine and arbitration (shell), `SwipeTracker`, `HoverIntent`, geometry, `SettingsStore`, `SemanticVersion`, meeting-link detection, calendar windowing, `NowPlaying` interpolation, bridge JSON parsing, synthetic spectrum, tray pipelines on temp files, note/to-do stores, timer deadlines, palette determinism, key-event decoding, pass-through rules.
 - Modules are tested alone with `CrannyServices.preview()` and the public doubles (`PreviewNotchControl.calls` records interactions; `emit` simulates shell events).
-- Integration tests that need hardware or prompts are opt-in (`CRANNY_INTEGRATION=1`) and never run in CI.
+- Integration tests that need hardware, prompts or a visible window are opt-in (`CRANNY_INTEGRATION=1`) and never run in CI. Example: `PanelSelfTests.panelOnScreenMatchesR1` shows a panel for about 2 s and re-checks R1's facts through window-server queries, without posting input; run it after touching `Overlay/`.
+- Visual QA uses the Debug-only launch arguments of `QAHooks.swift` (`--qa-state`, `--qa-page`, `--qa-exit-after`, `--qa-settings`; B.23) and captures the panel by window id (`screencapture -l`), which works even while the screen is locked (`docs/CONTRIBUTING.md`).
 - Manual checklists: §11 (hardware notch, keys, permissions, full screen, multi-display) per release.
 
 ### 9.7 Definition of done (every work package)
 
-1. `scripts/check-modules.sh <YourTarget>` passes with **zero warnings** (the SwiftPM build-system line about `CrannyKit_CrannyEffects.bundle/Contents/MacOS`, §8.5, is not a compiler warning and is ignored); `swift test --filter <YourTarget>Tests` passes; `make strings-check` passes with Russian translations for every new key.
+1. `scripts/check-modules.sh <YourTarget>` passes; it builds with warnings as errors, so this means **zero warnings** (the SwiftPM build-system line about `CrannyKit_CrannyEffects.bundle/Contents/MacOS`, §8.5, is not a compiler warning and is allowlisted); `swift test --filter <YourTarget>Tests` passes; `make strings-check` passes with Russian translations for every new key.
 2. `make build && make smoke` pass; the feature works in `make run` on macOS 14 behaviour paths (`#available` fallbacks exercised by code review) and on 27.
 3. Every view has previews, accessibility labels, Reduce Motion/Transparency/Contrast behaviour; energy rules respected (no timers while hidden).
 4. Settings keys documented in the module's `<Module>Settings` enum with defaults matching §10; permissions declared; no edits outside the package's folders.
@@ -2323,14 +2344,15 @@ Every control has an accessibility label (localized), every widget is a VoiceOve
 
 **Phases.** **A — WP0 Foundation** (serial, 2 engineers) must be merged before anything else starts. **B — WP1…WP16** run in parallel (10 engineers, staffing in §10.19). **C — WP-Final** integration, QA and release.
 
-**Ownership is by folder.** Each package edits only the folders listed under it (its `Sources/<Target>/…` and `Tests/<Target>Tests/…`, plus named files in `CrannyAppShell`). Shared files — `Package.swift`, `Sources/CrannyCore/**`, `Sources/CrannyNotchUI/{NotchScene, ThemeResolver}.swift`, `App/**` (incl. `Info.plist`, `InfoPlist.xcstrings`, entitlements), `Cranny.xcodeproj/**`, `scripts/**`, `.github/**`, `docs/**`, `THIRD_PARTY_NOTICES.md`, `CompositionRoot.swift`, `AppDelegate.swift`, `CrannyScenes.swift` — belong to WP0 during phase B (WP12 owns `NotchScene.swift` and `ThemeResolver.swift`; WP16 owns `App/ShellContributions.swift`). A package that needs a change in an `App/**` file (usage string, entitlement) files it with WP0; nobody else edits those files.
+**Ownership is by folder.** Each package edits only the folders listed under it (its `Sources/<Target>/…` and `Tests/<Target>Tests/…`, plus named files in `CrannyAppShell`). Shared files — `Package.swift`, `Sources/CrannyCore/**`, `Sources/CrannyNotchUI/{NotchScene, ThemeResolver}.swift`, `App/**` (incl. `Info.plist`, `InfoPlist.xcstrings`, entitlements), `Cranny.xcodeproj/**`, `scripts/**`, `.github/**`, `docs/**`, `THIRD_PARTY_NOTICES.md`, `CompositionRoot.swift`, `AppDelegate.swift`, `CrannyScenes.swift`, `Diagnostics.swift`, `QAHooks.swift` — belong to WP0 during phase B (WP12 owns `NotchScene.swift` and `ThemeResolver.swift`; WP16 owns `App/ShellContributions.swift`). A package that needs a change in an `App/**` file (usage string, entitlement) files it with WP0; nobody else edits those files.
 
-**Intra-shell interfaces.** `CrannyAppShell` hosts four packages (WP13–WP16). WP0's skeleton fixes these internal signatures (stub bodies) so they can code against each other from day one; changing one is a change request to WP0:
-- `OverlayCoordinator` (WP13): `init(registry:environment:)`, `start()`, `let notchControl: ShellNotchControl`, `play(_ state: PreviewStageState, for: Duration)` (backs `AppControl.showOnNotch`), `toggleOpen()`, `setPinned(_:)`.
-- `HotKeyCenter` (WP13, `Input/HotKeyCenter.swift`): `apply(_ shortcuts: [GlobalShortcut], bindings: [ShortcutID: KeyCombo?]) -> [ShortcutID: ShortcutState]`, `state(_:) -> ShortcutState`. It re-applies itself when `CoreSettings.shortcuts` changes (observed), so WP16's `setShortcut` only writes the key and returns `state(_:)`.
+**Intra-shell interfaces.** `CrannyAppShell` hosts four packages (WP13–WP16). WP0 fixed these internal signatures (the bodies are WP0's minimal versions or stubs) so the packages can code against each other from day one; changing one is a change request to WP0. They are listed as built:
+- `OverlayCoordinator` (WP13, `@Observable`): `init(registry: ModuleRegistry, environment: ShellEnvironment)` (the concrete shell type rather than `any SystemEnvironment`; both live in the shell), `start()`, `let notchControl: ShellNotchControl`, `let hotKeys: HotKeyCenter`, `play(_ state: PreviewStageState, for: Duration)` (backs `AppControl.showOnNotch`), `toggleOpen()`, `setPinned(_:)`, `isPinned`. For `ShellNotchControl`: `open(page:focus:reason:)`, `closeAll()`, `togglePinned()`, `setHoldOpen(_:reason:)`, `setFocusMode(_:)`, `requestKeyboardFocus()`, `shapeFrameOnScreen()`, `showFlash(symbol:label:duration:on:)`. For `--diagnostics`: `static panelScreens(settings:)`. Its `init` registers the shell's flash activity (`FlashActivity.kind`, `ActivityID.flash`), so `ShellContributions` does not. A flash shows on one display only (the requested one, else the pointer's) and is dropped while Live Activities are paused, the screen is locked or the displays sleep; a running flash ends when a pause begins.
+- `HotKeyCenter` (WP13, `Input/HotKeyCenter.swift`, `@Observable`): `start(registry:)`, `stop()`, `apply(_ shortcuts: [GlobalShortcut], bindings: [ShortcutID: KeyCombo?]) -> [ShortcutID: ShortcutState]`, `reapply()`, `state(_:) -> ShortcutState`. It re-applies itself when `CoreSettings.shortcuts` changes (observed: Reset All, Undo, any writer). `AppControl.setShortcut` writes the key, calls `reapply()` synchronously and returns `state(_:)`, so it never returns a stale state; views refresh because `states` is observed.
 - `ShellEnvironment` (WP13) derives `isDemoMode`/`areLiveActivitiesPaused` from `CoreSettings.demoMode`/`pausedUntil` by observation; `PauseController`/`DemoMode` (WP16) are the only writers of those keys.
-- `SettingsWindowController.show(page:)` (WP14), `WelcomeWindowController.show()` (WP15), `TutorialController.start()` (public in CrannyOnboarding, WP15), `ShellAppServices.start()` (WP16, owns `ShellAppControl`, `LoginItemController`, `UpdateChecker`, `PauseController`, `DemoMode`).
-- `App/ShellContributions.swift` (WP16 after WP0 creates it): the shell's `GlobalShortcut`s (Open Cranny, Toggle pin → `OverlayCoordinator`; Pause → `PauseController`), the shell ⌘K provider (Pause for 1 hour, Demo mode, Keep open, Show tutorial, every Settings pane) and nothing else.
+- `SettingsWindowController(registry:)` + `show(page:)` (WP14); `WelcomeWindowController(registry:)` + `show()` (WP15); `TutorialController` (public in CrannyOnboarding, WP15): `init(registry:)`, `start()`, `stop()`, `isRunning`.
+- `ShellAppServices` (WP16): `init(registry:appControl:overlay:settingsWindow:welcomeWindow:)` and `start()`, which wires `ShellAppControl` to the windows, the overlay and the hot keys (`connect(…)`). It will own `LoginItemController`, `UpdateChecker`, `PauseController` and `DemoMode`.
+- `App/ShellContributions.swift` (WP16 after WP0 created it): `register(in:overlay:)` with the shell's `GlobalShortcut`s (Open Cranny ⌃⌥N and Toggle pin → `OverlayCoordinator`; WP16 adds Pause → `PauseController`), the shell ⌘K provider (WP16: Pause for 1 hour, Demo mode, Keep open, Show tutorial, every Settings pane) and nothing else.
 
 **Contract changes during phase B** go through a *Core change request*: a small PR to the owner that is **additive only** (new type, new case with a default, new protocol requirement with a default implementation in an extension, new well-known ID). No renames, no removals, no signature changes. The owner reviews within one working day. Because `CompositionRoot` already registers every module, a module's contributions appear in the app as soon as its PR merges; there is no big-bang integration.
 
@@ -2341,6 +2363,8 @@ Every control has an accessibility label (localized), every widget is a VoiceOve
 **Acceptance (all packages)** = §9.7 Definition of done + the package's own list below.
 
 ### 10.1 WP0 — Foundation (serial; first)
+
+**Status: done, 2026-10-14.** On `main` as `bbc5411`…`22c9ddf` plus the verifier fixes `14b9952`…`1e536c5`. Every acceptance command passes on a fresh clone (Appendix C, "WP0 acceptance"). Two items are still open: the GitHub CI run (the repo has no remote yet) and the R1 checks that need real input (open issues 5 and 6 below). The plan is kept as the record. "As built" lists where the repo differs from it, and the sections those differences touch have been updated.
 
 - **Targets/folders:** everything listed as shared above; placeholders for all others.
 - **Create:** the repository of §1 with the verified files of Appendix B (project, scheme, `App/*`, scripts incl. `smoke.sh`, Makefile, workflows, `.gitignore`, `VERSION` = 0.1.0), `LICENSE` (MIT), `README.md` (build/run, Gatekeeper, permissions FAQ), `THIRD_PARTY_NOTICES.md`, `docs/CONTRIBUTING.md` (§10.0 + §9 summary).
@@ -2356,6 +2380,48 @@ Every control has an accessibility label (localized), every widget is a VoiceOve
 - **AppShell skeleton** (verified skeleton is the starting point): `App/AppDelegate.swift` as a thin orchestrator that owns and starts four components with **final initializers and stub bodies** — `OverlayCoordinator` (WP13), `SettingsWindowController` (WP14), `WelcomeWindowController` (WP15), `ShellAppServices` (WP16); `App/CrannyScenes.swift` (`MenuBarExtra` whose content is `MenuBarContent`, WP16); `App/CompositionRoot.swift` (all modules, §3.4 order); `App/ShellContributions.swift` (§10.0); `App/Diagnostics.swift` (Appendix B.18); `Overlay/NotchPanel.swift` (§5.2); minimal port implementations, **one file per type** so later owners never share a file: `Services/ShellNotchControl.swift` (open/close/hold/focus/flash), `Services/ShellEnvironment.swift` (lock/sleep/low power/AC/frontmost), `Services/ShellAppControl.swift` (open Settings/quit), plus stubs with the final signatures of §10.0 "Intra-shell interfaces": `Windows/SettingsWindowController.swift`, `Windows/WelcomeWindowController.swift`, `Services/ShellAppServices.swift`, `MenuBar/MenuBarContent.swift`, `Overlay/OverlayCoordinator.swift`, `Input/HotKeyCenter.swift`.
 - **Behaviour at the end of WP0:** a panel on the built-in (or primary) display shows the closed cutout (or island handle); hovering ≥ 120 ms opens the panel with the configured page (placeholder cards are fine); leaving + 300 ms closes; Esc closes and hands focus back; the menu bar extra opens Settings (sidebar skeleton) and quits.
 - **Acceptance:** `make check` (17 targets, zero warnings), `make test`, `make strings-check`, `make build` (universal), `make smoke` (incl. the Effects `default.metallib`), `make dist` locally and on GitHub CI (with the Metal Toolchain step); without the component, `make build` must stop with the `ensure_metal_toolchain` message, not with a compiler error (checked on a machine without the component if one is available, otherwise by review); Appendix C's verification steps reproduce; R1's key panel checks (click delivered without activating the app, per-pixel pass-through, level 26 over a full-screen Space) re-checked on the skeleton — manually or by porting R1's self-test into `CrannyAppShellTests`.
+
+#### As built (differences from the plan above, all adopted)
+
+1. **The aurora shipped early.** WP0 also ships `Shaders/Aurora.metal`, the shader branch of `AuroraField` (both DESIGN.md App. B.2 verbatim, commit `22c9ddf`) and `EffectsDiagnostics.swift` (public `shaderStatus`). `requiredFunctions` is `crannyDither`, `auroraField`. `AuroraField` reads `@Environment(\.displayScale)` for the dither, takes its time from `EffectClock` instead of `TimelineView` (§9.2) and has a `#Preview`. WP11 tunes these instead of creating them (§10.12).
+2. **Effects tests:** App. B.2's two metallib tests, plus the budget pause, the shader/fallback switch, render tests for `auroraField` (top 40 % black, peak alpha under the cap) and `crannyDither`, and `bundleShipsNoShaderSources`.
+3. **One new Core file**, `DesignSystem/EffectClock.swift` (A.11), an additive change. **`notchFit` moved** from the `displays` to the `appearance` namespace (A.2, §10.15).
+4. **Diagnostics** gained `shaders`, `panelScreens` and `screens` (B.18). `smoke.sh` checks the shader status, and that no shader source ships (B.10).
+5. **Scripts and CI:**
+   - `check-modules.sh` enforces zero warnings (`ALLOW_WARNINGS=1` turns that off) and `build.sh` strips Release binaries.
+   - New `name-probe.sh` (`make probe`, `make probe-check`, also in CI) and `render-icon.swift` (`make icon`).
+   - `ensure_metal_toolchain` also requires `xcrun metal -v` and prints the fix with the `DEVELOPER_DIR` it used (§8.5).
+   - `ci.yml` has the `build-macos-26` job, with `continue-on-error` (§8.9).
+6. **Icon:** final-style "Light from the nook" artwork instead of B.20's R4 placeholder. It adds a dark-appearance fill and fades the light toward the top edge (§8.4, DESIGN.md §15).
+7. **Shell:**
+   - **State machine:** `NotchMachine` types are `nonisolated`, with `isOpen`/`isClosed` and the `typing`/`menu` hold reasons. `NotchInput`, `NotchEffect` and `NotchMachineConfig` cover a subset of §4.4 (§4.1).
+   - **Intra-shell interfaces:** as listed in §10.0, including where the flash activity is registered.
+   - **Panels:** one per eligible display at level 26; `.pointer` behaves like `.all` until WP13. ⌃⌥N is registered through Carbon.
+   - **Menu bar extra:** only the items that work yet (§5.9).
+   - **Settings window:** the full sidebar with final pane namespaces (§10.15). Every pane except General and About is a placeholder.
+   - **Open panel:** it opens only pages that exist and puts placeholder text on a card. The ⌕ palette button stays hidden until WP12 ships the palette. Tabs are 22-pt segments with a tap area of at least 32 × 24 pt.
+8. **QA:** Debug-only visual QA hooks (B.23), including a `compact` state and `--qa-settings`. `PanelSelfTests` re-checks R1's panel facts; its on-screen part is opt-in (§9.6).
+9. **Modules:** `CrannyTimer` keeps the §3.17 reference module rather than an empty `register`, and WP0 added the Russian translations its catalog lacked. The Media and Tray skeletons have empty `register`s, so no port is published yet.
+10. **`docs/CONTRIBUTING.md`** is written by WP0, as this plan said (§1 used to say WP-Final).
+11. **`Package.swift`** is §2.2 byte for byte. WP0 tried an explicit `.process("Shaders")` and removed it, because it ships the header (§8.8).
+
+**Left to later packages by design:** hiding for full screen, excluded apps and lock; drag and scroll routing; arbiter-driven peeks and dismissal; the satellite; real Settings panes and the shortcut recorder; the onboarding steps and the tutorial; the login item; the update check; the Pause, Demo Mode and Show On menu items.
+
+#### Open issues after WP0
+
+These are places where the code, or the plan it followed, is probably wrong or still unproven; the doc describes them as they are. Each has an owner, and none blocks phase B.
+
+| # | Issue | Evidence | Owner / next step |
+|---|---|---|---|
+| 1 | **Energy gate not met:** open Nook + aurora costs ≈ 5–10 % CPU; the target is ≤ 3 % (§9.2, DESIGN.md §4.7) | Release arm64, 240-Hz display, screen locked: `TimelineView` 15.3–15.8 % vs `EffectClock` 9.6–10.0 % in the same session; a quieter run gave 11.4 % → 5.0 % at 30 fps (3.6 % at 20 fps). About 1.7–3.2 ms of CPU per frame remains | WP11 + design owner: lower the ambient frame rate (≈ 10–12 fps would meet the target) or find a cheaper renderer; re-measure unlocked on a 120-Hz MacBook. DESIGN.md's 30/20 fps stays until they decide |
+| 2 | **1-Hz `TimelineView`s may update at the display rate:** the §3.17 Timer reference has three `TimelineView(.animation(minimumInterval: 1, …))` views, and §6.5's media progress uses the same pattern | Issue 1's measurement (still 9 % at 5 fps) | WP7 and WP1 measure their running views; if confirmed, switch to `EffectClock(minimumInterval: 1)` |
+| 3 | **No render input for the floating-island middle label** (§4.12): `NotchLayout.compact(_:label:)` takes a label width; `NotchSceneModel` has no such value | WP0 draws no label | WP12: an additive `NotchSceneModel` property for the label width (WP13 writes it), used by `geometry` |
+| 4 | **Header icon buttons vs band hit targets:** DESIGN.md §6.2 sizes the header buttons at 28 pt. §2.3/§16 there (and §9.5 here) require at least 32 × 24 for controls in the band, where the header lives | Unresolved in DESIGN.md | Design owner decides; WP12 implements (WP0's tabs already use a tap area of at least 32 × 24 around a 22-pt segment) |
+| 5 | **R1 checks that need real input:** a real click delivered without activating the app; the panel above another app's full-screen Space; live hover-open, Esc focus hand-back and ⌃⌥N in the running app | Covered only by reducer and view-model tests and by `PanelSelfTests`' window-server queries. The screen was locked throughout WP0 | WP13 (§10.14 acceptance, §11.2 hardware checklist) |
+| 6 | **CI has never run:** runner labels, `actions/*@v7`, the Metal Toolchain step on GitHub images, the `macos-26` job | The repo had no remote when WP0 landed | Whoever pushes first records and pins them (§8.9), and removes `continue-on-error` after the first green `macos-26` run |
+| 7 | **Untested platforms:** no notched display, no run on macOS 14/15, x86_64 never executed | The Mac used runs in clamshell mode on an external display and has no Rosetta | WP13 (notch), WP-Final (14/15, Intel smoke) |
+
+Minor: the doc comment of `EffectBudget.minimumInterval` (Core, mirrored in DESIGN.md App. B.1) still says "TimelineView stops ticking"; with `EffectClock` the clock stops. Fix the comment in both places with the next Core change request.
 
 ### 10.2 WP1 — Media · `CrannyMedia` (+ `CrannyMediaBridge`)
 
@@ -2411,7 +2477,7 @@ Every control has an accessibility label (localized), every widget is a VoiceOve
 - **Responsibilities:** DESIGN.md §7.7 and §9.2: deadline-based model persisted in `AppPaths/timer/state.json` (restored on launch), presets, scroll ±1 min (`.crannyScrollZone`, `.levelChange` per minute), typed durations ("25", "90s"), running (P2, options row "Peek at one minute left") and done (P1, Stop/+1 min, sound `NSSound(named:)` muted in Demo mode, `delight = .emberBurst`) activities with samples, peek at 1 minute left, ⌘K "Start N-minute timer", shortcut `.startTimer`.
 - **Public types:** `TimerModule`, `TimerSettings`.
 - **Settings (`timer.`):** `presets: [Int] = [60, 300, 600, 1500]` (seconds) · `sound: String? = "Glass"` · `peeksAtOneMinute: Bool = true`.
-- **Acceptance:** no work while hidden (no ticking timers; `TimelineView` paused); survives relaunch; 10-s digit pulse (colour only under Reduce Motion); `DurationParser` tests.
+- **Acceptance:** no work while hidden (no ticking timers; the 1-Hz views paused, and their running cost measured: open issue 2, §10.1); survives relaunch; 10-s digit pulse (colour only under Reduce Motion); `DurationParser` tests.
 
 ### 10.9 WP8 — Tray, AirDrop, Files · `CrannyTray`
 
@@ -2440,9 +2506,10 @@ Every control has an accessibility label (localized), every widget is a VoiceOve
 ### 10.12 WP11 — Effects · `CrannyEffects`
 
 - **Files:**
-  - **Swift:** `AuroraField.swift` and `ShaderEffects.swift` (both from WP0) · `MotesField.swift` · `TideField.swift` · `HaloField.swift` · `AmbientLayer.swift` · `EmberBurst.swift` · `ChargeSweep.swift` · `FirstLight.swift` · `LiquidNeck.swift` · `TypewriterText.swift` · `RippleModifier.swift`.
-  - **Metal:** `Shaders/CrannyShaders.h` and `Shaders/Dither.metal` (both from WP0) · `Shaders/{Aurora, Tide, Motes, Halo, Ripple, LiquidNeck, Ember, ChargeSweep}.metal`.
-  - Start `Aurora.metal` from DESIGN.md App. B.2, which is verified. First light reuses `haloGlow` and has no shader of its own.
+  - **Swift:** `AuroraField.swift` (SwiftUI path + shader branch), `ShaderEffects.swift` and `EffectsDiagnostics.swift` (all from WP0) · `MotesField.swift` · `TideField.swift` · `HaloField.swift` · `AmbientLayer.swift` · `EmberBurst.swift` · `ChargeSweep.swift` · `FirstLight.swift` · `LiquidNeck.swift` · `TypewriterText.swift` · `RippleModifier.swift`.
+  - **Metal:** `Shaders/CrannyShaders.h`, `Shaders/Dither.metal` and `Shaders/Aurora.metal` (all from WP0) · `Shaders/{Tide, Motes, Halo, Ripple, LiquidNeck, Ember, ChargeSweep}.metal`.
+  - `Aurora.metal` and the aurora branch are DESIGN.md App. B.2's verified reference, already in the repo; WP11 tunes them against the fallback. First light reuses `haloGlow` and has no shader of its own.
+  - **Tests from WP0** (`Tests/CrannyEffectsTests/`): metallib bundled, required functions load, budget pause, shader/fallback switch, `auroraField` and `crannyDither` render tests, no shader sources in the bundle. WP11 adds the rest of the acceptance below.
 - **Responsibilities:** DESIGN.md §5 and Appendix B.
   - **Effects:** stateless (pure functions of time, palette, energy, intensity). Each has **two paths**: the Metal shader of DESIGN.md §5.6 and its SwiftUI fallback (§5.3–§5.5, App. B.1), selected only by `ShaderEffects.usesShader(budget)`. The fallback runs under Reduce Motion, under Low Power / thermal ≥ serious, and when `ShaderEffects.isAvailable` is false. Pausing never flips the path.
   - **`AmbientLayer(palette:level:effect:energy:budget:)`:** chooses the effect (Halo under Low Power), is framed to the current shape, and handles the `ambientIn/Out` fill and drain.
@@ -2450,38 +2517,40 @@ Every control has an accessibility label (localized), every widget is a VoiceOve
   - **`ShaderEffects.requiredFunctions`:** lists every function shipped.
   - **`TypewriterText`:** `TextRenderer` on 15+, fade on 14; for NotchUI/Onboarding text only.
   - **Metal:** allowed only in this target (D13).
-- **Public types:** `AmbientLayer`, `AuroraField`, `MotesField`, `TideField`, `HaloField`, `EmberBurst`, `ChargeSweep`, `FirstLight`, `LiquidNeck`, `TypewriterText`, `View.songChangeRipple(_:)` (`ShaderEffects` stays internal).
+- **Public types:** `AmbientLayer`, `AuroraField`, `MotesField`, `TideField`, `HaloField`, `EmberBurst`, `ChargeSweep`, `FirstLight`, `LiquidNeck`, `TypewriterText`, `View.songChangeRipple(_:)`, `EffectsDiagnostics` (WP0; read-only `shaderStatus` for `--diagnostics`). `ShaderEffects` stays internal.
 - **Settings:** none. Reads values passed by the caller from `CoreSettings`. `-CrannyDisableShaders YES` is a QA launch argument, not a setting.
 - **Acceptance:**
   - **Alpha cap:** alpha never exceeds `Glow.ambientAlphaCap` on either path. The test samples frames with `ImageRenderer`, which rasterizes stitchable shaders [VERIFIED].
   - **Shader + fallback parity:** per effect, snapshot tests render both paths with the same palette, level, energy and time. They agree on the black top 40 % (aurora: alpha 0), on peak alpha (≈ 0.8·cap at energy 0, ±10 %), on mean alpha per horizontal third (±25 %) and on which stop dominates.
   - **Render test per function:** non-empty output, which catches the silent-transparent failure of a signature mismatch.
   - **Metallib present:** `Bundle.module` contains `default.metallib` (always runs), and `ShaderEffects.unavailabilityReason() == nil` (skipped without a Metal device). `make smoke` passes on the built app.
-  - **Path switching:** the fallback is chosen under Reduce Motion, Low Power and `-CrannyDisableShaders YES`. `TimelineView` is paused when `EffectBudget.minimumInterval == nil`, and Reduce Motion shows a resting frame. The macOS 14 Canvas fallbacks render.
-  - **Frame-time budget (Instruments, 120 Hz display, largest open size):** ambient ≤ 30 fps on AC and ≤ 20 on battery; GPU ≤ 1.5 ms per frame (Metal System Trace); open Nook + aurora ≤ 3 % CPU; Energy Impact no higher than the fallback's at the same frame rate.
+  - **Path switching:** the fallback is chosen under Reduce Motion, Low Power and `-CrannyDisableShaders YES`. Every effect takes time from `EffectClock`, which stops when `EffectBudget.minimumInterval == nil`, and Reduce Motion shows a resting frame. The macOS 14 Canvas fallbacks render.
+  - **Frame-time budget (Instruments, 120 Hz display, largest open size):** ambient ≤ 30 fps on AC and ≤ 20 on battery; GPU ≤ 1.5 ms per frame (Metal System Trace); open Nook + aurora ≤ 3 % CPU (not met at WP0: open issue 1, §10.1); Energy Impact no higher than the fallback's at the same frame rate.
 
 ### 10.13 WP12 — Notch UI · `CrannyNotchUI`
 
-- **Files:** `NotchScene.swift` and `ThemeResolver.swift` (contract owner) · `NotchCanvasView.swift` · `Compact/{CompactView, SatelliteView, MiddleLabel, ProgressRim}.swift` · `Peek/PeekView.swift` · `Nook/{NookView, NookHeader, NookGrid, WidgetCard, CardOverflowMenu, CommandPaletteView, EditLayoutView, CatchHost, CommandHintsOverlay, HUDHeaderOverlay}.swift` · `Choreography/{Stagger, ContentTransitions, DelightPlayer}.swift` · `Keyboard/NookKeyHandling.swift`.
+- **Files:** `NotchScene.swift` and `ThemeResolver.swift` (contract owner) · `NotchCanvasView.swift`, `ActivityLookup.swift`, `PreviewSupport.swift` (WP0 skeletons) · `Compact/{CompactView, SatelliteView, MiddleLabel, ProgressRim}.swift` · `Peek/PeekView.swift` · `Nook/{NookView, NookHeader, NookGrid, WidgetCard, CardOverflowMenu, CommandPaletteView, EditLayoutView, CatchHost, CommandHintsOverlay, HUDHeaderOverlay}.swift` · `Choreography/{Stagger, ContentTransitions, DelightPlayer}.swift` · `Keyboard/NookKeyHandling.swift`.
 - **Responsibilities:** every presentation of DESIGN.md §3.3, §4.3, §6 and §9.1–§9.3 rendered from `NotchSceneModel`: activities resolved as `sampleActivities[id] ?? registry.activity(id)`; geometry from `NotchLayout`; `NotchSurface` with keyline/elevation/underglow; `AmbientLayer` behind the open grid; compact wings + satellite (+ neck) + floating-island middle label; progress rim (`CoreSettings.progressRim`, progress read from `services.nowPlaying` while the primary is `.nowPlaying`); `DelightPlayer` plays `scene.delight` once per `delightSerial` with its Reduce Motion variant; peek rows (30-ms stagger); header (tabs "Home"/"Tray"/user pages with badges, actions, time/date on displays without a notch, HUD-in-header §4.11); grid with card chrome (hover, ⋯ menu, focus sections, VoiceOver containers, "Widgets" rotor); ⌘K palette (providers from the registry, ↑↓↩ Esc); edit layout (drag reorder/resize in cells with `.alignment` haptics via `registry.services.haptics`, ⌥←/→, ⌥⇧←/→, writes through `actions.commitLayout`); mode changes, focus moves, VoiceOver Open/Dismiss through `actions.setMode/focusWidget/open/dismissActivity` (the scene is written only by its owner); catch host (`services.tray.catchView`); hold-⌘ hints; Esc chain; matched geometry; choreography and Reduce Motion cross-fades.
 - **Public types:** `NotchSceneModel`, `OpenState`, `NookMode`, `NotchUIActions`, `NotchCanvasView`, `ThemeResolver`.
+- **Contract follow-up from WP0:** the middle-label width input (open issue 3, §10.1) and the header hit-target decision (open issue 4).
 - **Settings:** reads `CoreSettings` (pages, density, styles); writes nothing directly.
 - **Acceptance:** `#Preview`s for every state × {notch, floating island, attached} × {standard, lit, highContrast, opaque}; ImageRenderer tests assert shape sizes equal DESIGN.md §3.3 within 0.5 pt; no text reflow during morphs (content laid out at final size); keyboard map of DESIGN.md §16; VoiceOver reads activities with label/value/actions.
 
 ### 10.14 WP13 — Shell: overlay, state, input · `CrannyAppShell` (`Overlay/`, `State/`, `Input/`, `Services/{ShellNotchControl, ShellEnvironment, SharingPresenter, FlashActivity}.swift`)
 
-- **Files:** `Overlay/NotchPanel.swift` (from WP0) · `Overlay/{NotchRootView, NotchHostingView, NotchPanelController, OverlayCoordinator, DisplayCatalog, PointerMonitor, HoverTracker, DragDetector, FilePromiseResolver, FullScreenDetector, FocusManager, CalibrationOverlay}.swift` · `State/{NotchMachine, NotchViewModel, ActivityArbiter, PeekScheduler, DelightScheduler}.swift` · `Input/{GestureRouter, HotKeyCenter, KeyboardRouter}.swift` · the four service files.
+- **Files:** `Overlay/NotchPanel.swift` (from WP0; also holds `NotchRootView` and `NotchHostingView`, §5.2) · `Overlay/{NotchPanelController, OverlayCoordinator, DisplayCatalog, PointerMonitor, HoverTracker, DragDetector, FilePromiseResolver, FullScreenDetector, FocusManager, CalibrationOverlay}.swift` · `State/{NotchMachine, NotchViewModel, ActivityArbiter, PeekScheduler, DelightScheduler}.swift` · `Input/{GestureRouter, HotKeyCenter, KeyboardRouter}.swift` · the four service files.
 - **Responsibilities:** §4 and §5 completely: per-display controllers and display policy (keys via `ThemeResolver.displayKey`); hover intent, close grace, holds (incl. menu/popover tracking); click/hot-key/swipe/drag triggers incl. satellite swipe-up and the idle-handle timer; drop and scroll routing into `NotchZones` with the `TrayIntake.accept` fallback; full-screen/excluded/lock policy; arbitration, peeks, dismissal, pause, timeouts, menu-bar courtesy; delight scheduling (§4.6 step 7); the `ActivityID.flash` activity behind `NotchControl.flash`; key focus and hand-back; type-to-capture; hold-⌘ hints; `NotchControl` (incl. focus mode, calibration overlay, event observers) and `SystemEnvironment` implementations; theme/layout/ambient palette via `ThemeResolver` (WP12) re-run on observed key changes; "Pop" UI sound on catch; AirDrop/share presenter (§7.7).
 - **Public types:** none beyond `AppDelegate`/`CrannyScenes` (WP0).
 - **Settings:** reads `CoreSettings`; writes `nook.lastPage` only (`pausedUntil`/`demoMode` belong to WP16).
-- **Acceptance:** reducer tests for every row of §4.4 and arbiter tests for §4.6–§4.7 (injected clock); R1 harness re-run (non-activating click delivery, focus hand-back, per-pixel pass-through, level 26 over full-screen Spaces, drag-in from another app); multi-display: built-in/pointer/all/custom, hot-plug and clamshell; ⌃⌥N toggles without Accessibility; full-screen detection on a notched display (R1 §10 checklist).
+- **Acceptance:** reducer tests for every row of §4.4 and arbiter tests for §4.6–§4.7 (injected clock); R1 harness re-run (WP0's `PanelSelfTests` covers the window-server checks; the real-input checks are open issue 5, §10.1) (non-activating click delivery, focus hand-back, per-pixel pass-through, level 26 over full-screen Spaces, drag-in from another app); multi-display: built-in/pointer/all/custom, hot-plug and clamshell; ⌃⌥N toggles without Accessibility; full-screen detection on a notched display (R1 §10 checklist).
 
 ### 10.15 WP14 — Settings UI · `CrannySettingsUI` (+ `CrannyAppShell/Windows/SettingsWindowController.swift`)
 
-- **Files:** `SettingsRootView.swift` · `Sidebar/{SettingsSidebar, SettingsSearchIndex}.swift` · `Stage/{PreviewStage, WallpaperMiniature, MenuBarMiniature, SimulateChips}.swift` · `Panes/{GeneralPane, DisplayTable, AppearancePane, NotchFitControls, KeyboardPane, ShortcutRecorder, NookWidgetsPane, WidgetLibrary, LiveActivitiesPane, GesturesPane, PermissionsPane, AboutPane}.swift` · `Components/{SettingRow, PaneFooter, ResetAllController}.swift` · the window controller.
+- **Files:** `SettingsRootView.swift` · `Sidebar/{SettingsSidebar, SettingsSearchIndex}.swift` · `Panes/ShellPanes.swift` (WP0: sidebar entries, reset namespaces, placeholder panes) · `Stage/{PreviewStage, WallpaperMiniature, MenuBarMiniature, SimulateChips}.swift` · `Panes/{GeneralPane, DisplayTable, AppearancePane, NotchFitControls, KeyboardPane, ShortcutRecorder, NookWidgetsPane, WidgetLibrary, LiveActivitiesPane, GesturesPane, PermissionsPane, AboutPane}.swift` · `Components/{SettingRow, PaneFooter, ResetAllController}.swift` · the window controller.
 - **Responsibilities:** DESIGN.md §11 in full: sidebar with groups, icons and search (localized keywords); live preview stage (real `NotchCanvasView` with a preview `NotchSceneModel` built by `ThemeResolver`, sample activities from `RegisteredActivity.makeSample` placed in `sampleActivities`, state picker, Simulate chips, `app.showOnNotch`); wallpaper miniature from `NSWorkspace.desktopImageURL(for:)` **only** when that file is outside Desktop/Documents/Downloads/removable volumes (reading those would raise a Files & Folders prompt from Settings), else a neutral gradient; shell-owned panes (General with per-display table keyed by `ThemeResolver.displayKey` + `NSScreen.localizedName`, UI sounds, idle-handle delay; Appearance incl. Notch fit → `notch.setCalibrationOverlay`, panel padding; Keyboard via `app.setShortcut`/`shortcutState`, plus a best-effort system-conflict warning read from the `com.apple.symbolichotkeys` `AppleSymbolicHotKeys` domain [VERIFIED readable on 27; format UNVERIFIED] since `RegisterEventHotKey` does not fail on system combos; Layout & Widgets grid editor + pages + library + `makeOptions()` popovers; Live Activities draggable priority list with each kind's `makeOptions` rows; Gestures with "Feel it"; Permissions from `registry.permissionUses` + `PermissionsCenter`; About with `NSApp.applicationIconImage`); module panes from `registry.settingsPages` (search uses their `keywords`; "Reset ‹Pane›…" resets `namespaces`); conventions (changed-value dot, per-row Reset to Default, pane reset, Reset All = `settings.snapshot()` → `app.resetAllSettings()` → 10-s Undo with `settings.restore(_:)`); window 860 × 620, min 780 × 560, autosave, deep-link to a pane.
 - **Public types:** `SettingsRootView(registry:initialPage:)`.
 - **Settings:** writes `CoreSettings` keys through bindings.
+- **Pane reset namespaces** (fixed by WP0 in `ShellPanes.swift`; DESIGN.md §11.1): General → `general`, `displays`, `updates` · Appearance → `appearance` (incl. `notchFit`) · Keyboard → `keyboard` · Layout & Widgets → `nook` · Live Activities → `activities` · Gestures → `gestures` · Permissions, About → none. `onboarding` is reset only by Reset All. Module panes reset their module's namespace (`SettingsPage.namespaces`).
 - **Acceptance:** every pane renders in en/ru light/dark; search finds "volume" → HUD and Russian equivalents; Reset All restores defaults and undo restores the snapshot; stage animates with the real motion tokens; no permission requested except from explicit buttons.
 
 ### 10.16 WP15 — Onboarding & tutorial · `CrannyOnboarding` (+ `CrannyAppShell/Windows/WelcomeWindowController.swift`)
@@ -2494,13 +2563,13 @@ Every control has an accessibility label (localized), every widget is a VoiceOve
 
 ### 10.17 WP16 — App services & menu bar · `CrannyAppShell` (`Services/{ShellAppControl, ShellAppServices, LoginItemController, UpdateChecker, PauseController, DemoMode}.swift`, `App/ShellContributions.swift`, `MenuBar/`)
 
-- **Responsibilities:** `AppControl` implementation (login item §7.9, updates §7.11, shortcut bindings written to `CoreSettings.shortcuts` and state read from WP13's `HotKeyCenter`, open Settings/Welcome/Tutorial through the window controllers, `showOnNotch` via `OverlayCoordinator.play`, Reset All, quit); shell contributions and ⌘K commands (§10.0); menu bar extra exactly as DESIGN.md §13 (Open Cranny, Keep Cranny Open, Pause Live Activities ▸, Show On ▸, Demo Mode, Settings… as a `Button` with ⌘,, Check for Updates…, Show Tutorial, About, Quit; template icon drawn in code; hide-icon setting with reopen → Settings); Demo mode and Pause as the only writers of `general.demoMode`/`activities.pausedUntil` (WP13's `ShellEnvironment` observes them).
+- **Responsibilities:** `AppControl` implementation (login item §7.9, updates §7.11, shortcut bindings (`setShortcut` writes `CoreSettings.shortcuts`, calls `HotKeyCenter.reapply()` and returns `state(_:)`; WP0 implements this), open Settings/Welcome/Tutorial through the window controllers, `showOnNotch` via `OverlayCoordinator.play`, Reset All, quit); shell contributions and ⌘K commands (§10.0); menu bar extra exactly as DESIGN.md §13 (WP0 ships Open Cranny, Keep Cranny Open, Settings…, About and Quit; WP16 adds the rest: Pause Live Activities ▸, Show On ▸, Demo Mode, Settings… as a `Button` with ⌘,, Check for Updates…, Show Tutorial, About, Quit; template icon drawn in code; hide-icon setting with reopen → Settings); Demo mode and Pause as the only writers of `general.demoMode`/`activities.pausedUntil` (WP13's `ShellEnvironment` observes them).
 - **Settings:** writes `general.demoMode`, `activities.pausedUntil`, `updates.*`, `general.showsMenuBarIcon`.
 - **Acceptance:** login item toggling with `.requiresApproval` handling (tested on an ad-hoc and a stable-identity build in /Applications, R3 §9 plan); update check against a test repository with ETag; menu items have keyboard equivalents and VoiceOver labels.
 
 ### 10.18 WP-Final — Integration, QA, release
 
-Icon (`App/AppIcon.icon` per DESIGN.md §15 in Icon Composer); `CrannyGitHubRepository`; the bundle-id/domain check (D16); `App/**` edits requested by packages (usage strings, entitlements — e.g. WP1's audio-tap finding); README, CONTRIBUTING, PRIVACY ("no network except the update check; nothing leaves the Mac"), THIRD_PARTY_NOTICES; localization review against the glossary, the competitor-term denylist (§8.7 rule 8) and 1.4× pseudo-localisation; design QA of every DESIGN.md §3.3 geometry and §4.1 motion on 13″/14″/16″ notched MacBooks and an external display; energy gates (§9.2) with Instruments; the hardware checklist (§11); CI green on the GitHub runner incl. smoke; signed + notarized release dry run (or the documented ad-hoc path); a v0.1.0 tag.
+Icon review (WP0 shipped final-style artwork, §8.4: check it on hardware, including the Tinted and Clear appearances); `CrannyGitHubRepository`; the bundle-id/domain check (D16); `App/**` edits requested by packages (usage strings, entitlements — e.g. WP1's audio-tap finding); review README, CONTRIBUTING and THIRD_PARTY_NOTICES (written by WP0) and write PRIVACY ("no network except the update check; nothing leaves the Mac"); localization review against the glossary, the competitor-term denylist (§8.7 rule 8) and 1.4× pseudo-localisation; design QA of every DESIGN.md §3.3 geometry and §4.1 motion on 13″/14″/16″ notched MacBooks and an external display; energy gates (§9.2) with Instruments; the hardware checklist (§11); CI green on the GitHub runner incl. smoke; signed + notarized release dry run (or the documented ad-hoc path); a v0.1.0 tag.
 
 ### 10.19 Staffing for ten engineers
 
@@ -2531,7 +2600,7 @@ Icon (`App/AppIcon.icon` per DESIGN.md §15 in Icon Composer); `CrannyGitHubRepo
 | 4 | Brightness keys on Apple Silicon not observed; `SMAppService.register()`, IOBluetooth runtime, live audio tap, camera runtime, Quick Look from a non-activating panel, programmatic `makeKey()` all UNVERIFIED | Feature gaps | Each owning WP verifies before enabling by default (§10) |
 | 5 | Ad-hoc signing resets TCC grants on every build/update; Gatekeeper on downloads; quarantined bridge | Users re-grant permissions; media blocked | Stable dev identity, Developer ID + notarization for releases, quarantine copy (§6.3, §8.6) |
 | 6 | Other HUD apps' event taps compete; Secure Event Input may block taps | HUD inconsistent | Pass-through rules, warning for known apps (§7.1) |
-| 7 | `xcode-27` CI image is a preview; Xcode 26 only declared, not tested | CI breaks | `macos-26` fallback job; WP0 runs CI once on both |
+| 7 | `xcode-27` CI image is a preview; Xcode 26 only declared, not tested; CI has never run (no remote at WP0) | CI breaks | `build-macos-26` fallback job (`continue-on-error` until its first green run); the first push runs both and pins labels and action versions (§8.9) — WP0/WP-Final |
 | 8 | 17 targets × per-target scratch dirs ≈ 3.3 GB with tests | Disk | `make distclean` locally; CI starts from a clean checkout |
 | 9 | `hdiutil create` deprecated on macOS 27 | DMG step breaks in future | Switch to `diskutil image create` when needed — WP-Final |
 | 10 | Full-screen detection heuristic (bounds + layer + menu-bar absence) on notched displays | Notch over full-screen video | `.alertsAndHUD` default, excluded apps, lazy re-check before showing — WP13 |
@@ -2540,14 +2609,15 @@ Icon (`App/AppIcon.icon` per DESIGN.md §15 in Icon Composer); `CrannyGitHubRepo
 | 13 | Strings tooling depends on the swift-build backend layout (SwiftPM 6.4) | `strings-check` breaks on Xcode 26 or a future layout change | Explicit `--build-system swiftbuild`; strings steps pinned to Xcode 27 (§8.5) — WP0 |
 | 14 | Competitor naming/UI text leaks into copy ("Nook" + "Tray" tab pair) | Clean-room/trademark complaint | D20, denylist grep before release (§8.7) — WP-Final |
 | 15 | Contributors (or CI images) without the Metal Toolchain cannot build: `CrannyEffects` and every target above it compile `.metal` files (D13) | `make build/check/test` fail for newcomers; CI breaks if an image drops the component | A clear early error from `ensure_metal_toolchain` with the one-line fix `xcodebuild -downloadComponent MetalToolchain` (≈ 0.9 GB); the README "Build" section and CONTRIBUTING; CI installs it in every job — WP0 |
-| 16 | A shader renders transparent with no error (missing function, argument mismatch, no GPU), or costs too much GPU on older Macs | Light silently disappears, or Energy Impact rises | `ShaderEffects.isAvailable` (metallib + function-name check, one `.info` log line); a render test per function; parity tests; `-CrannyDisableShaders YES` for A/B energy runs; per-release Instruments gate (§9.2) — WP11, WP-Final |
+| 16 | A shader renders transparent with no error (missing function, argument mismatch, no GPU), or costs too much GPU on older Macs | Light silently disappears, or Energy Impact rises | `ShaderEffects.isAvailable` (metallib + function-name check, one `.info` log line); a render test per function; parity tests; `-CrannyDisableShaders YES` for A/B energy runs; `smoke.sh` fails unless `EffectsDiagnostics.shaderStatus` is `ok` on the built app; per-release Instruments gate (§9.2) — WP11, WP-Final |
+| 17 | Open Nook + aurora misses the ≤ 3 % CPU gate (≈ 5–10 % measured at WP0, 240-Hz display) | Release gate fails; battery cost | `EffectClock` (done); lower ambient fps or a cheaper renderer; re-measure on 120-Hz hardware (open issue 1, §10.1) — WP11, design owner, WP-Final |
 
 ### 11.2 Hardware checklist (each release; R1 §10, R3 §12)
 
 On a notched MacBook with the lid open, with a stable-identity or release build launched from Finder:
 1. `NotchMetrics.measure` per screen: `safeAreaInsets.top`, aux-area widths, notch rect; compare the closed shape with the camera housing at every scaling mode (Notch fit at 0).
-2. Hover/click/hot-key open; typing in Notes with another app frontmost; Esc returns focus.
-3. Full screen: Safari video, Keynote, a game; policy `.alertsAndHUD`; menu bar revealed by hovering the top edge.
+2. Hover/click/hot-key open; a click in the panel is delivered without activating Cranny (the frontmost app stays frontmost); typing in Notes with another app frontmost; Esc returns focus. (Not automatable without real input: open issue 5, §10.1.)
+3. Full screen: Safari video, Keynote, a game; the panel stays above the full-screen Space (level 26); policy `.alertsAndHUD`; menu bar revealed by hovering the top edge.
 4. Drag a file from Finder, an image from Safari, a photo from Photos (promise) into the notch; drag a tray item back to Finder.
 5. Two-finger swipes on the built-in trackpad: track change, open, close, dismiss; haptics felt.
 6. Volume and brightness keys (and the key-logger output, §7.1), ⌥ and ⌥⇧ variants, HDMI output.
@@ -2558,2917 +2628,67 @@ On a notched MacBook with the lid open, with a stable-identity or release build 
 
 ---
 
-## Appendix A — CrannyCore implementation sources (verbatim, compiled)
-
-These complete §3. WP0 copies them unchanged; the DesignSystem files (`Color`, `Typography`, `Layout`, `Motion`, `Notch`, `Theme`, `Components`, `AmbientPalette`) are DESIGN.md's code with the §3.2 amendments and are not repeated here. `CrannyEffects/AuroraField.swift` is DESIGN.md Appendix B.1's `AuroraField` with `import SwiftUI` and `import CrannyCore`; `CrannyEffects/ShaderEffects.swift` and `Shaders/{CrannyShaders.h, Dither.metal}` are DESIGN.md Appendix B.2 verbatim (D13).
-
-### A.1 `Settings/SettingsStore.swift`
-
-```swift
-// CrannyCore/Settings/SettingsStore.swift
-// Typed, module-namespaced, observable settings persisted in UserDefaults.
-import Foundation
-import Observation
-import os
-import SwiftUI
-
-/// A typed settings key. Declare keys as `static let` in the owning module's `<Module>Settings` enum.
-/// Stored under "cranny.<module>.<name>" as JSON data. Never rename a key; add a new one and migrate.
-public nonisolated struct SettingKey<Value: Codable & Sendable & Equatable>: Sendable, Hashable {
-    public let module: ModuleID
-    public let name: String
-    public let defaultValue: Value
-    public init(_ module: ModuleID, _ name: String, default defaultValue: Value) {
-        self.module = module; self.name = name; self.defaultValue = defaultValue
-    }
-    /// "timer.presets"
-    public var id: String { "\(module.rawValue).\(name)" }
-    public static func == (a: Self, b: Self) -> Bool { a.id == b.id }
-    public func hash(into h: inout Hasher) { h.combine(id) }
-}
-
-/// One observable box per key, so a view reading `settings[TimerSettings.presets]` is invalidated
-/// only by that key (fine-grained Observation; no global "settings changed" storms).
-@MainActor @Observable final class SettingBox<Value: Codable & Sendable & Equatable> {
-    var value: Value
-    init(_ value: Value) { self.value = value }
-}
-
-@MainActor public final class SettingsStore {
-    public static let keyPrefix = "cranny."
-    private let defaults: UserDefaults
-    private var boxes: [String: AnyObject] = [:]
-    private var reloadHandlers: [String: @MainActor () -> Void] = [:]
-    private let encoder = JSONEncoder()
-    private let decoder = JSONDecoder()
-
-    /// The app uses `.standard` (domain = bundle id). Tests and previews pass `UserDefaults(suiteName:)`.
-    public init(defaults: UserDefaults = .standard) { self.defaults = defaults }
-
-    public subscript<V>(key: SettingKey<V>) -> V {
-        get { box(key).value }
-        set {
-            let b = box(key)
-            guard b.value != newValue else { return }
-            b.value = newValue
-            if newValue == key.defaultValue {
-                defaults.removeObject(forKey: Self.keyPrefix + key.id)
-            } else if let data = try? encoder.encode(newValue) {
-                defaults.set(data, forKey: Self.keyPrefix + key.id)
-            }
-        }
-    }
-
-    /// For SwiftUI controls: `Toggle(isOn: settings.binding(HUDSettings.showValue)) { … }`.
-    public func binding<V>(_ key: SettingKey<V>) -> Binding<V> {
-        Binding(get: { self[key] }, set: { self[key] = $0 })
-    }
-
-    /// Drives the "changed from default" dot and per-row "Reset to Default" (DESIGN.md §11.3).
-    public func isDefault<V>(_ key: SettingKey<V>) -> Bool { self[key] == key.defaultValue }
-    public func reset<V>(_ key: SettingKey<V>) { self[key] = key.defaultValue }
-
-    /// "Reset ‹Pane›…": every key of a namespace (only keys already read in this session are live-updated;
-    /// the others are removed from disk and read back as defaults).
-    public func reset(module: ModuleID) { reset(prefix: Self.keyPrefix + module.rawValue + ".") }
-    /// "Reset All Settings…". Content (notes, to-dos, tray files) is NOT settings and is kept.
-    public func resetAll() { reset(prefix: Self.keyPrefix) }
-
-    /// Opaque copy of every persisted Cranny key: take one before "Reset All" so the 10-s Undo can restore it.
-    public nonisolated struct Snapshot: Sendable { fileprivate let values: [String: Data] }
-    public func snapshot() -> Snapshot {
-        var values: [String: Data] = [:]
-        for (key, value) in defaults.dictionaryRepresentation() where key.hasPrefix(Self.keyPrefix) {
-            if let data = value as? Data { values[key] = data }
-        }
-        return Snapshot(values: values)
-    }
-    /// Replaces every Cranny key with `snapshot` and updates the live values (Undo of "Reset All").
-    public func restore(_ snapshot: Snapshot) {
-        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(Self.keyPrefix) {
-            defaults.removeObject(forKey: key)
-        }
-        for (key, data) in snapshot.values { defaults.set(data, forKey: key) }
-        for handler in reloadHandlers.values { handler() }
-    }
-
-    private func reset(prefix: String) {
-        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(prefix) {
-            defaults.removeObject(forKey: key)
-        }
-        for (id, handler) in reloadHandlers where (Self.keyPrefix + id).hasPrefix(prefix) { handler() }
-    }
-
-    private func box<V>(_ key: SettingKey<V>) -> SettingBox<V> {
-        if let b = boxes[key.id] as? SettingBox<V> { return b }
-        let b = SettingBox(load(key))
-        boxes[key.id] = b
-        reloadHandlers[key.id] = { [weak self, weak b] in
-            guard let self, let b else { return }
-            let v = self.load(key)
-            if b.value != v { b.value = v }
-        }
-        return b
-    }
-
-    /// The persisted value, or the default (undecodable data is logged and ignored).
-    private func load<V>(_ key: SettingKey<V>) -> V {
-        guard let data = defaults.data(forKey: Self.keyPrefix + key.id) else { return key.defaultValue }
-        if let v = try? decoder.decode(V.self, from: data) { return v }
-        Log.logger(.settings).error("undecodable value for \(key.id, privacy: .public); using default")
-        return key.defaultValue
-    }
-}
-```
-
-### A.2 `Settings/CoreSettings.swift`
-
-```swift
-// CrannyCore/Settings/CoreSettings.swift
-// Shell-level settings shared by CrannyNotchUI, CrannySettingsUI, CrannyOnboarding and CrannyAppShell.
-// Feature modules declare their own keys in their own targets (e.g. TimerSettings).
-import Foundation
-
-// MARK: - Value types
-
-/// Settings ▸ General ▸ Open the Nook.
-public nonisolated enum OpenMode: String, Codable, CaseIterable, Sendable { case hover, click, shortcutOnly }
-
-/// Settings ▸ General ▸ In full-screen apps (DESIGN.md §3.7).
-public nonisolated enum FullScreenPolicy: String, Codable, CaseIterable, Sendable { case hideAll, alertsAndHUD, showAll }
-
-/// Settings ▸ General ▸ Show on.
-public nonisolated enum DisplaySelection: Codable, Hashable, Sendable {
-    case builtIn            // default when a built-in display is online; falls back to the primary display
-    case pointer            // the display with the pointer
-    case all
-    case custom([DisplayKey])
-}
-
-/// Handle on displays without a notch (Appearance).
-public nonisolated enum HandleVisibility: String, Codable, CaseIterable, Sendable { case visible, hiddenUntilHover }
-
-/// Per-display row of the General ▸ Show on table, keyed by `DisplayKey`.
-public nonisolated struct DisplayPreferences: Codable, Hashable, Sendable {
-    /// nil = automatic (hardware notch if present, else `CoreSettings.noNotchStyle`).
-    public var style: NoNotchStyle?
-    public var showsActivities = true
-    public var showsPeeks = true
-    public var showsHUD = true
-    public init(style: NoNotchStyle? = nil) { self.style = style }
-}
-
-/// Appearance ▸ Notch fit, stored per display MODEL ("<vendor>-<model>" from CGDisplayVendorNumber/ModelNumber).
-public nonisolated struct NotchFit: Codable, Hashable, Sendable {
-    public var widthTune: CGFloat = 0      // −10…+10 pt, 0.5 steps
-    public var radiusTune: CGFloat = 0     // −3…+3 pt
-    public init(widthTune: CGFloat = 0, radiusTune: CGFloat = 0) { self.widthTune = widthTune; self.radiusTune = radiusTune }
-}
-
-/// One card in a Nook page: a widget and its width in cells.
-public nonisolated struct NookItem: Codable, Hashable, Sendable {
-    public var widget: WidgetID
-    public var cells: Int
-    public init(_ widget: WidgetID, cells: Int) { self.widget = widget; self.cells = cells }
-}
-
-/// A grid page. The built-in grid page has id `.nook`; user pages (≤ 3) get "page.<uuid>".
-public nonisolated struct NookPage: Codable, Hashable, Sendable, Identifiable {
-    public var id: PageID
-    public var title: String?            // nil = built-in localized title ("Home"; code id stays `nook`, D20)
-    public var symbol: String
-    public var items: [NookItem]
-    public init(id: PageID, title: String? = nil, symbol: String, items: [NookItem]) {
-        self.id = id; self.title = title; self.symbol = symbol; self.items = items
-    }
-}
-
-/// Onboarding step 4 presets (DESIGN.md §12.1). Data only, so no layer imports a feature module.
-public nonisolated enum NookPreset: String, CaseIterable, Codable, Sendable {
-    case listener, maker, meetings, minimal
-    public var items: [NookItem] {
-        switch self {
-        case .listener: [.init(.media, cells: 5), .init(.calendar, cells: 3), .init(.quickApps, cells: 2)]
-        case .maker:    [.init(.notes, cells: 4), .init(.todos, cells: 3), .init(.timer, cells: 2), .init(.quickApps, cells: 1)]
-        case .meetings: [.init(.calendar, cells: 4), .init(.mirror, cells: 2), .init(.timer, cells: 2), .init(.quickApps, cells: 2)]
-        case .minimal:  [.init(.media, cells: 4)]
-        }
-    }
-    public var page: NookPage { NookPage(id: .nook, symbol: "square.grid.2x2.fill", items: items) }
-}
-
-/// Per live-activity user preferences (Settings ▸ Live Activities). Missing entry = kind defaults.
-public nonisolated struct ActivityPreference: Codable, Hashable, Sendable {
-    public var isEnabled: Bool
-    public var peeksOnChange: Bool
-    public init(isEnabled: Bool, peeksOnChange: Bool) { self.isEnabled = isEnabled; self.peeksOnChange = peeksOnChange }
-}
-
-// MARK: - Keys
-
-public nonisolated enum CoreSettings {
-    // General
-    public static let openMode = SettingKey<OpenMode>(.general, "openMode", default: .hover)
-    public static let hoverDelay = SettingKey<HoverIntent.Delay>(.general, "hoverDelay", default: HoverIntent.defaultDelay)
-    public static let holdOptionToPass = SettingKey<Bool>(.general, "holdOptionToPass", default: true)
-    public static let closeOnLeave = SettingKey<Bool>(.general, "closeOnLeave", default: true)
-    /// Seconds; 0 = off (5–60).
-    public static let openInactivityTimeout = SettingKey<Double>(.general, "openInactivityTimeout", default: 0)
-    /// No-notch displays: fade the handle out after `handleIdleDelay` s without activity or hover (DESIGN.md §3.5).
-    public static let hideHandleWhenIdle = SettingKey<Bool>(.general, "hideHandleWhenIdle", default: false)
-    public static let handleIdleDelay = SettingKey<Double>(.general, "handleIdleDelay", default: 10)
-    public static let fullScreenPolicy = SettingKey<FullScreenPolicy>(.general, "fullScreenPolicy", default: .alertsAndHUD)
-    public static let excludedBundleIDs = SettingKey<[String]>(.general, "excludedBundleIDs", default: [])
-    public static let demoMode = SettingKey<Bool>(.general, "demoMode", default: false)
-    public static let demoRedactsCalendar = SettingKey<Bool>(.general, "demoRedactsCalendar", default: true)
-    public static let showsMenuBarIcon = SettingKey<Bool>(.general, "showsMenuBarIcon", default: true)
-    /// System UI sounds: "Pop" on file caught, "Tink" on to-do done (DESIGN.md §14.3). Muted in Demo mode.
-    public static let uiSounds = SettingKey<Bool>(.general, "uiSounds", default: false)
-
-    // Displays
-    public static let displaySelection = SettingKey<DisplaySelection>(.displays, "selection", default: .builtIn)
-    public static let perDisplay = SettingKey<[DisplayKey: DisplayPreferences]>(.displays, "perDisplay", default: [:])
-    public static let notchFit = SettingKey<[String: NotchFit]>(.displays, "notchFit", default: [:])
-
-    // Appearance
-    public static let accent = SettingKey<AccentSource>(.appearance, "accent", default: .automatic)
-    public static let textSize = SettingKey<CrannyTextSize>(.appearance, "textSize", default: .standard)
-    public static let motion = SettingKey<MotionPersonality>(.appearance, "motion", default: .standard)
-    public static let ambience = SettingKey<AmbienceLevel>(.appearance, "ambience", default: .subtle)
-    public static let effect = SettingKey<AmbientEffect>(.appearance, "effect", default: .aurora)
-    public static let albumGlow = SettingKey<Bool>(.appearance, "albumGlow", default: true)
-    public static let underglow = SettingKey<Bool>(.appearance, "underglow", default: true)       // Vivid only
-    public static let progressRim = SettingKey<Bool>(.appearance, "progressRim", default: false)
-    public static let translucentBackground = SettingKey<Bool>(.appearance, "translucentBackground", default: false)
-    public static let glassIsland = SettingKey<Bool>(.appearance, "glassIsland", default: false)
-    public static let buttonShape = SettingKey<ButtonShapeStyle>(.appearance, "buttonShape", default: .capsule)
-    public static let widgetStyle = SettingKey<WidgetStyle>(.appearance, "widgetStyle", default: .cards)
-    public static let density = SettingKey<NookDensity>(.appearance, "density", default: .standard)
-    public static let panelPaddingTune = SettingKey<Double>(.appearance, "panelPaddingTune", default: 0)  // ±4 pt
-    public static let noNotchStyle = SettingKey<NoNotchStyle>(.appearance, "noNotchStyle", default: .floatingIsland)
-    public static let handleVisibility = SettingKey<HandleVisibility>(.appearance, "handleVisibility", default: .visible)
-    public static let typingEffect = SettingKey<Bool>(.appearance, "typingEffect", default: true)
-
-    // Layout & Widgets (code namespace `nook`)
-    public static let pages = SettingKey<[NookPage]>(.nook, "pages", default: [NookPreset.listener.page])
-    public static let lastPage = SettingKey<PageID>(.nook, "lastPage", default: .nook)
-
-    // Live Activities
-    public static let activityPreferences = SettingKey<[ActivityID: ActivityPreference]>(.activities, "preferences", default: [:])
-    /// The user's order (ties within a priority class).
-    public static let activityOrder = SettingKey<[ActivityID]>(.activities, "order", default: [])
-    public static let peekDuration = SettingKey<Double>(.activities, "peekDuration", default: HoverIntent.peekAutoDismiss)
-    public static let quickPeekOnHover = SettingKey<Bool>(.activities, "quickPeekOnHover", default: true)
-    public static let satellite = SettingKey<Bool>(.activities, "satellite", default: true)
-    /// Seconds; 0 = never. Collapses compact to closed (keeps the satellite).
-    public static let compactInactivityTimeout = SettingKey<Double>(.activities, "compactInactivityTimeout", default: 0)
-    public static let swipeToDismiss = SettingKey<Bool>(.activities, "swipeToDismiss", default: true)
-    public static let autoUnhide = SettingKey<Bool>(.activities, "autoUnhide", default: true)
-    public static let menuBarCourtesy = SettingKey<Bool>(.activities, "menuBarCourtesy", default: true)
-    /// Menu bar extra ▸ Pause Live Activities. nil = not paused; `.distantFuture` = until resumed.
-    public static let pausedUntil = SettingKey<Date?>(.activities, "pausedUntil", default: nil)
-
-    // Gestures
-    public static let trackSwipe = SettingKey<Bool>(.gestures, "trackSwipe", default: true)
-    public static let invertTrackSwipe = SettingKey<Bool>(.gestures, "invertTrackSwipe", default: false)
-    public static let swipeOpenClose = SettingKey<Bool>(.gestures, "swipeOpenClose", default: true)
-    public static let gestureSensitivity = SettingKey<Double>(.gestures, "sensitivity", default: 1)   // 0.5…1.5
-    public static let haptics = SettingKey<Bool>(.gestures, "haptics", default: true)
-
-    // Keyboard
-    /// User overrides; a missing entry means the shortcut's `defaultCombo`; an explicit nil means "off".
-    public static let shortcuts = SettingKey<[ShortcutID: KeyCombo?]>(.keyboard, "shortcuts", default: [:])
-    /// `CaptureTarget.id` ("notes", "todos") or nil = off.
-    public static let typeToCapture = SettingKey<String?>(.keyboard, "typeToCapture", default: "notes")
-
-    // Onboarding & updates
-    public static let onboardingCompletedVersion = SettingKey<String?>(.onboarding, "completedVersion", default: nil)
-    public static let tutorialCompleted = SettingKey<Bool>(.onboarding, "tutorialCompleted", default: false)
-    public static let checksForUpdates = SettingKey<Bool>(.updates, "automatic", default: true)
-    public static let includesPrereleases = SettingKey<Bool>(.updates, "prereleases", default: false)
-    public static let lastUpdateCheck = SettingKey<Date?>(.updates, "lastCheck", default: nil)
-}
-```
-
-### A.3 `Input/NotchZones.swift`
-
-```swift
-// CrannyCore/Input/NotchZones.swift
-// AppKit owns drag-and-drop and scroll events for the panel (R1 §5–6: SwiftUI .onDrop registers
-// public.data/public.item and .onDrag hands out temporary copies). Views DECLARE zones; the shell's
-// root NSView routes events to them by geometry. One registry per canvas (per display panel).
-import SwiftUI
-import UniformTypeIdentifiers
-
-/// Files dropped on the notch. File promises (Photos, Mail, Safari) are already resolved to URLs
-/// by the shell (in a temporary directory) before a handler is called.
-public nonisolated struct DropPayload: Sendable {
-    public var fileURLs: [URL]
-    public var contentTypes: [UTType]
-    public init(fileURLs: [URL], contentTypes: [UTType]) { self.fileURLs = fileURLs; self.contentTypes = contentTypes }
-}
-
-@MainActor @Observable public final class NotchZones {
-    public struct DropZone {
-        public let id: DropZoneID
-        public var frame: CGRect                         // in NotchCoordinateSpace.name
-        public let accepts: [UTType]
-        public let perform: @MainActor (DropPayload) async -> Bool
-    }
-    public struct ScrollZone {
-        public let id: ScrollZoneID
-        public var frame: CGRect
-        public let axis: SwipeAxis
-        public let onUpdate: @MainActor (SwipeUpdate) -> Void
-    }
-
-    /// The drop zone under the pointer during a file drag (views highlight when `armedDropZone == id`).
-    public private(set) var armedDropZone: DropZoneID?
-    /// Types on the drag pasteboard while a file drag is in progress, else empty.
-    public private(set) var draggedTypes: [UTType] = []
-    @ObservationIgnored private var dropZones: [DropZoneID: DropZone] = [:]
-    @ObservationIgnored private var scrollZones: [ScrollZoneID: ScrollZone] = [:]
-    @ObservationIgnored private var trackers: [ScrollZoneID: SwipeTracker] = [:]
-    @ObservationIgnored private var activeScrollZone: ScrollZoneID?
-
-    public init() {}
-
-    // MARK: View side (via modifiers)
-    public func setDropZone(_ zone: DropZone) { dropZones[zone.id] = zone }
-    public func removeDropZone(_ id: DropZoneID) { dropZones[id] = nil; if armedDropZone == id { armedDropZone = nil } }
-    public func setScrollZone(_ zone: ScrollZone) { scrollZones[zone.id] = zone }
-    public func removeScrollZone(_ id: ScrollZoneID) { scrollZones[id] = nil; trackers[id] = nil }
-
-    // MARK: Shell side (NotchRootView: NSDraggingDestination + NotchPanel.sendEvent)
-    public func dragUpdated(at point: CGPoint, types: [UTType]) {
-        draggedTypes = types
-        armedDropZone = dropZones.values
-            .filter { $0.frame.contains(point) && $0.accepts.contains { a in types.contains { $0.conforms(to: a) } } }
-            .min { $0.frame.width * $0.frame.height < $1.frame.width * $1.frame.height }?.id   // innermost wins
-    }
-    public func dragEnded() { draggedTypes = []; armedDropZone = nil }
-    /// Delivers to the armed zone, else to `fallback` (normally `.trayKeep`). Returns false if nobody took it.
-    public func performDrop(_ payload: DropPayload, fallback: DropZoneID? = .trayKeep) async -> Bool {
-        let target = armedDropZone.flatMap { dropZones[$0] } ?? fallback.flatMap { dropZones[$0] }
-        dragEnded()
-        guard let target else { return false }
-        return await target.perform(payload)
-    }
-    /// Feeds a scroll event to the zone under the pointer. Returns true if consumed.
-    public func scroll(_ sample: ScrollSample, at point: CGPoint) -> Bool {
-        if sample.phase.contains(.began) || sample.phase.contains(.mayBegin) || activeScrollZone == nil {
-            activeScrollZone = scrollZones.values.first { $0.frame.contains(point) }?.id
-        }
-        guard let id = activeScrollZone, let zone = scrollZones[id] else { return false }
-        var tracker = trackers[id] ?? SwipeTracker(axis: zone.axis)
-        let update = tracker.handle(sample)
-        trackers[id] = tracker
-        if let update { zone.onUpdate(update) }
-        if sample.phase.contains(.ended) || sample.phase.contains(.cancelled) { activeScrollZone = nil }
-        return true
-    }
-}
-
-public extension View {
-    /// Declares a file drop target (Tray keep zone, AirDrop widget, pipeline zones, Quick Apps).
-    func crannyDropZone(_ id: DropZoneID, accepts: [UTType],
-                        perform: @escaping @MainActor (DropPayload) async -> Bool) -> some View {
-        modifier(DropZoneModifier(id: id, accepts: accepts, perform: perform))
-    }
-    /// Declares a two-finger scroll target (track swipe over artwork, timer ±1 min, scrubber seek).
-    func crannyScrollZone(_ id: ScrollZoneID, axis: SwipeAxis,
-                          onUpdate: @escaping @MainActor (SwipeUpdate) -> Void) -> some View {
-        modifier(ScrollZoneModifier(id: id, axis: axis, onUpdate: onUpdate))
-    }
-}
-
-struct DropZoneModifier: ViewModifier {
-    @Environment(\.notchZones) private var zones
-    let id: DropZoneID
-    let accepts: [UTType]
-    let perform: @MainActor (DropPayload) async -> Bool
-    func body(content: Content) -> some View {
-        content
-            .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .named(NotchCoordinateSpace.name)) }) { frame in
-                zones?.setDropZone(.init(id: id, frame: frame, accepts: accepts, perform: perform))
-            }
-            .onDisappear { zones?.removeDropZone(id) }
-    }
-}
-
-struct ScrollZoneModifier: ViewModifier {
-    @Environment(\.notchZones) private var zones
-    let id: ScrollZoneID
-    let axis: SwipeAxis
-    let onUpdate: @MainActor (SwipeUpdate) -> Void
-    func body(content: Content) -> some View {
-        content
-            .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .named(NotchCoordinateSpace.name)) }) { frame in
-                zones?.setScrollZone(.init(id: id, frame: frame, axis: axis, onUpdate: onUpdate))
-            }
-            .onDisappear { zones?.removeScrollZone(id) }
-    }
-}
-```
-
-### A.4 `Input/SwipeTracker.swift`
-
-```swift
-// CrannyCore/Input/SwipeTracker.swift
-// Pure two-finger swipe state machine (extends R1 §6's verified recognizer with live tracking for
-// rubber-banding, DESIGN.md §4.4). No AppKit state: unit-test it with synthetic samples.
-import CoreGraphics
-import Foundation
-
-public nonisolated enum SwipeAxis: Sendable, Equatable { case horizontal, vertical, any }
-public nonisolated enum SwipeDirection: Sendable, Equatable { case left, right, up, down }
-
-/// Scroll phases (mirrors NSEvent.Phase without importing AppKit).
-public nonisolated struct SwipePhase: OptionSet, Sendable, Hashable {
-    public let rawValue: Int
-    public init(rawValue: Int) { self.rawValue = rawValue }
-    public static let began = SwipePhase(rawValue: 1 << 0)
-    public static let stationary = SwipePhase(rawValue: 1 << 1)
-    public static let changed = SwipePhase(rawValue: 1 << 2)
-    public static let ended = SwipePhase(rawValue: 1 << 3)
-    public static let cancelled = SwipePhase(rawValue: 1 << 4)
-    public static let mayBegin = SwipePhase(rawValue: 1 << 5)
-}
-
-public nonisolated struct ScrollSample: Sendable, Equatable {
-    public var phase: SwipePhase
-    public var isMomentum: Bool            // momentumPhase non-empty: fingers already lifted → ignored
-    public var deltaX: CGFloat             // scrollingDeltaX
-    public var deltaY: CGFloat             // scrollingDeltaY
-    public var isPrecise: Bool             // hasPreciseScrollingDeltas (trackpad, Magic Mouse)
-    public var isInvertedFromDevice: Bool  // "natural scrolling": deltas already follow the fingers
-    public var timestamp: TimeInterval
-    public init(phase: SwipePhase, isMomentum: Bool, deltaX: CGFloat, deltaY: CGFloat, isPrecise: Bool,
-                isInvertedFromDevice: Bool, timestamp: TimeInterval) {
-        self.phase = phase; self.isMomentum = isMomentum; self.deltaX = deltaX; self.deltaY = deltaY
-        self.isPrecise = isPrecise; self.isInvertedFromDevice = isInvertedFromDevice; self.timestamp = timestamp
-    }
-}
-
-public nonisolated enum SwipeUpdate: Sendable, Equatable {
-    /// Live finger travel along the locked axis (pt, +x = right, +y = down). Drive rubber-banding with it.
-    case tracking(SwipeAxis, translation: CGFloat)
-    /// Threshold crossed (fires ONCE per touch sequence, while the finger is still down → haptic now).
-    case committed(SwipeDirection, velocity: CGFloat)
-    /// Released below the threshold: snap back (`CrannyMotion.Kind.snapBack`).
-    case cancelled
-}
-
-public nonisolated struct SwipeTracker: Sendable {
-    public var axis: SwipeAxis
-    /// Commit distances per direction (DESIGN.md `GestureSpec`).
-    public var horizontalCommit: CGFloat = GestureSpec.trackSwipeCommit
-    public var downCommit: CGFloat = GestureSpec.pullOpen
-    public var upCommit: CGFloat = GestureSpec.pushClose
-    public var horizontalVelocity: CGFloat = GestureSpec.trackSwipeVelocity
-    public var verticalVelocity: CGFloat = GestureSpec.verticalVelocity
-    /// Settings ▸ Gestures ▸ Sensitivity (0.5…1.5): divides the distances.
-    public var sensitivity: CGFloat = 1
-    public var invertHorizontal = false
-
-    private var x: CGFloat = 0, y: CGFloat = 0
-    private var locked: SwipeAxis?
-    private var fired = false
-    private var lastFire: TimeInterval = -.infinity
-    private var lastSample: (t: TimeInterval, x: CGFloat, y: CGFloat)?
-    private var previousSample: (t: TimeInterval, x: CGFloat, y: CGFloat)?
-
-    public init(axis: SwipeAxis) { self.axis = axis }
-
-    public mutating func handle(_ s: ScrollSample) -> SwipeUpdate? {
-        guard !s.isMomentum, s.isPrecise, !s.phase.isEmpty else { return nil }
-        if s.phase.contains(.began) || s.phase.contains(.mayBegin) { reset() }
-        if s.phase.contains(.ended) || s.phase.contains(.cancelled) {
-            defer { reset() }
-            guard !fired, let locked else { return nil }   // already committed, or never locked to an axis
-            let v = velocity(at: s.timestamp)
-            if let dir = direction(for: locked, distance: locked == .horizontal ? x : y),
-               abs(locked == .horizontal ? v.x : v.y) >= (locked == .horizontal ? horizontalVelocity : verticalVelocity),
-               s.timestamp - lastFire >= GestureSpec.cooldown {
-                lastFire = s.timestamp
-                return .committed(dir, velocity: locked == .horizontal ? v.x : v.y)
-            }
-            return .cancelled
-        }
-        guard s.phase.contains(.changed) || s.phase.contains(.began) else { return nil }
-        let sign: CGFloat = s.isInvertedFromDevice ? 1 : -1      // normalise to physical finger motion
-        x += s.deltaX * sign; y += s.deltaY * sign
-        previousSample = lastSample
-        lastSample = (s.timestamp, x, y)
-        if locked == nil {
-            if abs(x) >= 4, abs(x) >= abs(y) * GestureSpec.axisLock, axis != .vertical { locked = .horizontal }
-            else if abs(y) >= 4, abs(y) >= abs(x) * GestureSpec.axisLock, axis != .horizontal { locked = .vertical }
-        }
-        guard let locked else { return nil }
-        let d = locked == .horizontal ? x : y
-        if !fired, s.timestamp - lastFire >= GestureSpec.cooldown, let dir = direction(for: locked, distance: d),
-           abs(d) >= commitDistance(dir) / max(sensitivity, 0.1) {
-            fired = true; lastFire = s.timestamp
-            let v = velocity(at: s.timestamp)
-            return .committed(dir, velocity: locked == .horizontal ? v.x : v.y)
-        }
-        return fired ? nil : .tracking(locked, translation: d)
-    }
-
-    private func direction(for axis: SwipeAxis, distance d: CGFloat) -> SwipeDirection? {
-        guard d != 0 else { return nil }
-        switch axis {
-        case .horizontal:
-            var right = d > 0
-            if invertHorizontal { right.toggle() }
-            return right ? .right : .left
-        case .vertical: return d > 0 ? .down : .up
-        case .any: return nil
-        }
-    }
-    private func commitDistance(_ dir: SwipeDirection) -> CGFloat {
-        switch dir {
-        case .left, .right: horizontalCommit
-        case .down: downCommit
-        case .up: upCommit
-        }
-    }
-    /// pt/s between the two most recent samples (precise deltas arrive at display rate).
-    private func velocity(at t: TimeInterval) -> (x: CGFloat, y: CGFloat) {
-        guard let last = lastSample, let prev = previousSample else { return (0, 0) }
-        let dt = max(last.t - prev.t, 0.001)
-        return ((last.x - prev.x) / dt, (last.y - prev.y) / dt)
-    }
-    private mutating func reset() {
-        x = 0; y = 0; locked = nil; fired = false; lastSample = nil; previousSample = nil
-    }
-}
-```
-
-### A.5 `Permissions/PermissionsCenter.swift`
-
-```swift
-// CrannyCore/Permissions/PermissionsCenter.swift
-// The ONLY place that queries or requests TCC permissions (R3 §11). Modules call `request` from the
-// inline "needs permission" state of their widget — never at launch, never in bulk.
-import AppKit
-import ApplicationServices
-import AVFoundation
-import CoreBluetooth
-import CoreServices
-import EventKit
-import Observation
-
-public nonisolated enum PermissionKind: Hashable, Codable, Sendable {
-    case accessibility                  // HUD key interception (CGEventTap on NX_SYSDEFINED)
-    case calendar                       // EventKit full access
-    case camera                         // Mirror
-    case bluetooth                      // optional "Show all Bluetooth devices" (IOBluetooth)
-    case systemAudioRecording           // optional Live visualizer (Core Audio process tap, macOS 14.2+)
-    case automation(bundleID: String)   // Apple Events to Music / Spotify (media fallback)
-
-    /// System Settings deep link (scheme verified on macOS 27; anchors UNVERIFIED there).
-    public var settingsURL: URL? {
-        let base = "x-apple.systempreferences:com.apple.preference.security?"
-        return switch self {
-        case .accessibility: URL(string: base + "Privacy_Accessibility")
-        case .calendar: URL(string: base + "Privacy_Calendars")
-        case .camera: URL(string: base + "Privacy_Camera")
-        case .bluetooth: URL(string: base + "Privacy_Bluetooth")
-        case .systemAudioRecording: URL(string: base + "Privacy_ScreenCapture")
-        case .automation: URL(string: base + "Privacy_Automation")
-        }
-    }
-}
-
-public nonisolated enum PermissionStatus: String, Codable, Sendable {
-    case notDetermined, granted, denied, restricted
-    /// No query API (system audio recording) or the automation target is not running.
-    case unknown
-}
-
-@MainActor @Observable public final class PermissionsCenter {
-    public private(set) var statuses: [PermissionKind: PermissionStatus] = [:]
-    @ObservationIgnored private var accessibilityWatch: Task<Void, Never>?
-    @ObservationIgnored private var recorded: [PermissionKind: PermissionStatus] = [:]
-
-    public init() { refresh() }
-
-    public func status(_ kind: PermissionKind) -> PermissionStatus {
-        statuses[kind] ?? query(kind)
-    }
-
-    /// Re-query everything (call on app activation and when Settings ▸ Permissions appears).
-    public func refresh() {
-        var next: [PermissionKind: PermissionStatus] = [:]
-        for kind in [PermissionKind.accessibility, .calendar, .camera, .bluetooth, .systemAudioRecording] {
-            next[kind] = query(kind)
-        }
-        for (kind, _) in statuses { if case .automation = kind { next[kind] = query(kind) } }
-        statuses = next
-    }
-
-    /// Shows the system prompt when one exists; otherwise opens System Settings. Returns the new status.
-    @discardableResult
-    public func request(_ kind: PermissionKind) async -> PermissionStatus {
-        switch kind {
-        case .accessibility:
-            // kAXTrustedCheckOptionPrompt is a mutable C global (Swift 6 error) — use its literal value.
-            _ = AXIsProcessTrustedWithOptions(["AXTrustedCheckOptionPrompt": true] as CFDictionary)
-            watchAccessibility()
-        case .calendar:
-            _ = try? await EKEventStore().requestFullAccessToEvents()
-        case .camera:
-            _ = await AVCaptureDevice.requestAccess(for: .video)
-        case .bluetooth:
-            await BluetoothPrompt.trigger()
-        case .systemAudioRecording:
-            break   // prompted by AudioDeviceStart in CrannyMedia; it reports back via `record`
-        case .automation(let bundleID):
-            _ = await Self.automationStatus(bundleID, ask: true)
-        }
-        let s = query(kind)
-        statuses[kind] = s
-        return s
-    }
-
-    public func openSystemSettings(_ kind: PermissionKind) {
-        if let url = kind.settingsURL { NSWorkspace.shared.open(url) }
-    }
-
-    /// For kinds without a query API: the feature reports what it observed (tap delivered audio → granted).
-    public func record(_ status: PermissionStatus, for kind: PermissionKind) {
-        recorded[kind] = status
-        statuses[kind] = status
-    }
-
-    // MARK: Queries (cheap, never prompt)
-    private func query(_ kind: PermissionKind) -> PermissionStatus {
-        switch kind {
-        case .accessibility:
-            return AXIsProcessTrusted() ? .granted : .notDetermined
-        case .calendar:
-            return switch EKEventStore.authorizationStatus(for: .event) {
-            case .fullAccess: .granted
-            case .denied, .writeOnly: .denied
-            case .restricted: .restricted
-            case .notDetermined: .notDetermined
-            @unknown default: .unknown
-            }
-        case .camera:
-            return switch AVCaptureDevice.authorizationStatus(for: .video) {
-            case .authorized: .granted
-            case .denied: .denied
-            case .restricted: .restricted
-            case .notDetermined: .notDetermined
-            @unknown default: .unknown
-            }
-        case .bluetooth:
-            return switch CBManager.authorization {
-            case .allowedAlways: .granted
-            case .denied: .denied
-            case .restricted: .restricted
-            case .notDetermined: .notDetermined
-            @unknown default: .unknown
-            }
-        case .systemAudioRecording:
-            return recorded[kind] ?? .unknown
-        case .automation(let bundleID):
-            return Self.automationStatusSync(bundleID)
-        }
-    }
-
-    /// Accessibility changes do not notify: poll every 1.5 s for up to 2 minutes after a request.
-    private func watchAccessibility() {
-        accessibilityWatch?.cancel()
-        accessibilityWatch = Task { [weak self] in
-            for _ in 0..<80 {
-                try? await Task.sleep(for: .milliseconds(1500))
-                guard let self, !Task.isCancelled else { return }
-                if AXIsProcessTrusted() { self.statuses[.accessibility] = .granted; return }
-            }
-        }
-    }
-
-    private static func automationStatusSync(_ bundleID: String) -> PermissionStatus {
-        map(automationOSStatus(bundleID, ask: false))
-    }
-    /// `AEDeterminePermissionToAutomateTarget` blocks while its prompt is up: never on the main thread.
-    @concurrent private static func automationStatus(_ bundleID: String, ask: Bool) async -> PermissionStatus {
-        map(automationOSStatus(bundleID, ask: ask))
-    }
-    nonisolated private static func automationOSStatus(_ bundleID: String, ask: Bool) -> OSStatus {
-        let target = NSAppleEventDescriptor(bundleIdentifier: bundleID)
-        guard let desc = target.aeDesc else { return OSStatus(procNotFound) }
-        return AEDeterminePermissionToAutomateTarget(desc, typeWildCard, typeWildCard, ask)
-    }
-    nonisolated private static func map(_ status: OSStatus) -> PermissionStatus {
-        switch status {
-        case noErr: .granted
-        case OSStatus(errAEEventNotPermitted): .denied
-        case OSStatus(errAEEventWouldRequireUserConsent): .notDetermined
-        default: .unknown          // procNotFound (-600): the player is not running
-        }
-    }
-}
-
-/// Creating a CBCentralManager is what shows the Bluetooth prompt.
-@MainActor private enum BluetoothPrompt {
-    static var manager: CBCentralManager?
-    static func trigger() async {
-        guard CBManager.authorization == .notDetermined else { return }
-        manager = CBCentralManager(delegate: nil, queue: nil)
-        for _ in 0..<60 where CBManager.authorization == .notDetermined {
-            try? await Task.sleep(for: .milliseconds(500))
-        }
-        manager = nil
-    }
-}
-```
-
-### A.6 `Platform/Platform.swift`
-
-```swift
-// CrannyCore/Platform/Platform.swift
-// Logging, haptics, file locations, version info.
-import AppKit
-import Foundation
-import os
-
-// MARK: - Logging
-
-public nonisolated enum LogCategory: String, Sendable, CaseIterable {
-    case app, overlay, state, input, activities, settings, permissions, storage, updates, onboarding
-    case media, mediaBridge, calendar, quickApps, mirror, notes, todos, timer, tray, pipelines
-    case hud, eventTap, system, bluetooth, effects
-}
-
-/// `private let log = Log.logger(.timer)` at file scope. Interpolate user data with `privacy: .private`
-/// (titles, file names, paths); states, counts and error codes with `privacy: .public`.
-public nonisolated enum Log {
-    public static let subsystem = "app.cranny.Cranny"
-    public static func logger(_ category: LogCategory) -> Logger { Logger(subsystem: subsystem, category: category.rawValue) }
-}
-
-// MARK: - Haptics (DESIGN.md §14.2)
-
-public nonisolated enum HapticPattern: Sendable {
-    case alignment      // threshold crossed, drop zone armed, snap, tutorial step
-    case levelChange    // detents: scrubber 10 %, timer minute, HUD at 0/100 %
-    case generic        // drop accepted, pipeline done, to-do completed, opened by gesture
-}
-
-/// Never for hover, peek or an activity arriving. Every haptic has a visual counterpart.
-@MainActor public final class Haptics {
-    private let isEnabled: @MainActor () -> Bool
-    public init(isEnabled: @escaping @MainActor () -> Bool) { self.isEnabled = isEnabled }
-    public func play(_ pattern: HapticPattern) {
-        guard isEnabled() else { return }
-        let p: NSHapticFeedbackManager.FeedbackPattern = switch pattern {
-        case .alignment: .alignment
-        case .levelChange: .levelChange
-        case .generic: .generic
-        }
-        NSHapticFeedbackManager.defaultPerformer.perform(p, performanceTime: .now)
-    }
-}
-
-// MARK: - Files
-
-/// ~/Library/Application Support/app.cranny.Cranny/<module>/ — the only place modules write files.
-public nonisolated struct AppPaths: Sendable {
-    public let root: URL
-    public let caches: URL
-    public init(root: URL, caches: URL) { self.root = root; self.caches = caches }
-
-    public static let live: AppPaths = {
-        let fm = FileManager.default
-        let support = fm.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let caches = fm.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-        return AppPaths(root: support.appending(path: Log.subsystem, directoryHint: .isDirectory),
-                        caches: caches.appending(path: Log.subsystem, directoryHint: .isDirectory))
-    }()
-
-    /// A fresh throw-away root for tests and previews.
-    public static func temporary() -> AppPaths {
-        let base = FileManager.default.temporaryDirectory.appending(path: "cranny-\(UUID().uuidString)", directoryHint: .isDirectory)
-        return AppPaths(root: base.appending(path: "Support"), caches: base.appending(path: "Caches"))
-    }
-
-    /// Creates the directory on first use.
-    public func directory(for module: ModuleID) throws -> URL {
-        let url = root.appending(path: module.rawValue, directoryHint: .isDirectory)
-        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        return url
-    }
-    public func cacheDirectory(for module: ModuleID) throws -> URL {
-        let url = caches.appending(path: module.rawValue, directoryHint: .isDirectory)
-        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
-        return url
-    }
-}
-
-/// Codable document on disk with atomic writes. Corrupt files are renamed aside and the default is used.
-public actor JSONFileStore<Value: Codable & Sendable> {
-    public let url: URL
-    private let defaultValue: Value
-    public init(url: URL, defaultValue: Value) { self.url = url; self.defaultValue = defaultValue }
-
-    public func load() -> Value {
-        guard let data = try? Data(contentsOf: url) else { return defaultValue }
-        do { return try JSONDecoder().decode(Value.self, from: data) } catch {
-            let aside = url.appendingPathExtension("corrupt-\(Int(Date().timeIntervalSince1970))")
-            try? FileManager.default.moveItem(at: url, to: aside)
-            Log.logger(.storage).error("corrupt \(self.url.lastPathComponent, privacy: .public): \(error.localizedDescription, privacy: .public)")
-            return defaultValue
-        }
-    }
-
-    public func save(_ value: Value) throws {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-        try encoder.encode(value).write(to: url, options: .atomic)
-    }
-}
-
-// MARK: - App info and versions
-
-public nonisolated struct AppInfo: Sendable, Codable {
-    public let bundleIdentifier: String
-    public let version: String
-    public let build: String
-    public static func current(_ bundle: Bundle = .main) -> AppInfo {
-        AppInfo(bundleIdentifier: bundle.bundleIdentifier ?? "(none)",
-                version: bundle.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0",
-                build: bundle.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0")
-    }
-}
-
-/// "v1.2" / "1.10.0" / "1.2.0-beta.1" (pre-release suffix sorts before the release).
-public nonisolated struct SemanticVersion: Comparable, Sendable, CustomStringConvertible {
-    public let major: Int, minor: Int, patch: Int
-    public let prerelease: String?
-    public init?(_ string: String) {
-        var s = Substring(string)
-        if s.hasPrefix("v") { s = s.dropFirst() }
-        let parts = s.split(separator: "-", maxSplits: 1)
-        let nums = parts.first.map { $0.split(separator: ".").map { Int($0) } } ?? []
-        guard (1...3).contains(nums.count), nums.allSatisfy({ $0 != nil }) else { return nil }
-        let n = nums.compactMap { $0 } + [0, 0]
-        (major, minor, patch) = (n[0], n[1], n[2])
-        prerelease = parts.count > 1 ? String(parts[1]) : nil
-    }
-    public static func < (a: Self, b: Self) -> Bool {
-        if (a.major, a.minor, a.patch) != (b.major, b.minor, b.patch) { return (a.major, a.minor, a.patch) < (b.major, b.minor, b.patch) }
-        switch (a.prerelease, b.prerelease) {
-        case (nil, _): return false
-        case (_, nil): return true
-        case let (x?, y?): return x.compare(y, options: .numeric) == .orderedAscending
-        }
-    }
-    public var description: String { "\(major).\(minor).\(patch)" + (prerelease.map { "-\($0)" } ?? "") }
-}
-```
-
-### A.7 `Platform/Concurrency.swift`
-
-```swift
-// CrannyCore/Platform/Concurrency.swift
-// Small, verified building blocks so modules never hand-roll threading.
-import Foundation
-import Observation
-
-// MARK: - Observation outside SwiftUI (macOS 14-safe; `Observations` is macOS 26+)
-
-/// Calls `onChange` with the new value whenever something `value()` reads changes.
-/// Keep the returned token alive; `cancel()` (or releasing it) stops observing.
-@MainActor public final class ObservationToken {
-    fileprivate var observer: AnyObject?
-    public func cancel() { observer = nil }
-}
-
-@MainActor @discardableResult
-public func observe<T: Equatable>(_ value: @escaping @MainActor () -> T,
-                                  onChange: @escaping @MainActor (T) -> Void) -> ObservationToken {
-    let token = ObservationToken()
-    let observer = Observer(value: value, onChange: onChange)
-    token.observer = observer
-    observer.arm()
-    return token
-}
-
-@MainActor private final class Observer<T: Equatable> {
-    let value: @MainActor () -> T
-    let onChange: @MainActor (T) -> Void
-    var last: T
-    init(value: @escaping @MainActor () -> T, onChange: @escaping @MainActor (T) -> Void) {
-        self.value = value; self.onChange = onChange; self.last = value()
-    }
-    func arm() {
-        withObservationTracking { _ = value() } onChange: { [weak self] in
-            Task { @MainActor in self?.fire() }
-        }
-    }
-    private func fire() {
-        let now = value()
-        if now != last { last = now; onChange(now) }
-        arm()
-    }
-}
-
-// MARK: - Debounce
-
-/// Trailing debounce on the main actor (note autosave, settings-driven rebuilds).
-@MainActor public final class Debouncer {
-    private let delay: Duration
-    private var task: Task<Void, Never>?
-    public init(delay: Duration) { self.delay = delay }
-    public func schedule(_ action: @escaping @MainActor () async -> Void) {
-        task?.cancel()
-        task = Task { [delay] in
-            try? await Task.sleep(for: delay)
-            guard !Task.isCancelled else { return }
-            await action()
-        }
-    }
-    public func cancel() { task?.cancel(); task = nil }
-}
-
-// MARK: - Subprocesses
-
-public nonisolated struct ProcessOutput: Sendable {
-    public let status: Int32
-    public let stdout: Data
-    public let stderr: Data
-    public var succeeded: Bool { status == 0 }
-}
-
-public nonisolated enum ProcessRunError: Error, Sendable { case launchFailed(String) }
-
-/// Runs a command-line tool off the main actor (`/usr/bin/shortcuts`, `/usr/bin/ditto`).
-/// Both pipes are drained while the process runs (no pipe-buffer deadlock). Cancelling the calling task
-/// terminates the process. Environment is minimal and explicit (never inherits PERL5LIB, DYLD_*).
-public nonisolated enum ProcessRunner {
-    @concurrent
-    public static func run(_ executable: String, _ arguments: [String],
-                           environment: [String: String] = ["PATH": "/usr/bin:/bin", "LANG": "en_US.UTF-8"],
-                           currentDirectory: URL? = nil) async throws -> ProcessOutput {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: executable)
-        process.arguments = arguments
-        process.environment = environment
-        if let currentDirectory { process.currentDirectoryURL = currentDirectory }
-        let out = Pipe(), err = Pipe()
-        process.standardOutput = out
-        process.standardError = err
-        let box = ProcessBox(process)
-        return try await withTaskCancellationHandler {
-            try await withCheckedThrowingContinuation { (cont: CheckedContinuation<ProcessOutput, any Error>) in
-                let collector = OutputCollector()
-                out.fileHandleForReading.readabilityHandler = { collector.append($0.availableData, error: false) }
-                err.fileHandleForReading.readabilityHandler = { collector.append($0.availableData, error: true) }
-                process.terminationHandler = { p in
-                    out.fileHandleForReading.readabilityHandler = nil
-                    err.fileHandleForReading.readabilityHandler = nil
-                    collector.append(out.fileHandleForReading.readDataToEndOfFile(), error: false)
-                    collector.append(err.fileHandleForReading.readDataToEndOfFile(), error: true)
-                    let (o, e) = collector.result
-                    cont.resume(returning: ProcessOutput(status: p.terminationStatus, stdout: o, stderr: e))
-                }
-                do { try process.run() } catch {
-                    process.terminationHandler = nil
-                    cont.resume(throwing: ProcessRunError.launchFailed(error.localizedDescription))
-                }
-            }
-        } onCancel: {
-            box.terminate()
-        }
-    }
-}
-
-private nonisolated final class ProcessBox: @unchecked Sendable {   // Process is thread-safe for terminate()
-    private let process: Process
-    init(_ p: Process) { process = p }
-    func terminate() { if process.isRunning { process.terminate() } }
-}
-
-private nonisolated final class OutputCollector: @unchecked Sendable {
-    private let lock = NSLock()
-    private var out = Data(), err = Data()
-    func append(_ d: Data, error: Bool) {
-        guard !d.isEmpty else { return }
-        lock.withLock { if error { err.append(d) } else { out.append(d) } }
-    }
-    var result: (Data, Data) { lock.withLock { (out, err) } }
-}
-```
-
-### A.8 `DesignSystem/SharedComponents.swift`
-
-```swift
-// CrannyCore/DesignSystem/SharedComponents.swift
-// Components added by ARCHITECTURE.md on top of DESIGN.md Appendix A. They read tokens only and take
-// ALREADY-LOCALIZED Strings (a LocalizedStringKey passed into Core would be looked up in Bundle.main).
-import SwiftUI
-
-// MARK: - Widget states (DESIGN.md §6.8: empty · needs permission · loading · error)
-
-public struct WidgetStateView: View {
-    public enum Kind: Sendable { case empty, needsPermission, loading, error }
-    @Environment(\.cranny) private var theme
-    private let kind: Kind, symbol: String, message: String, actionTitle: String?
-    private let action: (@MainActor () -> Void)?
-
-    public init(_ kind: Kind, symbol: String, message: String, actionTitle: String? = nil,
-                action: (@MainActor () -> Void)? = nil) {
-        self.kind = kind; self.symbol = symbol; self.message = message
-        self.actionTitle = actionTitle; self.action = action
-    }
-
-    public var body: some View {
-        let p = theme.palette
-        VStack(spacing: Space.s) {
-            if kind == .loading {
-                ProgressRing(progress: 0.25, color: p.tertiaryLabel, lineWidth: StrokeWidth.ringCompact)
-                    .frame(width: 18, height: 18)
-            } else {
-                Image(systemName: symbol).font(.system(size: 20, weight: .medium))
-                    .foregroundStyle(kind == .error ? p.danger : p.secondaryLabel)
-            }
-            Text(message).crannyFont(.callout).foregroundStyle(p.secondaryLabel)
-                .multilineTextAlignment(.center).lineLimit(2)
-            if let actionTitle, let action {
-                Button(action: action) { Text(actionTitle) }
-                    .buttonStyle(CrannyChipButtonStyle(prominent: kind == .needsPermission))
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .accessibilityElement(children: .combine)
-    }
-}
-
-// MARK: - Chip / capsule button (pipeline chips, Join capsule, presets)
-
-public struct CrannyChipButtonStyle: ButtonStyle {
-    public var tint: Color?
-    public var prominent: Bool
-    public init(tint: Color? = nil, prominent: Bool = false) { self.tint = tint; self.prominent = prominent }
-    public func makeBody(configuration: Configuration) -> some View { ChipBody(configuration: configuration, tint: tint, prominent: prominent) }
-
-    struct ChipBody: View {
-        @Environment(\.cranny) private var theme
-        @Environment(\.isEnabled) private var enabled
-        @State private var hovered = false
-        let configuration: Configuration, tint: Color?, prominent: Bool
-        var body: some View {
-            let p = theme.palette
-            let fill: Color = prominent ? (tint ?? .white) : (configuration.isPressed ? p.controlPressed : hovered ? p.controlHover : p.control)
-            configuration.label
-                .crannyFont(.caption).fontWeight(.semibold)
-                .foregroundStyle(prominent ? Color.black : (tint ?? p.label))
-                .padding(.horizontal, Space.m).frame(minHeight: 22)
-                .background(Capsule(style: .continuous).fill(fill))
-                .contentShape(Capsule(style: .continuous))
-                .opacity(enabled ? 1 : 0.4)
-                .onHover { hovered = $0 }
-                .animation(theme.animation(.hover), value: hovered)
-        }
-    }
-}
-
-// MARK: - Scrubber (interactive LevelBar: media seek, HUD-style sliders)
-
-public struct Scrubber: View {
-    @Environment(\.cranny) private var theme
-    @State private var hovered = false
-    @State private var dragValue: Double?
-    private let value: Double
-    private let step: Double
-    private let label: String
-    private let valueDescription: String
-    private let onCommit: @MainActor (Double) -> Void
-
-    /// `value` 0…1. `step` is the VoiceOver/arrow-key increment (e.g. 10 s / duration).
-    public init(value: Double, step: Double, label: String, valueDescription: String,
-                onCommit: @escaping @MainActor (Double) -> Void) {
-        self.value = value; self.step = step; self.label = label
-        self.valueDescription = valueDescription; self.onCommit = onCommit
-    }
-
-    public var body: some View {
-        let active = hovered || dragValue != nil
-        GeometryReader { g in
-            LevelBar(value: dragValue ?? value, tint: theme.accentColor,
-                     thickness: active ? StrokeWidth.scrubberActive : StrokeWidth.scrubber)
-                .frame(maxHeight: .infinity)
-                .contentShape(Rectangle())
-                .gesture(DragGesture(minimumDistance: 0)
-                    .onChanged { dragValue = min(max($0.location.x / max(g.size.width, 1), 0), 1) }
-                    .onEnded { _ in if let v = dragValue { onCommit(v) }; dragValue = nil })
-        }
-        .frame(height: HitTarget.nook.height)
-        .onHover { hovered = $0 }
-        .accessibilityElement()
-        .accessibilityLabel(Text(label))
-        .accessibilityValue(Text(valueDescription))
-        .accessibilityAdjustableAction { direction in
-            switch direction {
-            case .increment: onCommit(min(value + step, 1))
-            case .decrement: onCommit(max(value - step, 0))
-            @unknown default: break
-            }
-        }
-    }
-}
-
-// MARK: - Marquee (the ONLY marquee: overflowing track title after a 1.5 s hover, DESIGN.md §2.2)
-
-public struct MarqueeText: View {
-    @Environment(\.cranny) private var theme
-    @State private var textWidth: CGFloat = 0
-    @State private var boxWidth: CGFloat = 0
-    @State private var offset: CGFloat = 0
-    private let text: String, style: CrannyTextStyle, isActive: Bool
-
-    /// `isActive` = hovered for ≥ 1.5 s (the caller owns the timer). Reduce Motion: never scrolls; tooltip instead.
-    public init(_ text: String, style: CrannyTextStyle, isActive: Bool) {
-        self.text = text; self.style = style; self.isActive = isActive
-    }
-
-    public var body: some View {
-        let overflow = max(textWidth - boxWidth, 0)
-        Text(text).crannyFont(style).lineLimit(1).fixedSize()
-            .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { textWidth = $0 }
-            .offset(x: offset)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { boxWidth = $0 }
-            .clipped()
-            .help(text)
-            .onChange(of: isActive && overflow > 0 && !theme.reduceMotion) { _, run in
-                if run {
-                    withAnimation(.linear(duration: Double(overflow) / 30).delay(0.3).repeatForever(autoreverses: true)) { offset = -overflow }
-                } else {
-                    withAnimation(theme.animation(.contentSwap)) { offset = 0 }
-                }
-            }
-            .accessibilityLabel(Text(text))
-    }
-}
-```
-
-### A.9 `CrannyCore.swift`
-
-```swift
-// CrannyCore/CrannyCore.swift
-// Module overview: DesignSystem/ (DESIGN.md tokens + components), Contracts/ (module plug-in API),
-// Services/ (ports + hub), Settings/, Permissions/, Input/, Platform/.
-import Foundation
-
-public extension PermissionKind {
-    /// Localized name for Settings ▸ Permissions and onboarding rows.
-    var title: String {
-        switch self {
-        case .accessibility: String(localized: "Accessibility", bundle: .module, comment: "Permission name (System Settings ▸ Privacy)")
-        case .calendar: String(localized: "Calendars", bundle: .module, comment: "Permission name")
-        case .camera: String(localized: "Camera", bundle: .module, comment: "Permission name")
-        case .bluetooth: String(localized: "Bluetooth", bundle: .module, comment: "Permission name")
-        case .systemAudioRecording: String(localized: "System Audio Recording", bundle: .module, comment: "Permission name")
-        case .automation(let bundleID):
-            String(localized: "Automation (\(bundleID))", bundle: .module, comment: "Permission name; argument is an app bundle identifier")
-        }
-    }
-}
-```
-
-### A.10 `Tests/CrannyCoreTests/CrannyCoreTests.swift` (starting point)
-
-```swift
-import Foundation
-import SwiftUI
-import Testing
-@testable import CrannyCore
-
-@MainActor @Test func settingsPersistResetAndNamespace() throws {
-    let suite = "cranny.test.\(UUID().uuidString)"
-    let defaults = try #require(UserDefaults(suiteName: suite))
-    let key = SettingKey<[Int]>(.timer, "presets", default: [1, 5])
-    let a = SettingsStore(defaults: defaults)
-    #expect(a[key] == [1, 5] && a.isDefault(key))
-    a[key] = [25]
-    #expect(SettingsStore(defaults: defaults)[key] == [25])          // persisted (JSON under cranny.timer.presets)
-    #expect(defaults.data(forKey: "cranny.timer.presets") != nil)
-    a.reset(module: .timer)
-    #expect(a[key] == [1, 5])                                          // live box reset
-    #expect(defaults.data(forKey: "cranny.timer.presets") == nil)
-    a[CoreSettings.activityPreferences] = [.nowPlaying: ActivityPreference(isEnabled: false, peeksOnChange: true)]
-    let json = try #require(defaults.data(forKey: "cranny.activities.preferences"))
-    #expect(String(decoding: json, as: UTF8.self).contains("\"media.nowPlaying\""))  // dictionary keyed by raw id
-    a.resetAll()
-    #expect(a[CoreSettings.activityPreferences].isEmpty)
-}
-
-@Test func swipeCommitsOncePerSequence() {
-    var t = SwipeTracker(axis: .horizontal)
-    func s(_ p: SwipePhase, _ dx: CGFloat, _ ts: TimeInterval) -> ScrollSample {
-        ScrollSample(phase: p, isMomentum: false, deltaX: dx, deltaY: 0, isPrecise: true, isInvertedFromDevice: true, timestamp: ts)
-    }
-    #expect(t.handle(s(.began, 0, 0)) == nil)
-    var updates: [SwipeUpdate] = []
-    for i in 1...10 { if let u = t.handle(s(.changed, 6, Double(i) * 0.016)) { updates.append(u) } }
-    #expect(updates.contains { if case .committed(.right, _) = $0 { true } else { false } })
-    #expect(updates.filter { if case .committed = $0 { true } else { false } }.count == 1)
-    #expect(t.handle(s(.ended, 0, 0.2)) == nil)
-}
-
-@Test func versions() throws {
-    #expect(try #require(SemanticVersion("v1.2")) < #require(SemanticVersion("1.10.0")))
-    #expect(try #require(SemanticVersion("1.0.0-beta.2")) < #require(SemanticVersion("1.0.0")))
-}
-
-@MainActor @Test func registryFillsPageNamespacesAndActivityOptions() {
-    let registry = ModuleRegistry(services: .preview())
-    registry.add(settingsPage: SettingsPage(id: "x", title: "X", symbol: "gearshape.fill", tint: .gray, group: .features, order: 0) { AnyView(EmptyView()) })
-    #expect(registry.settingsPages.first?.namespaces == [])           // registered outside a module: stays empty (shell)
-    let notch = PreviewNotchControl()
-    notch.flash(symbol: "hand.wave.fill", label: "Hi")
-    #expect(notch.calls == ["flash(hand.wave.fill)"])
-    #expect(DelightMoment.allCases.count == 5)
-}
-
-@MainActor @Test func resetAllCanBeUndone() throws {
-    let defaults = try #require(UserDefaults(suiteName: "cranny.test.\(UUID().uuidString)"))
-    let s = SettingsStore(defaults: defaults)
-    s[CoreSettings.openMode] = .click
-    s[CoreSettings.panelPaddingTune] = 3
-    let snap = s.snapshot()
-    s.resetAll()
-    #expect(s[CoreSettings.openMode] == .hover)
-    s.restore(snap)
-    #expect(s[CoreSettings.openMode] == .click && s[CoreSettings.panelPaddingTune] == 3)
-    #expect(SettingsStore(defaults: defaults)[CoreSettings.openMode] == .click)
-    let g = NookGrid(paddingTune: 3)
-    #expect(g.padding == 15 && g.cardRadius == Radius.card && g.panelRadius == 35)
-}
-```
+## Appendix A — CrannyCore sources (pointers to the repo)
+
+Until WP0 this appendix repeated the Core sources verbatim. They now live in the repo, which holds the only copy, so this appendix says where each file is, what it is for and which rules are not obvious from the code. Paths are relative to `Packages/CrannyKit/Sources/CrannyCore/` unless stated otherwise.
+
+- **The repo wins.** The §2.2 `Package.swift` and the §3 listings (`Contracts/*`, `Services/*`, §4.12, §5.2) were byte-identical to their files when WP0 landed (checked 2026-10-14). If one ever differs, the file is right and the doc owner fixes the listing.
+- **DesignSystem files** (`Color`, `Typography`, `Layout`, `Motion`, `Notch`, `Theme`, `Components`, `AmbientPalette`) are DESIGN.md's code with the §3.2 amendments, byte-identical at WP0. DESIGN.md stays their specification.
+- **Core changes** stay additive (§10.0). A new public type also needs `make probe` (§9.4, B.21).
+
+| § | File | Purpose | Rules not visible in the code |
+|---|---|---|---|
+| A.1 | `Settings/SettingsStore.swift` | `SettingKey<Value>` and `SettingsStore`: typed subscript, `binding`, `isDefault`, `reset`, `reset(module:)`, `resetAll`, `snapshot`/`restore` | Storage format, invalidation and test injection: §3.11. A persisted name (`cranny.<module>.<name>`) is a public contract once released. |
+| A.2 | `Settings/CoreSettings.swift` | Every shell-level key (`CoreSettings`) and its value types: `OpenMode`, `FullScreenPolicy`, `DisplaySelection`, `HandleVisibility`, `DisplayPreferences`, `NotchFit`, `NookItem`, `NookPage`, `NookPreset`, `ActivityPreference` | A key's namespace is the Settings pane that resets it (§10.15). `notchFit` is `appearance.notchFit` since WP0 (the first draft had `displays.notchFit`; nothing was released, so there is no migration). Feature modules never add keys here: they declare `<Module>Settings` in their own target. |
+| A.3 | `Input/NotchZones.swift` | `DropPayload`, `NotchZones` (drop and scroll zone registry), `.crannyDropZone`, `.crannyScrollZone` | One registry per canvas. Frames are in `NotchCoordinateSpace.name`; the innermost accepting zone wins; `performDrop` falls back to `.trayKeep` (§3.10, §5.6). |
+| A.4 | `Input/SwipeTracker.swift` | `SwipeAxis`, `SwipeDirection`, `SwipePhase`, `ScrollSample`, `SwipeUpdate`, `SwipeTracker` | A pure struct that commits exactly once per touch sequence (§3.10). The phase type is `SwipePhase`, never `ScrollPhase` (collision with SwiftUI, §9.4). |
+| A.5 | `Permissions/PermissionsCenter.swift` | `PermissionKind`, `PermissionStatus`, `PermissionsCenter` | The only TCC code in the app (§3.12). `status` never prompts; `request` runs only from explicit UI; the Automation probe is `@concurrent`. |
+| A.6 | `Platform/Platform.swift` | `LogCategory`, `Log`, `HapticPattern`, `Haptics`, `AppPaths`, `JSONFileStore`, `AppInfo`, `SemanticVersion` | The log subsystem is the bundle id `app.cranny.Cranny` (D16). Modules write files only under `AppPaths` (`~/Library/Application Support/app.cranny.Cranny/<module>/`). `JSONFileStore` moves a corrupt file aside (`.corrupt-<unix time>`) and returns the default. |
+| A.7 | `Platform/Concurrency.swift` | `observe(_:onChange:)` + `ObservationToken`, `Debouncer`, `ProcessRunner` (+ `ProcessOutput`, `ProcessRunError`) | `observe` stands in for `Observations` (macOS 26+) on macOS 14; keep the token. `ProcessRunner.run` is `@concurrent`, drains both pipes, passes a minimal environment and terminates the process on cancellation. |
+| A.8 | `DesignSystem/SharedComponents.swift` | `WidgetStateView`, `CrannyChipButtonStyle`, `Scrubber`, `MarqueeText` | Added on top of DESIGN.md App. A. Like every Core component they take already-localized `String`s (§3.2). |
+| A.9 | `CrannyCore.swift` | Module overview comment and `PermissionKind.title` | Core's only localized strings (catalog `Resources/Localizable.xcstrings`, en + ru). |
+| A.10 | `Packages/CrannyKit/Tests/CrannyCoreTests/` | 22 tests in `CrannyCoreTests.swift`, `InputTests.swift`, `NotchLayoutTests.swift` and `PlatformTests.swift`, plus the generated `SDKNameCollisionProbe.swift` | The probe is generated by `scripts/name-probe.sh` (B.21). Never edit it by hand: `make probe-check` fails CI when it is stale. |
+| A.11 | `DesignSystem/EffectClock.swift` (added by WP0) | `EffectClock(minimumInterval:content:)`, the frame clock of continuously animated effects | Use it instead of `TimelineView(.animation(minimumInterval:paused:))` or `.periodic` for anything redrawn more often than about twice a second (§9.2): those schedules keep the hosting view updating at the display's refresh rate. Pass `EffectBudget.minimumInterval`; nil pauses and keeps the last date. After missed frames it waits one interval instead of catching up. |
+
+**Not Core, for orientation.** `CrannyEffects` holds the Metal side of D13: `Shaders/CrannyShaders.h`, `Shaders/Dither.metal`, `Shaders/Aurora.metal`, `ShaderEffects.swift` (internal), `EffectsDiagnostics.swift` (public `shaderStatus`) and `AuroraField.swift`. DESIGN.md App. B.1–B.2 specify them; §8.8 and §10.12 give the rules.
 
 ---
 
-## Appendix B — App target, project and tooling files (verbatim, built)
-
-> **Superseded listings (2026-10-14).** The Appendix B listings are superseded by the files in the repo. The Metal guard was removed when D13 was reversed. Where a listing below differs from the repo, the repo wins. The Metal-related differences are described in prose only; the listings are not edited:
-> - B.7 `lib.sh` gains `ensure_metal_toolchain` (§8.5).
-> - B.8–B.9, B.12–B.14 call it after `ensure_xcode`.
-> - B.10 `smoke.sh` also checks `CrannyKit_CrannyEffects.bundle/Contents/Resources/default.metallib`.
-> - B.12 `check-modules.sh` has **no** `*.metal` guard.
-> - B.15/B.16 add the "Metal Toolchain" step (§8.9).
->
-> A later step replaces these appendices with pointers to the repo files.
-
-### B.1 `Cranny.xcodeproj/project.pbxproj`
-
-```text
-// !$*UTF8*$!
-{
-	archiveVersion = 1;
-	classes = {
-	};
-	objectVersion = 77;
-	objects = {
-
-/* Begin PBXBuildFile section */
-		C0A11E000000000000000020 /* CrannyAppShell in Frameworks */ = {isa = PBXBuildFile; productRef = C0A11E000000000000000030 /* CrannyAppShell */; };
-		C0A11E000000000000000078 /* libCrannyMediaBridge.dylib in Embed Media Bridge */ = {isa = PBXBuildFile; fileRef = C0A11E000000000000000074 /* libCrannyMediaBridge.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-/* End PBXBuildFile section */
-
-/* Begin PBXContainerItemProxy section */
-		C0A11E000000000000000076 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = C0A11E000000000000000001 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = C0A11E000000000000000070;
-			remoteInfo = CrannyMediaBridge;
-		};
-/* End PBXContainerItemProxy section */
-
-/* Begin PBXCopyFilesBuildPhase section */
-		C0A11E000000000000000014 /* Embed Media Bridge */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 10;
-			files = (
-				C0A11E000000000000000078 /* libCrannyMediaBridge.dylib in Embed Media Bridge */,
-			);
-			name = "Embed Media Bridge";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
-
-/* Begin PBXFileReference section */
-		C0A11E000000000000000004 /* Cranny.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Cranny.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		C0A11E000000000000000074 /* libCrannyMediaBridge.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = libCrannyMediaBridge.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
-/* End PBXFileReference section */
-
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		C0A11E000000000000000006 /* Exceptions for "App" folder in "Cranny" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = C0A11E000000000000000010 /* Cranny */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
-/* Begin PBXFileSystemSynchronizedRootGroup section */
-		C0A11E000000000000000005 /* App */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				C0A11E000000000000000006 /* Exceptions for "App" folder in "Cranny" target */,
-			);
-			path = App;
-			sourceTree = "<group>";
-		};
-		C0A11E000000000000000075 /* CrannyMediaBridge */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			name = CrannyMediaBridge;
-			path = Packages/CrannyKit/Sources/CrannyMediaBridge;
-			sourceTree = "<group>";
-		};
-/* End PBXFileSystemSynchronizedRootGroup section */
-
-/* Begin PBXFrameworksBuildPhase section */
-		C0A11E000000000000000012 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				C0A11E000000000000000020 /* CrannyAppShell in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		C0A11E000000000000000072 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
-
-/* Begin PBXGroup section */
-		C0A11E000000000000000002 = {
-			isa = PBXGroup;
-			children = (
-				C0A11E000000000000000005 /* App */,
-				C0A11E000000000000000075 /* CrannyMediaBridge */,
-				C0A11E000000000000000003 /* Products */,
-			);
-			sourceTree = "<group>";
-		};
-		C0A11E000000000000000003 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				C0A11E000000000000000004 /* Cranny.app */,
-				C0A11E000000000000000074 /* libCrannyMediaBridge.dylib */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
-/* End PBXGroup section */
-
-/* Begin PBXNativeTarget section */
-		C0A11E000000000000000010 /* Cranny */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = C0A11E000000000000000060 /* Build configuration list for PBXNativeTarget "Cranny" */;
-			buildPhases = (
-				C0A11E000000000000000011 /* Sources */,
-				C0A11E000000000000000012 /* Frameworks */,
-				C0A11E000000000000000013 /* Resources */,
-				C0A11E000000000000000014 /* Embed Media Bridge */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				C0A11E000000000000000077 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				C0A11E000000000000000005 /* App */,
-			);
-			name = Cranny;
-			packageProductDependencies = (
-				C0A11E000000000000000030 /* CrannyAppShell */,
-			);
-			productName = Cranny;
-			productReference = C0A11E000000000000000004 /* Cranny.app */;
-			productType = "com.apple.product-type.application";
-		};
-		C0A11E000000000000000070 /* CrannyMediaBridge */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = C0A11E000000000000000080 /* Build configuration list for PBXNativeTarget "CrannyMediaBridge" */;
-			buildPhases = (
-				C0A11E000000000000000071 /* Sources */,
-				C0A11E000000000000000072 /* Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				C0A11E000000000000000075 /* CrannyMediaBridge */,
-			);
-			name = CrannyMediaBridge;
-			packageProductDependencies = (
-			);
-			productName = CrannyMediaBridge;
-			productReference = C0A11E000000000000000074 /* libCrannyMediaBridge.dylib */;
-			productType = "com.apple.product-type.library.dynamic";
-		};
-/* End PBXNativeTarget section */
-
-/* Begin PBXProject section */
-		C0A11E000000000000000001 /* Project object */ = {
-			isa = PBXProject;
-			attributes = {
-				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2700;
-				LastUpgradeCheck = 2700;
-				TargetAttributes = {
-					C0A11E000000000000000010 = {
-						CreatedOnToolsVersion = 27.0;
-					};
-					C0A11E000000000000000070 = {
-						CreatedOnToolsVersion = 27.0;
-					};
-				};
-			};
-			buildConfigurationList = C0A11E000000000000000050 /* Build configuration list for PBXProject "Cranny" */;
-			developmentRegion = en;
-			hasScannedForEncodings = 0;
-			knownRegions = (
-				en,
-				Base,
-				ru,
-			);
-			mainGroup = C0A11E000000000000000002;
-			minimizedProjectReferenceProxies = 1;
-			packageReferences = (
-				C0A11E000000000000000040 /* XCLocalSwiftPackageReference "CrannyKit" */,
-			);
-			preferredProjectObjectVersion = 77;
-			productRefGroup = C0A11E000000000000000003 /* Products */;
-			projectDirPath = "";
-			projectRoot = "";
-			targets = (
-				C0A11E000000000000000010 /* Cranny */,
-				C0A11E000000000000000070 /* CrannyMediaBridge */,
-			);
-		};
-/* End PBXProject section */
-
-/* Begin PBXResourcesBuildPhase section */
-		C0A11E000000000000000013 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXResourcesBuildPhase section */
-
-/* Begin PBXSourcesBuildPhase section */
-		C0A11E000000000000000011 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		C0A11E000000000000000071 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXSourcesBuildPhase section */
-
-/* Begin PBXTargetDependency section */
-		C0A11E000000000000000077 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = C0A11E000000000000000070 /* CrannyMediaBridge */;
-			targetProxy = C0A11E000000000000000076 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
-
-/* Begin XCBuildConfiguration section */
-		C0A11E000000000000000051 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				CLANG_ENABLE_OBJC_WEAK = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CODE_SIGN_IDENTITY = "-";
-				CODE_SIGN_STYLE = Manual;
-				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
-				DEAD_CODE_STRIPPING = YES;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = "";
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"DEBUG=1",
-					"$(inherited)",
-				);
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.1.0;
-				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = macosx;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-			};
-			name = Debug;
-		};
-		C0A11E000000000000000052 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				CLANG_ENABLE_OBJC_WEAK = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CODE_SIGN_IDENTITY = "-";
-				CODE_SIGN_INJECT_BASE_ENTITLEMENTS = NO;
-				CODE_SIGN_STYLE = Manual;
-				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
-				DEAD_CODE_STRIPPING = YES;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = "";
-				ENABLE_NS_ASSERTIONS = NO;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 0.1.0;
-				ONLY_ACTIVE_ARCH = NO;
-				SDKROOT = macosx;
-				SWIFT_COMPILATION_MODE = wholemodule;
-			};
-			name = Release;
-		};
-		C0A11E000000000000000061 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = App/Cranny.entitlements;
-				COMBINE_HIDPI_IMAGES = YES;
-				ENABLE_HARDENED_RUNTIME = YES;
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = App/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Cranny;
-				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/../Frameworks",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.cranny.Cranny;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 6.0;
-			};
-			name = Debug;
-		};
-		C0A11E000000000000000062 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = App/Cranny.entitlements;
-				COMBINE_HIDPI_IMAGES = YES;
-				ENABLE_HARDENED_RUNTIME = YES;
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = App/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Cranny;
-				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/../Frameworks",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = app.cranny.Cranny;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				SWIFT_APPROACHABLE_CONCURRENCY = YES;
-				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
-				SWIFT_VERSION = 6.0;
-			};
-			name = Release;
-		};
-		C0A11E000000000000000081 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				DYLIB_COMPATIBILITY_VERSION = 1;
-				DYLIB_CURRENT_VERSION = 1;
-				DYLIB_INSTALL_NAME_BASE = "@rpath";
-				EXECUTABLE_PREFIX = lib;
-				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/Packages/CrannyKit/Sources/CrannyMediaBridge/include";
-			};
-			name = Debug;
-		};
-		C0A11E000000000000000082 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				DYLIB_COMPATIBILITY_VERSION = 1;
-				DYLIB_CURRENT_VERSION = 1;
-				DYLIB_INSTALL_NAME_BASE = "@rpath";
-				EXECUTABLE_PREFIX = lib;
-				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				USER_HEADER_SEARCH_PATHS = "$(SRCROOT)/Packages/CrannyKit/Sources/CrannyMediaBridge/include";
-			};
-			name = Release;
-		};
-/* End XCBuildConfiguration section */
-
-/* Begin XCConfigurationList section */
-		C0A11E000000000000000050 /* Build configuration list for PBXProject "Cranny" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				C0A11E000000000000000051 /* Debug */,
-				C0A11E000000000000000052 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		C0A11E000000000000000060 /* Build configuration list for PBXNativeTarget "Cranny" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				C0A11E000000000000000061 /* Debug */,
-				C0A11E000000000000000062 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		C0A11E000000000000000080 /* Build configuration list for PBXNativeTarget "CrannyMediaBridge" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				C0A11E000000000000000081 /* Debug */,
-				C0A11E000000000000000082 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-/* End XCConfigurationList section */
-
-/* Begin XCLocalSwiftPackageReference section */
-		C0A11E000000000000000040 /* XCLocalSwiftPackageReference "CrannyKit" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = Packages/CrannyKit;
-		};
-/* End XCLocalSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		C0A11E000000000000000030 /* CrannyAppShell */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = CrannyAppShell;
-		};
-/* End XCSwiftPackageProductDependency section */
-	};
-	rootObject = C0A11E000000000000000001 /* Project object */;
-}
-```
-
-### B.2 `Cranny.xcodeproj/xcshareddata/xcschemes/Cranny.xcscheme`
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<Scheme
-   LastUpgradeVersion = "2700"
-   version = "1.7">
-   <BuildAction
-      parallelizeBuildables = "YES"
-      buildImplicitDependencies = "YES"
-      buildArchitectures = "Automatic">
-      <BuildActionEntries>
-         <BuildActionEntry
-            buildForTesting = "YES"
-            buildForRunning = "YES"
-            buildForProfiling = "YES"
-            buildForArchiving = "YES"
-            buildForAnalyzing = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "C0A11E000000000000000010"
-               BuildableName = "Cranny.app"
-               BlueprintName = "Cranny"
-               ReferencedContainer = "container:Cranny.xcodeproj">
-            </BuildableReference>
-         </BuildActionEntry>
-      </BuildActionEntries>
-   </BuildAction>
-   <TestAction
-      buildConfiguration = "Debug"
-      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
-      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
-      shouldUseLaunchSchemeArgsEnv = "YES"
-      shouldAutocreateTestPlan = "YES">
-   </TestAction>
-   <LaunchAction
-      buildConfiguration = "Debug"
-      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
-      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
-      launchStyle = "0"
-      useCustomWorkingDirectory = "NO"
-      ignoresPersistentStateOnLaunch = "NO"
-      debugDocumentVersioning = "YES"
-      debugServiceExtension = "internal"
-      allowLocationSimulation = "YES">
-      <BuildableProductRunnable
-         runnableDebuggingMode = "0">
-         <BuildableReference
-            BuildableIdentifier = "primary"
-            BlueprintIdentifier = "C0A11E000000000000000010"
-            BuildableName = "Cranny.app"
-            BlueprintName = "Cranny"
-            ReferencedContainer = "container:Cranny.xcodeproj">
-         </BuildableReference>
-      </BuildableProductRunnable>
-   </LaunchAction>
-   <ProfileAction
-      buildConfiguration = "Release"
-      shouldUseLaunchSchemeArgsEnv = "YES"
-      savedToolIdentifier = ""
-      useCustomWorkingDirectory = "NO"
-      debugDocumentVersioning = "YES">
-      <BuildableProductRunnable
-         runnableDebuggingMode = "0">
-         <BuildableReference
-            BuildableIdentifier = "primary"
-            BlueprintIdentifier = "C0A11E000000000000000010"
-            BuildableName = "Cranny.app"
-            BlueprintName = "Cranny"
-            ReferencedContainer = "container:Cranny.xcodeproj">
-         </BuildableReference>
-      </BuildableProductRunnable>
-   </ProfileAction>
-   <AnalyzeAction
-      buildConfiguration = "Debug">
-   </AnalyzeAction>
-   <ArchiveAction
-      buildConfiguration = "Release"
-      revealArchiveInOrganizer = "YES">
-   </ArchiveAction>
-</Scheme>
-```
-
-### B.3 `App/Info.plist`
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<!-- Merged with the keys Xcode generates (GENERATE_INFOPLIST_FILE = YES). Localized in InfoPlist.xcstrings. -->
-	<key>LSUIElement</key>
-	<true/>
-	<key>LSApplicationCategoryType</key>
-	<string>public.app-category.utilities</string>
-	<key>NSHumanReadableCopyright</key>
-	<string>Copyright © 2026 Cranny contributors. MIT License.</string>
-	<!-- Without this, SwiftPM resource bundles fall back to English (R4 §3.4). -->
-	<key>CFBundleLocalizations</key>
-	<array>
-		<string>en</string>
-		<string>ru</string>
-	</array>
-	<!-- "owner/repo" for the GitHub Releases update check. Empty = update check disabled. -->
-	<key>CrannyGitHubRepository</key>
-	<string></string>
-	<!-- Privacy usage descriptions. -->
-	<key>NSAppleEventsUsageDescription</key>
-	<string>Cranny controls Music and Spotify to show and change what is playing when the system media source is unavailable.</string>
-	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>Cranny shows your upcoming events and meeting links in the notch. It never edits or uploads them.</string>
-	<key>NSCalendarsUsageDescription</key>
-	<string>Cranny shows your upcoming events and meeting links in the notch. It never edits or uploads them.</string>
-	<key>NSCameraUsageDescription</key>
-	<string>Cranny shows a camera preview in the Mirror widget. Video is never recorded.</string>
-	<key>NSCameraUseContinuityCameraDeviceType</key>
-	<true/>
-	<key>NSBluetoothAlwaysUsageDescription</key>
-	<string>Cranny shows when Bluetooth devices such as headphones connect, and their battery level.</string>
-	<key>NSAudioCaptureUsageDescription</key>
-	<string>Cranny listens to system audio output to animate the music visualizer. Audio is never recorded or stored.</string>
-	<key>NSMicrophoneUsageDescription</key>
-	<string>Cranny analyzes audio levels to animate the music visualizer. Audio is never recorded or stored.</string>
-	<key>NSDesktopFolderUsageDescription</key>
-	<string>Cranny keeps the files you drop on the notch in its Tray.</string>
-	<key>NSDocumentsFolderUsageDescription</key>
-	<string>Cranny keeps the files you drop on the notch in its Tray.</string>
-	<key>NSDownloadsFolderUsageDescription</key>
-	<string>Cranny keeps the files you drop on the notch in its Tray.</string>
-	<key>NSRemovableVolumesUsageDescription</key>
-	<string>Cranny keeps the files you drop on the notch in its Tray.</string>
-	<key>NSNetworkVolumesUsageDescription</key>
-	<string>Cranny keeps the files you drop on the notch in its Tray.</string>
-</dict>
-</plist>
-```
-
-### B.4 `App/InfoPlist.xcstrings`
-
-```json
-{
-  "sourceLanguage": "en",
-  "strings": {
-    "CFBundleDisplayName": {
-      "comment": "Bundle display name",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Cranny"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cranny"
-          }
-        }
-      }
-    },
-    "NSAppleEventsUsageDescription": {
-      "comment": "Privacy - AppleEvents Sending Usage Description",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Cranny controls Music and Spotify to show and change what is playing when the system media source is unavailable."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cranny управляет приложениями «Музыка» и Spotify, чтобы показывать и переключать треки, когда системный источник медиа недоступен."
-          }
-        }
-      }
-    },
-    "NSAudioCaptureUsageDescription": {
-      "comment": "Privacy - Audio Capture Usage Description",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Cranny listens to system audio output to animate the music visualizer. Audio is never recorded or stored."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cranny анализирует системный звук, чтобы анимировать визуализатор музыки. Звук никогда не записывается и не сохраняется."
-          }
-        }
-      }
-    },
-    "NSBluetoothAlwaysUsageDescription": {
-      "comment": "Privacy - Bluetooth Always Usage Description",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Cranny shows when Bluetooth devices such as headphones connect, and their battery level."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cranny показывает подключение Bluetooth-устройств, например наушников, и уровень их заряда."
-          }
-        }
-      }
-    },
-    "NSCalendarsFullAccessUsageDescription": {
-      "comment": "Privacy - Calendars Full Access Usage Description",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Cranny shows your upcoming events and meeting links in the notch. It never edits or uploads them."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cranny показывает ближайшие события и ссылки на встречи в вырезе экрана. Он никогда не изменяет и не отправляет их."
-          }
-        }
-      }
-    },
-    "NSCalendarsUsageDescription": {
-      "comment": "Privacy - Calendars Usage Description (legacy)",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Cranny shows your upcoming events and meeting links in the notch. It never edits or uploads them."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cranny показывает ближайшие события и ссылки на встречи в вырезе экрана. Он никогда не изменяет и не отправляет их."
-          }
-        }
-      }
-    },
-    "NSCameraUsageDescription": {
-      "comment": "Privacy - Camera Usage Description",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Cranny shows a camera preview in the Mirror widget. Video is never recorded."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cranny показывает изображение с камеры в виджете «Зеркало». Видео никогда не записывается."
-          }
-        }
-      }
-    },
-    "NSDesktopFolderUsageDescription": {
-      "comment": "Privacy - Desktop Folder Usage Description",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Cranny keeps the files you drop on the notch in its Tray."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cranny хранит в Лотке файлы, которые вы перетаскиваете на вырез экрана."
-          }
-        }
-      }
-    },
-    "NSDocumentsFolderUsageDescription": {
-      "comment": "Privacy - Documents Folder Usage Description",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Cranny keeps the files you drop on the notch in its Tray."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cranny хранит в Лотке файлы, которые вы перетаскиваете на вырез экрана."
-          }
-        }
-      }
-    },
-    "NSDownloadsFolderUsageDescription": {
-      "comment": "Privacy - Downloads Folder Usage Description",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Cranny keeps the files you drop on the notch in its Tray."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cranny хранит в Лотке файлы, которые вы перетаскиваете на вырез экрана."
-          }
-        }
-      }
-    },
-    "NSMicrophoneUsageDescription": {
-      "comment": "Privacy - Microphone Usage Description",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Cranny analyzes audio levels to animate the music visualizer. Audio is never recorded or stored."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cranny анализирует уровень звука, чтобы анимировать визуализатор музыки. Звук никогда не записывается и не сохраняется."
-          }
-        }
-      }
-    },
-    "NSNetworkVolumesUsageDescription": {
-      "comment": "Privacy - Network Volumes Usage Description",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Cranny keeps the files you drop on the notch in its Tray."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cranny хранит в Лотке файлы, которые вы перетаскиваете на вырез экрана."
-          }
-        }
-      }
-    },
-    "NSRemovableVolumesUsageDescription": {
-      "comment": "Privacy - Removable Volumes Usage Description",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Cranny keeps the files you drop on the notch in its Tray."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cranny хранит в Лотке файлы, которые вы перетаскиваете на вырез экрана."
-          }
-        }
-      }
-    }
-  },
-  "version": "1.0"
-}
-```
-
-### B.5 `App/Cranny.entitlements`
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-	<!-- Not sandboxed: Accessibility event taps, MediaRemote bridge, global hotkeys need it. -->
-	<!-- Hardened-runtime resource access (required for TCC prompts under ENABLE_HARDENED_RUNTIME). -->
-	<key>com.apple.security.automation.apple-events</key>
-	<true/>
-	<key>com.apple.security.device.camera</key>
-	<true/>
-	<key>com.apple.security.device.audio-input</key>
-	<true/>
-	<key>com.apple.security.personal-information.calendars</key>
-	<true/>
-</dict>
-</plist>
-```
-
-### B.6 `App/CrannyApp.swift`
-
-```swift
-import SwiftUI
-import CrannyAppShell
-
-/// The only Swift file in the app target: everything else lives in CrannyKit.
-@main
-struct CrannyApp: App {
-    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-
-    var body: some Scene {
-        CrannyScenes(appDelegate: appDelegate)
-    }
-}
-```
-
-### B.7 `scripts/lib.sh`
-
-*Superseded by the repo file:* it adds `ensure_metal_toolchain`, which checks `xcodebuild -showComponent MetalToolchain` for `Status: installed` and otherwise dies with the `xcodebuild -downloadComponent MetalToolchain` hint (D13, §8.5).
-
-```bash
-#!/usr/bin/env bash
-# Shared helpers for Cranny scripts. Source it; do not execute it.
-set -euo pipefail
-
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PROJECT="$ROOT/Cranny.xcodeproj"
-SCHEME="Cranny"
-PACKAGE_DIR="$ROOT/Packages/CrannyKit"
-BUILD_DIR="$ROOT/build"
-DERIVED_DIR="$BUILD_DIR/DerivedData"
-MIN_XCODE_MAJOR=26   # swift-tools-version 6.2, .icon app icons, objectVersion 77
-
-log()  { printf '\033[1;34m==>\033[0m %s\n' "$*" >&2; }
-warn() { printf '\033[1;33mwarning:\033[0m %s\n' "$*" >&2; }
-die()  { printf '\033[1;31merror:\033[0m %s\n' "$*" >&2; exit 1; }
-
-# Use a full Xcode even when `xcode-select -p` points at the Command Line Tools
-# (common on dev machines; changing it needs sudo). DEVELOPER_DIR wins if set.
-ensure_xcode() {
-  if [[ -z "${DEVELOPER_DIR:-}" ]]; then
-    local selected
-    selected="$(xcode-select -p 2>/dev/null || true)"
-    if [[ "$selected" != *.app/Contents/Developer ]]; then
-      local candidate
-      for candidate in /Applications/Xcode.app /Applications/Xcode-beta.app /Applications/Xcode_*.app /Applications/Xcode*.app; do
-        if [[ -x "$candidate/Contents/Developer/usr/bin/xcodebuild" ]]; then
-          export DEVELOPER_DIR="$candidate/Contents/Developer"
-          break
-        fi
-      done
-      [[ -n "${DEVELOPER_DIR:-}" ]] || die "Xcode not found. Install Xcode $MIN_XCODE_MAJOR+ or set DEVELOPER_DIR."
-      log "xcode-select points to '$selected'; using DEVELOPER_DIR=$DEVELOPER_DIR"
-    fi
-  fi
-  local version major
-  version="$(xcodebuild -version 2>/dev/null | awk 'NR==1 {print $2}')" || true
-  major="${version%%.*}"
-  [[ -n "$major" ]] || die "xcodebuild is not usable (DEVELOPER_DIR=${DEVELOPER_DIR:-unset})."
-  (( major >= MIN_XCODE_MAJOR )) || die "Xcode $version is too old; need $MIN_XCODE_MAJOR+."
-}
-
-# Pretty-print xcodebuild output when xcbeautify is installed (CI images have it).
-xcpretty_filter() {
-  if command -v xcbeautify >/dev/null 2>&1 && [[ "${VERBOSE:-0}" != 1 ]]; then
-    xcbeautify --quieter
-  else
-    cat
-  fi
-}
-
-# Read a key from a built app's Info.plist.
-plist_value() { /usr/libexec/PlistBuddy -c "Print :$2" "$1/Contents/Info.plist"; }
-```
-
-### B.8 `scripts/build.sh`
-
-```bash
-#!/usr/bin/env bash
-# Release build of Cranny.app (universal arm64 + x86_64) -> build/Cranny.app
-#
-#   scripts/build.sh                 # ad-hoc signed ("Sign to Run Locally"), no Apple account needed
-#   ARCHS=arm64 scripts/build.sh     # single-arch (faster)
-#   CONFIGURATION=Debug scripts/build.sh
-#   SIGN_IDENTITY="Developer ID Application: Jane Doe (TEAMID1234)" TEAM_ID=TEAMID1234 scripts/build.sh
-source "$(dirname "$0")/lib.sh"
-ensure_xcode
-
-CONFIGURATION="${CONFIGURATION:-Release}"
-ARCHS="${ARCHS:-arm64 x86_64}"
-LOG="$BUILD_DIR/logs/build-$CONFIGURATION.log"
-mkdir -p "$BUILD_DIR/logs"
-
-overrides=(ARCHS="$ARCHS" ONLY_ACTIVE_ARCH=NO)
-if [[ -n "${SIGN_IDENTITY:-}" ]]; then
-  # Distribution signing (maintainers only). Secure timestamp is required for notarization.
-  overrides+=(CODE_SIGN_IDENTITY="$SIGN_IDENTITY" DEVELOPMENT_TEAM="${TEAM_ID:?TEAM_ID is required with SIGN_IDENTITY}"
-              OTHER_CODE_SIGN_FLAGS="--timestamp" CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO)
-fi
-MARKETING_VERSION="${MARKETING_VERSION:-$(tr -d "[:space:]" < "$ROOT/VERSION")}"
-overrides+=(MARKETING_VERSION="$MARKETING_VERSION")
-[[ -n "${BUILD_NUMBER:-}" ]] && overrides+=(CURRENT_PROJECT_VERSION="$BUILD_NUMBER")
-
-log "Building $SCHEME ($CONFIGURATION, $ARCHS) with $(xcodebuild -version | head -1)"
-# 'generic/platform=macOS' (= "Any Mac") is what makes xcodebuild honour ARCHS; with the
-# implicit "My Mac" run destination it silently builds only the host architecture.
-set +e
-xcodebuild build \
-  -project "$PROJECT" -scheme "$SCHEME" -configuration "$CONFIGURATION" \
-  -destination 'generic/platform=macOS' \
-  -derivedDataPath "$DERIVED_DIR" \
-  "${overrides[@]}" 2>&1 | tee "$LOG" | xcpretty_filter
-status=${PIPESTATUS[0]}
-set -e
-(( status == 0 )) || die "xcodebuild failed ($status); full log: $LOG"
-
-PRODUCT="$DERIVED_DIR/Build/Products/$CONFIGURATION/Cranny.app"
-rm -rf "$BUILD_DIR/Cranny.app" "$BUILD_DIR/Cranny.app.dSYM"
-ditto "$PRODUCT" "$BUILD_DIR/Cranny.app"
-[[ -d "$PRODUCT.dSYM" ]] && ditto "$PRODUCT.dSYM" "$BUILD_DIR/Cranny.app.dSYM"
-
-APP="$BUILD_DIR/Cranny.app"
-codesign --verify --deep --strict "$APP" || die "code signature verification failed"
-log "Built $APP"
-log "  version $(plist_value "$APP" CFBundleShortVersionString) ($(plist_value "$APP" CFBundleVersion))"
-log "  $(lipo -archs "$APP/Contents/MacOS/Cranny" | sed 's/^/archs: /')"
-log "  $(codesign -dv "$APP" 2>&1 | grep -E '^(Signature|TeamIdentifier|CodeDirectory)' | tr '\n' ' ')"
-```
-
-### B.9 `scripts/run.sh`
-
-```bash
-#!/usr/bin/env bash
-# Debug build (host arch) + launch.
-#
-#   scripts/run.sh                      # build, quit the old dev instance, open the new one
-#   scripts/run.sh --no-build           # just relaunch
-#   scripts/run.sh -- --some-app-arg    # pass arguments to the app
-#   XOJIT=1 scripts/run.sh              # keep Xcode-style Debug (XOJIT previews => hardened runtime OFF)
-#   DEV_SIGN_IDENTITY="Cranny Dev" scripts/run.sh   # sign with a stable identity so TCC grants survive rebuilds
-#
-# Launches through LaunchServices (`open`) so macOS attributes TCC prompts
-# (Camera, Calendars, Accessibility, Automation...) to Cranny itself rather than to
-# the terminal that spawned it.
-source "$(dirname "$0")/lib.sh"
-
-build=1
-app_args=()
-while (($#)); do
-  case "$1" in
-    --no-build) build=0 ;;
-    --) shift; app_args=("$@"); break ;;
-    *) die "unknown option $1" ;;
-  esac
-  shift
-done
-
-APP="$DERIVED_DIR/Build/Products/Debug/Cranny.app"
-if (( build )); then
-  ensure_xcode
-  overrides=()
-  # With ad-hoc signing, Xcode prints "Disabling hardened runtime with ad-hoc codesigning"
-  # for Debug builds while ENABLE_XOJIT_PREVIEWS=YES (the Debug default). Turn it off for CLI
-  # runs so the dev build behaves like Release (library validation, hardened-runtime
-  # resource entitlements for camera/mic/calendars/Apple Events).
-  [[ "${XOJIT:-0}" == 1 ]] || overrides+=(ENABLE_XOJIT_PREVIEWS=NO)
-  # Stable code identity keeps TCC grants (Accessibility, Camera, Calendars) across rebuilds:
-  #   DEV_SIGN_IDENTITY="Cranny Dev" scripts/run.sh   (a self-signed Code Signing certificate in your login keychain)
-  [[ -z "${DEV_SIGN_IDENTITY:-}" ]] || overrides+=(CODE_SIGN_IDENTITY="$DEV_SIGN_IDENTITY")
-  log "Building Debug"
-  mkdir -p "$BUILD_DIR/logs"
-  set +e
-  xcodebuild build -project "$PROJECT" -scheme "$SCHEME" -configuration Debug \
-    -destination "platform=macOS,arch=$(uname -m)" -derivedDataPath "$DERIVED_DIR" \
-    ${overrides[@]+"${overrides[@]}"} 2>&1 | tee "$BUILD_DIR/logs/build-Debug.log" | xcpretty_filter
-  status=${PIPESTATUS[0]}
-  set -e
-  (( status == 0 )) || die "xcodebuild failed; see $BUILD_DIR/logs/build-Debug.log"
-fi
-[[ -d "$APP" ]] || die "$APP not found; run without --no-build first"
-
-# Quit only *this* build's instance (other Cranny copies, e.g. in /Applications, are left alone).
-if pgrep -f "$APP/Contents/MacOS/Cranny" >/dev/null; then
-  log "Quitting running dev instance"
-  pkill -f "$APP/Contents/MacOS/Cranny" || true
-  for _ in 1 2 3 4 5 6 7 8 9 10; do pgrep -f "$APP/Contents/MacOS/Cranny" >/dev/null || break; sleep 0.3; done
-fi
-
-log "Launching $APP"
-open -n "$APP" --args ${app_args[@]+"${app_args[@]}"}
-for _ in 1 2 3 4 5 6 7 8 9 10; do
-  if pid="$(pgrep -f "$APP/Contents/MacOS/Cranny" | head -1)" && [[ -n "$pid" ]]; then
-    log "Running (pid $pid). Logs: log stream --level debug --predicate 'process == \"Cranny\"'"
-    exit 0
-  fi
-  sleep 0.5
-done
-die "Cranny did not start; check ~/Library/Logs/DiagnosticReports/Cranny-*.ips"
-```
-
-### B.10 `scripts/smoke.sh`
-
-*Superseded by the repo file:* it also fails when `Contents/Resources/CrannyKit_CrannyEffects.bundle/Contents/Resources/default.metallib` is missing (D13).
-
-```bash
-#!/usr/bin/env bash
-# Launch smoke test of build/Cranny.app without UI: `Cranny --diagnostics <json>` writes a report and quits.
-# Checks: every CrannyKit resource bundle is embedded, the media bridge dylib is present, the Edit menu exists.
-#
-#   scripts/smoke.sh                 # uses build/Cranny.app
-#   APP=/path/Cranny.app scripts/smoke.sh
-source "$(dirname "$0")/lib.sh"
-
-APP="${APP:-$BUILD_DIR/Cranny.app}"
-[[ -d "$APP" ]] || die "$APP not found; run scripts/build.sh first"
-OUT="$BUILD_DIR/logs/diagnostics.json"
-mkdir -p "$BUILD_DIR/logs"; rm -f "$OUT"
-# No `timeout` on macOS: perl's alarm kills the app if it hangs (exit 142).
-/usr/bin/perl -e 'alarm shift; exec @ARGV' 60 "$APP/Contents/MacOS/Cranny" --diagnostics "$OUT" >/dev/null 2>&1 \
-  || die "Cranny --diagnostics failed or timed out"
-[[ -s "$OUT" ]] || die "no diagnostics written"
-expected=$(find "$PACKAGE_DIR/Sources" -mindepth 2 -maxdepth 2 -name Resources -type d | wc -l | tr -d ' ')
-/usr/bin/python3 -I - "$OUT" "$expected" <<'PY' || die "smoke test failed (see $OUT)"
-import json, sys
-r = json.load(open(sys.argv[1])); expected = int(sys.argv[2])
-problems = []
-if len(r.get("resourceBundles", [])) != expected: problems.append(f"bundles {len(r.get('resourceBundles', []))} != {expected}")
-if r.get("bridge", "(missing)") == "(missing)": problems.append("media bridge dylib missing")
-if not any(len(items) >= 4 for m in r.get("mainMenu", []) for items in m.values()): problems.append("no Edit menu key equivalents")
-print("\n".join(problems) or "smoke OK: %d bundles, bridge present, Edit menu present" % expected)
-sys.exit(1 if problems else 0)
-PY
-log "Smoke test passed ($OUT)"
-```
-
-### B.11 `scripts/dist.sh`
-
-```bash
-#!/usr/bin/env bash
-# Package build/Cranny.app as dist/Cranny-<version>.zip and .dmg (+ SHA-256 sums).
-#
-#   scripts/dist.sh                 # uses existing build/Cranny.app, or builds it first
-#   REBUILD=1 scripts/dist.sh
-#
-# Maintainers with an Apple Developer ID can produce a notarized release:
-#   xcrun notarytool store-credentials cranny-notary --apple-id you@example.com --team-id TEAMID1234
-#   SIGN_IDENTITY="Developer ID Application: Jane Doe (TEAMID1234)" TEAM_ID=TEAMID1234 \
-#   NOTARY_PROFILE=cranny-notary REBUILD=1 scripts/dist.sh
-# Without those variables the app stays ad-hoc signed: users must allow it once in
-# System Settings > Privacy & Security ("Open Anyway"), or run
-#   xattr -dr com.apple.quarantine /Applications/Cranny.app
-source "$(dirname "$0")/lib.sh"
-
-APP="$BUILD_DIR/Cranny.app"
-if [[ "${REBUILD:-0}" == 1 || ! -d "$APP" ]]; then
-  "$ROOT/scripts/build.sh"
-fi
-ensure_xcode
-
-VERSION="$(plist_value "$APP" CFBundleShortVersionString)"
-DIST="$ROOT/dist"
-NAME="Cranny-$VERSION"
-mkdir -p "$DIST"
-rm -f "$DIST/$NAME.zip" "$DIST/$NAME.dmg"
-
-notarize() { # $1 = file to submit
-  log "Notarizing $(basename "$1") (profile $NOTARY_PROFILE)"
-  xcrun notarytool submit "$1" --keychain-profile "$NOTARY_PROFILE" ${NOTARY_KEYCHAIN:+--keychain "$NOTARY_KEYCHAIN"} --wait
-}
-
-# 1) Notarize + staple the app itself first (when configured), so both archives carry the ticket.
-if [[ -n "${NOTARY_PROFILE:-}" ]]; then
-  [[ "$(codesign -dv "$APP" 2>&1 | grep -c 'TeamIdentifier=not set')" == 0 ]] \
-    || die "app is ad-hoc signed; rebuild with SIGN_IDENTITY/TEAM_ID before notarizing"
-  ditto -c -k --norsrc --keepParent "$APP" "$DIST/notarize-upload.zip"
-  notarize "$DIST/notarize-upload.zip"
-  rm -f "$DIST/notarize-upload.zip"
-  xcrun stapler staple "$APP"
-fi
-
-# 2) ZIP. ditto keeps symlinks and signatures intact (plain `zip` can break bundles);
-#    --norsrc drops local xattrs (com.apple.provenance...) so no __MACOSX/._ clutter.
-log "Creating $NAME.zip"
-ditto -c -k --norsrc --keepParent "$APP" "$DIST/$NAME.zip"
-
-# 3) DMG with an /Applications shortcut.
-log "Creating $NAME.dmg"
-STAGE="$(mktemp -d "${TMPDIR:-/tmp}/cranny-dmg.XXXXXX")"
-trap 'rm -rf "$STAGE"' EXIT
-ditto "$APP" "$STAGE/Cranny.app"
-ln -s /Applications "$STAGE/Applications"
-hdiutil create -volname "Cranny $VERSION" -srcfolder "$STAGE" -fs APFS -format UDZO -ov "$DIST/$NAME.dmg" >/dev/null
-if [[ -n "${SIGN_IDENTITY:-}" ]]; then
-  codesign --force --sign "$SIGN_IDENTITY" --timestamp "$DIST/$NAME.dmg"
-  if [[ -n "${NOTARY_PROFILE:-}" ]]; then
-    notarize "$DIST/$NAME.dmg"
-    xcrun stapler staple "$DIST/$NAME.dmg"
-  fi
-fi
-hdiutil verify "$DIST/$NAME.dmg" >/dev/null
-
-(cd "$DIST" && shasum -a 256 "$NAME.zip" "$NAME.dmg" > "$NAME.sha256")
-log "Artifacts in $DIST:"
-ls -lh "$DIST" | sed 1d >&2
-```
-
-### B.12 `scripts/check-modules.sh`
-
-*Superseded by the repo file:* the "D13: no offline Metal compilation" guard below **was removed** (Metal is allowed in `CrannyEffects`, D13). The script calls `ensure_metal_toolchain` after `ensure_xcode`.
-
-```bash
-#!/usr/bin/env bash
-# Build every CrannyKit library target on its own (`swift build --target`), each in
-# its own scratch path, so a module that accidentally relies on something it does not
-# import/depend on fails here instead of only inside the app build.
-#
-#   scripts/check-modules.sh                 # all non-test targets, sequential
-#   scripts/check-modules.sh CrannyMedia     # just these targets
-#   JOBS=4 scripts/check-modules.sh          # build targets in parallel
-#   TEST=1 scripts/check-modules.sh          # also run `swift test`
-source "$(dirname "$0")/lib.sh"
-ensure_xcode   # SwiftPM from Xcode's toolchain (CLT's would work too, but keep one toolchain)
-
-# D13: no offline Metal compilation in v1 (the Metal Toolchain is an optional Xcode component).
-if find "$PACKAGE_DIR/Sources" -name '*.metal' -print -quit | grep -q .; then
-  die "Metal sources found in CrannyKit/Sources (not allowed in v1, see ARCHITECTURE.md D13)"
-fi
-
-cd "$PACKAGE_DIR"
-if (($#)); then
-  targets=("$@")
-else
-  targets=()
-  while IFS= read -r t; do targets+=("$t"); done < <(
-    swift package describe --type json 2>/dev/null |
-      /usr/bin/python3 -I -c 'import json,sys; [print(t["name"]) for t in json.load(sys.stdin)["targets"] if t["type"] != "test"]' |
-      sort)
-fi
-(( ${#targets[@]} )) || die "no targets found"
-
-mkdir -p "$BUILD_DIR/logs"
-build_one() {
-  local t="$1" lower scratch
-  lower="$(printf '%s' "$t" | tr '[:upper:]' '[:lower:]')"
-  scratch="$PACKAGE_DIR/.build-$lower"
-  if swift build --target "$t" --scratch-path "$scratch" >"$BUILD_DIR/logs/module-$t.log" 2>&1; then
-    printf '  \033[32mok\033[0m    %s\n' "$t"
-  else
-    printf '  \033[31mFAIL\033[0m  %s  (log: build/logs/module-%s.log)\n' "$t" "$t"
-    grep -E 'error:' "$BUILD_DIR/logs/module-$t.log" | head -5 | sed 's/^/        /'
-    return 1
-  fi
-}
-
-log "Building ${#targets[@]} targets: ${targets[*]}"
-failed=0
-if [[ "${JOBS:-1}" -gt 1 ]]; then
-  pids=()
-  for t in "${targets[@]}"; do
-    build_one "$t" & pids+=($!)
-    while (( $(jobs -rp | wc -l) >= JOBS )); do sleep 0.2; done
-  done
-  for p in "${pids[@]}"; do wait "$p" || failed=1; done
-else
-  for t in "${targets[@]}"; do build_one "$t" || failed=1; done
-fi
-
-if [[ "${TEST:-0}" == 1 ]]; then
-  log "swift test"
-  swift test --scratch-path "$PACKAGE_DIR/.build-test" || failed=1
-fi
-(( failed == 0 )) || die "module check failed"
-log "All modules build independently"
-```
-
-### B.13 `scripts/sync-strings.sh`
-
-```bash
-#!/usr/bin/env bash
-# Update every CrannyKit String Catalog with the keys the compiler extracted from code
-# (what Xcode's editor does after a build, but scriptable/CI-friendly).
-#
-#   scripts/sync-strings.sh          # build targets that have a catalog, then sync
-#   CHECK=1 scripts/sync-strings.sh  # fail if a catalog would change (for CI)
-#
-# Uses the compiler-produced .stringsdata (exact keys such as "%lld minutes left").
-# `xcstringstool extract` exists too, but its lightweight parser turns interpolations
-# into "%arg" keys, so we do not use it.
-source "$(dirname "$0")/lib.sh"
-ensure_xcode
-cd "$PACKAGE_DIR"
-
-scratch="$PACKAGE_DIR/.build-strings"
-changed=0
-for catalog in Sources/*/Resources/Localizable.xcstrings; do
-  target="$(basename "$(dirname "$(dirname "$catalog")")")"
-  log "$target"
-  # The .stringsdata paths below are the swift-build backend's layout: request it explicitly
-  # (default on SwiftPM 6.4; Xcode 26's SwiftPM 6.2 defaults to the native backend).
-  swift build --build-system swiftbuild --target "$target" --scratch-path "$scratch" >/dev/null 2>&1 \
-    || die "build of $target failed (run scripts/check-modules.sh $target)"
-  stringsdata=()
-  while IFS= read -r f; do stringsdata+=("$f"); done < <(
-    find "$scratch/out/Intermediates.noindex" -path "*/$target-t.build/*" -name '*.stringsdata' 2>/dev/null)
-  (( ${#stringsdata[@]} )) || die "no .stringsdata for $target (is SwiftPM using the swiftbuild backend?)"
-  tmp="$(mktemp -d)"
-  cp "$catalog" "$tmp/Localizable.xcstrings"
-  xcrun xcstringstool sync "$tmp/Localizable.xcstrings" --stringsdata "${stringsdata[@]}"
-  if ! cmp -s "$catalog" "$tmp/Localizable.xcstrings"; then
-    changed=1
-    if [[ "${CHECK:-0}" == 1 ]]; then
-      warn "$catalog is out of date"
-    else
-      cp "$tmp/Localizable.xcstrings" "$catalog"
-      log "  updated $catalog"
-    fi
-  fi
-  rm -rf "$tmp"
-done
-if [[ "${CHECK:-0}" == 1 && $changed == 1 ]]; then
-  die "String Catalogs are out of date; run scripts/sync-strings.sh and commit the result"
-fi
-log "String Catalogs are in sync"
-```
-
-### B.14 `Makefile`
-
-*Superseded by the repo file:* `test` runs `ensure_metal_toolchain` after `ensure_xcode` (D13).
-
-```make
-# Thin wrapper around scripts/. All targets work when xcode-select points at the
-# Command Line Tools: the scripts locate /Applications/Xcode*.app themselves.
-SHELL := /bin/bash
-
-.PHONY: help build debug run smoke dist check test strings strings-check list clean distclean
-
-help:            ## Show this help
-	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
-
-build:           ## Release build, universal -> build/Cranny.app
-	@scripts/build.sh
-
-debug:           ## Debug build -> build/Cranny.app
-	@CONFIGURATION=Debug ARCHS="$$(uname -m)" scripts/build.sh
-
-run:             ## Debug build + launch (via LaunchServices)
-	@scripts/run.sh
-
-smoke:           ## Launch build/Cranny.app with --diagnostics and verify bundles/bridge/menu
-	@scripts/smoke.sh
-
-dist: build      ## zip + dmg (+ notarization when NOTARY_PROFILE is set) -> dist/
-	@scripts/dist.sh
-
-check:           ## Build every CrannyKit target separately (swift build --target)
-	@scripts/check-modules.sh
-
-test:            ## swift test for CrannyKit
-	@. scripts/lib.sh && ensure_xcode && cd Packages/CrannyKit && swift test --scratch-path .build-test
-
-strings:         ## Sync String Catalogs with keys used in code
-	@scripts/sync-strings.sh
-
-strings-check:   ## Fail if String Catalogs are out of date (CI)
-	@CHECK=1 scripts/sync-strings.sh
-
-list:            ## xcodebuild -list
-	@. scripts/lib.sh && ensure_xcode && xcodebuild -list -project Cranny.xcodeproj
-
-clean:           ## Remove build outputs
-	rm -rf build dist
-
-distclean: clean ## Also remove SwiftPM scratch dirs
-	rm -rf Packages/CrannyKit/.build Packages/CrannyKit/.build-* Packages/CrannyKit/.swiftpm
-```
-
-### B.15 `.github/workflows/ci.yml`
-
-*Superseded by the repo file:* a "Metal Toolchain" step follows "Toolchain" (`xcodebuild -downloadComponent MetalToolchain` unless already installed), here and in the `macos-26` fallback job (D13, §8.9).
-
-```yaml
-name: CI
-
-on:
-  push:
-    branches: [main]
-  pull_request:
-  workflow_dispatch:
-
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
-
-jobs:
-  build:
-    # Xcode-27 image (arm64, macOS 27, Xcode 27.0 default; public preview since 2026-07-16).
-    # Fallback while it is in preview: `macos-26` (Xcode 26.x default) also satisfies the
-    # project's minimum (Xcode 26 / Swift 6.2), see docs.
-    runs-on: xcode-27
-    timeout-minutes: 30
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Toolchain
-        run: |
-          xcode-select -p
-          xcodebuild -version
-          swift --version
-
-      - name: Every CrannyKit module builds on its own + unit tests
-        run: JOBS=3 TEST=1 scripts/check-modules.sh
-
-      - name: String Catalogs are in sync with code
-        run: CHECK=1 scripts/sync-strings.sh
-
-      - name: Release build (universal arm64 + x86_64, ad-hoc signed)
-        env:
-          BUILD_NUMBER: ${{ github.run_number }}
-        run: scripts/build.sh
-
-      - name: Launch smoke test (--diagnostics, no UI)
-        run: scripts/smoke.sh
-
-      - name: Package zip + dmg
-        run: scripts/dist.sh
-
-      - uses: actions/upload-artifact@v7
-        with:
-          name: Cranny-${{ github.sha }}
-          path: |
-            dist/*.zip
-            dist/*.dmg
-            dist/*.sha256
-          if-no-files-found: error
-          retention-days: 14
-
-      - uses: actions/upload-artifact@v7
-        if: failure()
-        with:
-          name: logs-${{ github.sha }}
-          path: build/logs/
-```
-
-### B.16 `.github/workflows/release.yml`
-
-*Superseded by the repo file:* the same "Metal Toolchain" step runs before "Build (universal)" (D13).
-
-```yaml
-name: Release
-
-on:
-  push:
-    tags: ['v*']          # e.g. git tag v0.2.0 && git push origin v0.2.0
-
-permissions:
-  contents: write         # create the GitHub Release
-
-jobs:
-  release:
-    runs-on: xcode-27
-    timeout-minutes: 45
-    env:
-      # Optional Developer ID signing + notarization. When these secrets are absent the
-      # release is ad-hoc signed (users allow it once in System Settings > Privacy & Security).
-      HAS_SIGNING: ${{ secrets.DEVELOPER_ID_P12_BASE64 != '' && secrets.NOTARY_KEY_P8_BASE64 != '' }}
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Version from tag (must match VERSION)
-        run: |
-          test "$(tr -d '[:space:]' < VERSION)" = "${GITHUB_REF_NAME#v}" || { echo "::error::VERSION file does not match tag $GITHUB_REF_NAME"; exit 1; }
-          echo "MARKETING_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
-          echo "BUILD_NUMBER=${{ github.run_number }}" >> "$GITHUB_ENV"
-
-      - name: Import Developer ID certificate + notary key
-        if: env.HAS_SIGNING == 'true'
-        env:
-          P12_BASE64: ${{ secrets.DEVELOPER_ID_P12_BASE64 }}
-          P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
-          NOTARY_KEY_P8_BASE64: ${{ secrets.NOTARY_KEY_P8_BASE64 }}
-          NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
-          NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
-        run: |
-          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
-          KEYCHAIN_PASSWORD="$(uuidgen)"
-          echo "$P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
-          security import "$RUNNER_TEMP/cert.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
-          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
-          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
-          IDENTITY="$(security find-identity -v -p codesigning "$KEYCHAIN" | awk -F'"' '/Developer ID Application/ {print $2; exit}')"
-          TEAM_ID="$(echo "$IDENTITY" | sed -E 's/.*\(([A-Z0-9]{10})\)$/\1/')"
-          echo "SIGN_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
-          echo "TEAM_ID=$TEAM_ID" >> "$GITHUB_ENV"
-          echo "$NOTARY_KEY_P8_BASE64" | base64 --decode > "$RUNNER_TEMP/notary.p8"
-          xcrun notarytool store-credentials cranny-notary \
-            --key "$RUNNER_TEMP/notary.p8" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" \
-            --keychain "$KEYCHAIN"
-          echo "NOTARY_PROFILE=cranny-notary" >> "$GITHUB_ENV"
-          echo "NOTARY_KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
-
-      - name: Build (universal)
-        run: scripts/build.sh
-
-      - name: Launch smoke test
-        run: scripts/smoke.sh
-
-      - name: Package (+ notarize when signing is configured)
-        run: scripts/dist.sh
-
-      - name: Publish GitHub Release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create "$GITHUB_REF_NAME" dist/*.zip dist/*.dmg dist/*.sha256 \
-            --title "Cranny $MARKETING_VERSION" --generate-notes --verify-tag
-```
-
-### B.17 `.gitignore`
-
-```text
-# Build outputs
-/build/
-/dist/
-DerivedData/
-.derived/
-# SwiftPM (one scratch dir per module: .build-<target>)
-.build/
-.build-*/
-.swiftpm/
-# Xcode per-user state
-xcuserdata/
-*.xcuserstate
-# macOS
-.DS_Store
-```
-
-### B.18 `Packages/CrannyKit/Sources/CrannyAppShell/App/Diagnostics.swift`
-
-`Cranny --diagnostics <file.json>` writes this report without creating any window and quits; `scripts/smoke.sh` depends on its keys (`resourceBundles`, `bridge`, `mainMenu`). WP0's `AppDelegate` must call it before building panels (as the verified skeleton does).
-
-```swift
-// CrannyAppShell/App/Diagnostics.swift — `Cranny --diagnostics <file.json>`: CI/launch smoke test, no UI.
-import AppKit
-import CrannyCore
-import Foundation
-
-enum Diagnostics {
-    static func argument(_ name: String) -> String? {
-        let a = CommandLine.arguments
-        guard let i = a.firstIndex(of: name), i + 1 < a.count else { return nil }
-        return a[i + 1]
-    }
-
-    static func write(to path: String, registry: ModuleRegistry) async {
-        var r: [String: Any] = [:]
-        let info = AppInfo.current()
-        r["app"] = ["id": info.bundleIdentifier, "version": info.version, "build": info.build]
-        r["preferredLanguages"] = Locale.preferredLanguages
-        r["mainPreferredLocalizations"] = Bundle.main.preferredLocalizations
-        r["resourceBundles"] = ((try? FileManager.default.contentsOfDirectory(atPath: Bundle.main.resourcePath ?? "")) ?? [])
-            .filter { $0.hasSuffix(".bundle") }.sorted()
-        r["registry"] = ["widgets": registry.widgets.map(\.id.rawValue), "activities": registry.activities.map(\.id.rawValue),
-                         "pages": registry.pages.map(\.id.rawValue), "shortcuts": registry.shortcuts.map(\.id.rawValue),
-                         "permissions": registry.permissionUses.map { "\($0.kind)" }]
-        r["permissionTitle.ru"] = Bundle(path: Bundle.main.path(forResource: "CrannyKit_CrannyCore", ofType: "bundle") ?? "")
-            .flatMap { b in b.path(forResource: "ru", ofType: "lproj").flatMap(Bundle.init(path:)) }?
-            .localizedString(forKey: "Accessibility", value: "(missing)", table: nil) ?? "(no bundle)"
-        r["mainMenu"] = NSApp.mainMenu?.items.map { item in
-            [item.title: item.submenu?.items.filter { !$0.keyEquivalent.isEmpty }.map { "\($0.title) ⌘\($0.keyEquivalent)" } ?? []]
-        } ?? []
-        let bridge = Bundle.main.privateFrameworksURL?.appending(path: "libCrannyMediaBridge.dylib").path ?? ""
-        r["bridge"] = FileManager.default.fileExists(atPath: bridge) ? bridge : "(missing)"
-        if let data = try? JSONSerialization.data(withJSONObject: r, options: [.prettyPrinted, .sortedKeys]) {
-            try? data.write(to: URL(fileURLWithPath: path))
-        }
-    }
-}
-```
-
-### B.19 `Packages/CrannyKit/Sources/CrannyAppShell/App/CompositionRoot.swift` (skeleton)
-
-```swift
-// CrannyAppShell/App/CompositionRoot.swift — the ONLY place that knows every module.
-import CrannyCalendar
-import CrannyCore
-import CrannyHUD
-import CrannyMedia
-import CrannyMirror
-import CrannyNotes
-import CrannyQuickApps
-import CrannySystemActivities
-import CrannyTimer
-import CrannyTodos
-import CrannyTray
-
-@MainActor enum CompositionRoot {
-    /// Registration order = default order of contributions (widget library, settings panes, palette).
-    static let modules: [any FeatureModule.Type] = [
-        MediaModule.self, CalendarModule.self, QuickAppsModule.self, MirrorModule.self, NotesModule.self,
-        TodosModule.self, TimerModule.self, TrayModule.self, HUDModule.self, SystemActivitiesModule.self,
-    ]
-
-    static func makeRegistry(notch: any NotchControl, environment: any SystemEnvironment, app: any AppControl) -> ModuleRegistry {
-        let settings = SettingsStore()
-        let services = CrannyServices(settings: settings, permissions: PermissionsCenter(),
-                                      haptics: Haptics(isEnabled: { settings[CoreSettings.haptics] }),
-                                      paths: .live, notch: notch, environment: environment, app: app)
-        let registry = ModuleRegistry(services: services)
-        for module in modules { registry.register(module) }
-        return registry
-    }
-}
-```
-
-### B.20 Placeholder icon and assets (R4; replaced by WP-Final's artwork)
-
-`App/AppIcon.icon/icon.json`:
-
-```json
-{
-  "fill" : {
-    "linear-gradient" : [
-      "extended-srgb:0.16000,0.10000,0.36000,1.00000",
-      "extended-srgb:0.05000,0.05000,0.09000,1.00000"
-    ]
-  },
-  "groups" : [
-    {
-      "layers" : [
-        {
-          "image-name" : "notch.svg",
-          "name" : "notch"
-        }
-      ],
-      "shadow" : { "kind" : "neutral", "opacity" : 0.5 },
-      "translucency" : { "enabled" : true, "value" : 0.4 }
-    },
-    {
-      "layers" : [
-        {
-          "image-name" : "glow.svg",
-          "name" : "glow",
-          "opacity" : 0.6
-        }
-      ],
-      "blur-material" : 0.5
-    }
-  ],
-  "supported-platforms" : {
-    "squares" : [
-      "macOS"
-    ]
-  }
-}
-```
-
-`App/AppIcon.icon/Assets/notch.svg` and `glow.svg`:
-
-```xml
-<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <path d="M332 0 H692 V96 Q692 176 612 176 H412 Q332 176 332 96 Z" fill="#000000"/>
-</svg>
-```
-
-```xml
-<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <ellipse cx="512" cy="300" rx="300" ry="120" fill="#8C73FF"/>
-</svg>
-```
-
-`App/Assets.xcassets/Contents.json` and `AccentColor.colorset/Contents.json`:
-
-```json
-{
-  "info" : { "author" : "xcode", "version" : 1 }
-}
-```
-
-```json
-{
-  "colors" : [
-    {
-      "color" : {
-        "color-space" : "srgb",
-        "components" : { "alpha" : "1.000", "blue" : "1.000", "green" : "0.450", "red" : "0.550" }
-      },
-      "idiom" : "universal"
-    }
-  ],
-  "info" : { "author" : "xcode", "version" : 1 }
-}
-```
+## Appendix B — App target, project and tooling files (pointers to the repo)
+
+Until WP0 this appendix held verified listings of these files. WP0 created them in the repo, and several now differ from those listings (see the notes), so this appendix only points to each file. Paths are relative to the repo root. The files belong to WP0 during phase B and to WP-Final afterwards (§10.0).
+
+| § | File | Purpose | Rules not visible in the code |
+|---|---|---|---|
+| B.1 | `Cranny.xcodeproj/project.pbxproj` | Hand-written project (objectVersion 77): app target `Cranny` and dylib target `CrannyMediaBridge` | Facts and build settings: §8.1–§8.2. Never link a dynamic product into the app (§2.1 rule 3). Xcode may reformat the file on first open; that is harmless, but don't commit unrelated churn. |
+| B.2 | `Cranny.xcodeproj/xcshareddata/xcschemes/Cranny.xcscheme` | The shared scheme: Run and Test in Debug, Profile and Archive in Release | Scripts and CI build it by name (`SCHEME="Cranny"` in `lib.sh`). |
+| B.3 | `App/Info.plist` | Partial plist, merged with the generated keys | Without `CFBundleLocalizations` [en, ru], package bundles fall back to English. An empty `CrannyGitHubRepository` disables the update check (§7.11). Every usage string of §7.13 lives here. The synchronized group's exception set keeps the file out of Copy Bundle Resources. |
+| B.4 | `App/InfoPlist.xcstrings` | English and Russian usage descriptions | WP0/WP-Final edit it; packages ask for changes (§7.13). |
+| B.5 | `App/Cranny.entitlements` | Hardened-runtime resource entitlements | `automation.apple-events`, `device.camera`, `device.audio-input`, `personal-information.calendars`. Never App Sandbox, never `cs.disable-library-validation` (§8.3). |
+| B.6 | `App/CrannyApp.swift` | The app target's only Swift file: `@main`, `@NSApplicationDelegateAdaptor(AppDelegate.self)`, `CrannyScenes` | Everything else lives in CrannyKit (D1). |
+| B.7 | `scripts/lib.sh` | Shared helpers: `ensure_xcode`, `ensure_metal_toolchain`, `log`, `warn`, `die`, `plist_value`, paths | `ensure_xcode` picks `/Applications/Xcode*.app` (major ≥ 26) when `xcode-select` points at the Command Line Tools; `DEVELOPER_DIR` wins if set. `ensure_metal_toolchain` requires `Status: installed` from `xcodebuild -showComponent MetalToolchain` **and** a working `xcrun metal -v`. Otherwise it stops with the install command, prefixed with the `DEVELOPER_DIR` it used (§8.5). It never downloads anything. |
+| B.8 | `scripts/build.sh` | Release build (or `CONFIGURATION=Debug`) → `build/Cranny.app` + dSYM | `-destination 'generic/platform=macOS'` is what makes universal builds work (§8.1). The version comes from `VERSION`, the build number from `BUILD_NUMBER`. Release builds are stripped like an archive (`DEPLOYMENT_POSTPROCESSING=YES`, `STRIP_INSTALLED_PRODUCT=YES`): no stabs and no builder paths, while the bridge keeps `_cranny_bridge_main`. The script fails if a stale unstripped binary survives an incremental build (`make clean`). `SIGN_IDENTITY` + `TEAM_ID` switch to Developer ID signing. |
+| B.9 | `scripts/run.sh` | Debug build (host architecture) and launch | Builds with `ENABLE_XOJIT_PREVIEWS=NO`, so Debug is hardened like Release (§8.2). Launches with `open -n`, so TCC attributes prompts to Cranny. Quits only this build's previous instance. Options: `--no-build`, `-- <app arguments>`, `DEV_SIGN_IDENTITY`, `XOJIT=1`. |
+| B.10 | `scripts/smoke.sh` | Launch test through `Cranny --diagnostics`, no UI | Fails unless all of these hold: every CrannyKit resource bundle is embedded (count = targets with a `Resources/` folder), the bridge dylib is present, the Edit menu exists, the Effects bundle holds `default.metallib`, **no** `.metal` or `.h` file ships anywhere in the app, and the diagnostics key `shaders` is `"ok"`. A missing Metal device or `CrannyDisableShaders` only prints a note. Uses perl's `alarm`, because macOS has no `timeout`. |
+| B.11 | `scripts/dist.sh` | zip (`ditto --norsrc --keepParent`), DMG and SHA-256 in `dist/` | Notarizes and staples the app first when `SIGN_IDENTITY`, `TEAM_ID` and `NOTARY_PROFILE` are set; otherwise the README's Gatekeeper path applies (§8.6). `hdiutil create` is deprecated on 27 (risk 9). |
+| B.12 | `scripts/check-modules.sh` | `swift build --target` for every target, each in its own scratch dir `.build-<target>`; `JOBS=N`, `TEST=1` | **Zero-warning gate:** it builds with `-Xswiftc -warnings-as-errors` (`-Xcc -Werror` for the Objective-C target), so a warning fails every run, warm or clean; `ALLOW_WARNINGS=1` only reports. The SwiftPM line `missing creator for mutated node: …CrannyKit_CrannyEffects.bundle/Contents/MacOS` is allowlisted (§8.5). The old `*.metal` guard is gone (D13). |
+| B.13 | `scripts/sync-strings.sh` | Adds the keys the compiler extracted (`.stringsdata`) to each catalog with `xcstringstool sync`; `CHECK=1` fails if a catalog would change | Passes `--build-system swiftbuild` and reads that backend's `out/Intermediates.noindex` layout, so it needs Xcode 27 (§8.5, risk 13). It never deletes keys. `xcstringstool extract` is not used. |
+| B.14 | `Makefile` | Thin wrapper: `build debug run smoke dist check test strings strings-check probe probe-check icon list clean distclean` | `make test` calls `swift test` directly, so it runs `ensure_xcode` and `ensure_metal_toolchain` itself. |
+| B.15 | `.github/workflows/ci.yml` | CI on pushes to main, PRs and manual runs: job `build` (`xcode-27`) and job `build-macos-26` | Steps: toolchain → Metal Toolchain → `JOBS=3 TEST=1 check-modules` → `CHECK=1 name-probe` → `CHECK=1 sync-strings` (not on `macos-26`) → universal build → smoke → dist → artifacts (logs on failure). `build-macos-26` keeps `continue-on-error: true` until its first green run (§8.9). It has never run on GitHub. |
+| B.16 | `.github/workflows/release.yml` | Tag `v*`: checks that the tag equals `VERSION`, optionally imports Developer ID and the notary key, installs the Metal Toolchain, builds, smoke-tests, packages (+ notarizes) and publishes a GitHub Release | The signing steps run only when the secrets exist (`HAS_SIGNING`). |
+| B.17 | `.gitignore` | `build/`, `dist/`, `DerivedData/`, `.build/`, `.build-*/`, `.swiftpm/`, `xcuserdata/`, `.DS_Store` | — |
+| B.18 | `Packages/CrannyKit/Sources/CrannyAppShell/App/Diagnostics.swift` | `Cranny --diagnostics <file.json>` writes a report without creating any window, then quits | `AppDelegate` handles the argument before it builds panels. `smoke.sh` reads `resourceBundles`, `bridge`, `mainMenu` and `shaders` (= `EffectsDiagnostics.shaderStatus`). `panelScreens` and `screens` (which displays get a panel, in AppKit coordinates) are for visual QA. Add keys freely; rename one of the four smoke keys only together with `smoke.sh`. |
+| B.19 | `Packages/CrannyKit/Sources/CrannyAppShell/App/CompositionRoot.swift` | The only file that imports every feature module; builds `CrannyServices` and the registry | Registration order (Media, Calendar, Quick Apps, Mirror, Notes, To-dos, Timer, Tray, HUD, System activities) is the default order of contributions. |
+| B.20 | `App/AppIcon.icon/` and `App/Assets.xcassets/` | The app icon as an Icon Composer document (`icon.json`, `Assets/notch.png`, `Assets/light.png`); the asset catalog holds `AccentColor` only | WP0 shipped final-style artwork (DESIGN.md §15), not R4's placeholder. `scripts/render-icon.swift` generates the PNG layers (`make icon`): edit the script, not the PNGs. `icon.json` adds a dark-appearance fill (`fill-specializations`). actool turns the document into `Assets.car` and the macOS 14/15 `AppIcon.icns` (§8.4). |
+| B.21 | `scripts/name-probe.sh` (added by WP0) | Regenerates `Tests/CrannyCoreTests/SDKNameCollisionProbe.swift`; `CHECK=1` fails when the committed probe is stale | The probe imports 16 Apple frameworks plus CrannyCore and aliases every top-level public CrannyCore type (153 names at WP0). A name that an SDK also exports becomes a compile error in `swift test` (§9.4). It runs under `LC_ALL=C`, so the output is the same in every locale. |
+| B.22 | `scripts/render-icon.swift` (added by WP0) | Draws the two 1024 × 1024 icon layers with CoreGraphics: the notch, built like `NotchShape`, and the light (two radial gradients, faded toward the top edge) | A build tool; it never ships. |
+| B.23 | `Packages/CrannyKit/Sources/CrannyAppShell/App/QAHooks.swift` (added by WP0) | Debug-only launch arguments for visual QA: `--qa-state closed\|compact\|peek\|open`, `--qa-page`, `--qa-exit-after`, `--qa-settings` | Compiled out of Release (`#if DEBUG`; checked absent from the Release binary). They send the view model the same inputs the pointer does and post no events. Usage: `docs/CONTRIBUTING.md`. |
 
 ---
 
 ## Appendix C — Verification log (2026-10-14, macOS 27.0.1, Xcode 27.0, Swift 6.4)
 
-A scratch repository with exactly the layout of §1 was built from R4's working PoC (re-pathed), the `Package.swift` of §2.2, the CrannyCore sources of §3 and Appendix A, DESIGN.md's design-system code, R2's v3 bridge, the reference Timer module, skeletons of Media (port publication), Tray (`TrayIntake` + drop zone), NotchUI (`NotchScene.swift` + canvas rendering widgets and `any LiveActivity` views), SettingsUI, Onboarding and AppShell (R1 panel, composition root, port stubs, diagnostics). Results:
+A scratch repository with exactly the layout of §1 was built from R4's working PoC (re-pathed), the `Package.swift` of §2.2, the CrannyCore sources of §3 and Appendix A (the verbatim listings Appendix A held until WP0), DESIGN.md's design-system code, R2's v3 bridge, the reference Timer module, skeletons of Media (port publication), Tray (`TrayIntake` + drop zone), NotchUI (`NotchScene.swift` + canvas rendering widgets and `any LiveActivity` views), SettingsUI, Onboarding and AppShell (R1 panel, composition root, port stubs, diagnostics). Results:
 
 | Check | Result |
 |---|---|
@@ -5489,13 +2709,35 @@ A scratch repository with exactly the layout of §1 was built from R4's working 
 | SDK name-collision probe (all public Core types aliased in a file importing AppKit, AVFoundation, AudioToolbox, CoreAudio, CoreBluetooth, EventKit, IOKit, QuickLookThumbnailing, ServiceManagement, SwiftUI, UniformTypeIdentifiers) | `ScrollPhase` was **ambiguous** with `SwiftUI.ScrollPhase` (hard error); renamed `SwipePhase`; no other collision |
 | B.12 Metal guard; B.13 `--build-system swiftbuild` | guard fails on a planted `.metal` file and passes without it (**guard since removed**: D13 reversed); sync + `CHECK=1` pass on SwiftPM 6.4 |
 | Toolchain state on this Mac (2026-10-14, later in the day) | `xcode-select -p` now returns Xcode.app (it pointed at the CLT earlier — scripts handle both); `xcodebuild -showComponent MetalToolchain` → `Status: installed`, toolchain `com.apple.dt.toolchain.Metal.32023.921.5`, asset ≈ 881 MB, check takes ≈ 0.7 s (now a build requirement, D13); CLT Swift is also 6.4 but lacks `xcstringstool`/`actool` |
-| **Metal pipeline (D13, 2026-10-14)** — scratch package `scratchpad/wp0/docs-metal/pkg` + a copy of the verified app layout with DESIGN.md App. B.2's files in `CrannyEffects` | **Library build:** several `.metal` files + a quoted `#include "…h"` + a cross-file `extern` call link into one `default.metallib`, with exactly the stitchable functions listed by `MTLLibrary.functionNames`. Built with **no** `resources:` entry (SwiftPM's built-in rule) and with `.process("Shaders")`: same result. The header is not copied into the bundle, and SwiftPM raises no "unhandled file" warning. `swift build --target CrannyEffects` (own scratch dir, 0 compiler warnings) and `swift test` compile it. SwiftPM's CLI prints one `missing creator for mutated node: (…bundle/Contents/MacOS)` planner line for Metal targets; xcodebuild does not. **App build:** universal Release `scripts/build.sh` shows `CompileMetalFile`/`MetalLink` (`-target air64-apple-macos14.0`, Metal toolchain from the cryptex mount) and produces `Cranny.app/Contents/Resources/CrannyKit_CrannyEffects.bundle/Contents/Resources/default.metallib`; `codesign --verify --deep --strict` OK; `scripts/smoke.sh` passes. A diagnostics probe inside the app reports `ShaderEffects.unavailabilityReason() == nil`, so `Bundle.module` resolves via `Bundle.main.resourceURL`. **Rendering in tests:** `ImageRenderer` rasterizes `.colorEffect`, `.layerEffect` and `.distortionEffect` in `swift test`. `.colorArray` arrives as `device const half4 *, int` and `.boundingRect` as `float4`. App. B.2's `auroraField` at 880 × 260 pt keeps the top 40 % at alpha 0, with peak alpha 0.36 (Subtle, cap 0.45) and 0.64 (Vivid, cap 0.80). All planned §5.6 signatures compile and render (stub bodies). **Failure mode:** a missing function **or** an argument-count mismatch renders fully transparent with no error or log. **SDK:** `Shader.compile(as:)` is macOS 15+ (not used; the 14 baseline relies on the function-name check) |
+| **Metal pipeline (D13, 2026-10-14)** — scratch package `scratchpad/wp0/docs-metal/pkg` + a copy of the verified app layout with DESIGN.md App. B.2's files in `CrannyEffects` | **Library build:** several `.metal` files + a quoted `#include "…h"` + a cross-file `extern` call link into one `default.metallib`, with exactly the stitchable functions listed by `MTLLibrary.functionNames`. Built with **no** `resources:` entry (SwiftPM's built-in rule) and with `.process("Shaders")`: same metallib; the header is not copied with the built-in rule (**correction from WP0:** `.process("Shaders")` does copy `CrannyShaders.h` into the bundle, see the WP0 rows), and SwiftPM raises no "unhandled file" warning. `swift build --target CrannyEffects` (own scratch dir, 0 compiler warnings) and `swift test` compile it. SwiftPM's CLI prints one `missing creator for mutated node: (…bundle/Contents/MacOS)` planner line for Metal targets; xcodebuild does not. **App build:** universal Release `scripts/build.sh` shows `CompileMetalFile`/`MetalLink` (`-target air64-apple-macos14.0`, Metal toolchain from the cryptex mount) and produces `Cranny.app/Contents/Resources/CrannyKit_CrannyEffects.bundle/Contents/Resources/default.metallib`; `codesign --verify --deep --strict` OK; `scripts/smoke.sh` passes. A diagnostics probe inside the app reports `ShaderEffects.unavailabilityReason() == nil`, so `Bundle.module` resolves via `Bundle.main.resourceURL`. **Rendering in tests:** `ImageRenderer` rasterizes `.colorEffect`, `.layerEffect` and `.distortionEffect` in `swift test`. `.colorArray` arrives as `device const half4 *, int` and `.boundingRect` as `float4`. App. B.2's `auroraField` at 880 × 260 pt keeps the top 40 % at alpha 0, with peak alpha 0.36 (Subtle, cap 0.45) and 0.64 (Vivid, cap 0.80). All planned §5.6 signatures compile and render (stub bodies). **Failure mode:** a missing function **or** an argument-count mismatch renders fully transparent with no error or log. **SDK:** `Shader.compile(as:)` is macOS 15+ (not used; the 14 baseline relies on the function-name check) |
 | `com.apple.symbolichotkeys` `AppleSymbolicHotKeys` | readable by a non-sandboxed process (81 entries, `parameters = (ascii, keyCode, modifiers)`); used only for the best-effort conflict warning |
-| Not verified here | everything tagged [UNVERIFIED] in §4–§8; runtime behaviour of the full shell (WP13), notarization, the GitHub runner, x86_64 execution (no Rosetta) |
+| **WP0 acceptance (2026-10-14)**: fresh clone of `main` at `1e536c5`, run with `make` targets in order (logs in the WP0 scratchpad, `wp0/final-clone.logs`) | **`make check`:** 17/17 targets from clean scratch dirs, **0 warnings** under `-warnings-as-errors` (108 s, sequential: `JOBS=1`, the default). **`make test`:** **67 tests in 16 test targets pass** (Core 22, AppShell 20, Effects 7, NotchUI 4, SettingsUI 3, one per other target); the opt-in `panelOnScreenMatchesR1` is skipped as designed. **`make strings-check`:** all 16 catalogs in sync, every key translated to Russian, no `xcstringstool` notices. **`make probe-check`:** up to date (153 names). **`make build`:** universal `x86_64 arm64`, `flags=0x10002(adhoc,runtime)`, signature verifies, 2 Metal files compiled, binaries stripped (no stabs or builder paths, dSYM UUIDs match), ≈ 25 s clean; the only warning is the App Intents metadata line. **`make smoke`:** 16 bundles, bridge present, Edit menu present, `shaders ok`, no `.metal`/`.h` in the app. **`make dist`:** zip 3.7 MB, DMG 4.1 MB (`hdiutil verify` VALID), sha256 |
+| WP0: media bridge in the stripped app | exports only `_cranny_bridge_main`; under `/usr/bin/perl` it answers `hello`, `pong`, `state`, `artwork` |
+| WP0: missing Metal Toolchain (simulated with stand-ins for `xcodebuild`/`xcrun` on `PATH`) | `make build` stops with the `ensure_metal_toolchain` message, prefixed with `DEVELOPER_DIR`, not with a compiler error |
+| WP0: zero-warning gate | a planted warning failed `check-modules.sh` twice in a row (warm scratch dir), then passed once removed |
+| WP0: shader resources | `.process("Shaders")` copied `CrannyShaders.h` into `CrannyKit_CrannyEffects.bundle`; with §2.2's `Package.swift` only `default.metallib` ships (`bundleShipsNoShaderSources`, `smoke.sh`) |
+| WP0: name probe and locales | `CHECK=1 scripts/name-probe.sh` passes under `C`, `C.UTF-8`, `en_US.UTF-8` and `ru_RU.UTF-8` (`LC_ALL=C` inside); `sync-strings.sh` output is the same under both UTF-8 locales |
+| WP0: R1 panel facts (`PanelSelfTests`, no input posted) | Always: `NotchPanel` configuration (non-activating, borderless, level 26) and `NotchRootView` hit-testing. With `CRANNY_INTEGRATION=1`, run twice, both passed: window layer 26 with the exact frame; the app is not activated and the frontmost app does not change; per-pixel pass-through (the shape takes the hit; canvas, rounded corner, shadow and a hidden handle do not), via `CGWindowListCopyWindowInfo` and `NSWindow.windowNumber(at:belowWindowWithWindowNumber:)`. Not checked: real click delivery, the panel over a full-screen Space (open issue 5) |
+| WP0: energy, open panel + aurora (Release arm64, M4 Max, 240-Hz external display, screen locked) | `TimelineView(.animation(minimumInterval:))` keeps SwiftUI updating at the display rate: 11.4 % CPU at 30 fps, still 9 % at 5 fps. `EffectClock`: 5.0 % at 30 fps, 3.6 % at 20 fps in a quiet run; same-session A/B 15.3–15.8 % → 9.6–10.0 %. ≈ 1.7–3.2 ms CPU per frame remain; **≤ 3 % not met** (open issue 1) |
+| WP0: visual QA (Debug, Russian, `--qa-state`, panel captured by window id because the screen was locked) | closed handle pill; compact and peek show the «Привет» sample; open shows «Главная» selected, no palette button, the aurora under the cards; the Settings window shows the full sidebar. The lock paused effects, so the captures show the resting frame |
+| Not verified here | everything tagged [UNVERIFIED] in §4–§8; runtime behaviour of the full shell (WP13); live hover, click, Esc and ⌃⌥N on screen; notarization; the GitHub runners (no remote yet); a notched display; macOS 14/15; x86_64 execution (no Rosetta) |
 
 ---
 
 ## Changelog
+
+### 2026-10-14 — WP0 landed: docs synced with the repo
+
+WP0 is done (§10.1). Both documents now describe what the repo contains, and the repo wins where a listing and a file differ.
+- **ARCHITECTURE.md:**
+  - **Appendices:** A and B are now pointers (path, purpose, rules not visible in the code) instead of verbatim listings, which had already drifted. New A.11 `EffectClock.swift`, B.21 `name-probe.sh`, B.22 `render-icon.swift`, B.23 `QAHooks.swift`. Appendix C gains the WP0 acceptance rows and a correction: `.process("Shaders")` copies the header.
+  - **Header, §1, §2–§3:** status and evidence rows (the research reports are in `docs/research/`); the repository tree; `ensure_metal_toolchain` also requires `xcrun metal -v`; §3.1 lists `EffectClock.swift`; the §3.17 Timer listing is resynced (translator comments); §3.11 states the namespace rule.
+  - **§4–§5:** §4.1 shows the repo's `NotchMachineState` and describes the WP0 reducer; §4.5 the `typing`/`menu` holds; §4.9 `.pointer` = `.all` until WP13; §4.10 the Esc monitor; §4.12 the middle-label gap; §5.3–§5.4 and §5.9 as built.
+  - **§8–§9:** §8.2 Release stripping; §8.4 the icon tooling; §8.5 new make targets, the zero-warning gate and the smoke checks; §8.8 drops "`.process("Shaders")` gives the same result"; §8.9 the `build-macos-26` job and the CI that has not run yet; §9.2 `EffectClock` replaces `TimelineView(.animation…)` for effects, and the energy target is recorded as not met; §9.4 the automated name probe; §9.6 `PanelSelfTests` and the QA hooks; §9.7 warnings-as-errors.
+  - **§10–§11:** §10.0 the intra-shell interfaces as built (fixes "setShortcut only writes the key", which contradicted §3.9: `HotKeyCenter.reapply()`); §10.1 status, "As built" and **Open issues after WP0**; WP11–WP16 and WP-Final adjusted to what WP0 already ships; §10.15 records the pane reset namespaces; risk 7 updated; risk 17 (energy) added; hardware checklist items 2–3.
+- **DESIGN.md:** §4.7, §5.3 and §5.6 rules 3 and 6 now say that effects take time from `EffectClock`; App. B.1 shows the `EffectClock` line and notes that the repo file is authoritative; App. B.2 records what WP0 shipped (`requiredFunctions` includes `auroraField`); §15 icon: the repo's `icon.json` (dark-appearance fill), layers drawn by `scripts/render-icon.swift`, and the top-edge fade; Appendix C has a WP0 row.
+- **CONTRIBUTING.md:** the energy rule names `EffectClock`.
+- **Unchanged on purpose:** `Package.swift` (§2.2), the §3 contracts, §4.12, §5.2 and the DESIGN.md design-system code, all byte-identical to the repo at WP0.
 
 ### 2026-10-14 — Metal decision (project owner): D13 reversed
 

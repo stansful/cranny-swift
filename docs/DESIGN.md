@@ -4,11 +4,11 @@
 
 | | |
 |---|---|
-| Status | **v1.0, adopted** (2026-10-14); aligned with ARCHITECTURE.md by the review of the same day, and amended for the Metal decision (ARCHITECTURE D13: §5.6, Appendix B.2). See ARCHITECTURE.md's "Changelog". This file is the single source of truth for every pixel, colour and animation in Cranny. |
+| Status | **v1.0, adopted** (2026-10-14); aligned with ARCHITECTURE.md by the review of the same day, amended for the Metal decision (ARCHITECTURE D13: §5.6, Appendix B.2), and synced with the repo after WP0 (effect clock, shipped shader files, icon). See ARCHITECTURE.md's "Changelog". This file is the single source of truth for every pixel, colour and animation in Cranny. |
 | Applies to | The notch surfaces (closed, compact, peek, HUD, open Nook, Tray), Settings, onboarding and the tutorial, the menu bar extra, the app icon. |
 | Platform | Deployment target macOS 14.0. Newer APIs (`MeshGradient`, `TextRenderer` 15+; Liquid Glass 26+) only behind `#available`, always with a designed fallback. |
 | Code | Every Swift block in this file is copied verbatim from a scratch package that builds with **zero errors and zero warnings** under Swift 6 / macOS 14 / the four CrannyKit upcoming features, with **both** default isolations (nonisolated and `MainActor`). See Appendix C. |
-| Effects | **Metal shaders** for the light layer and its moments: SwiftUI stitchable `colorEffect` / `layerEffect` / `distortionEffect` compiled from `CrannyEffects/Shaders/*.metal` (ARCHITECTURE D13, §5.6). Each has a designed **pure-SwiftUI fallback** (MeshGradient, Canvas, TimelineView, gradients, shadows), used under Reduce Motion, Low Power / thermal and when shaders are unavailable. No videos, GIFs or Lottie. |
+| Effects | **Metal shaders** for the light layer and its moments: SwiftUI stitchable `colorEffect` / `layerEffect` / `distortionEffect` compiled from `CrannyEffects/Shaders/*.metal` (ARCHITECTURE D13, §5.6). Each has a designed **pure-SwiftUI fallback** (MeshGradient, Canvas, gradients, shadows; time from `EffectClock`), used under Reduce Motion, Low Power / thermal and when shaders are unavailable. No videos, GIFs or Lottie. |
 | Clean room | Original work for Cranny (MIT). No NotchNook, boring.notch (GPL), Alcove or Atoll code, assets, names or UI text. Competitors were studied only through public reviews, product pages and issue-tracker titles. |
 
 **Contents.** 0 Decision record · 1 Principles · 2 Tokens · 3 Geometry & the NotchShape · 4 Motion · 5 The light layer · 6 The open Nook · 7 Widgets · 8 Tray & pipelines · 9 Live activities · 10 HUD · 11 Settings · 12 Onboarding & tutorial · 13 Menu bar extra · 14 Symbols, haptics, sound · 15 App icon · 16 Accessibility · 17 Copy & localisation · 18 What's better than NotchNook · Appendix A Components · Appendix B Ambient layer · Appendix C Verification.
@@ -1637,10 +1637,10 @@ VoiceOver running ──▶ hover never opens; click, shortcut or VO action does
 | Closed, nothing playing | **None**: no timers, no `TimelineView`, no Canvas. Event-driven only. |
 | Compact Now Playing | Visualizer ≤ 30 fps on AC, ≤ 20 fps on battery, only while audio plays; static otherwise |
 | Peek | The tide or row visuals only for the peek's lifetime |
-| Open | Light layer ≤ 30 fps on AC, 20 fps on battery |
+| Open | Light layer ≤ 30 fps on AC, 20 fps on battery, timed by `EffectClock` (CrannyCore), which wakes only at that rate. `TimelineView(.animation(minimumInterval:))` and `.periodic` are not used for effects: they keep SwiftUI redrawing at the display's refresh rate (ARCHITECTURE §9.2) |
 | Low Power Mode, `thermalState ≥ .serious` | Light becomes a static halo (0 fps) |
 | Full-screen app in front, panel occluded, Reduce Motion | Paused (Reduce Motion keeps a frozen frame) |
-| **Targets** | Activity Monitor Energy Impact < 1.0 idle; open plus aurora ≤ 3 % CPU; no hitches at 120 Hz. Measured with Instruments before each release. |
+| **Targets** | Activity Monitor Energy Impact < 1.0 idle; open plus aurora ≤ 3 % CPU; no hitches at 120 Hz. Measured with Instruments before each release. Not yet met for open plus aurora: ≈ 5–10 % at WP0 on a 240-Hz display (ARCHITECTURE §10.1, open issue 1). |
 
 ---
 
@@ -1670,7 +1670,7 @@ An optional layer, grafted from proposal B: **the Nook is a black crevice that l
 
 ### 5.3 Effects
 
-All effects are pure functions of time, palette, energy and intensity. They hold no per-particle state and no timers; `TimelineView(.animation(minimumInterval:paused:))` supplies time, and pausing it costs nothing. The backdrop is framed to the shape's **current** bounds, so the light rises with the bottom edge as the Nook opens. Each effect is drawn by a **Metal shader** (§5.6, primary). Each also has a **SwiftUI fallback** with the same look, palette mapping and alpha ceiling. The fallback is used under Reduce Motion (frozen resting frame), under Low Power / `thermalState ≥ .serious` (the static halo) and when shaders are unavailable.
+All effects are pure functions of time, palette, energy and intensity. They hold no per-particle state and no timers; `EffectClock(minimumInterval:)` supplies time at the budget's rate and stops entirely while paused, so pausing costs nothing. The backdrop is framed to the shape's **current** bounds, so the light rises with the bottom edge as the Nook opens. Each effect is drawn by a **Metal shader** (§5.6, primary). Each also has a **SwiftUI fallback** with the same look, palette mapping and alpha ceiling. The fallback is used under Reduce Motion (frozen resting frame), under Low Power / `thermalState ≥ .serious` (the static halo) and when shaders are unavailable.
 
 | Effect | Metal shader (§5.6) | SwiftUI fallback | Look | Parameters |
 |---|---|---|---|---|
@@ -1727,7 +1727,7 @@ Since ARCHITECTURE D13, the light is drawn by SwiftUI **stitchable** Metal funct
    - Launching with `-CrannyDisableShaders YES` forces the fallbacks (QA, energy A/B).
 3. **Uniforms come only from the caller.** The common set is:
    - `.boundingRect`: the view's rect, so size = `bounds.zw`.
-   - `time`: seconds from the effect's `TimelineView`, `mod 3600`.
+   - `time`: seconds from the effect's `EffectClock`, `mod 3600`.
    - Palette **stops**: `.colorArray(palette.glows)` → `device const half4 *stops, int count`. Shaders accept 1–5 stops; `AmbientPalette` supplies 3. `accent` is a foreground colour and never lights.
    - `energy`: 0…1, §5.3.
    - `intensity`: `AmbienceLevel.intensity`, Subtle 0.55 and Vivid 1. It scales structure and contrast, never the ceiling.
@@ -1738,7 +1738,7 @@ Since ARCHITECTURE D13, the light is drawn by SwiftUI **stitchable** Metal funct
    - The contrast audit of §2.1 therefore holds on both paths. The liquid neck is surface, not light: opaque black, no cap.
 5. **No banding.** The aurora, tide, halo and first light end with `.crannyDithered(scale: displayScale)`. This adds ±0.5 LSB of interleaved-gradient noise per *pixel* (a texture-free stand-in for blue noise) to the premultiplied colour, so dim light over black shows no rings.
 6. **Frame rate.**
-   - **Ambient:** time comes from `TimelineView(.animation(minimumInterval: budget.minimumInterval, paused:))`, giving **≤ 30 fps on AC, ≤ 20 fps on battery**, and 0 when paused (§4.7).
+   - **Ambient:** time comes from `EffectClock(minimumInterval: budget.minimumInterval)`, giving **≤ 30 fps on AC, ≤ 20 fps on battery**, and 0 when paused (§4.7).
    - **Moments:** the same rates (1/30 s on AC, 1/20 s on battery), whether the Nook is open or not, only for their lifetime (≤ 1.0 s), after which the view is removed. The liquid neck follows the satellite spring for 0.38 s.
    - **Budget:** GPU ≤ 1.5 ms per frame at the largest open size. The aurora returns early in the black top 40 %.
 7. **Never on content.** Shaders apply to light layers only, never to text, cards, artwork or controls. Light layers keep `.allowsHitTesting(false)` and `.accessibilityHidden(true)`.
@@ -1828,7 +1828,7 @@ Since ARCHITECTURE D13, the light is drawn by SwiftUI **stitchable** Metal funct
   - If titles don't fit their zone (Russian, XL text), they collapse to icons with tooltips and VoiceOver labels.
 - **Trailing: actions.**
   - ⌕ Command palette (⌘K), 📌 Pin (`pin` / `pin.fill`; pinned shows a `control` well), ⚙︎ Settings (⌘,).
-  - Plain icon buttons, 28 pt, 13-pt semibold glyphs; their shape follows Appearance ▸ Buttons.
+  - Plain icon buttons, 28 pt, 13-pt semibold glyphs; their shape follows Appearance ▸ Buttons. *Open:* the header sits in the band, where §2.3 asks for 32 × 24 hit targets; the design owner decides between a larger hit area and an exception (ARCHITECTURE §10.1, open issue 4).
 - **Centre:** the camera zone (N + 16) stays empty. On displays without a notch it shows the time and date.
 
 ### 6.3 Grid
@@ -2304,17 +2304,31 @@ Haptics use `NSHapticFeedbackManager.defaultPerformer.perform(_, performanceTime
 
 **Concept.** A graphite slab (the Mac at night). Its top edge carries a precise notch silhouette, built from the **same `NotchShape`** as the app, and a soft fan of light spills from beneath it: a mint core, then sky, then iris, with a faint rose edge. It reads as "a small opening where useful things live". At 16 px it stays legible as a dark tile with a notch and a bright crescent. It shares no shapes or colours with any competitor's icon.
 
-**Icon Composer (macOS 26+): `App/AppIcon.icon`** (the name must match `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon`, ARCHITECTURE §8.2; the verification below used the scratch name `Cranny.icon`). Compiled with `actool --app-icon AppIcon --minimum-deployment-target 14.0`, which produces `Assets.car` **and** a fallback `AppIcon.icns` for macOS 14/15. The first group is the top-most.
+**Icon Composer (macOS 26+): `App/AppIcon.icon`** (the name must match `ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon`, ARCHITECTURE §8.2; the verification below used the scratch name `Cranny.icon`). Compiled with `actool --app-icon AppIcon --minimum-deployment-target 14.0`, which produces `Assets.car` **and** a fallback `AppIcon.icns` for macOS 14/15. The first group is the top-most. The listing is the repo's `icon.json` as WP0 shipped it; the repo file wins if they ever differ.
 
 ```json
 {
-  "fill" : {
-    "linear-gradient" : [
-      "display-p3:0.17000,0.18000,0.22000,1.00000",
-      "display-p3:0.05000,0.05000,0.07000,1.00000"
-    ],
-    "orientation" : { "start" : { "x" : 0.5, "y" : 0 }, "stop" : { "x" : 0.5, "y" : 1 } }
-  },
+  "fill-specializations" : [
+    {
+      "value" : {
+        "linear-gradient" : [
+          "display-p3:0.17000,0.18000,0.22000,1.00000",
+          "display-p3:0.05000,0.05000,0.07000,1.00000"
+        ],
+        "orientation" : { "start" : { "x" : 0.5, "y" : 0 }, "stop" : { "x" : 0.5, "y" : 1 } }
+      }
+    },
+    {
+      "appearance" : "dark",
+      "value" : {
+        "linear-gradient" : [
+          "display-p3:0.04000,0.04000,0.05000,1.00000",
+          "display-p3:0.02000,0.02000,0.03000,1.00000"
+        ],
+        "orientation" : { "start" : { "x" : 0.5, "y" : 0 }, "stop" : { "x" : 0.5, "y" : 1 } }
+      }
+    }
+  ],
   "groups" : [
     {
       "name" : "Notch",
@@ -2333,17 +2347,19 @@ Haptics use `NSHapticFeedbackManager.defaultPerformer.perform(_, performanceTime
   "supported-platforms" : { "squares" : [ "macOS" ] }
 }
 ```
-- **Notch group:** `notch.png` (or `.svg`) is a 1024 canvas with the notch path hanging from y = 0: body 0.40 × 0.15 of the 824-pt body width, ears 0.045, bottom radius 0.06. It is black. Glass is on, so the system's specular edge gives it the "precision" highlight.
+- **Layers are generated:** `scripts/render-icon.swift` (`make icon`) draws both PNGs with CoreGraphics; change the script, never the PNGs.
+- **Notch group:** `notch.png` is a 1024 canvas with the notch path hanging from y = 0, built like `NotchShape` (continuous bottom corners, quarter-circle ears): body 0.40 × 0.15 of the 824-pt body width, ears 0.045, bottom radius 0.06. It is black. Glass is on, so the system's specular edge gives it the "precision" highlight.
 - **Light group:** `light.png` (no background) holds two radial gradients:
   - the core #9EFFEB → #54C7F2 → transparent #8B6CFF at (512, 170), r 400, squashed 1.25× vertically;
-  - a rose #FF4F8B lobe at 30 % at (650, 330).
+  - a rose #FF4F8B lobe at 30 % at (650, 330), r 250.
+  - A top fade (`destinationIn`, 12 % at y 40 → 100 % at the notch's bottom edge + 70), so the light seems to come from beneath the notch rather than beside its ears.
   - Blended plus-lighter, with glass off so the light stays soft.
-- **Appearance variants** (set in Icon Composer): **Dark** is a deeper fill (0.04 → 0.02). **Tinted** and **Clear** let the system tint the light at 50 % while the notch silhouette carries the mark.
+- **Appearance variants:** **Dark** is a deeper fill (0.04 → 0.02), stored in `icon.json` as a `fill-specializations` entry for the dark appearance. **Tinted** and **Clear** let the system tint the light at 50 % while the notch silhouette carries the mark (WP-Final checks them on hardware).
 - **Only two groups,** because Icon Composer warns when there are too many visible groups.
 
 **In-app use:** About and onboarding show the compiled icon via `NSApp.applicationIconImage`; actool already generates the macOS 14/15 fallback, so v1 ships no second renderer.
 
-**Flat fallback** (optional tooling, not in v1: only if a build path ever skips actool, or to export the two Icon Composer layers). `CrannyIconRenderer.draw(in: CGContext, side:)` uses CoreGraphics only, with no blur filters, so it renders identically at every size:
+**Flat fallback** (optional tooling, not built in v1: only if a build path ever skips actool; the layers come from `scripts/render-icon.swift`). `CrannyIconRenderer.draw(in: CGContext, side:)` uses CoreGraphics only, with no blur filters, so it renders identically at every size:
 1. Follow the macOS icon grid: an 824-pt body centred on 1024, clipped by a continuous squircle (r 185.4, taken from `RoundedRectangle(style: .continuous).path(in:).cgPath`).
 2. Draw a drop shadow: black 35 %, blur 28, y −10.
 3. Fill the body with a P3 gradient from (0.20, 0.21, 0.25) to (0.055, 0.058, 0.07).
@@ -2352,7 +2368,7 @@ Haptics use `NSHapticFeedbackManager.defaultPerformer.perform(_, performanceTime
 6. Stroke a 4-pt mint rim (#9EFFEB at 70 %) along the notch's *lower* outline: the product's keyline as a motif.
 7. Stroke a 10 % white inner highlight along the squircle.
 
-The same renderer exports the two Icon Composer layers. A build script renders 16–1024 px for an `AppIcon.appiconset`, used only if a build path ever skips actool.
+A build script could render 16–1024 px for an `AppIcon.appiconset`; it is needed only if a build path ever skips actool.
 
 ---
 
@@ -2774,7 +2790,7 @@ public struct DropZone: View {
 
 This code holds palette extraction, the energy budget and the signature Aurora field. In the package it is split in two files: everything down to and including `EffectBudget` is `CrannyCore/DesignSystem/AmbientPalette.swift` (shared by Media, the shell and Effects); `AuroraField` is `CrannyEffects/AuroraField.swift` (add `import CrannyCore`). Motes and Tide follow the same pattern, a pure function of time, palette, energy and intensity drawn in a Canvas, using the parameters in §5.3.
 
-Since ARCHITECTURE D13, this is the **SwiftUI path**: the fallback for Reduce Motion, Low Power / thermal and unavailable shaders (§5.6). WP11 puts the shader branch of B.2 in front of `AuroraField`'s SwiftUI branches and changes nothing below.
+Since ARCHITECTURE D13, this is the **SwiftUI path**: the fallback for Reduce Motion, Low Power / thermal and unavailable shaders (§5.6). WP0 put the shader branch of B.2 in front of `AuroraField`'s SwiftUI branches. The repo file `CrannyEffects/AuroraField.swift` is authoritative. It differs from the listing below only by that branch, `@Environment(\.displayScale)` for the dither and a `#Preview`. Time comes from `EffectClock` (CrannyCore), as below, not from `TimelineView(.animation(…))`, which kept SwiftUI redrawing at the display's refresh rate (§4.7).
 
 ```swift
 // CrannyCore/DesignSystem/AmbientPalette.swift (AmbientPalette, EffectBudget) + CrannyEffects/AuroraField.swift
@@ -2932,8 +2948,8 @@ public struct AuroraField: View, Animatable {
 
     public var body: some View {
         let interval = budget.minimumInterval
-        TimelineView(.animation(minimumInterval: interval ?? 1, paused: interval == nil)) { tl in
-            let t = interval == nil ? restingTime : tl.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3600)
+        EffectClock(minimumInterval: interval) { date in
+            let t = interval == nil ? restingTime : date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3600)
             Group {
                 if budget.effective(.aurora) == .halo {
                     RadialGradient(colors: [palette.glow1.color(cap * 0.6), .clear], center: .bottom, startRadius: 0, endRadius: 260)
@@ -3012,7 +3028,7 @@ Verified in a copy of the CrannyKit layout (ARCHITECTURE Appendix C, "Metal pipe
 - the metallib is embedded in the universal Release app, and `ShaderEffects.isAvailable` is true inside it;
 - the tests pass.
 
-WP0 copies `CrannyShaders.h`, `Dither.metal`, `ShaderEffects.swift` and the tests verbatim. WP11 starts `Aurora.metal` and the aurora branch from the listings below, writes the other seven functions against the signatures at the end, and adds every function name to `requiredFunctions`.
+WP0 shipped every file below verbatim, including `Aurora.metal` and the aurora branch (commit `22c9ddf`, ARCHITECTURE §10.1), so `requiredFunctions` already lists `auroraField`. From now on the repo files are authoritative. WP11 tunes the aurora against the fallback, writes the other seven functions against the signatures at the end, and adds every function name to `requiredFunctions`.
 
 ```metal
 // CrannyEffects/Shaders/CrannyShaders.h — helpers shared by the CrannyEffects shaders (DESIGN.md §5.6).
@@ -3140,7 +3156,7 @@ enum ShaderEffects {
 
     /// Every stitchable function the effects call. A missing function renders TRANSPARENT without any
     /// error, so availability is checked once, up front. WP11 adds each function it ships.
-    nonisolated static let requiredFunctions: Set<String> = ["crannyDither"]
+    nonisolated static let requiredFunctions: Set<String> = ["crannyDither", "auroraField"]
 
     /// QA switch: launching with `-CrannyDisableShaders YES` forces every SwiftUI fallback.
     nonisolated static let disableKey = "CrannyDisableShaders"
@@ -3178,15 +3194,15 @@ extension View {
 }
 ```
 
-The shader branch of `AuroraField`. It sits inside the same `TimelineView`, used when `budget.effective(.aurora) != .halo && ShaderEffects.usesShader(budget)`:
+The shader branch of `AuroraField`. It sits inside the same `EffectClock` and is used when `budget.effective(.aurora) != .halo && ShaderEffects.usesShader(budget)`:
 
 ```swift
-// CrannyEffects/AuroraField.swift (WP11) — the shader branch, placed in front of the SwiftUI branches.
+// CrannyEffects/AuroraField.swift (since WP0) — the shader branch, placed in front of the SwiftUI branches.
 import SwiftUI
 import CrannyCore
 
 /// The aurora through `auroraField` (Aurora.metal). Same inputs as the SwiftUI path; `time` comes from the
-/// effect's TimelineView, so `EffectBudget` still decides the frame rate.
+/// effect's clock (`EffectClock`), so `EffectBudget` still decides the frame rate.
 @MainActor func auroraShader(palette: AmbientPalette, level: AmbienceLevel, energy: Double, time: Double,
                   displayScale: CGFloat) -> some View {
     Rectangle()
@@ -3197,7 +3213,7 @@ import CrannyCore
 }
 ```
 
-`Tests/CrannyEffectsTests/ShaderEffectsTests.swift`. The first test never needs a GPU. The second skips itself without a Metal device, as on VM runners:
+`Tests/CrannyEffectsTests/ShaderEffectsTests.swift`. The first test never needs a GPU. The second skips itself without a Metal device, as on VM runners. WP0 added `ShaderRenderTests.swift` (`auroraField` keeps the band black and stays under the cap; `crannyDither` keeps coverage) and `EffectsModuleTests.swift` (budget pause, shader/fallback switch, no shader sources in the bundle):
 
 ```swift
 import Foundation
@@ -3247,7 +3263,8 @@ The remaining functions of §5.6. Each goes in its own file with the usual three
 | Renders | `out/states-notch.png`, `states-floating.png`, `states-attached.png` (closed inside the red hardware outline; ears; shadows only when elevated), `corner-zoom.png` (ear + keyline starting below the band), `open-subtle.png` / `open-vivid.png` / `open-off.png` (full Nook composition with smoked cards, header in the band and the aurora). |
 | Icon Composer | `actool --compile … --app-icon Cranny --minimum-deployment-target 14.0` on the 2-group `Cranny.icon` above → `Assets.car` + `Cranny.icns`, no errors. |
 | SF Symbols | Every name in §14.1 checked against `name_availability.plist` (all ≤ macOS 14) and `symbol_restrictions.strings` (`video*` = FaceTime only; `airpods*`, `beats.*`, `accessibility` restricted to those products/features). |
-| Window behaviour the design relies on | Research R1 (`scratchpad/research/R1-notch-window.md`): per-pixel click-through, `.shadow` pass-through, the tri-state `ignoresMouseEvents`, nonactivating-at-init, key hand-back, fixed-canvas morph at 222–238 fps. |
+| Window behaviour the design relies on | Research R1 (`docs/research/R1-notch-window.md`): per-pixel click-through, `.shadow` pass-through, the tri-state `ignoresMouseEvents`, nonactivating-at-init, key hand-back, fixed-canvas morph at 222–238 fps. |
 | Review amendments (2026-10-14) | `DropZone.title: String`, `Text(verbatim: "Cranny")`, `NookGrid.paddingTune`, `CrannyTheme.panelPaddingTune`: rebuilt inside the full CrannyKit layout (`scratchpad/poc/review`), 0 warnings, Core tests pass incl. `NookGrid(paddingTune: 3)` → padding 15, panel r 35, card r 20. |
 | Metal shaders (App. B.2, §5.6; 2026-10-14) | `CrannyShaders.h`, `Dither.metal`, `Aurora.metal`, `ShaderEffects.swift`, the aurora branch and the tests compiled inside a copy of the CrannyKit layout, with `CrannyEffects` built under **both** default isolations and 0 compiler warnings, and passed `swift test`. The universal Release app embeds `CrannyKit_CrannyEffects.bundle/Contents/Resources/default.metallib`, and `ShaderEffects.unavailabilityReason()` is nil inside the app. `ImageRenderer` renders of `auroraField` (+ dither) at 880 × 260 pt: top 40 % alpha 0; peak 0.36 / 0.64 against caps 0.45 / 0.80; curtains visibly tall and three-stop. The other seven signatures compile and render with stub bodies. A missing function or wrong argument count renders transparent, silently (hence `requiredFunctions` + per-function render tests). One comment line of B.1 was updated ("SwiftUI path…"); no code changed. |
+| WP0 in the repo (2026-10-14) | The design-system files (`Color`, `Typography`, `Layout`, `Motion`, `Notch`, `Theme`, `Components`, `AmbientPalette`), `CrannyShaders.h`, `Dither.metal`, `Aurora.metal`, `ShaderEffects.swift` (+ `auroraField` in `requiredFunctions`) and the B.2 tests are byte-identical to this document; `AuroraField.swift` differs from B.1 only as described there. `make check`: 0 warnings; 67 tests pass, including the `auroraField` render test (top 40 % black, peak alpha under the cap). actool compiled the WP0 icon (`fill-specializations` + two rendered layers) into `Assets.car` and `AppIcon.icns`. Energy: the open panel with the aurora costs ≈ 5–10 % CPU on a 240-Hz display with `EffectClock` (11.4 % with `TimelineView` at 30 fps), so §4.7's ≤ 3 % is not met yet (ARCHITECTURE Appendix C). Screenshots were captured by window id with the screen locked, so the light shows its resting frame. |
 | Not verified here | Real notch radii and widths on each MacBook model (this Mac runs in clamshell mode with an external display). The closed radius 0.30·band and the 0.5-pt inset are starting values; calibrate on 13″/14″/15″/16″ hardware at every scaling mode with the Notch fit sheet and record per-model defaults. On-screen CPU/energy and the shaders' GPU frame time (Instruments on hardware). The look of the seven shaders WP11 still writes, and their parity with the fallbacks. Haptic delivery from a background agent. |

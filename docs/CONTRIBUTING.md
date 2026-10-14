@@ -91,7 +91,10 @@ main; `Task.sleep` to deadlines, never repeating timers.
 **Performance and energy (release gate).** Closed with nothing playing = zero work: no timers, no
 `TimelineView`, no polling. Timers only while visible; effects ≤ 30 fps on AC, ≤ 20 on battery, a
 static halo in Low Power Mode, paused when hidden, locked or behind full screen; Reduce Motion freezes a
-resting frame. Hardware (camera, audio tap) only while visible. No I/O on the main actor.
+resting frame. Anything redrawn more often than about twice a second takes its time from `EffectClock`
+(CrannyCore), never `TimelineView(.animation(minimumInterval:))` or `.periodic`, which keep SwiftUI redrawing
+at the display's refresh rate (ARCHITECTURE.md §9.2). Hardware (camera, audio tap) only while visible.
+No I/O on the main actor.
 
 **Errors and logging.** User-visible errors are localized one-liners in a `<Module>Error`; widgets show
 `WidgetStateView(.error, …)` with a retry. Expected absences are not errors. Log with
