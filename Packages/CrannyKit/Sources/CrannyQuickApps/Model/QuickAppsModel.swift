@@ -74,6 +74,7 @@ nonisolated private let log = Log.logger(.quickApps)
 
     func stop() {
         runs.cancelAll()
+        shortcutsCatalog.cancel()
         running.stop()
         observations = []
         if let notchObserver { notch.removeEventObserver(notchObserver) }

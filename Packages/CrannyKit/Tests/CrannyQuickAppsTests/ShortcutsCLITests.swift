@@ -89,3 +89,33 @@ import Testing
     #expect(FileManager.default.fileExists(atPath: directory.appending(path: "interrupted").path))
     #expect(!FileManager.default.fileExists(atPath: directory.appending(path: "terminated").path))
 }
+
+@Test func aListThatDoesNotAnswerFailsAfterItsTimeout() async {
+    let gate = Gate()
+    defer { gate.open() }
+    let hung = FakeCLI { _ in await gate.wait(); return CLIOutput() }
+    await #expect(throws: QuickAppsError.listFailed) { _ = try await hung.cli(listTimeout: .milliseconds(100)).list() }
+    #expect(!gate.isOpen)                                         // answered while the CLI was still stuck
+    #expect(gate.sawCancellation)                                 // the live runner interrupts the CLI here
+}
+
+@Test func aRunHasNoTimeLimit() async throws {
+    let slow = FakeCLI(runDuration: .milliseconds(300))
+    try await slow.cli(listTimeout: .milliseconds(50)).run("X")   // a shortcut may run for minutes
+    #expect(slow.calls == [["run", "X"]])
+}
+
+@Test func realProcessListThatHangsIsStoppedAtItsTimeout() async throws {
+    let (script, directory) = try makeScript("""
+        echo $$ > "$(dirname "$0")/pid"
+        exec /bin/sleep 30
+        """)
+    defer { try? FileManager.default.removeItem(at: directory) }
+    let cli = ShortcutsCLI(executable: script.path, listTimeout: .milliseconds(500))
+    let started = ContinuousClock.now
+    await #expect(throws: QuickAppsError.listFailed) { _ = try await cli.list() }
+    #expect(ContinuousClock.now - started < .seconds(10))         // not the script's 30 s
+    let pid = try #require(Int32(String(contentsOf: directory.appending(path: "pid"), encoding: .utf8)
+        .trimmingCharacters(in: .whitespacesAndNewlines)))
+    #expect(await waitUntil { kill(pid, 0) != 0 })                 // the CLI was stopped, not left running
+}
