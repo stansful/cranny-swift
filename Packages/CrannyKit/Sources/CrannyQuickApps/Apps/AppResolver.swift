@@ -4,6 +4,7 @@
 // in `@concurrent` functions off the main actor and hands back Sendable values (`ResolvedApp`, `CGImage`).
 import AppKit
 import CoreGraphics
+import CrannyCore
 import Foundation
 import UniformTypeIdentifiers
 
@@ -57,8 +58,6 @@ nonisolated struct WorkspaceAppResolver: AppResolving {
         return context.makeImage()
     }
 
-    private static func displayName(of url: URL) -> String {
-        let name = FileManager.default.displayName(atPath: url.path)
-        return name.hasSuffix(".app") ? String(name.dropLast(4)) : name
-    }
+    /// Finder's localized name without ".app" (CrannyCore's `AppIdentity`, shared with Settings and Media).
+    private static func displayName(of url: URL) -> String { AppIdentity.displayName(of: url) }
 }

@@ -85,6 +85,8 @@ nonisolated final class FakeCLI: @unchecked Sendable {   // `calls` is guarded b
     init(installed: [String] = ["com.apple.finder", "com.apple.Safari", "com.apple.mail", "com.apple.Music"],
          apps: [String]? = nil, shortcuts: [ShortcutEntry] = [], running: [String] = [], cli: FakeCLI = FakeCLI()) {
         services = CrannyServices.preview()
+        let recorder = announced
+        services.announcer = Announcer(post: { recorder.messages.append($0) })
         if let apps { services.settings[QuickAppsSettings.apps] = apps.map(AppEntry.init(bundleID:)) }
         services.settings[QuickAppsSettings.shortcuts] = shortcuts
         launcher = RecordingLauncher()
@@ -94,8 +96,6 @@ nonisolated final class FakeCLI: @unchecked Sendable {   // `calls` is guarded b
         resolver = FakeResolver(installed)
         model = QuickAppsModel(services: services, resolver: resolver, launcher: launcher, cli: cli.cli,
                                running: RunningAppsObserver(center: center, snapshot: { running }))
-        let recorder = self.announced
-        model.announce = { recorder.messages.append($0) }
     }
 
     /// VoiceOver announcements the model posted.

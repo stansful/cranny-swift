@@ -103,9 +103,3 @@ import Testing
     #expect(RunningRing.frameInterval(environment.effectBudget(isOpen: true, isOnScreen: true, reduceMotion: true)) == nil)
 }
 
-@Test func announcementsAreLimitedToOnePer10Seconds() {
-    var limiter = AnnouncementLimiter()
-    let start = Date(timeIntervalSince1970: 1000)
-    let answers = [0, 9.9, 10, 12].map { limiter.allows(at: start.addingTimeInterval($0)) }
-    #expect(answers == [true, false, true, false])
-}

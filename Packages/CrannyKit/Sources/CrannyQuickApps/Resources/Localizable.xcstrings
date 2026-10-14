@@ -619,6 +619,7 @@
     },
     "Reset to Default" : {
       "comment" : "Settings: row context menu item",
+      "extractionState" : "stale",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
