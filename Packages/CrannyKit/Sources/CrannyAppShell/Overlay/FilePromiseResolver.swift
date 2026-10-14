@@ -33,6 +33,11 @@ nonisolated enum FilePromiseResolver {
             .appending(path: "Incoming", directoryHint: .isDirectory)
     }
 
+    /// `incomingDirectory(paths:)` off the main actor (the drop router creates one per promise drop, §9.2).
+    @concurrent static func makeIncomingDirectory(paths: AppPaths) async -> URL? {
+        incomingDirectory(paths: paths)
+    }
+
     /// A fresh `Incoming/<uuid>/` directory in the tray's cache, or nil if it cannot be created.
     static func incomingDirectory(paths: AppPaths) -> URL? {
         do {
