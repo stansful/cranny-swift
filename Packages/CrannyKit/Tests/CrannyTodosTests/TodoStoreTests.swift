@@ -55,7 +55,7 @@ struct TodoStoreTests {
         try FileManager.default.createDirectory(at: storage.url.deletingLastPathComponent(), withIntermediateDirectories: true)
         try Data("{ not json".utf8).write(to: storage.url)
         let outcome = try storage.loadNow()
-        guard case .corrupt(let aside?) = outcome else { Issue.record("expected .corrupt, got \(outcome)"); return }
+        guard case .corrupt(let aside) = outcome else { Issue.record("expected .corrupt, got \(outcome)"); return }
         #expect(FileManager.default.fileExists(atPath: aside.path))
         #expect(!FileManager.default.fileExists(atPath: storage.url.path))
         #expect(aside.lastPathComponent.hasPrefix("todos.json.corrupt-"))
@@ -69,6 +69,50 @@ struct TodoStoreTests {
         guard case .loaded(let document) = try storage.loadNow() else { Issue.record("not saved"); return }
         #expect(document.items.map(\.title) == ["fresh"])
         #expect(document.version == TodoDocument.currentVersion)
+    }
+
+    @Test func corruptFilesInTheSameSecondKeepSeparateCopies() async throws {
+        let storage = temporaryStorage()
+        let directory = storage.url.deletingLastPathComponent()
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        var asides: [URL] = []
+        for junk in ["{ first", "{ second"] {
+            try Data(junk.utf8).write(to: storage.url)
+            guard case .corrupt(let aside) = try storage.loadNow() else { Issue.record("expected .corrupt"); return }
+            asides.append(aside)
+        }
+        #expect(asides[0] != asides[1])
+        #expect(try asides.map { try String(contentsOf: $0, encoding: .utf8) } == ["{ first", "{ second"])
+        let same = TodoStorage.asideURL(for: storage.url, date: Date(timeIntervalSince1970: 7))
+        #expect(same != TodoStorage.asideURL(for: storage.url, date: Date(timeIntervalSince1970: 7)))
+    }
+
+    @Test func corruptFileThatCannotBeMovedAsideFailsAndIsNeverOverwritten() async throws {
+        // A read-only directory: the file can be read but not renamed (and nothing can be written next to it).
+        let storage = temporaryStorage()
+        let directory = storage.url.deletingLastPathComponent()
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try Data("{ not json".utf8).write(to: storage.url)
+        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: directory.path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: directory.path) }
+        #expect(throws: (any Error).self) { try storage.loadNow() }
+
+        let store = await store(storage)
+        #expect(store.phase == .failed)
+        store.update { $0.insert(Todo(title: "x"), after: nil) }
+        await store.save()
+        store.flush()
+        // Writable again: still nothing may replace the corrupt file until a load has moved it aside.
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: directory.path)
+        await store.save()
+        store.flush()
+        #expect(try String(contentsOf: storage.url, encoding: .utf8) == "{ not json")
+        #expect(try FileManager.default.contentsOfDirectory(atPath: directory.path) == ["todos.json"])
+
+        // "Try again" (a reload) now succeeds: the file goes aside and the list is usable.
+        await store.load()
+        #expect(store.phase == .ready)
+        #expect(try FileManager.default.contentsOfDirectory(atPath: directory.path).contains { $0.hasPrefix("todos.json.corrupt-") })
     }
 
     @Test func unreadableFileFailsAndIsNeverOverwritten() async throws {

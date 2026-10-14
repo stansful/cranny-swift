@@ -1,5 +1,6 @@
 // CrannyTodos/TodosError.swift — the failures a user can see (ARCHITECTURE.md §9.3). A missing or corrupt
-// file is not an error: the list starts empty (the corrupt file is kept aside).
+// file is not an error: the list starts empty (the corrupt file is kept aside). A corrupt file that cannot be
+// moved aside is `loadFailed`, like an unreadable one.
 import Foundation
 
 nonisolated enum TodosError: Error, LocalizedError, Equatable {

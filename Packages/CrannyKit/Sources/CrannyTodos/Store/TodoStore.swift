@@ -10,7 +10,8 @@ private let log = Log.logger(.todos)
 @MainActor @Observable final class TodoStore {
     enum Phase: Equatable {
         case loading, ready
-        /// The file exists but could not be read: show the error state and never save over it.
+        /// The file exists but could not be read, or is corrupt and could not be moved aside: show the error
+        /// state and never save over it.
         case failed
     }
 

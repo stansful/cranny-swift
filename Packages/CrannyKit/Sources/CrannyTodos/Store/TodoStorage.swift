@@ -15,9 +15,10 @@ nonisolated final class TodoStorage: Sendable {
         case loaded(TodoDocument)
         /// First launch: there is no file yet.
         case missing
-        /// The file could not be decoded. It was renamed aside (`movedTo`, nil if even that failed) and the
-        /// list starts empty, the same policy as Core's `JSONFileStore`.
-        case corrupt(movedTo: URL?)
+        /// The file could not be decoded. It was renamed aside to `movedTo` and the list starts empty, the same
+        /// policy as Core's `JSONFileStore`. If it cannot be renamed, `load` throws instead: the only copy of the
+        /// user's list is never left where the next save would replace it.
+        case corrupt(movedTo: URL)
     }
 
     let url: URL
@@ -37,8 +38,8 @@ nonisolated final class TodoStorage: Sendable {
 
     @concurrent func load() async throws -> LoadOutcome { try loadNow() }
 
-    /// Throws only when the file exists but cannot be read (permissions, I/O); the store then refuses to save,
-    /// so an unreadable list is never overwritten by an empty one.
+    /// Throws when the file exists but cannot be read (permissions, I/O), or cannot be decoded *and* cannot be
+    /// moved aside. The store then refuses to save, so the user's list is never overwritten by an empty one.
     func loadNow() throws -> LoadOutcome {
         let data: Data
         do {
@@ -46,14 +47,28 @@ nonisolated final class TodoStorage: Sendable {
         } catch let error as CocoaError where error.code == .fileReadNoSuchFile {
             return .missing
         }
+        let decodingError: any Error
         do {
             return .loaded(try JSONDecoder().decode(TodoDocument.self, from: data))
         } catch {
-            let aside = url.appendingPathExtension("corrupt-\(Int(Date().timeIntervalSince1970))")
-            let moved = (try? FileManager.default.moveItem(at: url, to: aside)) != nil
-            log.error("corrupt \(self.url.lastPathComponent, privacy: .public), moved aside: \(moved, privacy: .public); \(error.localizedDescription, privacy: .public)")
-            return .corrupt(movedTo: moved ? aside : nil)
+            decodingError = error
         }
+        let aside = Self.asideURL(for: url)
+        do {
+            try FileManager.default.moveItem(at: url, to: aside)
+        } catch {
+            log.error("corrupt \(self.url.lastPathComponent, privacy: .public) cannot be moved aside, keeping it: \(error.localizedDescription, privacy: .public)")
+            throw error
+        }
+        log.error("corrupt \(self.url.lastPathComponent, privacy: .public), moved aside to \(aside.lastPathComponent, privacy: .public): \(decodingError.localizedDescription, privacy: .public)")
+        return .corrupt(movedTo: aside)
+    }
+
+    /// `todos.json.corrupt-<seconds>-<8 hex>`: unique, so a second corrupt file in the same second (a retry)
+    /// never collides with the first one's copy.
+    static func asideURL(for url: URL, date: Date = Date()) -> URL {
+        let suffix = UUID().uuidString.prefix(8).lowercased()
+        return url.appendingPathExtension("corrupt-\(Int(date.timeIntervalSince1970))-\(suffix)")
     }
 
     // MARK: Writing
