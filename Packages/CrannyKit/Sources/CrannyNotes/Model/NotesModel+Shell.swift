@@ -1,0 +1,70 @@
+// CrannyNotes/Model/NotesModel+Shell.swift — the Notes widget's side of the `NotchControl` port: holding the
+// panel open while editing or focused, focus mode, and opening the panel at the Notes widget (⌘K, shortcut).
+import CrannyCore
+import Foundation
+
+extension NotesModel {
+    /// Hold reasons (ARCHITECTURE.md §4.5; module reasons are namespaced).
+    static let editingHold = "notes.editing"
+    static let focusHold = "notes.focus"
+
+    /// The editor became (or stopped being) first responder of a key panel.
+    func editorEditingChanged(_ editing: Bool) {
+        guard isEditing != editing else { return }
+        isEditing = editing
+        setHold(editing, Self.editingHold)
+    }
+
+    /// The widget is (or stopped being) shown in focus mode: `WidgetContext.rows` went to 3 or back to 2.
+    /// Leaving it any way (Esc, ⌘↩, the button, closing) releases the hold.
+    func focusPresentationChanged(_ presented: Bool) {
+        guard isFocusPresented != presented else { return }
+        isFocusPresented = presented
+        setHold(presented, Self.focusHold)
+    }
+
+    /// ⌘↩ or ⤢: asks the shell for focus mode (or to leave it) and keeps typing in the note.
+    func toggleFocusMode() {
+        if isFocusPresented {
+            notch.setFocusMode(nil)
+        } else {
+            notch.setFocusMode(.notes)
+            requestFocus()
+        }
+    }
+
+    /// The widget left the screen (the panel closed, the page changed): no hold may outlive it.
+    func widgetDisappeared() {
+        editorEditingChanged(false)
+        focusPresentationChanged(false)
+        if renamingID != nil { renamingID = nil }
+    }
+
+    /// Makes the panel key without activating the app, so typing reaches the editor (new note from a button).
+    func requestKeyboardFocus() { notch.requestKeyboardFocus() }
+
+    /// Opens the panel on the page that holds the Notes widget, focused on it, with keyboard focus.
+    func reveal() {
+        let page = settings[CoreSettings.pages].first { $0.items.contains { $0.widget == .notes } }?.id
+        notch.open(page: page, focus: .notes, reason: .keyboard)
+    }
+
+    /// ⌘K "Open ‹title›".
+    func open(_ id: UUID) {
+        select(id)
+        requestFocus()
+        reveal()
+    }
+
+    /// The New note shortcut and ⌘K "New note".
+    func createAndReveal() {
+        newNote()
+        reveal()
+    }
+
+    private func setHold(_ hold: Bool, _ reason: String) {
+        guard hold != heldReasons.contains(reason) else { return }
+        if hold { heldReasons.insert(reason) } else { heldReasons.remove(reason) }
+        notch.setHoldOpen(hold, reason: reason)
+    }
+}

@@ -1,0 +1,253 @@
+// NotesModel with `CrannyServices.preview()` (temporary paths, in-memory settings, recording notch double).
+import CrannyCore
+import Foundation
+import Testing
+@testable import CrannyNotes
+
+@Suite("Notes model") final class NotesModelTests {
+    private let services: CrannyServices
+    private nonisolated let temporaryFolder: URL
+    private var notch: PreviewNotchControl { services.notch as! PreviewNotchControl }   // the preview double
+
+    init() {
+        services = CrannyServices.preview()
+        temporaryFolder = services.paths.root.deletingLastPathComponent()
+    }
+
+    deinit { try? FileManager.default.removeItem(at: temporaryFolder) }
+
+    private func makeModel() -> NotesModel {
+        NotesModel(settings: services.settings, notch: services.notch, store: NotesStore(paths: services.paths))
+    }
+
+    private func loadedModel() async -> NotesModel {
+        let model = makeModel()
+        await model.load()
+        return model
+    }
+
+    // MARK: Creating, naming, selecting
+
+    @Test func newNotesGetFreeUntitledNamesAtTheTop() async {
+        let model = await loadedModel()
+        let first = model.newNote()
+        let second = model.newNote()
+        #expect(model.entries.map(\.id) == [second, first])
+        #expect(model.entry(first)?.title == NotesStrings.untitled)
+        #expect(model.entry(second)?.title == NotesStrings.untitled(2))
+        #expect(model.selectedID == second)
+        #expect(model.focusRequested)
+        #expect(model.emptyNotes.contains(second))
+    }
+
+    @Test func newNotesUseTheDefaultMode() async {
+        services.settings[NotesSettings.defaultMode] = .code
+        let model = await loadedModel()
+        let id = model.newNote()
+        #expect(model.entry(id)?.mode == .code)
+    }
+
+    @Test func nextAndPreviousWrapAroundAndAreRemembered() async {
+        let model = await loadedModel()
+        let a = model.newNote(), b = model.newNote(), c = model.newNote()        // list: c b a
+        #expect(model.selectedID == c)
+        model.selectNext()
+        #expect(model.selectedID == b)
+        model.selectNext(); model.selectNext()
+        #expect(model.selectedID == c)                                          // wrapped
+        model.selectNext(false)
+        #expect(model.selectedID == a)
+        #expect(services.settings[NotesSettings.lastNoteID] == a.uuidString)
+    }
+
+    @Test func renameTrimsAndRefusesEmptyTitles() async {
+        let model = await loadedModel()
+        let id = model.newNote()
+        model.beginRename()
+        #expect(model.renamingID == id)
+        #expect(notch.calls.contains("key"))                                    // typing the title needs a key panel
+        model.commitRename("  build.swift \n")
+        #expect(model.entry(id)?.title == "build.swift")
+        #expect(model.renamingID == nil)
+        model.beginRename()
+        model.commitRename("   ")
+        #expect(model.entry(id)?.title == "build.swift")
+        #expect(NoteTitles.sanitized(String(repeating: "x", count: 500))?.count == NoteTitles.maximumLength)
+    }
+
+    @Test func modeAndLanguage() async {
+        let model = await loadedModel()
+        let id = model.newNote(text: "#!/bin/zsh\necho hi")
+        model.toggleCodeMode()
+        #expect(model.entry(id)?.mode == .code)
+        #expect(model.effectiveLanguage(of: id) == .shell)
+        model.setLanguage(.python, for: id)
+        #expect(model.effectiveLanguage(of: id) == .python)
+        model.toggleCodeMode()
+        #expect(model.entry(id)?.mode == .plain)
+    }
+
+    /// Polls `condition` for up to 3 s (saves run off the main actor).
+    private func waitUntil(_ condition: () throws -> Bool) async throws {
+        for _ in 0..<150 {
+            if try condition() { return }
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        Issue.record("condition not met within 3 s")
+    }
+
+    // MARK: Deleting
+
+    @Test func deleteAsksThenSelectsTheNeighbour() async throws {
+        let model = await loadedModel()
+        let a = model.newNote(text: "a"), b = model.newNote(text: "b"), c = model.newNote(text: "c")   // c b a
+        await model.saveNow()?.value
+        model.select(b)
+        model.requestDelete()
+        #expect(model.pendingDeletion == b)
+        #expect(model.entries.count == 3)                                       // nothing happens before confirming
+        model.cancelDelete()
+        #expect(model.pendingDeletion == nil)
+        model.requestDelete()
+        model.confirmDelete()
+        #expect(model.entries.map(\.id) == [c, a])
+        #expect(model.selectedID == a)                                          // the next one down
+        let store = NotesStore(paths: services.paths)
+        try await waitUntil { try store.loadNow().notes.count == 2 }            // the delete is saved at once
+        let reloaded = try store.loadNow()
+        #expect(reloaded.notes.map(\.id) == [c, a])
+        #expect(reloaded.recovered == 0)
+    }
+
+    @Test func deletingTheLastNoteLeavesTheEmptyState() async {
+        let model = await loadedModel()
+        _ = model.newNote()
+        model.requestDelete()
+        model.confirmDelete()
+        #expect(model.entries.isEmpty)
+        #expect(model.selectedID == nil)
+    }
+
+    // MARK: Persistence
+
+    @Test func textSurvivesARelaunch() async throws {
+        let model = await loadedModel()
+        let id = model.newNote()
+        model.setText("first line\nsecond", for: id)
+        #expect(!model.emptyNotes.contains(id))
+        await model.saveNow()?.value
+        let relaunched = await loadedModel()                                   // what a kill -9 + relaunch reads
+        #expect(relaunched.text(of: id) == "first line\nsecond")
+        #expect(relaunched.selectedID == id)                                    // lastNoteID
+    }
+
+    @Test func flushOnTerminateIsSynchronous() async throws {
+        let model = await loadedModel()
+        let id = model.newNote()
+        model.setText("typed just before quitting", for: id)
+        model.flush()                                                           // no await: the app exits next
+        let reloaded = try NotesStore(paths: services.paths).loadNow()
+        #expect(reloaded.notes.first { $0.id == id }?.text == "typed just before quitting")
+        #expect(model.makeChangeSet() == nil)                                   // nothing left pending
+    }
+
+    @Test func theIndexIsNeverWrittenBeforeTheNotesAreLoaded() async throws {
+        let store = NotesStore(paths: services.paths)
+        let existing = Note(title: "Existing", text: "old", mode: .plain)
+        try store.write(NotesChangeSet(revision: 1, index: NotesIndex(notes: [existing.entry]), texts: [existing.id: "old"]))
+        let model = makeModel()
+        let early = model.newNote(text: "captured at launch")                   // type-to-capture before load
+        let change = try #require(model.makeChangeSet())
+        #expect(change.index == nil)                                            // would have dropped "Existing"
+        #expect(change.texts[early] == "captured at launch")
+        try store.write(change)
+        await model.load()
+        #expect(model.entries.map(\.id) == [early, existing.id])                // early notes stay on top
+        let afterLoad = try #require(model.makeChangeSet())
+        #expect(afterLoad.index?.notes.map(\.id) == [early, existing.id])
+    }
+
+    @Test func recoveredNotesAreTitledFromTheirFirstLine() async throws {
+        let store = NotesStore(paths: services.paths)
+        try store.write(NotesChangeSet(revision: 1, texts: [UUID(): "## Groceries\nmilk", UUID(): ""]))
+        let model = await loadedModel()
+        let titles = Set(model.entries.map(\.title))
+        #expect(titles == ["Groceries", NotesStrings.untitled])
+        #expect(model.makeChangeSet()?.index != nil)                            // the repaired index is saved
+    }
+
+    @Test func aFailedLoadShowsTheErrorAndCanBeRetried() async throws {
+        let notesPath = services.paths.root.appending(path: "notes")
+        try FileManager.default.createDirectory(at: services.paths.root, withIntermediateDirectories: true)
+        try Data("not a folder".utf8).write(to: notesPath)                      // the folder can't be created
+        let model = await loadedModel()
+        #expect(model.phase == .failed)
+        try FileManager.default.removeItem(at: notesPath)
+        await model.load()
+        #expect(model.phase == .loaded)
+    }
+
+    @Test func aFailedSaveIsReportedAndKeptForRetry() async throws {
+        let model = await loadedModel()
+        let id = model.newNote(text: "precious")
+        let notesPath = services.paths.root.appending(path: "notes")
+        try FileManager.default.removeItem(at: notesPath)
+        try Data("blocker".utf8).write(to: notesPath)
+        await model.saveNow()?.value
+        #expect(model.saveFailed)
+        #expect(model.text(of: id) == "precious")
+        try FileManager.default.removeItem(at: notesPath)
+        await model.saveNow()?.value                                            // the retry
+        #expect(!model.saveFailed)
+        #expect(try NotesStore(paths: services.paths).loadNow().notes.first?.text == "precious")
+    }
+
+    // MARK: Capture, holds, focus mode, opening
+
+    @Test func typeToCaptureStartsANoteWithTheCharacters() async {
+        let model = await loadedModel()
+        let revision = model.externalRevision
+        let widget = model.capture("Hel")
+        #expect(widget == .notes)
+        #expect(model.selectedEntry.map { model.text(of: $0.id) } == "Hel")
+        #expect(model.focusRequested)
+        #expect(model.externalRevision > revision)                              // the editor reloads its text
+        model.consumeFocusRequest()
+        #expect(!model.focusRequested)
+    }
+
+    @Test func editingHoldsThePanelOpenOnceAndReleases() {
+        let model = makeModel()
+        model.editorEditingChanged(true)
+        model.editorEditingChanged(true)
+        model.editorEditingChanged(false)
+        #expect(notch.calls == ["hold(true,notes.editing)", "hold(false,notes.editing)"])
+    }
+
+    @Test func focusModeHoldsWhilePresentedAndDisappearingReleasesEverything() {
+        let model = makeModel()
+        model.toggleFocusMode()
+        #expect(notch.calls.last == "focus(notes.editor)")
+        #expect(model.focusRequested)
+        model.focusPresentationChanged(true)
+        model.editorEditingChanged(true)
+        model.toggleFocusMode()
+        #expect(notch.calls.last == "focus(-)")
+        model.widgetDisappeared()
+        #expect(notch.calls.filter { $0.hasPrefix("hold(true") }.count == notch.calls.filter { $0.hasPrefix("hold(false") }.count)
+        #expect(!model.isFocusPresented && !model.isEditing)
+    }
+
+    @Test func revealOpensThePageThatHoldsNotes() async {
+        let model = await loadedModel()
+        model.reveal()
+        #expect(notch.calls.last == "open(-,notes.editor,keyboard)")            // not on any page: no page given
+        services.settings[CoreSettings.pages] = [NookPreset.listener.page,
+                                                 NookPage(id: "page.focus", symbol: "note.text", items: [.init(.notes, cells: 4)])]
+        let id = model.newNote(focus: false)
+        model.open(id)
+        #expect(notch.calls.last == "open(page.focus,notes.editor,keyboard)")
+        #expect(model.selectedID == id)
+        #expect(model.focusRequested)
+    }
+}
