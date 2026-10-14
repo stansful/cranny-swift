@@ -14,7 +14,9 @@ public nonisolated enum CalendarSettings {
     public static let showsPastEventsToday = SettingKey<Bool>(.calendar, "showsPastEventsToday", default: true)
     /// `EKCalendar.calendarIdentifier`s the user unchecked.
     public static let hiddenCalendarIDs = SettingKey<[String]>(.calendar, "hiddenCalendarIDs", default: [])
+    /// All-day events are listed at the top of the day (they never become meeting activities).
     public static let includesAllDay = SettingKey<Bool>(.calendar, "includesAllDay", default: true)
+    /// Events of the Birthdays calendar (its checkbox in Settings ▸ Calendar ▸ Calendars).
     public static let includesBirthdays = SettingKey<Bool>(.calendar, "includesBirthdays", default: false)
     /// Minutes before a meeting that "Meeting soon" appears (1–30). A second alert follows at one minute.
     public static let leadMinutes = SettingKey<Int>(.calendar, "leadMinutes", default: 5)
@@ -33,7 +35,9 @@ public nonisolated enum CalendarSettings {
 
 /// Settings ▸ Live Activities ▸ Meeting in progress ▸ Show.
 public nonisolated enum InEventDisplay: String, Codable, CaseIterable, Sendable {
+    /// "12m left" (default).
     case remaining
+    /// "12m in".
     case elapsed
 }
 

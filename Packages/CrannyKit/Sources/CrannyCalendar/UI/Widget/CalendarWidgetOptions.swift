@@ -35,13 +35,16 @@ struct DayRangeRows: View {
 
     private func stepper(_ key: SettingKey<Int>, label: String) -> some View {
         let value = settings[key]
-        return Stepper(value: settings.binding(key), in: CalendarSettings.dayRange) {
-            LabeledContent {
+        return LabeledContent {
+            HStack(spacing: 6) {
                 Text("\(value) days", bundle: .module, comment: "Calendar settings: a number of days (plural)")
                     .monospacedDigit()
-            } label: {
-                Text(label)
+                    .foregroundStyle(.secondary)
+                Stepper(value: settings.binding(key), in: CalendarSettings.dayRange) { Text(label) }
+                    .labelsHidden()
             }
+        } label: {
+            Text(label)
         }
         .settingRow(settings, key)
     }

@@ -30,7 +30,8 @@ struct EventRow: View {
             Text(CalendarFormat.title(event, redacted: context.redacted))
                 .crannyFont(.caption)
                 .foregroundStyle(ended ? p.tertiaryLabel : p.label)
-                .strikethrough(ended && context.isToday, color: p.tertiaryLabel)
+                // Today's ended events are struck through; earlier days only under Differentiate Without Color.
+                .strikethrough(ended && (context.isToday || theme.differentiateWithoutColor), color: p.tertiaryLabel)
                 .lineLimit(1)
                 .frame(maxWidth: .infinity, alignment: .leading)
             Text(row.role == .allDay ? CalendarFormat.allDay : CalendarFormat.time(event.start))

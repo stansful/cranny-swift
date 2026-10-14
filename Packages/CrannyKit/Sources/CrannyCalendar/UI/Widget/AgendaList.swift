@@ -18,6 +18,8 @@ struct AgendaList: View {
     /// Row bottoms in the viewport's coordinates, for the fade and "+N more".
     @State private var rowBottoms: [String: CGFloat] = [:]
     @State private var viewport: CGFloat = 0
+    /// The top of the content in the viewport's coordinates (< 0 once scrolled).
+    @State private var contentTop: CGFloat = 0
     @State private var contentHeight: CGFloat = 0
     private let space = "calendar.agenda"
 
@@ -29,10 +31,11 @@ struct AgendaList: View {
                 ScrollView(.vertical, showsIndicators: false) {
                     rows
                         .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { contentHeight = $0 }
+                        .onGeometryChange(for: CGFloat.self, of: { $0.frame(in: .named(space)).minY }) { contentTop = $0 }
                 }
                 .coordinateSpace(.named(space))
                 .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { viewport = $0 }
-                .mask { fadeMask(active: overflows && !hidden.isEmpty) }
+                .mask { fadeMask(top: contentTop < -0.5, bottom: overflows && !hidden.isEmpty) }
                 .task(id: ScrollAnchor(day: agenda.day, featured: agenda.featuredID, measured: viewport > 0)) { revealFeatured(proxy) }
                 .onChange(of: selection) { _, id in
                     guard let id else { return }
@@ -65,11 +68,14 @@ struct AgendaList: View {
         }
     }
 
-    /// Opaque, then a 12-pt fade at the bottom while rows hide below it.
-    private func fadeMask(active: Bool) -> some View {
+    /// A 12-pt fade at the bottom while rows hide below it, and a short one at the top once the list is scrolled
+    /// (it also swallows the sliver of the row above that a scroll position can leave).
+    private func fadeMask(top: Bool, bottom: Bool) -> some View {
         VStack(spacing: 0) {
+            LinearGradient(colors: [.black.opacity(top ? 0 : 1), .black], startPoint: .top, endPoint: .bottom)
+                .frame(height: 4)
             Rectangle()
-            LinearGradient(colors: [.black, .black.opacity(active ? 0 : 1)], startPoint: .top, endPoint: .bottom)
+            LinearGradient(colors: [.black, .black.opacity(bottom ? 0 : 1)], startPoint: .top, endPoint: .bottom)
                 .frame(height: 12)
         }
     }
@@ -105,8 +111,11 @@ private struct MoreFooter: View {
                         .crannyFont(.caption)
                         .foregroundStyle(theme.palette.tertiaryLabel)
                         .contentTransition(.numericText())
+                        .frame(minWidth: HitTarget.nook.width, minHeight: HitTarget.nook.height, alignment: .leading)
+                        .contentShape(Rectangle())                         // 28 × 24 hit area around a 14-pt line
                 }
                 .buttonStyle(.plain)
+                .frame(height: 14)
             }
             Spacer(minLength: 0)
         }

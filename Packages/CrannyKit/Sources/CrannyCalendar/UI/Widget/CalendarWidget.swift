@@ -60,6 +60,7 @@ struct CalendarWidgetView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .allowsHitTesting(!context.isEditingLayout)                  // nothing fights the layout editor's drag
         .transition(.opacity.animation(theme.animation(.contentSwap)))
         .onDisappear { model.dayOffset = 0 }                        // the Nook opens on today again
     }
@@ -119,6 +120,9 @@ private struct CalendarAgendaLayout: View {
         .onChange(of: focused) { _, isFocused in
             if isFocused, selection == nil { selection = primary.featuredID ?? primary.rows.first?.id }
         }
+        // The shell focuses the widget (Tab, or opening from a meeting activity): take keyboard focus with it.
+        .onAppear { if context.isFocused && context.cells > 2 { focused = true } }
+        .onChange(of: context.isFocused) { _, isFocused in if context.cells > 2 { focused = isFocused } }
         .onChange(of: offset) { _, _ in selection = nil }
     }
 

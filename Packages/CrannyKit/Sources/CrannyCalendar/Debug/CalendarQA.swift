@@ -3,6 +3,7 @@
 // screenshotted in every state without calendar access, prompts or the user's events:
 //
 //   --qa-calendar sample          the sample day (a meeting in progress, one in 4 minutes with Zoom, …)
+//   --qa-calendar inProgress      only the meeting in progress (no "Meeting soon", so it takes the wings)
 //   --qa-calendar empty           nothing left today; tomorrow's first event
 //   --qa-calendar notDetermined   the "Show your events" state (the button does nothing)
 //   --qa-calendar denied          access denied
@@ -26,6 +27,9 @@ enum CalendarQA {
         let calendars = CalendarSamples.calendars
         log.info("QA: calendar fixture \(state, privacy: .public)")
         switch state {
+        case "inProgress":
+            let events = CalendarSamples.events(around: now).filter { $0.id != "sample.standup" }
+            return (FixtureEventSource(events: events, calendars: calendars), StaticCalendarAccess(.granted))
         case "empty":
             let tomorrow = CalendarSamples.events(around: now).filter { !$0.overlaps(EventWindow.day(offset: 0, from: now, calendar: .autoupdatingCurrent)) }
             return (FixtureEventSource(events: tomorrow, calendars: calendars), StaticCalendarAccess(.granted))

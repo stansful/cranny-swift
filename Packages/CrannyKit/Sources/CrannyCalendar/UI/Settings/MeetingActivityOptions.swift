@@ -12,13 +12,17 @@ struct MeetingSoonOptions: View {
 
     var body: some View {
         let minutes = settings[CalendarSettings.leadMinutes]
-        Stepper(value: settings.binding(CalendarSettings.leadMinutes), in: CalendarSettings.leadRange) {
-            LabeledContent {
+        let label = Text("Lead time", bundle: .module, comment: "Live Activities ▸ Meeting soon: how long before a meeting it appears")
+        LabeledContent {
+            HStack(spacing: 6) {
                 Text(Duration.seconds(minutes * 60).formatted(.units(allowed: [.minutes], width: .abbreviated)))
                     .monospacedDigit()
-            } label: {
-                Text("Lead time", bundle: .module, comment: "Live Activities ▸ Meeting soon: how long before a meeting it appears")
+                    .foregroundStyle(.secondary)
+                Stepper(value: settings.binding(CalendarSettings.leadMinutes), in: CalendarSettings.leadRange) { label }
+                    .labelsHidden()
             }
+        } label: {
+            label
         }
         .settingRow(settings, CalendarSettings.leadMinutes)
         .help(String(localized: "Meeting soon appears this long before an event, and again one minute before.", bundle: .module,

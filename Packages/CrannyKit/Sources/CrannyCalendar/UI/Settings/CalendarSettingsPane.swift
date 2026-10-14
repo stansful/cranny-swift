@@ -16,8 +16,10 @@ struct CalendarSettingsPane: View {
             } header: {
                 Text("Calendars", bundle: .module, comment: "Settings ▸ Calendar: section title")
             } footer: {
-                Footnote(String(localized: "Hidden calendars never appear in the widget or as live activities.", bundle: .module,
-                                comment: "Settings ▸ Calendar: footnote under the calendar list"))
+                if model.store.accessStatus == .granted {
+                    Footnote(String(localized: "Hidden calendars never appear in the widget or as live activities.", bundle: .module,
+                                    comment: "Settings ▸ Calendar: footnote under the calendar list"))
+                }
             }
 
             Section {
