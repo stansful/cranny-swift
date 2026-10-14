@@ -1,0 +1,132 @@
+// CrannyNotes/UI/NotesWidgetView.swift — the Notes card's content (DESIGN.md §7.5, §6.8): header + editor, the
+// note list beside it at 6 cells and wider, the inline delete confirmation and the widget states (loading,
+// error, empty). On stages, while editing the layout and under demo redaction it draws a static, read-only note.
+import CrannyCore
+import SwiftUI
+
+struct NotesWidgetView: View {
+    @Environment(\.cranny) private var theme
+    @Environment(\.displayScale) private var displayScale
+    let model: NotesModel
+    let settings: SettingsStore
+    let context: WidgetContext
+
+    /// A real, editable widget: not a stage, not layout editing, not redacted.
+    private var isLive: Bool { !context.isPreview && !context.isEditingLayout && !context.redactsPersonalData }
+    /// ≥ 6 cells (and focus mode): the note list sidebar and line numbers (DESIGN.md §6.7).
+    private var isWide: Bool { context.cells >= 6 }
+
+    var body: some View {
+        content
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .onChange(of: context.rows >= 3, initial: true) { _, presented in
+                if isLive { model.focusPresentationChanged(presented) }
+            }
+            .onChange(of: context.isFocused) { _, focused in
+                if focused && isLive { model.requestFocus() }                     // Tab / shell focus → type at once
+            }
+            .onDisappear { if isLive { model.widgetDisappeared() } }
+    }
+
+    @ViewBuilder private var content: some View {
+        if context.redactsPersonalData {
+            RedactedNoteView()
+        } else if !isLive {
+            NotePreviewView(note: model.selectedEntry.flatMap { model.note($0.id) } ?? NotePreviewView.sample)
+        } else {
+            switch model.phase {
+            case .idle, .loading:
+                NotesLoadingView()
+            case .failed:
+                WidgetStateView(.error, symbol: "exclamationmark", message: NotesStrings.loadFailed,
+                                actionTitle: NotesStrings.tryAgain) { model.reload() }
+            case .loaded:
+                if let entry = model.selectedEntry {
+                    editor(entry)
+                } else {
+                    WidgetStateView(.empty, symbol: "note.text", message: NotesStrings.empty,
+                                    actionTitle: NotesStrings.newNote) { model.newNote() }
+                }
+            }
+        }
+    }
+
+    private func editor(_ entry: NotesModel.Entry) -> some View {
+        VStack(alignment: .leading, spacing: Space.xs) {
+            NotesHeader(model: model, entry: entry)
+            if model.pendingDeletion == entry.id {
+                DeleteConfirmationView(model: model, title: entry.title)
+                    .transition(.opacity)
+            } else {
+                HStack(alignment: .top, spacing: theme.grid.gutter) {
+                    if isWide {
+                        NoteSidebar(model: model)
+                            .frame(width: theme.grid.width(cells: 1))
+                        Rectangle().fill(theme.palette.hairline)
+                            .frame(width: StrokeWidth.hairline(displayScale))
+                            .accessibilityHidden(true)
+                    }
+                    textArea(entry)
+                }
+            }
+        }
+        .animation(theme.animation(.contentSwap), value: model.pendingDeletion)
+    }
+
+    private func textArea(_ entry: NotesModel.Entry) -> some View {
+        let style = EditorStyle(theme: theme, mode: entry.mode)
+        return NoteTextView(model: model, entry: entry, typingEffect: settings[CoreSettings.typingEffect],
+                            showsLineNumbers: isWide, focusRequested: model.focusRequested,
+                            externalRevision: model.externalRevision)
+            .overlay(alignment: .topLeading) {
+                if model.emptyNotes.contains(entry.id) {
+                    Text(NotesStrings.placeholder)
+                        .font(style.font(for: nil))
+                        .foregroundStyle(style.placeholderColor)
+                        .padding(.leading, isWide && entry.mode == .code
+                                 ? LineNumberRuler.thickness(digits: 1, font: LineNumberRuler.font(for: style)) : 0)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
+                }
+            }
+    }
+}
+
+/// ≤ 300 ms: nothing; longer: a quiet ring (DESIGN.md §6.8).
+private struct NotesLoadingView: View {
+    @Environment(\.cranny) private var theme
+    @State private var isSlow = false
+
+    var body: some View {
+        ZStack {
+            if isSlow {
+                ProgressRing(progress: 0.25, color: theme.palette.tertiaryLabel, lineWidth: StrokeWidth.ringCompact)
+                    .frame(width: Space.xl, height: Space.xl)
+                    .accessibilityHidden(true)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task {
+            try? await Task.sleep(for: .milliseconds(300))
+            isSlow = true
+        }
+    }
+}
+
+// MARK: - Previews
+
+#Preview("Notes · code, 4 cells") {
+    NotesPreviewHost(cells: 4, sample: .deploy)
+}
+
+#Preview("Notes · plain, 3 cells") {
+    NotesPreviewHost(cells: 3, sample: .groceries)
+}
+
+#Preview("Notes · wide with list, 6 cells") {
+    NotesPreviewHost(cells: 6, sample: .deploy)
+}
+
+#Preview("Notes · empty") {
+    NotesPreviewHost(cells: 4, sample: nil)
+}
