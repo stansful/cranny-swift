@@ -4,7 +4,8 @@
 // which cannot be selected. The focus ring appears only after a key press in the row. Lists never stagger on open
 // (§4.5); inserts use `listReorder`. Right to left the row runs from the right, and ← → move the way they point.
 // The stack is lazy: only tiles in or near view exist, so a Tray of 200 items builds about a dozen tiles, drag layers
-// and thumbnail requests per appearance, not 200 (every action works on the store, never on the views).
+// and thumbnail requests per appearance, not 200 (every action works on the store, never on the views). With VoiceOver
+// or Switch Control on, the row is built whole, so every tile stays reachable.
 import AppKit
 import CrannyCore
 import Foundation
@@ -17,6 +18,8 @@ struct TrayTileRow: View {
     @Environment(\.notchContext.openReason) private var openReason
     @Environment(\.layoutDirection) private var direction
     @Environment(\.trayRendersStatically) private var renderStatically
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
+    @Environment(\.accessibilitySwitchControlEnabled) private var switchControl
     let store: TrayStore
     var isInteractive = true
     @FocusState private var focused: Bool
@@ -27,7 +30,9 @@ struct TrayTileRow: View {
             TrayScrollRow {
                 Group {
                     // Snapshot tests lay the row out whole with `fixedSize()` outside a ScrollView: a plain stack there.
-                    if renderStatically {
+                    // VoiceOver and Switch Control walk every tile, also the ones scrolled out of view, so they get
+                    // the whole row as before (a lazy stack may expose only the tiles it has built).
+                    if renderStatically || voiceOver || switchControl {
                         HStack(spacing: Space.m) { tiles }
                     } else {
                         LazyHStack(spacing: Space.m) { tiles }

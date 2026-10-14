@@ -1,7 +1,8 @@
 // CrannyTray/Thumbnails/ThumbnailCache.swift — Quick Look thumbnails for tiles (DESIGN.md §8.1: 44-pt thumbnail,
 // r 8), generated off the main actor by `QLThumbnailGenerator` and kept in a small LRU (ARCHITECTURE.md §7.8, §9.2:
 // decode off-main, cache thumbnails). Tiles draw a cached one on their first frame (`cached`) and ask for a missing
-// one on appear (`.task(id:)`); nothing is generated for hidden tiles. Items that leave the Tray leave the cache.
+// one on appear (`.task(id:)`); nothing is generated for tiles that were never built (the row is lazy, `TrayTileRow`).
+// Items that leave the Tray leave the cache.
 import CoreGraphics
 import Foundation
 import QuickLookThumbnailing

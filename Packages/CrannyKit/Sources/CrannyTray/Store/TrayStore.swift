@@ -309,8 +309,8 @@ private let log = Log.logger(.tray)
 
     // MARK: Retention
 
-    /// Expires every item due within `Retention.batchWindow`, so drops made minutes apart leave together: one wake-up,
-    /// one batch of deletions and one index write instead of one each.
+    /// Expires every item due within `Retention.batchWindow`, so drops made within a minute of each other leave
+    /// together: one wake-up, one batch of deletions and one index write instead of one each.
     private func applyRetention() {
         let expired = Retention.expired(items, policy: settings[TraySettings.retention],
                                         now: now().addingTimeInterval(Retention.batchWindow))

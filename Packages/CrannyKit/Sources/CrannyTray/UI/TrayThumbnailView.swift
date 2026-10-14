@@ -1,7 +1,8 @@
 // CrannyTray/UI/TrayThumbnailView.swift — a tile's picture (DESIGN.md §8.1: 44-pt Quick Look thumbnail, r 8).
 // Real previews (photos, PDFs, videos) fill the rounded square; type icons are shown whole. A cached thumbnail is drawn
-// on the first frame (no type-icon frame, no second render); while a missing one is generated off-main, the type icon
-// stands in, so nothing pops from empty. Type icons are looked up once per type and session.
+// on the first frame (no type-icon frame); while a missing one is generated off-main, the type icon stands in, so
+// nothing pops from empty. Either way the view keeps the picture it got, as before. Type icons are looked up once per
+// type and session.
 import AppKit
 import CrannyCore
 import SwiftUI
@@ -44,8 +45,14 @@ struct TrayThumbnailView: View {
         }
         .frame(width: side, height: side)
         .task(id: url) {
-            // Only a miss is generated; a hit is already on screen (`cachedThumbnail`).
-            guard let url, let cache, cache.cached(for: url, pointSize: side, scale: displayScale) == nil else { return }
+            guard let url, let cache else { return }
+            // A hit is on screen already (`cachedThumbnail`), but the view keeps its own copy, as it does a generated
+            // one: when the cache drops it, the file goes missing (url nil) or the display scale changes, the tile goes
+            // on showing the picture, never the type icon. Stored once per image: one re-render of this small view.
+            if let hit = cache.cached(for: url, pointSize: side, scale: displayScale) {
+                if thumbnail?.image !== hit.image { thumbnail = hit }
+                return
+            }
             thumbnail = await cache.thumbnail(for: url, pointSize: side, scale: displayScale)
         }
         .accessibilityHidden(true)
