@@ -53,6 +53,14 @@ jobs:
           echo "NOTARY_PROFILE=cranny-notary" >> "$GITHUB_ENV"
           echo "NOTARY_KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
 
+      - name: Metal Toolchain (CrannyEffects compiles Metal shaders)
+        run: |
+          xcodebuild -showComponent MetalToolchain || true
+          if ! xcrun metal -v >/dev/null 2>&1; then
+            xcodebuild -downloadComponent MetalToolchain
+          fi
+          xcrun metal -v
+
       - name: Build (universal)
         run: scripts/build.sh
 

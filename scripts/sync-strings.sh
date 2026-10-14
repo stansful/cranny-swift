@@ -10,6 +10,7 @@
 # into "%arg" keys, so we do not use it.
 source "$(dirname "$0")/lib.sh"
 ensure_xcode
+ensure_metal_toolchain   # CrannyEffects compiles Metal shaders
 cd "$PACKAGE_DIR"
 
 scratch="$PACKAGE_DIR/.build-strings"

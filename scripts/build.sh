@@ -7,6 +7,7 @@
 #   SIGN_IDENTITY="Developer ID Application: Jane Doe (TEAMID1234)" TEAM_ID=TEAMID1234 scripts/build.sh
 source "$(dirname "$0")/lib.sh"
 ensure_xcode
+ensure_metal_toolchain   # CrannyEffects compiles Metal shaders
 
 CONFIGURATION="${CONFIGURATION:-Release}"
 ARCHS="${ARCHS:-arm64 x86_64}"

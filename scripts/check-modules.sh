@@ -1,19 +1,21 @@
 #!/usr/bin/env bash
 # Build every CrannyKit library target on its own (`swift build --target`), each in
 # its own scratch path, so a module that accidentally relies on something it does not
-# import/depend on fails here instead of only inside the app build.
+# import/depend on fails here instead of only inside the app build. Any compiler warning
+# fails the target too (zero-warning policy; warnings appear on a target's first/clean build).
 #
 #   scripts/check-modules.sh                 # all non-test targets, sequential
 #   scripts/check-modules.sh CrannyMedia     # just these targets
 #   JOBS=4 scripts/check-modules.sh          # build targets in parallel
 #   TEST=1 scripts/check-modules.sh          # also run `swift test`
+#   ALLOW_WARNINGS=1 scripts/check-modules.sh   # report warnings without failing
 source "$(dirname "$0")/lib.sh"
 ensure_xcode   # SwiftPM from Xcode's toolchain (CLT's would work too, but keep one toolchain)
+ensure_metal_toolchain   # CrannyEffects (and everything above it) compiles Metal shaders
 
-# D13: no offline Metal compilation in v1 (the Metal Toolchain is an optional Xcode component).
-if find "$PACKAGE_DIR/Sources" -name '*.metal' -print -quit | grep -q .; then
-  die "Metal sources found in CrannyKit/Sources (not allowed in v1, see ARCHITECTURE.md D13)"
-fi
+# Build-system notices that are not about our code. swift-build (SwiftPM 6.4) prints this for every
+# target whose resources include .metal files; the bundle is complete and correct (tests check it).
+BENIGN_WARNINGS='missing creator for mutated node: .*CrannyKit_CrannyEffects\.bundle/Contents/MacOS'
 
 cd "$PACKAGE_DIR"
 if (($#)); then
@@ -32,8 +34,16 @@ build_one() {
   local t="$1" lower scratch
   lower="$(printf '%s' "$t" | tr '[:upper:]' '[:lower:]')"
   scratch="$PACKAGE_DIR/.build-$lower"
-  if swift build --target "$t" --scratch-path "$scratch" >"$BUILD_DIR/logs/module-$t.log" 2>&1; then
-    printf '  \033[32mok\033[0m    %s\n' "$t"
+  local log_file="$BUILD_DIR/logs/module-$t.log" warnings
+  if swift build --target "$t" --scratch-path "$scratch" >"$log_file" 2>&1; then
+    warnings="$(grep -E 'warning:' "$log_file" | grep -vE "$BENIGN_WARNINGS" | sort -u || true)"
+    if [[ -n "$warnings" ]]; then
+      printf '  \033[33mWARN\033[0m  %s  (log: build/logs/module-%s.log)\n' "$t" "$t"
+      printf '%s\n' "$warnings" | head -5 | sed 's/^/        /'
+      [[ "${ALLOW_WARNINGS:-0}" == 1 ]] || return 1
+    else
+      printf '  \033[32mok\033[0m    %s\n' "$t"
+    fi
   else
     printf '  \033[31mFAIL\033[0m  %s  (log: build/logs/module-%s.log)\n' "$t" "$t"
     grep -E 'error:' "$BUILD_DIR/logs/module-$t.log" | head -5 | sed 's/^/        /'
@@ -59,4 +69,4 @@ if [[ "${TEST:-0}" == 1 ]]; then
   swift test --scratch-path "$PACKAGE_DIR/.build-test" || failed=1
 fi
 (( failed == 0 )) || die "module check failed"
-log "All modules build independently"
+log "All modules build independently, with no warnings"

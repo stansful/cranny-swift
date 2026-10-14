@@ -26,7 +26,7 @@ check:           ## Build every CrannyKit target separately (swift build --targe
 	@scripts/check-modules.sh
 
 test:            ## swift test for CrannyKit
-	@. scripts/lib.sh && ensure_xcode && cd Packages/CrannyKit && swift test --scratch-path .build-test
+	@. scripts/lib.sh && ensure_xcode && ensure_metal_toolchain && cd Packages/CrannyKit && swift test --scratch-path .build-test
 
 strings:         ## Sync String Catalogs with keys used in code
 	@scripts/sync-strings.sh

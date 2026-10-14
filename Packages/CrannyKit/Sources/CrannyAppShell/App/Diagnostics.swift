@@ -1,7 +1,8 @@
 // CrannyAppShell/App/Diagnostics.swift — `Cranny --diagnostics <file.json>`: CI/launch smoke test, no UI.
-// Keys read by scripts/smoke.sh: resourceBundles, bridge, mainMenu.
+// Keys read by scripts/smoke.sh: resourceBundles, bridge, mainMenu, shaders.
 import AppKit
 import CrannyCore
+import CrannyEffects
 import Foundation
 
 enum Diagnostics {
@@ -30,6 +31,8 @@ enum Diagnostics {
         } ?? []
         let bridge = Bundle.main.privateFrameworksURL?.appending(path: "libCrannyMediaBridge.dylib").path ?? ""
         r["bridge"] = FileManager.default.fileExists(atPath: bridge) ? bridge : "(missing)"
+        // Metal effects: the CrannyEffects bundle's default.metallib, loaded the way the app loads it (Bundle.module).
+        r["shaders"] = EffectShaders.status
         // Which display(s) get a panel under the current settings, in AppKit screen coordinates (visual QA).
         r["panelScreens"] = OverlayCoordinator.panelScreens(settings: registry.services.settings).map { entry in
             ["key": entry.key.rawValue, "name": entry.screen.localizedName, "style": entry.style.rawValue,

@@ -1,4 +1,7 @@
-// CrannyEffects/AuroraField.swift — verbatim from DESIGN.md Appendix B (signature effect).
+// CrannyEffects/AuroraField.swift — DESIGN.md Appendix B (signature effect), plus the Metal path:
+// while motion is allowed the aurora is drawn by `Shaders/Aurora.metal` (`ShaderAurora`); the SwiftUI
+// path below (MeshGradient on 15+, Canvas on 14) stays for Reduce Motion (a frozen resting frame), Low
+// Power (static halo) and Macs where the shader library cannot load.
 import SwiftUI
 import CrannyCore
 
@@ -29,6 +32,8 @@ public struct AuroraField: View, Animatable {
             Group {
                 if budget.effective(.aurora) == .halo {
                     RadialGradient(colors: [palette.glow1.color(cap * 0.6), .clear], center: .bottom, startRadius: 0, endRadius: 260)
+                } else if usesShader {
+                    ShaderAurora(palette: palette, cap: cap, energy: energy, time: t)
                 } else if #available(macOS 15.0, *) {
                     mesh(t)
                 } else {
@@ -41,6 +46,10 @@ public struct AuroraField: View, Animatable {
     }
 
     private var cap: Double { Glow.ambientAlphaCap(level) }
+
+    /// Metal whenever motion is allowed. While paused (closed, occluded, full screen) the shader keeps
+    /// drawing its resting frame, so closing never swaps renderers mid-animation.
+    private var usesShader: Bool { !budget.reduceMotion && !budget.lowPower && EffectShaders.isAvailable }
 
     @available(macOS 15.0, *)
     private func mesh(_ time: Double) -> some View {
@@ -94,4 +103,13 @@ public struct AuroraField: View, Animatable {
             }
         }
     }
+}
+
+#Preview("Aurora · subtle") {
+    AuroraField(palette: .afterglow, level: .subtle, energy: 0.3,
+                budget: EffectBudget(isOpen: true, onScreen: true, lowPower: false, fullScreenFront: false,
+                                     reduceMotion: false, onBattery: false))
+        .frame(width: 656, height: 170)
+        .background(.black)
+        .crannyThemeRoot(CrannyTheme())
 }

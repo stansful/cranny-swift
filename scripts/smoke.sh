@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Launch smoke test of build/Cranny.app without UI: `Cranny --diagnostics <json>` writes a report and quits.
-# Checks: every CrannyKit resource bundle is embedded, the media bridge dylib is present, the Edit menu exists.
+# Checks: every CrannyKit resource bundle is embedded, the media bridge dylib is present, the Edit menu exists,
+# and CrannyEffects' compiled shader library (default.metallib) loads through Bundle.module inside the app.
 #
 #   scripts/smoke.sh                 # uses build/Cranny.app
 #   APP=/path/Cranny.app scripts/smoke.sh
@@ -22,7 +23,10 @@ problems = []
 if len(r.get("resourceBundles", [])) != expected: problems.append(f"bundles {len(r.get('resourceBundles', []))} != {expected}")
 if r.get("bridge", "(missing)") == "(missing)": problems.append("media bridge dylib missing")
 if not any(len(items) >= 4 for m in r.get("mainMenu", []) for items in m.values()): problems.append("no Edit menu key equivalents")
-print("\n".join(problems) or "smoke OK: %d bundles, bridge present, Edit menu present" % expected)
+shaders = r.get("shaders", "(missing)")
+if shaders == "(missing)": problems.append("CrannyKit_CrannyEffects.bundle has no default.metallib")
+elif not shaders.startswith("ok"): print("note: shader library present but not loadable here (%s); the SwiftUI effects are used" % shaders)
+print("\n".join(problems) or "smoke OK: %d bundles, bridge present, Edit menu present, shaders %s" % (expected, shaders))
 sys.exit(1 if problems else 0)
 PY
 log "Smoke test passed ($OUT)"

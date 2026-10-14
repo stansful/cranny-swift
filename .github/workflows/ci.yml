@@ -26,7 +26,15 @@ jobs:
           xcodebuild -version
           swift --version
 
-      - name: Every CrannyKit module builds on its own + unit tests
+      - name: Metal Toolchain (CrannyEffects compiles Metal shaders)
+        run: |
+          xcodebuild -showComponent MetalToolchain || true
+          if ! xcrun metal -v >/dev/null 2>&1; then
+            xcodebuild -downloadComponent MetalToolchain
+          fi
+          xcrun metal -v
+
+      - name: Every CrannyKit module builds on its own (zero warnings) + unit tests
         run: JOBS=3 TEST=1 scripts/check-modules.sh
 
       - name: SDK name-collision probe is up to date

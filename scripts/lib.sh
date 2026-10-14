@@ -39,6 +39,20 @@ ensure_xcode() {
   (( major >= MIN_XCODE_MAJOR )) || die "Xcode $version is too old; need $MIN_XCODE_MAJOR+."
 }
 
+# CrannyEffects compiles Metal shaders (Sources/CrannyEffects/Shaders/*.metal → default.metallib). The
+# Metal Toolchain is an optional Xcode component (Xcode 26+); without it SwiftPM and xcodebuild cannot
+# build that target. Call after ensure_xcode.
+ensure_metal_toolchain() {
+  if xcrun metal -v >/dev/null 2>&1; then
+    return 0
+  fi
+  local status
+  status="$(xcodebuild -showComponent MetalToolchain 2>/dev/null | awk -F': *' '/^Status/ {print $2; exit}')" || true
+  die "The Metal Toolchain is not usable (xcodebuild -showComponent MetalToolchain: ${status:-unknown}).
+       CrannyEffects compiles Metal shaders. Install the component once, then retry:
+         xcodebuild -downloadComponent MetalToolchain"
+}
+
 # Pretty-print xcodebuild output when xcbeautify is installed (CI images have it).
 xcpretty_filter() {
   if command -v xcbeautify >/dev/null 2>&1 && [[ "${VERBOSE:-0}" != 1 ]]; then

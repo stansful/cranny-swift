@@ -26,6 +26,7 @@ done
 APP="$DERIVED_DIR/Build/Products/Debug/Cranny.app"
 if (( build )); then
   ensure_xcode
+  ensure_metal_toolchain
   overrides=()
   # With ad-hoc signing, Xcode prints "Disabling hardened runtime with ad-hoc codesigning"
   # for Debug builds while ENABLE_XOJIT_PREVIEWS=YES (the Debug default). Turn it off for CLI
