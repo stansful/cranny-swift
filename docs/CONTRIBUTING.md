@@ -56,6 +56,12 @@ make run                                     # Debug build + launch through Laun
 make dist                                    # zip + dmg + sha256 in dist/
 ```
 
+**Building in the Xcode app rewrites String Catalogs.** After an IDE build, Xcode's catalog editor sorts keys
+its own way (case-insensitively) and may mark keys it did not see in that build as stale, while
+`xcstringstool` (used by `make strings` and CI) sorts by code point. If `git status` shows catalogs you did not
+mean to change, run `make strings` (or `git checkout -- '*.xcstrings'` when you added no strings) before
+committing; `make strings-check` fails on IDE-sorted catalogs.
+
 Ad-hoc signed rebuilds lose privacy grants (Accessibility, Camera, Calendars…). To keep them, create a
 self-signed "Cranny Dev" code-signing certificate (Keychain Access ▸ Certificate Assistant) and run
 `DEV_SIGN_IDENTITY="Cranny Dev" make run`. Reset grants with `tccutil reset All app.cranny.Cranny`.

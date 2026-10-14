@@ -217,6 +217,19 @@
         }
       }
     },
+    "CFBundleName" : {
+      "comment" : "Bundle name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        }
+      },
+      "shouldTranslate" : false
+    },
     "NSAppleEventsUsageDescription" : {
       "comment" : "Privacy - AppleEvents Sending Usage Description",
       "extractionState" : "extracted_with_value",
@@ -2160,6 +2173,19 @@
           }
         }
       }
+    },
+    "NSHumanReadableCopyright" : {
+      "comment" : "Copyright (human-readable)",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Copyright © 2026 Cranny contributors. MIT License."
+          }
+        }
+      },
+      "shouldTranslate" : false
     },
     "NSNetworkVolumesUsageDescription" : {
       "comment" : "Privacy - Network Volumes Usage Description",
