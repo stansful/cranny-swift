@@ -1,6 +1,292 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ (unavailable)" : {
+      "comment" : "Mirror widget: camera menu item for a suspended camera; argument is the camera name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ (недоступна)"
+          }
+        }
+      }
+    },
+    "Automatic" : {
+      "comment" : "Mirror widget: camera menu item that follows the system's preferred camera",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Автоматически"
+          }
+        }
+      }
+    },
+    "Camera" : {
+      "comment" : "Mirror widget: camera menu (tooltip, VoiceOver) and options picker label",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Камера"
+          }
+        }
+      }
+    },
+    "Camera access is off" : {
+      "comment" : "Mirror widget: camera permission was denied",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доступ к камере выключен"
+          }
+        }
+      }
+    },
+    "Camera access is restricted" : {
+      "comment" : "Mirror widget: camera blocked by a device management profile or Screen Time",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доступ к камере ограничен"
+          }
+        }
+      }
+    },
+    "Camera disconnected" : {
+      "comment" : "Mirror widget: the camera in use was unplugged or went out of range",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Камера отключена"
+          }
+        }
+      }
+    },
+    "Camera preview" : {
+      "comment" : "Mirror widget: VoiceOver label of the card (read as “Camera preview, on”)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Просмотр камеры"
+          }
+        }
+      }
+    },
+    "Camera unavailable" : {
+      "comment" : "Mirror widget: the camera is suspended (first line)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Камера недоступна"
+          }
+        }
+      }
+    },
+    "Flip horizontally" : {
+      "comment" : "Mirror widget: tooltip of the flip button",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отразить по горизонтали"
+          }
+        }
+      }
+    },
+    "Mirror" : {
+      "comment" : "Mirror: widget name (widget library, VoiceOver container)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зеркало"
+          }
+        }
+      }
+    },
+    "Mirror the image" : {
+      "comment" : "Mirror widget: flip button (VoiceOver) and options toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отражать изображение"
+          }
+        }
+      }
+    },
+    "No camera connected" : {
+      "comment" : "Mirror widget: no camera is connected",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Камера не подключена"
+          }
+        }
+      }
+    },
+    "Off" : {
+      "comment" : "Mirror widget: VoiceOver value while the camera is off",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "выключено"
+          }
+        }
+      }
+    },
+    "On" : {
+      "comment" : "Mirror widget: VoiceOver value while the camera is on",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "включено"
+          }
+        }
+      }
+    },
+    "Open Settings" : {
+      "comment" : "Mirror widget: chip that opens System Settings ▸ Privacy & Security ▸ Camera",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки"
+          }
+        }
+      }
+    },
+    "Opens System Settings" : {
+      "comment" : "Mirror widget: VoiceOver hint when camera access is off",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открывает Системные настройки"
+          }
+        }
+      }
+    },
+    "Preview camera" : {
+      "comment" : "Mirror widget: off state; a click turns the camera on",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать камеру"
+          }
+        }
+      }
+    },
+    "See yourself before a call" : {
+      "comment" : "Widget library: Mirror description",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Посмотрите на себя перед звонком"
+          }
+        }
+      }
+    },
+    "Show your camera in the Mirror widget. Cranny never records or saves video." : {
+      "comment" : "Permissions pane and onboarding: why Mirror needs the camera",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывать изображение с камеры в виджете «Зеркало». Cranny ничего не записывает и не сохраняет."
+          }
+        }
+      }
+    },
+    "The camera stopped" : {
+      "comment" : "Mirror widget: the capture session failed",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Камера остановилась"
+          }
+        }
+      }
+    },
+    "The camera turns on only when you click the widget and turns off when Cranny closes." : {
+      "comment" : "Mirror options: footnote under the camera and mirroring rows",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Камера включается только по щелчку на виджете и выключается, когда Cranny закрывается."
+          }
+        }
+      }
+    },
+    "The lid is closed" : {
+      "comment" : "Mirror widget: why the built-in camera is suspended (second line)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Крышка закрыта"
+          }
+        }
+      }
+    },
+    "Try again" : {
+      "comment" : "Mirror widget: chip that starts the camera again after a problem",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторить"
+          }
+        }
+      }
+    },
+    "Turns the camera off" : {
+      "comment" : "Mirror widget: VoiceOver hint while the camera is on",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выключает камеру"
+          }
+        }
+      }
+    },
+    "Turns the camera on" : {
+      "comment" : "Mirror widget: VoiceOver hint while the camera is off",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Включает камеру"
+          }
+        }
+      }
+    },
+    "Waiting for camera access" : {
+      "comment" : "Mirror widget: the system camera permission prompt is showing",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ожидание доступа к камере"
+          }
+        }
+      }
+    }
   },
   "version" : "1.0"
 }
