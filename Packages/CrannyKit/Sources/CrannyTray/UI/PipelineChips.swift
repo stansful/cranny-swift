@@ -1,7 +1,7 @@
 // CrannyTray/UI/PipelineChips.swift — the 22-pt chip row under the tiles (DESIGN.md §8.1–§8.2). Nothing selected:
 // "5 items · 48 MB" and Clear. A selection: "2 selected" and the actions valid for every selected item
 // (`PipelineChipSet`): Compress · Convert ▾ · Resize ▾ · Unzip · Zip · Copy paths · AirDrop · ✦ user pipelines · ….
-// After a run that wrote files, an Undo chip leads the row for 5 s.
+// After a run that wrote files, an Undo chip leads the row for 5 s. While pipelines run, a Stop chip (⌘.) leads it.
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -14,6 +14,11 @@ struct PipelineChips: View {
     var body: some View {
         let p = theme.palette
         HStack(spacing: Space.m) {
+            if !store.stopChipJobs.isEmpty {
+                ChipButton(title: TrayItemCommand.stopTitle, symbol: "xmark") { store.stopRunning() }
+                    .help(String(localized: "Stop (⌘.)", bundle: .module, comment: "Tray chip: tooltip of Stop, which cancels running pipelines"))
+                    .transition(.opacity)
+            }
             if let offer = store.undoOffer {
                 Button(action: store.undo) {
                     Label { Text("Undo", bundle: .module, comment: "Tray chip: undo the last pipeline for 5 seconds") }
@@ -51,6 +56,7 @@ struct PipelineChips: View {
         }
         .frame(height: TrayTileLayout.chipRowHeight(textSize: theme.textSize))
         .animation(theme.animation(.contentSwap), value: store.undoOffer)
+        .animation(theme.animation(.contentSwap), value: store.stopChipJobs.map(\.id))
     }
 
     private var summary: String {

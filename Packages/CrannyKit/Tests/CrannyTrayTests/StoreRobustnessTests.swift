@@ -1,5 +1,6 @@
 // TrayStore edge cases found in review: a damaged or missing index, repeat drops of edited files, the cap after a
-// repeat drop or a lower setting, a refresh racing an insert and files that cannot be kept. Temporary folders and recording doubles only.
+// repeat drop or a lower setting, a refresh racing an insert, files that cannot be kept,
+// and Stop on every path. Temporary folders and recording doubles only.
 import AppKit
 import CrannyCore
 import Foundation
@@ -174,5 +175,40 @@ import UniformTypeIdentifiers
         #expect(!notch.calls.contains { $0.hasPrefix("open") })
         store.pageDidDisappear()
         #expect(!store.isPageVisible)
+    }
+
+    // MARK: Stop
+
+    @Test func stopCancelsTheSelectionsRunsElseEveryRun() async throws {
+        let store = makeStore()
+        let source = Fixtures.folder("src")
+        await store.keep((0..<3).map { Fixtures.text("p\($0).txt", in: source) }, opensTray: false)
+        let ids = store.order
+        let first = UUID(), second = UUID(), dropped = UUID()
+        store.jobs = [TrayJob(id: first, pipelineID: "builtin.compress", title: "Compress", sourceIDs: [ids[0]], placeholderName: nil),
+                      TrayJob(id: second, pipelineID: "builtin.compress", title: "Compress", sourceIDs: [ids[1]], placeholderName: nil),
+                      TrayJob(id: dropped, pipelineID: "builtin.zip", title: "Zip", sourceIDs: [], placeholderName: "a.txt")]
+        store.selection.set([ids[1]])
+        #expect(store.stoppableJobs().map(\.id) == [second])
+        #expect(store.stopChipJobs.map(\.id) == [second])
+        store.selection.set([ids[2]])                                       // nothing selected is running
+        #expect(store.stoppableJobs().map(\.id) == [first, second, dropped])   // ⌘. stops everything
+        #expect(store.stopChipJobs.isEmpty)                                 // but no chip reads as stopping the selection
+        store.selection.clear()
+        #expect(store.stopChipJobs.map(\.id) == [first, second, dropped])
+        #expect(store.stoppableJobs(ids[0]).map(\.id) == [first])           // a tile's own menu or VoiceOver action
+        store.jobs[0].failure = "failed"
+        #expect(!store.stoppableJobs().contains { $0.id == first })         // failed runs are dismissed, not stopped
+    }
+
+    @Test func aRunningTileOffersStopInItsMenu() async throws {
+        let store = makeStore()
+        await store.keep([Fixtures.text("p.txt", in: Fixtures.folder("src"))], opensTray: false)
+        let id = try #require(store.order.first)
+        #expect(TrayContextMenu.make(for: id, store: store).items.first?.title == TrayItemCommand.open.title)
+        store.jobs = [TrayJob(id: UUID(), pipelineID: "builtin.compress", title: "Compress", sourceIDs: [id], placeholderName: nil)]
+        let menu = TrayContextMenu.make(for: id, store: store)
+        #expect(menu.items.first?.title == TrayItemCommand.stopTitle)
+        #expect(menu.items.dropFirst().first?.isSeparatorItem == true)
     }
 }

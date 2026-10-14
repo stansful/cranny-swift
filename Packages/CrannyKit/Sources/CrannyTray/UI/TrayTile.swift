@@ -1,7 +1,8 @@
 // CrannyTray/UI/TrayTile.swift — one file in the Tray (DESIGN.md §8.1–§8.2): 64 × 66, a 44-pt thumbnail and a
 // middle-truncated caption. Selected: `controlPressed` well (r 8) with a 1.5-pt accent ring and a 14-pt check badge
 // (not colour-only). Hover: a 16-pt remove ✕. Running: dimmed behind a 22-pt accent ring (✕ cancels). Failed: a
-// `danger` "!" badge whose tooltip and accessibility value say what failed. New result: a 6-pt accent dot.
+// `danger` "!" badge whose tooltip and accessibility value say what failed. New result: a 6-pt accent dot. Stop is
+// also in the context menu, the VoiceOver actions, the Stop chip and on ⌘. (nothing hover-only, §16).
 // The AppKit layer underneath (`FileDragSource`) takes clicks, double-clicks, the context menu and drag-out.
 import AppKit
 import CrannyCore
@@ -94,7 +95,7 @@ struct TrayTile: View {
 
     @ViewBuilder private func controls(job: TrayJob?) -> some View {
         if let job, hovered, isInteractive {
-            TrayRoundButton(symbol: "xmark", label: String(localized: "Stop", bundle: .module, comment: "Tray tile: cancel a running pipeline (VoiceOver label, tooltip)")) {
+            TrayRoundButton(symbol: "xmark", label: TrayItemCommand.stopTitle) {
                 store.cancel(job.id)
             }
             .padding(.top, Space.xs + (TrayMetrics.thumbnail - TrayMetrics.removeBadge) / 2)

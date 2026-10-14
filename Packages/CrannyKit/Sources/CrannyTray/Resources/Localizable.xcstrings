@@ -1196,12 +1196,23 @@
       }
     },
     "Stop" : {
-      "comment" : "Tray tile: cancel a running pipeline (VoiceOver label, tooltip)",
+      "comment" : "Tray: stop a running pipeline (tile button, chip, context menu item, VoiceOver action)",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Остановить"
+          }
+        }
+      }
+    },
+    "Stop (⌘.)" : {
+      "comment" : "Tray chip: tooltip of Stop, which cancels running pipelines",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Остановить (⌘.)"
           }
         }
       }

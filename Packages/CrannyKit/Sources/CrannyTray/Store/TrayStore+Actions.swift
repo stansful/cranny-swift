@@ -71,6 +71,28 @@ extension TrayStore {
     /// ⌘⌫ / ✕ / "Remove": removes the selection (or `id`).
     func removeTargets(_ id: UUID? = nil) { remove(Set(targets(for: id).map(\.id))) }
 
+    // MARK: Running pipelines (every path: hover ✕, Stop chip, ⌘., context menu, VoiceOver)
+
+    /// The runs Stop applies to: those on the selected items (or `id`), else every run in progress (including runs on
+    /// dropped files, whose tiles cannot be selected).
+    func stoppableJobs(_ id: UUID? = nil) -> [TrayJob] {
+        let running = jobs.filter { $0.failure == nil }
+        let targetIDs = Set(targets(for: id).map(\.id))
+        let mine = running.filter { $0.sourceIDs.contains(where: targetIDs.contains) }
+        return mine.isEmpty && id == nil ? running : mine
+    }
+
+    /// The Stop chip's runs: the selection's, or every run while nothing is selected. A selection that is not running
+    /// shows no Stop chip (it would read as stopping the selected files); ⌘. still stops every run then.
+    var stopChipJobs: [TrayJob] {
+        selection.isEmpty || selectedItems.contains(where: { job(for: $0.id) != nil }) ? stoppableJobs() : []
+    }
+
+    /// ⌘. / the Stop chip / "Stop" in the menu: cancels `stoppableJobs(id)`.
+    func stopRunning(_ id: UUID? = nil) {
+        for job in stoppableJobs(id) { cancel(job.id) }
+    }
+
     /// ⌘⌫ with nothing selected: hides the error tiles of failed drops (they cannot be selected).
     func dismissFailedJobs() { jobs.removeAll { $0.failure != nil } }
 

@@ -1,6 +1,8 @@
 // CrannyTray/UI/TrayTileRow.swift — the scrolling row of tiles on the Tray page (DESIGN.md §8.1) and its keyboard
-// map (§16): ← → move, ⇧ extends, ⌘A all, Space Quick Look, ↩ open, ⌘C copy, ⌘⌫ remove, ⌥⌘⌫ clear. The focus ring
-// appears only after a key press in the row. Lists never stagger on open (§4.5); inserts use `listReorder`.
+// map (§16): ← → move, ⇧ extends, ⌘A all, Space Quick Look, ↩ open, ⌘C copy, ⌘⌫ remove, ⌥⌘⌫ clear; also ⌘. stops
+// running pipelines (the selection's, else all) and ⌘⌫ with nothing selected hides the error tiles of failed drops,
+// which cannot be selected. The focus ring appears only after a key press in the row. Lists never stagger on open
+// (§4.5); inserts use `listReorder`.
 import AppKit
 import CrannyCore
 import Foundation
@@ -72,9 +74,10 @@ struct TrayTileRow: View {
         case .delete where command && press.modifiers.contains(.option):
             store.clear()
         case .delete where command:
-            store.removeTargets()
+            if store.selection.isEmpty { store.dismissFailedJobs() } else { store.removeTargets() }
         default:
             if command, press.characters.lowercased() == "a" { usedKeyboard = true; store.selectAll(); return .handled }
+            if command, press.characters == ".", !store.stoppableJobs().isEmpty { store.stopRunning(); return .handled }
             return .ignored
         }
         return .handled
@@ -115,9 +118,7 @@ struct TrayJobTile: View {
         .frame(width: layout.width, height: layout.height, alignment: .top)
         .overlay(alignment: .topLeading) {
             if hovered {
-                TrayRoundButton(symbol: "xmark", label: job.failure == nil
-                    ? String(localized: "Stop", bundle: .module, comment: "Tray tile: cancel a running pipeline (VoiceOver label, tooltip)")
-                    : String(localized: "Dismiss", bundle: .module, comment: "Tray tile: hide a failed run of dropped files")) {
+                TrayRoundButton(symbol: "xmark", label: job.failure == nil ? TrayItemCommand.stopTitle : TrayItemCommand.dismissTitle) {
                     if job.failure == nil { store.cancel(job.id) } else { store.dismissJob(job.id) }
                 }
                 .offset(x: -Space.xxs, y: -Space.xxs)
@@ -129,9 +130,7 @@ struct TrayJobTile: View {
         .accessibilityLabel(Text(verbatim: job.placeholderName ?? job.title))
         .accessibilityValue(Text(verbatim: TrayTileAccessibility.value(selected: false, job: job.failure == nil ? job : nil,
                                                                        failure: job.failure)))
-        .accessibilityAction(named: Text(verbatim: job.failure == nil
-            ? String(localized: "Stop", bundle: .module, comment: "Tray tile: cancel a running pipeline (VoiceOver label, tooltip)")
-            : String(localized: "Dismiss", bundle: .module, comment: "Tray tile: hide a failed run of dropped files"))) {
+        .accessibilityAction(named: Text(verbatim: job.failure == nil ? TrayItemCommand.stopTitle : TrayItemCommand.dismissTitle)) {
             if job.failure == nil { store.cancel(job.id) } else { store.dismissJob(job.id) }
         }
     }
