@@ -64,6 +64,12 @@ public nonisolated struct CrannyTheme: Equatable, Sendable {
     public func animation(_ k: CrannyMotion.Kind) -> Animation? {
         CrannyMotion.animation(k, personality: motion, reduceMotion: reduceMotion)
     }
+
+    /// Symbols may animate (DESIGN.md §14.1: no symbol effects under Reduce Motion; §4.2: none under Instant).
+    public var animatesSymbols: Bool { !reduceMotion && motion != .instant }
+    /// The content transition of a glyph that toggles (pin, play/pause, the HUD glyph):
+    /// `.contentTransition(theme.symbolReplace)` — `.symbolEffect(.replace)`, or `.identity` when symbols must not move.
+    public var symbolReplace: ContentTransition { animatesSymbols ? .symbolEffect(.replace) : .identity }
 }
 
 public extension EnvironmentValues {

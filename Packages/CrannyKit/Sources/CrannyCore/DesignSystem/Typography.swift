@@ -96,3 +96,55 @@ public extension View {
     /// `Text(track.title).crannyFont(.title)` — font, tracking, line height and case in one call.
     func crannyFont(_ style: CrannyTextStyle) -> some View { modifier(CrannyFontModifier(style)) }
 }
+
+// MARK: - SF Symbol glyph styles (DESIGN.md §14.1 "Rendering")
+
+/// How an SF Symbol is drawn where it is not inside a button style (which sizes its own glyph) or next to text
+/// (which takes the text's `crannyFont`). Band glyphs scale with the notch unit, like the band text styles; Nook
+/// glyphs follow Text Size.
+public nonisolated enum CrannySymbolStyle: String, CaseIterable, Sendable {
+    case band          // 13 semibold × notch unit — one glyph in a compact wing (now playing, charging, flash)
+    case nook          // 13 medium × text size — a glyph inside the open Nook
+    case peekVisual    // 18 semibold × text size — a glyph filling the 40-pt visual of a peek row
+    case widgetState   // 20 medium × text size — the glyph of an empty / permission / error state (§6.8)
+    case dropZone      // 22 medium × text size — the glyph of a drop zone (Tray, AirDrop, pipelines)
+
+    /// Point size before scaling, and weight.
+    public var spec: (size: CGFloat, weight: Font.Weight) {
+        switch self {
+        case .band: (13, .semibold)
+        case .nook: (13, .medium)
+        case .peekVisual: (18, .semibold)
+        case .widgetState: (20, .medium)
+        case .dropZone: (22, .medium)
+        }
+    }
+
+    /// `.band` scales with the notch unit (the band is hardware height); everything else with Text Size.
+    public var scaling: CrannyTextStyle.Scaling { self == .band ? .notchUnit : .textSize }
+
+    /// The scaled point size (never below 10 pt).
+    public func pointSize(textSize: CrannyTextSize, notchUnit: CGFloat) -> CGFloat {
+        let k = scaling == .notchUnit ? notchUnit : textSize.scale
+        return max((spec.size * k).rounded(), 10)
+    }
+
+    /// The symbol font at that size.
+    public func font(textSize: CrannyTextSize = .standard, notchUnit: CGFloat = 1) -> Font {
+        .system(size: pointSize(textSize: textSize, notchUnit: notchUnit), weight: spec.weight)
+    }
+}
+
+public struct CrannySymbolModifier: ViewModifier {
+    @Environment(\.cranny) private var theme
+    public let style: CrannySymbolStyle
+    public init(_ style: CrannySymbolStyle) { self.style = style }
+    public func body(content: Content) -> some View {
+        content.font(style.font(textSize: theme.textSize, notchUnit: theme.notchUnit))
+    }
+}
+
+public extension View {
+    /// `Image(systemName: "bolt.fill").crannySymbol(.band)` — the glyph's size and weight from the theme.
+    func crannySymbol(_ style: CrannySymbolStyle) -> some View { modifier(CrannySymbolModifier(style)) }
+}

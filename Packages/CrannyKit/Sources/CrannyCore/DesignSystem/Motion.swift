@@ -140,6 +140,27 @@ public nonisolated enum CrannyMotion {
         let v = abs(distance) < 0.5 ? 0 : Double(velocity / distance)
         return .interpolatingSpring(duration: 0.40, bounce: 0.14, initialVelocity: v)
     }
+
+    /// Curves of the one-shot delights (DESIGN.md §5.5–§5.6). They play only when the owner allows a delight
+    /// (never under Instant); the Reduce Motion variants use `fade`.
+    public nonisolated enum Delight {
+        /// The song-change energy ripple: energy + 0.5 · (1 − t/lifetime)², decaying fast then slow.
+        public static func ripple(lifetime: Double) -> Animation { .timingCurve(0.33, 0.67, 0.67, 1, duration: lifetime) }
+        /// First light: the light fills outward from the camera over the moment's lifetime.
+        public static func firstLight(lifetime: Double) -> Animation { .easeOut(duration: lifetime) }
+        /// The gulp (a file caught): the bottom edge rises `gulpDepth` in `gulpSwallowDuration` …
+        public static let gulpSwallow = Animation.easeIn(duration: gulpSwallowDuration)
+        /// … and lands back over the rest of the 0.25-s moment, without bounce (it shrinks toward the hardware).
+        public static let gulpRecover = Animation.spring(duration: gulpRecoverDuration, bounce: 0)
+        /// Reduce Motion variants (static ember glow, instant rim): colour only, fading out over the lifetime.
+        public static func fade(lifetime: Double) -> Animation { .easeIn(duration: lifetime) }
+
+        /// How far the gulp lifts the shape's bottom edge (pt).
+        public static let gulpDepth: CGFloat = 3
+        /// Down in 0.07 s, back over the rest of the 0.25-s moment.
+        public static let gulpSwallowDuration: Double = 0.07
+        public static let gulpRecoverDuration: Double = 0.18
+    }
 }
 
 // MARK: - Hover intent (the anti-flicker contract)
