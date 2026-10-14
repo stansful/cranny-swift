@@ -220,6 +220,25 @@ import Testing
         #expect(recorder.updates.map(\.isMuted) == [true, false])
     }
 
+    @Test func aHeldKeyReadsOnlyTheDevice() {
+        let uptime = FakeUptime()
+        let handler = MediaKeyHandler(config: config, volume: volume, brightness: brightness, keyboard: keyboard,
+                                      uptime: uptime.clock, sink: recorder.sink)
+        #expect(handler.handle(down(.soundUp)))
+        uptime.advance(0.03)                                       // key repeat
+        #expect(handler.handle(down(.soundUp, repeat: true)))
+        uptime.advance(0.03)
+        #expect(handler.handle(down(.mute)))
+        // The repeat and the quick mute step from what Cranny applied: no level or mute read for them.
+        #expect(volume.reads == [true, false, false])
+        #expect(recorder.updates.map(\.level) == [0.5625, 0.625, 0.625])
+        #expect(volume.state == VolumeState(level: 0.625, isMuted: true, canMute: true))
+        uptime.advance(MediaKeyHandler.recentVolumeWindow)         // later, the device's own values count again
+        #expect(handler.handle(down(.soundDown)))
+        #expect(volume.reads.last == true)
+        #expect(volume.state?.level == 0.5625)
+    }
+
     @Test func anotherOutputIsReadAfresh() {
         let uptime = FakeUptime()
         let handler = MediaKeyHandler(config: config, volume: volume, brightness: brightness, keyboard: keyboard,

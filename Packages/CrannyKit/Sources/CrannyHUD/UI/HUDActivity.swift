@@ -3,8 +3,9 @@
 // pre-empts everything for its lifetime, then hands the wings back (§9.4); inside an open panel NotchUI draws
 // its leading and trailing views in the header row (§4.11).
 //
-// `HUDController` writes it; the views read it. Samples (Settings "Simulate", the HUD preview stage) are
-// separate instances that never touch the controller or any device.
+// `HUDController` writes it; the views read it. It is transient through the controller's hide sleep, which
+// flips `isActive`; the real HUD publishes no `expiresAt` (see `present`). Samples (Settings "Simulate", the HUD
+// preview stage) are separate instances that never touch the controller or any device.
 import CrannyCore
 import Foundation
 import Observation
@@ -48,6 +49,9 @@ import SwiftUI
     }
 
     /// Shows `session` (nil hides). The shell re-arbitrates on every change of these properties.
+    /// - Parameter expires: publish the session's deadline as `expiresAt`. The controller passes false: its own
+    ///   hide sleep ends the session at that deadline, and a deadline that moves with every press would make the
+    ///   shell re-arm its expiry wake-up per key repeat. Samples never expire; the QA hook keeps its deadline.
     func present(_ session: HUDSession?, expires: Bool = true) {
         guard let session else {
             if isActive { isActive = false }       // @Observable notifies on every write: write only changes

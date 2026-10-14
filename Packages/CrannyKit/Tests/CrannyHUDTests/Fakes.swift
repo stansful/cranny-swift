@@ -10,6 +10,8 @@ nonisolated final class FakeVolume: SystemVolume {
     struct Store {
         var state: VolumeState?
         var calls: [String] = []
+        /// Every read: true = with level and mute, false = only the device and what it can set.
+        var reads: [Bool] = []
         var failsWrites = false
         /// Like a Bluetooth output that reports a new level late: writes succeed, reads keep the old values.
         var reportsLate = false
@@ -22,12 +24,21 @@ nonisolated final class FakeVolume: SystemVolume {
 
     var state: VolumeState? { store.withLock { $0.state } }
     var calls: [String] { store.withLock { $0.calls } }
+    var reads: [Bool] { store.withLock { $0.reads } }
     func failWrites() { store.withLock { $0.failsWrites = true } }
     func reportLate() { store.withLock { $0.reportsLate = true } }
     /// Another output becomes the default (or the user changes the level elsewhere).
     func replace(with state: VolumeState?) { store.withLock { $0.state = state } }
 
-    func readState() -> VolumeState? { store.withLock { $0.state } }
+    func readState() -> VolumeState? { readState(includingLevels: true) }
+    func readState(includingLevels: Bool) -> VolumeState? {
+        store.withLock { store in
+            store.reads.append(includingLevels)
+            guard var state = store.state else { return nil }
+            if !includingLevels { state.level = 0; state.isMuted = false }      // not read, like CoreAudioVolume
+            return state
+        }
+    }
     func setLevel(_ level: Double) -> Bool {
         store.withLock { store in
             store.calls.append("level(\(level))")
@@ -100,13 +111,21 @@ nonisolated final class FakeInterceptor: KeyInterceptor {
     func stop() { store.withLock { $0.stopped += 1 } }
 }
 
-/// A volume listener that reports only what the test emits.
+/// A volume listener that reports only what the test emits, and records whether it follows the level.
 nonisolated final class FakeVolumeObserver: VolumeObserving {
-    let store = OSAllocatedUnfairLock<(running: Bool, onChange: (@Sendable (VolumeObservation) -> Void)?)>(
-        initialState: (false, nil))
+    struct Store {
+        var running = false
+        var followsLevel = false
+        var onChange: (@Sendable (VolumeObservation) -> Void)?
+    }
+    let store = OSAllocatedUnfairLock(initialState: Store())
     var isRunning: Bool { store.withLock { $0.running } }
-    func start(onChange: @escaping @Sendable (VolumeObservation) -> Void) { store.withLock { $0 = (true, onChange) } }
-    func stop() { store.withLock { $0 = (false, nil) } }
+    var followsLevel: Bool { store.withLock { $0.followsLevel } }
+    func start(onChange: @escaping @Sendable (VolumeObservation) -> Void) {
+        store.withLock { $0.running = true; $0.onChange = onChange }
+    }
+    func setFollowsLevel(_ on: Bool) { store.withLock { $0.followsLevel = on } }
+    func stop() { store.withLock { $0 = Store() } }
     func emit(_ observation: VolumeObservation) { store.withLock { $0.onChange }?(observation) }
 }
 

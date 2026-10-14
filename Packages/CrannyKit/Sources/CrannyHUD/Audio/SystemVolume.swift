@@ -2,6 +2,11 @@
 // (R3 §1.5, ARCHITECTURE.md §7.1). Called on the key tap's thread: CoreAudio property calls are thread-safe.
 // Tests use fakes of the `SystemVolume` protocol; nothing in the test suite touches the real volume.
 //
+// Each helper is a property call or two, and the tap waits for all of them, so a press reads only what it uses:
+// within `MediaKeyHandler.recentVolumeWindow` it steps from the values Cranny applied and reads just the device
+// and what it can set (`readState(includingLevels: false)`), and it writes to the device it read (`on:`), with
+// no second default-device lookup.
+//
 // `kAudioHardwareServiceDeviceProperty_VirtualMainVolume` is declared in AudioToolbox, not CoreAudio.
 // Output scope, main element. Changing the volume through CoreAudio never shows the system HUD.
 import AudioToolbox
@@ -24,29 +29,49 @@ nonisolated struct VolumeState: Sendable, Equatable {
 /// (HDMI/DisplayPort sinks): the key then goes to macOS, which shows its "not adjustable" HUD.
 nonisolated protocol SystemVolume: Sendable {
     func readState() -> VolumeState?
+    /// `includingLevels: false` reads only the device and whether it can set its volume and mute (nil exactly
+    /// like `readState()` for an unsettable volume); `level` and `isMuted` are then 0 and false, not readings.
+    func readState(includingLevels: Bool) -> VolumeState?
     func setLevel(_ level: Double) -> Bool
     func setMuted(_ muted: Bool) -> Bool
+    /// Writes to `device` (a `VolumeState.deviceID` just read); nil = the current default output.
+    func setLevel(_ level: Double, on device: UInt32?) -> Bool
+    func setMuted(_ muted: Bool, on device: UInt32?) -> Bool
+}
+
+nonisolated extension SystemVolume {
+    func readState(includingLevels: Bool) -> VolumeState? { readState() }
+    func setLevel(_ level: Double, on device: UInt32?) -> Bool { setLevel(level) }
+    func setMuted(_ muted: Bool, on device: UInt32?) -> Bool { setMuted(muted) }
 }
 
 /// The real thing: `kAudioHardwarePropertyDefaultOutputDevice` → `VirtualMainVolume` / `kAudioDevicePropertyMute`.
 nonisolated struct CoreAudioVolume: SystemVolume {
     init() {}
 
-    func readState() -> VolumeState? {
-        guard let device = AudioHAL.defaultOutputDevice(), AudioHAL.isSettable(device, volumeAddress),
-              let level = AudioHAL.float32(device, volumeAddress) else { return nil }
-        let muted = AudioHAL.uint32(device, muteAddress).map { $0 != 0 } ?? false
-        return VolumeState(level: Double(level), isMuted: muted, canMute: AudioHAL.isSettable(device, muteAddress),
-                           deviceID: device)
+    func readState() -> VolumeState? { readState(includingLevels: true) }
+
+    func readState(includingLevels: Bool) -> VolumeState? {
+        guard let device = AudioHAL.defaultOutputDevice(), AudioHAL.isSettable(device, volumeAddress) else { return nil }
+        var state = VolumeState(level: 0, isMuted: false, canMute: AudioHAL.isSettable(device, muteAddress), deviceID: device)
+        guard includingLevels else { return state }
+        guard let level = AudioHAL.float32(device, volumeAddress) else { return nil }
+        state.level = Double(level)
+        state.isMuted = AudioHAL.uint32(device, muteAddress).map { $0 != 0 } ?? false
+        return state
     }
 
-    func setLevel(_ level: Double) -> Bool {
-        guard let device = AudioHAL.defaultOutputDevice() else { return false }
+    func setLevel(_ level: Double) -> Bool { setLevel(level, on: nil) }
+
+    func setMuted(_ muted: Bool) -> Bool { setMuted(muted, on: nil) }
+
+    func setLevel(_ level: Double, on device: UInt32?) -> Bool {
+        guard let device = device ?? AudioHAL.defaultOutputDevice() else { return false }
         return AudioHAL.setFloat32(Float32(min(max(level, 0), 1)), on: device, volumeAddress)
     }
 
-    func setMuted(_ muted: Bool) -> Bool {
-        guard let device = AudioHAL.defaultOutputDevice() else { return false }
+    func setMuted(_ muted: Bool, on device: UInt32?) -> Bool {
+        guard let device = device ?? AudioHAL.defaultOutputDevice() else { return false }
         return AudioHAL.setUInt32(muted ? 1 : 0, on: device, muteAddress)
     }
 

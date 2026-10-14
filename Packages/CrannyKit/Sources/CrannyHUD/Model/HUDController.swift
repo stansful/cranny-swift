@@ -4,8 +4,10 @@
 // session, the `.levelChange` haptic, the feedback sound and the settled VoiceOver announcement.
 //
 // Energy (§9.2): with "Replace the system HUD" off nothing runs. On, the tap thread sleeps in its run loop and
-// the CoreAudio listener is event-driven; the only timer-like work is the hide sleep, the 0.5-s announcement
-// settle and the 2-Hz brightness poll, all only while a HUD is visible.
+// the CoreAudio listener is event-driven (the level listeners only while a volume HUD is visible); the only
+// timer-like work is the hide sleep, the 0.5-s announcement settle and the 2-Hz brightness poll, all only while a
+// HUD is visible. The hide sleep is the HUD's only deadline: the activity publishes no `expiresAt`, so a press
+// (up to 30 per second while a key is held) never makes the shell re-arm an expiry wake-up of its own.
 import AppKit
 import CrannyCore
 import Foundation
@@ -38,6 +40,8 @@ private let log = Log.logger(.hud)
     @ObservationIgnored private lazy var hideTimer = MovableDeadline(now: { [weak self] in self?.now() ?? Date() })
     @ObservationIgnored private lazy var announceTimer = MovableDeadline(now: { [weak self] in self?.now() ?? Date() })
     @ObservationIgnored private var pollTask: Task<Void, Never>?
+    /// The volume observer reports level changes (`syncVolumeFollowing`).
+    @ObservationIgnored private var followsVolume = false
     @ObservationIgnored private var lastPress = Date.distantPast
     /// The clock of sessions and deadlines (tests freeze it; sleeps still use real time).
     @ObservationIgnored var now: @MainActor () -> Date = { Date() }
@@ -156,11 +160,23 @@ private let log = Log.logger(.hud)
         let observer = hardware.makeVolumeObserver()
         observer.start { [weak self] observation in Task { @MainActor in self?.observed(observation) } }
         volumeObserver = observer
+        followsVolume = false
+        syncVolumeFollowing()
     }
 
     private func stopVolumeObserver() {
         volumeObserver?.stop()
         volumeObserver = nil
+        followsVolume = false
+    }
+
+    /// A level change outside Cranny updates only a volume HUD on screen (`HUDPresentation.observe`), so the
+    /// observer listens to the level only during a volume session; device changes it reports all the time.
+    private func syncVolumeFollowing() {
+        let wanted = volumeObserver != nil && state.session?.display.kind == .volume
+        guard wanted != followsVolume else { return }
+        followsVolume = wanted
+        volumeObserver?.setFollowsLevel(wanted)
     }
 
     /// The user came back to Cranny, or macOS disabled the tap: if macOS's answer differs from the cached grant —
@@ -182,9 +198,10 @@ private let log = Log.logger(.hud)
             guard next != state else { return }
             state = next
             lastPress = now()
-            activity.present(state.session)
+            activity.present(state.session, expires: false)        // the hide sleep ends it (see the top)
             perform(effects)
             updateBrightnessPolling()
+            syncVolumeFollowing()
         case .volumeKeyReleased(let shiftHeld):
             feedback.keyReleased(shiftHeld: shiftHeld, demoMode: services.environment.isDemoMode,
                                  muted: state.session?.display.isMuted ?? false)
@@ -199,7 +216,7 @@ private let log = Log.logger(.hud)
                                            showsOutputDevice: services.settings[HUDSettings.showsOutputDevice])
         guard next != state else { return }
         state = next
-        if state.session?.isVisible(at: now()) == true { activity.present(state.session) }
+        if state.session?.isVisible(at: now()) == true { activity.present(state.session, expires: false) }
     }
 
     private func observedBrightness(_ level: Double) {
@@ -207,7 +224,7 @@ private let log = Log.logger(.hud)
         let next = HUDPresentation.observeBrightness(level, state: state, now: now())
         guard next != state else { return }
         state = next
-        activity.present(state.session)
+        activity.present(state.session, expires: false)
     }
 
     // MARK: Effects
@@ -239,6 +256,7 @@ private let log = Log.logger(.hud)
         announceTimer.cancel()
         activity.present(nil)
         updateBrightnessPolling()
+        syncVolumeFollowing()
     }
 
     /// DESIGN.md §16: "Volume, 62 %" once the value has settled for 0.5 s, only while VoiceOver runs.
@@ -253,7 +271,8 @@ private let log = Log.logger(.hud)
     }
 
     /// Brightness changed elsewhere (ambient light, Control Center) follows the visible brightness HUD: 2 Hz,
-    /// only while it is visible (the one polling ARCHITECTURE.md §9.2 allows the HUD).
+    /// only while it is visible (the one polling ARCHITECTURE.md §9.2 allows the HUD). Utility priority with a
+    /// 100-ms tolerance, so the system can fold the wake-up into others: it only moves a visible bar.
     private func updateBrightnessPolling() {
         let wantsPolling = state.session?.display.kind == .brightness
         guard wantsPolling != (pollTask != nil) else { return }
@@ -263,9 +282,9 @@ private let log = Log.logger(.hud)
             return
         }
         let brightness = hardware.brightness
-        pollTask = Task { [weak self] in
+        pollTask = Task(priority: .utility) { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .milliseconds(500))
+                try? await Task.sleep(for: .milliseconds(500), tolerance: .milliseconds(100))
                 guard !Task.isCancelled, self != nil else { return }
                 if let level = await Self.readLevel(brightness) { self?.observedBrightness(level) }
             }
@@ -286,12 +305,14 @@ private let log = Log.logger(.hud)
     // MARK: Visual QA (Debug builds only, `--qa-hud`)
 
     #if DEBUG
-    /// Shows `display` for an hour without touching any device or the tap.
+    /// Shows `display` for an hour without touching any device or the tap. No hide sleep runs, so the activity
+    /// keeps its `expiresAt`.
     func presentForQA(_ display: HUDDisplay) {
         state.revision += 1
         state.session = HUDSession(display: display, deadline: now().addingTimeInterval(3600),
                                    revision: state.revision, sequence: 0)
         activity.present(state.session)
+        syncVolumeFollowing()
     }
     #endif
 }

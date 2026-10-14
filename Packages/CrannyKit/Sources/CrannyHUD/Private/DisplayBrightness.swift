@@ -6,7 +6,9 @@
 // is online and awake, and `DisplayServicesCanChangeBrightness` says yes. Otherwise `readLevel()` is nil and the
 // brightness keys go to macOS (external non-Apple displays, clamshell mode). Built-in get/set and real
 // brightness keys on Apple Silicon are [UNVERIFIED]: the hardware checklist (§11.2 item 6) confirms them before
-// `HUDSettings.brightness` defaults to on. Called on the key tap's thread.
+// `HUDSettings.brightness` defaults to on. Called on the key tap's thread (and by the 2-Hz poll of a visible
+// brightness HUD). Finding the built-in display enumerates every online display, so a press, which reads and then
+// writes within microseconds, resolves it once: the write reuses the display its read just found.
 import CoreGraphics
 import CrannyCore
 import Foundation
@@ -32,18 +34,31 @@ nonisolated final class DisplayServicesBrightness: DisplayBrightness {
     private static let frameworkPath = "/System/Library/PrivateFrameworks/DisplayServices.framework/DisplayServices"
     /// Resolved on first use (never in `register(in:)`), then cached; nil = the framework or a symbol is missing.
     private let symbols = OSAllocatedUnfairLock<Symbols??>(initialState: nil)
+    /// The display the latest read found, and when (`systemUptime`).
+    private let lastTarget = OSAllocatedUnfairLock<(display: CGDirectDisplayID, uptime: TimeInterval)?>(initialState: nil)
+
+    /// A write this soon after a read goes to the display the read found (a press reads, then writes at once).
+    static let targetReuse: TimeInterval = 0.1
 
     init() {}
 
     func readLevel() -> Double? {
-        guard let symbols = resolved(), let display = Self.targetDisplay(), symbols.canChange(display) else { return nil }
+        guard let symbols = resolved(), let display = Self.targetDisplay() else { return nil }
+        let now = ProcessInfo.processInfo.systemUptime
+        lastTarget.withLock { $0 = (display, now) }
+        guard symbols.canChange(display) else { return nil }
         var value: Float = -1
         guard symbols.get(display, &value) == 0, value >= 0 else { return nil }
         return Double(value)
     }
 
     func setLevel(_ level: Double) -> Bool {
-        guard let symbols = resolved(), let display = Self.targetDisplay() else { return false }
+        guard let symbols = resolved() else { return false }
+        let now = ProcessInfo.processInfo.systemUptime
+        let justRead = lastTarget.withLock { target in
+            target.flatMap { now - $0.uptime < Self.targetReuse ? $0.display : nil }
+        }
+        guard let display = justRead ?? Self.targetDisplay() else { return false }
         return symbols.set(display, Float(min(max(level, 0), 1))) == 0
     }
 

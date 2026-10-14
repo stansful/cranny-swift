@@ -193,9 +193,7 @@ import Testing
         #expect(await eventually { activity.revision == 1 })       // (it may already have hidden on a busy main actor)
         #expect(activity.display?.level == 0.5625)
         #expect(activity.priority == .hud)
-        if let expires = activity.expiresAt {
-            #expect(expires.timeIntervalSinceNow <= 0.8)            // now + duration, minus the hop to the main actor
-        }
+        #expect(activity.expiresAt == nil)                         // the hide sleep is the one deadline: no shell wake-up per press
         #expect(fake.volume.state?.level == 0.5625)
         #expect(await eventually(timeout: .seconds(3)) { !activity.isActive })
         #expect(activity.display != nil)                           // kept for the out-animation
@@ -282,6 +280,25 @@ import Testing
         #expect(await eventually { activity.display?.deviceGlyph == "airpodsmax" })
         #expect(activity.display?.level == 0.25)
         #expect(activity.revision == 1)
+    }
+
+    @Test func theLevelIsFollowedOnlyDuringAVolumeHUD() async throws {
+        settings[HUDSettings.replaceSystemHUD] = true
+        settings[HUDSettings.keyboardBacklight] = true
+        controller.now = { [start = Date()] in start }              // frozen: the HUD stays up however busy the main actor is
+        controller.start()
+        defer { controller.stop() }
+        let tap = try #require(fake.taps.first)
+        let observer = try #require(fake.observers.first)
+        #expect(observer.isRunning && !observer.followsLevel)       // device changes only while no HUD shows
+        _ = tap.handler.handle(MediaKeyEvent(key: .soundUp, isDown: true))
+        #expect(await eventually { observer.followsLevel })
+        _ = tap.handler.handle(MediaKeyEvent(key: .illuminationUp, isDown: true))
+        #expect(await eventually { !observer.followsLevel })        // another kind: no level to follow
+        _ = tap.handler.handle(MediaKeyEvent(key: .soundDown, isDown: true))
+        #expect(await eventually { observer.followsLevel })
+        environment.isScreenLocked = true                           // the HUD goes
+        #expect(await eventually { !activity.isActive && !observer.followsLevel })
     }
 
     @Test func theOutputsEchoOfAPressIsIgnored() async throws {

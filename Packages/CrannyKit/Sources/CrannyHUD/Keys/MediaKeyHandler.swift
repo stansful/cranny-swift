@@ -4,7 +4,8 @@
 //
 // Thread: called on the tap thread (`MediaKeyInterceptor`) and, for VoiceOver adjustments, on a concurrent
 // executor (`HUDController.adjust`), never on the main actor. It must return within microseconds: it reads the
-// config snapshot, calls CoreAudio / DisplayServices (thread-safe C APIs) and never blocks on the main actor. Its
+// config snapshot, calls CoreAudio / DisplayServices (thread-safe C APIs, only the reads a press needs: a repeat
+// skips the volume and mute it would replace) and never blocks on the main actor. Its
 // own state (keys whose key-down was consumed, the update counter, the volume it last applied) sits behind an
 // unfair lock. Tests drive it with fakes; it never touches a real device there.
 import Foundation
@@ -96,39 +97,46 @@ nonisolated final class MediaKeyHandler: Sendable {
     }
 
     private func applyVolume(_ action: LevelAction, fine: Bool, isRepeat: Bool) -> HUDUpdate? {
-        guard let read = volume.readState() else { return nil }            // HDMI / DisplayPort: not settable
         let now = uptime()
-        let before = state.withLock { state -> VolumeState in
-            guard let last = state.lastVolume, last.deviceID == read.deviceID,
-                  now - last.time < Self.recentVolumeWindow else { return read }
-            var recent = read
-            recent.level = last.level
-            recent.isMuted = last.isMuted
-            return recent
+        // Within the window a press steps from what Cranny applied, so it reads only the device and what it can
+        // set, not the level and mute it would replace (every repeat of a held key lands here).
+        let recent = state.withLock { state in
+            state.lastVolume.flatMap { now - $0.time < Self.recentVolumeWindow ? $0 : nil }
         }
+        guard var before = volume.readState(includingLevels: recent == nil) else { return nil }   // HDMI / DisplayPort
+        if let recent {
+            if recent.deviceID == before.deviceID {
+                before.level = recent.level
+                before.isMuted = recent.isMuted
+            } else {
+                guard let fresh = volume.readState() else { return nil }       // another output: its own values
+                before = fresh
+            }
+        }
+        let device = before.deviceID                                         // writes go where the values came from
         var after = before
         var limit: LevelLimit?
         switch action {
         case .toggle:
             guard before.canMute else { return nil }
             if !isRepeat {                                                   // holding mute does not flicker
-                guard volume.setMuted(!before.isMuted) else { return nil }
+                guard volume.setMuted(!before.isMuted, on: device) else { return nil }
                 after.isMuted.toggle()
             }
         case .up, .down:
             let up = action == .up
             if up && before.isMuted {                                        // volume-up unmutes (macOS convention)
-                guard volume.setMuted(false) else { return nil }
+                guard volume.setMuted(false, on: device) else { return nil }
                 after.isMuted = false
             }
             let target = LevelStepper.step(before.level, up: up, fine: fine)
             if target != before.level {
-                guard volume.setLevel(target) else { return nil }
+                guard volume.setLevel(target, on: device) else { return nil }
             }
             after.level = target            // not a read-back: Bluetooth outputs report the new level late
             limit = LevelStepper.limit(from: before.level, to: target, up: up)
         }
-        let applied = AppliedVolume(deviceID: read.deviceID, level: after.level, isMuted: after.isMuted, time: now)
+        let applied = AppliedVolume(deviceID: device, level: after.level, isMuted: after.isMuted, time: now)
         state.withLock { $0.lastVolume = applied }
         return makeUpdate(.volume, level: after.level, muted: after.isMuted, fine: fine, limit: limit, isRepeat: isRepeat)
     }
