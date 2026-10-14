@@ -287,7 +287,8 @@ import SwiftUI
                                           density: settings[CoreSettings.density], widgetStyle: settings[CoreSettings.widgetStyle])
         let systemAccent = AccentResolver.systemAccent()
         let theme = ThemeResolver.theme(settings: settings, albumAccent: registry.services.nowPlaying?.palette?.accent,
-                                        notchUnit: metrics.unit, isFloatingDisplay: layout.isFloating)
+                                        notchUnit: metrics.unit, isFloatingDisplay: layout.isFloating,
+                                        systemAccent: systemAccent)
         // DESIGN.md §5.2: the light takes the top activity's palette (album, meeting, timer…).
         let topPalette = primary.flatMap { registry.activity($0)?.activity.palette }
         let ambient = ThemeResolver.ambientPalette(topActivity: topPalette, accent: settings[CoreSettings.accent],

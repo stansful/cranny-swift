@@ -4,8 +4,11 @@
 // WelcomeWindowController and ShellAppServices. `--diagnostics` exits before any window exists, and
 // before any module launched, so no terminate hook runs then either (`LaunchGate`), and before the one-time settings
 // upgrade, so it writes no preference. `ShellDefaults` picks where settings live (a Debug QA run's own suite).
+// Energy: a few seconds after launch, while the app is idle, the Metal effects are prepared off the main thread
+// (`EffectsPreparation`), so the first open of the panel compiles nothing during its animation.
 import AppKit
 import CrannyCore
+import CrannyEffects
 import Foundation
 
 /// Owned by the app target via `@NSApplicationDelegateAdaptor`.
@@ -59,7 +62,21 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         let paths = registry.services.paths
         Task { await FilePromiseResolver.sweepIncoming(paths: paths) }
         launchGate.launch { await registry.runLaunchHooks() }
+        prepareEffects(settings: registry.services.settings)
     }
+
+    /// The light's Metal pipelines and the moments' shaders, compiled at utility priority once the launch has settled.
+    /// Skipped while Appearance ▸ Ambience is Off: then the first open that shows light builds them itself, as before.
+    private func prepareEffects(settings: SettingsStore) {
+        guard settings[CoreSettings.ambience] != .off else { return }
+        Task(priority: .utility) {
+            try? await Task.sleep(for: Self.effectsPreparationDelay, tolerance: .seconds(1))
+            await EffectsPreparation.prepare()
+        }
+    }
+
+    /// After the modules' launch hooks and the first display facts, so it competes with nothing the user sees.
+    private static let effectsPreparationDelay: Duration = .seconds(5)
 
     /// A quit while the modules are still launching waits for them (at most `LaunchGate.quitWait`), so no terminate
     /// hook saves or deletes state that its launch hook has not restored yet.
