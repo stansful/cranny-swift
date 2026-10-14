@@ -107,6 +107,12 @@ import Observation
         app.openSettings(.calendar)
     }
 
+    /// Settings ▸ Calendar without access: the Permissions pane (Settings never shows the prompt itself).
+    func openPermissionsSettings() {
+        guard !isSample else { return }
+        app.openSettings(.permissions)
+    }
+
     func selectDay(_ offset: Int) {
         dayOffset = min(max(offset, dayRange.lowerBound), dayRange.upperBound)
     }

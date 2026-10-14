@@ -82,6 +82,27 @@ import Testing
         #expect(commands.commands(matching: "").map(\.id.rawValue) == ["calendar.showToday"])
     }
 
+    @Test func settingsNeverShowsThePrompt() async {
+        // Settings ▸ Calendar without access sends the user to Settings ▸ Permissions; only the widget's
+        // "Show your events" asks EventKit (ARCHITECTURE.md §7.4, DESIGN.md §6.8).
+        let access = FakeAccess(.notDetermined)
+        let app = RecordingAppControl()
+        let model = await makeModel([], time: TestTime(T.date()), access: access, app: app)
+        model.openPermissionsSettings()
+        #expect(app.openedSettings == [.permissions])
+        #expect(access.requests == 0)
+        // Samples (the Settings stage) open nothing.
+        let sample = CalendarModel.sample(services: .preview(), access: .notDetermined)
+        sample.openPermissionsSettings()
+        #expect(app.openedSettings.count == 1)
+    }
+
+    @Test func searchKeywordsNameOnlyThisPanesRows() {
+        // The lead time is a row of Settings ▸ Live Activities (under Meeting soon), not of this pane.
+        #expect(!CalendarSettingsPane.keywords.contains { $0 == "Lead time" || $0 == "Напоминать за" })
+        #expect(CalendarSettingsPane.keywords.contains("Zoom"))
+    }
+
     @Test func dayPagingStaysInTheWindow() {
         let services = CrannyServices.preview()
         let model = CalendarModel.sample(services: services)

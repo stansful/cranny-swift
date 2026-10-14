@@ -20,7 +20,8 @@ nonisolated protocol EventSource: Sendable {
 @MainActor protocol CalendarAccess: AnyObject {
     /// Observable: changes re-render the widget and reload the store.
     var status: PermissionStatus { get }
-    /// Shows the system prompt. Only from the widget's "Show your events" button or Settings, never at launch.
+    /// Shows the system prompt. Only from the widget's "Show your events" button (ARCHITECTURE.md §7.4), never at
+    /// launch or from Settings.
     func request() async -> PermissionStatus
     /// Re-reads the status (cheap; never prompts): the user may have changed it in System Settings.
     func refresh()

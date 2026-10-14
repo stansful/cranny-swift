@@ -638,6 +638,17 @@
         }
       }
     },
+    "Permissions…" : {
+      "comment" : "Settings ▸ Calendar: opens Settings ▸ Permissions (calendar access is not granted yet)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешения…"
+          }
+        }
+      }
+    },
     "Personal" : {
       "comment" : "Calendar sample data: calendar name",
       "localizations" : {

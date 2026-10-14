@@ -65,7 +65,8 @@ struct CalendarSettingsPane: View {
             .settingRow(settings, key)
     }
 
-    /// The pane's search terms (Settings search matches a module pane only through these, §3.7).
+    /// The pane's search terms (Settings search matches a module pane only through these, §3.7): only rows this
+    /// pane shows. The meeting lead time lives under Meeting soon in Settings ▸ Live Activities.
     static var keywords: [String] {
         [String(localized: "Calendars", bundle: .module, comment: "Settings ▸ Calendar: section title"),
          String(localized: "Days before today", bundle: .module, comment: "Calendar settings: how many past days the widget can show"),
@@ -75,7 +76,6 @@ struct CalendarSettingsPane: View {
          String(localized: "Meeting links", bundle: .module, comment: "Settings ▸ Calendar: section title (services that get a Join button)"),
          String(localized: "Open meetings in", bundle: .module, comment: "Settings ▸ Calendar: where Join opens a meeting"),
          String(localized: "Join", bundle: .module, comment: "Calendar: Join button title (opens the meeting link)"),
-         String(localized: "Lead time", bundle: .module, comment: "Live Activities ▸ Meeting soon: how long before a meeting it appears"),
          String(localized: "Birthdays", bundle: .module, comment: "Settings ▸ Calendar: search keyword for the birthdays calendar"),
          String(localized: "Events", bundle: .module, comment: "Settings ▸ Calendar: section title")]
             + MeetingService.allCases.map(\.displayName)
@@ -130,7 +130,9 @@ private struct CalendarList: View {
     }
 }
 
-/// "Cranny can't see your calendars yet" + Show your events / Open System Settings.
+/// "Cranny can't see your calendars yet" + Permissions… / Open System Settings. Never the system prompt: Cranny
+/// asks for Calendar access only from the widget's "Show your events" or onboarding (ARCHITECTURE.md §7.4,
+/// DESIGN.md §6.8); Settings ▸ Permissions is where the Settings window handles every permission.
 private struct AccessRow: View {
     let model: CalendarModel
 
@@ -150,8 +152,8 @@ private struct AccessRow: View {
                     Text("Open System Settings", bundle: .module, comment: "Calendar widget: button that opens Privacy & Security ▸ Calendars")
                 }
             } else if status == .notDetermined {
-                Button { Task { await model.store.requestAccess() } } label: {
-                    Text("Show your events", bundle: .module, comment: "Calendar widget: button that asks for calendar access")
+                Button { model.openPermissionsSettings() } label: {
+                    Text("Permissions…", bundle: .module, comment: "Settings ▸ Calendar: opens Settings ▸ Permissions (calendar access is not granted yet)")
                 }
                 .disabled(model.isSample)
             }

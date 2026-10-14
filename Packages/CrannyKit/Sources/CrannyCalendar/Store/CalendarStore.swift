@@ -137,7 +137,7 @@ private let log = Log.logger(.calendar)
         loadCount += 1
     }
 
-    // MARK: - Access (only from the widget's inline state or Settings)
+    // MARK: - Access (the prompt only from the widget's inline "Show your events")
 
     /// The "Show your events" button: the system prompt, then a load if granted.
     func requestAccess() async {
