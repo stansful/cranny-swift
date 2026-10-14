@@ -1,7 +1,8 @@
 // CrannyAppShell/Services/ShellEnvironment.swift — the `SystemEnvironment` port (ARCHITECTURE.md §7.10), WP13.
-// Event-driven only: lock/unlock, display sleep, Low Power Mode, thermal state, AC vs battery, frontmost
-// app; Demo mode and "Pause Live Activities" are derived from CoreSettings by observation (their only
-// writers are WP16's DemoMode/PauseController). WP13 adds full-screen detection (§5.7) and trackpad presence.
+// Event-driven only: lock/unlock and fast user switching, display sleep, Low Power Mode, thermal state, AC vs battery,
+// frontmost app, Reduce Motion, trackpad presence, and per-display full-screen detection (§5.7) re-evaluated 0.6 s
+// after Space/app/screen changes (and on demand right before a hover-open). Demo mode and "Pause Live Activities" are
+// derived from CoreSettings by observation; their only writers are WP16's DemoMode/PauseController.
 import AppKit
 import CoreGraphics
 import CrannyCore
@@ -16,17 +17,31 @@ import Observation
     private(set) var thermalState = ProcessInfo.processInfo.thermalState
     private(set) var isOnBattery = false
     private(set) var frontmostBundleID: String?
-    /// WP13: CGWindowList heuristic of §5.7, re-evaluated 0.6 s after space changes.
-    private(set) var isFullScreenInFront = false
     private(set) var isDemoMode = false
     private(set) var areLiveActivitiesPaused = false
-    /// WP13: IOKit HID (built-in or Magic Trackpad).
-    private(set) var hasTrackpad = true
+    private(set) var hasTrackpad = TrackpadDetector.isTrackpadPresent()
+    /// System ▸ Accessibility ▸ Reduce motion (delight caps, §4.6 step 7).
+    private(set) var reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+    /// What is in front of each display (§5.7); missing = nothing full screen.
+    private(set) var fronts: [CGDirectDisplayID: FullScreenDetector.Front] = [:]
+    /// The display under the pointer (the coordinator updates it when the pointer crosses displays).
+    private(set) var pointerDisplay: CGDirectDisplayID?
+
+    /// A full-screen app (or an excluded app) is in front on the pointer's display.
+    var isFullScreenInFront: Bool {
+        guard let front = pointerDisplay.flatMap({ fronts[$0] }) else { return false }
+        return front.fullScreen || front.excludedApp
+    }
 
     @ObservationIgnored private var observers: [(NotificationCenter, any NSObjectProtocol)] = []
     @ObservationIgnored private var settingsTokens: [ObservationToken] = []
     @ObservationIgnored private var powerSource: CFRunLoopSource?
     @ObservationIgnored private var resumeTask: Task<Void, Never>?
+    @ObservationIgnored private let fullScreenDebouncer = Debouncer(delay: .milliseconds(600))
+    @ObservationIgnored private let trackpads = TrackpadDetector()
+    @ObservationIgnored private var excludedBundleIDs: Set<String> = []
+    @ObservationIgnored private var locked = false
+    @ObservationIgnored private var sessionActive = true
     /// Target of the IOKit power-source callback (a C function pointer cannot capture context).
     private static weak var current: ShellEnvironment?
 
@@ -36,18 +51,27 @@ import Observation
     func start(settings: SettingsStore) {
         Self.current = self
         frontmostBundleID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
-        isScreenLocked = (CGSessionCopyCurrentDictionary() as? [String: Any])?["CGSSessionScreenIsLocked"] as? Bool ?? false
+        locked = (CGSessionCopyCurrentDictionary() as? [String: Any])?["CGSSessionScreenIsLocked"] as? Bool ?? false
+        updateLock()
         refreshPowerSource()
 
         let distributed = DistributedNotificationCenter.default()
-        listen(distributed, "com.apple.screenIsLocked") { $0.isScreenLocked = true }
-        listen(distributed, "com.apple.screenIsUnlocked") { $0.isScreenLocked = false }
+        listen(distributed, "com.apple.screenIsLocked") { $0.locked = true; $0.updateLock() }
+        listen(distributed, "com.apple.screenIsUnlocked") { $0.locked = false; $0.updateLock() }
         let workspace = NSWorkspace.shared.notificationCenter
+        listen(workspace, NSWorkspace.sessionDidResignActiveNotification.rawValue) { $0.sessionActive = false; $0.updateLock() }
+        listen(workspace, NSWorkspace.sessionDidBecomeActiveNotification.rawValue) { $0.sessionActive = true; $0.updateLock() }
         listen(workspace, NSWorkspace.screensDidSleepNotification.rawValue) { $0.areDisplaysAsleep = true }
-        listen(workspace, NSWorkspace.screensDidWakeNotification.rawValue) { $0.areDisplaysAsleep = false }
+        listen(workspace, NSWorkspace.screensDidWakeNotification.rawValue) { $0.areDisplaysAsleep = false; $0.scheduleFullScreenCheck() }
         listen(workspace, NSWorkspace.didActivateApplicationNotification.rawValue) {
             $0.frontmostBundleID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+            $0.scheduleFullScreenCheck()
         }
+        listen(workspace, NSWorkspace.activeSpaceDidChangeNotification.rawValue) { $0.scheduleFullScreenCheck() }
+        listen(workspace, NSWorkspace.accessibilityDisplayOptionsDidChangeNotification.rawValue) {
+            $0.reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        }
+        listen(.default, NSApplication.didChangeScreenParametersNotification.rawValue) { $0.scheduleFullScreenCheck() }
         listen(.default, Notification.Name.NSProcessInfoPowerStateDidChange.rawValue) {
             $0.isLowPowerMode = ProcessInfo.processInfo.isLowPowerModeEnabled
         }
@@ -61,11 +85,18 @@ import Observation
             CFRunLoopAddSource(CFRunLoopGetMain(), source, .defaultMode)
             powerSource = source
         }
+        trackpads.start { [weak self] present in self?.hasTrackpad = present }
 
         settingsTokens.append(observe({ settings[CoreSettings.demoMode] }) { [weak self] in self?.isDemoMode = $0 })
         settingsTokens.append(observe({ settings[CoreSettings.pausedUntil] }) { [weak self] in self?.updatePause($0) })
+        settingsTokens.append(observe({ settings[CoreSettings.excludedBundleIDs] }) { [weak self] ids in
+            self?.excludedBundleIDs = Set(ids)
+            self?.refreshFullScreen()
+        })
         isDemoMode = settings[CoreSettings.demoMode]
+        excludedBundleIDs = Set(settings[CoreSettings.excludedBundleIDs])
         updatePause(settings[CoreSettings.pausedUntil])
+        refreshFullScreen()
     }
 
     func stop() {
@@ -75,7 +106,34 @@ import Observation
         if let powerSource { CFRunLoopRemoveSource(CFRunLoopGetMain(), powerSource, .defaultMode) }
         powerSource = nil
         resumeTask?.cancel()
+        fullScreenDebouncer.cancel()
+        trackpads.stop()
     }
+
+    /// The coordinator tracks the pointer's display (`isFullScreenInFront` is about that one).
+    func setPointerDisplay(_ id: CGDirectDisplayID?) {
+        if pointerDisplay != id { pointerDisplay = id }
+    }
+
+    /// Re-reads the window list now (§5.7 "lazily right before a hover-open or auto-peek").
+    func refreshFullScreen() {
+        let screens = NSScreen.screens
+        let displays = screens.compactMap { screen -> FullScreenDetector.Display? in
+            guard let id = DisplayCatalog.displayID(of: screen) else { return nil }
+            return FullScreenDetector.Display(id: id, bounds: CGDisplayBounds(id), notchBand: screen.safeAreaInsets.top)
+        }
+        let front = NSWorkspace.shared.frontmostApplication
+        let ignored = Set([ProcessInfo.processInfo.processIdentifier]
+            + NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock").map(\.processIdentifier))
+        let next = FullScreenDetector.evaluate(
+            windows: FullScreenDetector.snapshot(), displays: displays, frontmostPID: front?.processIdentifier,
+            frontmostIsExcluded: front?.bundleIdentifier.map(excludedBundleIDs.contains) ?? false, ignoredPIDs: ignored)
+            .filter { $0.value != FullScreenDetector.Front() }
+        if fronts != next { fronts = next }
+    }
+
+    /// What is in front of one display (`.alertsAndHUD` / `.hideAll` policy per display, §4.8).
+    func front(of display: CGDirectDisplayID) -> FullScreenDetector.Front { fronts[display] ?? FullScreenDetector.Front() }
 
     // MARK: Private
 
@@ -84,6 +142,16 @@ import Observation
             MainActor.assumeIsolated { if let self { update(self) } }          // queue: .main
         }
         observers.append((center, token))
+    }
+
+    private func updateLock() {
+        let value = locked || !sessionActive
+        if isScreenLocked != value { isScreenLocked = value }
+    }
+
+    /// The Space animation settles first (R3 §10: re-evaluate ≈ 0.6 s after the notification).
+    private func scheduleFullScreenCheck() {
+        fullScreenDebouncer.schedule { [weak self] in self?.refreshFullScreen() }
     }
 
     private func refreshPowerSource() {

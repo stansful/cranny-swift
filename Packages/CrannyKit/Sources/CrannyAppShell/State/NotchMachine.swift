@@ -1,80 +1,18 @@
-// CrannyAppShell/State/NotchMachine.swift — the per-display state machine (ARCHITECTURE.md §4), pure and Equatable.
-// WP0 implements the rows needed for the foundation behaviour (hover dwell → open, leave + grace → close,
-// click, hot key, Esc, pin, holds); WP13 completes §4.4 (peeks, swipes, drags, hiding, timeouts).
-// The reducer never touches AppKit (everything here is `nonisolated` and pure): the view model executes the effects.
+// CrannyAppShell/State/NotchMachine.swift — the per-display reducer (ARCHITECTURE.md §4.2–§4.8), pure:
+// `reduce(state, input, now, config) -> (state, [effect])`. It never touches AppKit; `NotchViewModel` runs the
+// effects (timers, key focus, haptics, events). Every row of the §4.4 table is a case below and has a test.
+import CoreGraphics
 import CrannyCore
 import CrannyNotchUI
 import Foundation
-
-nonisolated struct NotchMachineState: Equatable {
-    nonisolated enum Surface: Equatable { case closed, peek(Peek), open(OpenState) }      // OpenState: §4.12
-    nonisolated enum Peek: Equatable { case hover, auto(ActivityID, until: TimeInterval) }
-    nonisolated enum Hover: Equatable { case outside, dwelling(since: TimeInterval), inside }
-    nonisolated enum Hidden: Equatable { case fullScreen, excludedApp, locked, displaysAsleep, idleHandle, notThisDisplay }
-
-    var surface: Surface = .closed
-    var hover: Hover = .outside
-    var hidden: Hidden? = nil
-    var pinned = false
-    var holds: Set<String> = []          // NotchControl.setHoldOpen reasons + "menu", "drag", "typing"
-    var graceDeadline: TimeInterval?     // pending close after leaving the exit zone
-
-    var isOpen: Bool { if case .open = surface { true } else { false } }
-    var isClosed: Bool { surface == .closed }
-
-    // MARK: Shell-owned hold reasons (§4.5); module reasons are namespaced ("notes.editing").
-
-    /// The panel is key (opened by the hot key, a text field clicked, `requestKeyboardFocus`): §4.4 "panel not key".
-    static let typingHold = "typing"
-    /// An `NSMenu` is tracking (a context menu in the panel, the menu bar extra's menu).
-    static let menuHold = "menu"
-}
-
-/// Settings and facts the reducer reads; the view model snapshots them for every input.
-nonisolated struct NotchMachineConfig: Equatable {
-    var openMode: OpenMode = .hover
-    var hoverDelay: TimeInterval = HoverIntent.defaultDelay.seconds
-    var closeOnLeave = true
-    var quickPeekOnHover = true
-    var lastPage: PageID = .nook
-    var voiceOverRunning = false
-    /// The arbiter has a primary activity on this display (compact is showing).
-    var hasPrimaryActivity = false
-}
-
-nonisolated enum NotchInput: Equatable {
-    /// The pointer entered the entry zone (closed) or came back inside the exit zone (open/peek).
-    case pointerEntered
-    /// The pointer left the entry zone (closed) or the exit zone (open/peek).
-    case pointerLeft
-    /// The dwell scheduled on entry elapsed; `shouldOpen` = `HoverIntent.shouldOpen(…)` at that moment.
-    case dwellElapsed(shouldOpen: Bool)
-    case graceElapsed
-    case click
-    /// Open Cranny hot key (⌃⌥N): toggles.
-    case hotKey
-    case escape
-    case open(page: PageID?, focus: WidgetID?, reason: OpenReason)
-    case close
-    case setPinned(Bool)
-    case hold(String, Bool)
-    case setMode(NookMode)
-    case selectPage(PageID)
-    /// The arbiter asks for a one-off peek of an activity until `until` (systemUptime).
-    case autoPeek(ActivityID, until: TimeInterval)
-}
-
-nonisolated enum NotchEffect: Equatable {
-    case scheduleDwell(TimeInterval)
-    case cancelDwell
-    case scheduleGrace(TimeInterval)
-    case cancelGrace
-    case makeKey
-    case relinquishKey
-    case emit(NotchEvent)
-}
+import UniformTypeIdentifiers
 
 nonisolated enum NotchMachine {
+    /// DESIGN.md §4.6 menu-bar courtesy: the wings come back this long after the pointer leaves the band.
+    static let wingsReturnDelay: TimeInterval = 1.5
+    /// §4.4: after a drop in the catch state, the shape gulps for 0.25 s before it returns.
+    static let catchGulp: TimeInterval = 0.25
+
     /// §4.2: what is drawn.
     static func phase(_ s: NotchMachineState, config: NotchMachineConfig) -> NotchPhase {
         if s.hidden != nil { return .hidden }
@@ -82,143 +20,400 @@ nonisolated enum NotchMachine {
         case .open: return .open
         case .peek: return .peek
         case .closed:
-            if config.hasPrimaryActivity { return .compact }
+            if s.calibrating { return .breath }                                  // frozen in hover while fitting
+            if compactIsVisible(s, config: config) { return .compact }
             if case .dwelling = s.hover, config.openMode != .shortcutOnly { return .breath }
             return .idle
         }
     }
 
-    /// Whether leaving may close (§4.4: closeOnLeave; not pinned; no holds — the panel being key and a tracking
-    /// menu are holds too, `typingHold` and `menuHold`).
+    /// The wings show the primary: closed, not collapsed by the inactivity timeout, not retracted for the menu bar.
+    static func compactIsVisible(_ s: NotchMachineState, config: NotchMachineConfig) -> Bool {
+        s.isClosed && config.primary != nil && !s.compactCollapsed && !s.wingsRetracted && !s.calibrating
+    }
+
+    /// Whether leaving may close the open panel (§4.4: closeOnLeave; not pinned; no holds — the panel being key
+    /// and a tracking menu are holds too; not in a holding mode; not in Demo mode).
     static func mayAutoClose(_ s: NotchMachineState, config: NotchMachineConfig) -> Bool {
-        config.closeOnLeave && !s.pinned && s.holds.isEmpty
+        config.closeOnLeave && !s.pinned && s.holds.isEmpty && !s.modeHoldsOpen && !s.environment.demoMode
     }
 
     static func reduce(_ state: NotchMachineState, _ input: NotchInput, now: TimeInterval,
                        config: NotchMachineConfig) -> (NotchMachineState, [NotchEffect]) {
-        var s = state
-        var fx: [NotchEffect] = []
+        var reduction = NotchReduction(s: state, config: config, now: now)
+        reduction.apply(input)
+        reduction.syncIdleTimers()
+        return (reduction.s, reduction.fx)
+    }
+}
 
-        func open(page: PageID?, focus: WidgetID? = nil, reason: OpenReason) {
-            let wasOpen = s.isOpen
-            s.surface = .open(OpenState(page: page ?? config.lastPage, focus: focus, reason: reason))
-            s.hover = s.hover == .outside ? .outside : .inside
-            if s.graceDeadline != nil { s.graceDeadline = nil; fx.append(.cancelGrace) }
-            fx.append(.cancelDwell)
-            if reason == .keyboard { fx.append(.makeKey) }
-            if !wasOpen { fx.append(.emit(.opened(reason))) }
-        }
-        func close() {
-            guard !s.isClosed else { return }
-            s.surface = .closed
-            s.graceDeadline = nil
-            // A pointer still over the shape must leave and come back before it opens again.
-            s.hover = s.hover == .outside ? .outside : .inside
-            fx += [.cancelDwell, .cancelGrace, .relinquishKey, .emit(.closed)]
-        }
-        func scheduleGraceIfLeft() {
-            guard !s.isClosed, s.hover == .outside, s.graceDeadline == nil, mayAutoClose(s, config: config) else { return }
-            s.graceDeadline = now + HoverIntent.closeGrace
-            fx.append(.scheduleGrace(HoverIntent.closeGrace))
-        }
+/// One reduction: the state being built and the effects it collects, in order.
+private nonisolated struct NotchReduction {
+    var s: NotchMachineState
+    var fx: [NotchEffect] = []
+    let config: NotchMachineConfig
+    let now: TimeInterval
 
+    init(s: NotchMachineState, config: NotchMachineConfig, now: TimeInterval) {
+        self.s = s; self.config = config; self.now = now
+    }
+
+    // MARK: Inputs
+
+    mutating func apply(_ input: NotchInput) {
         switch input {
-        case .pointerEntered:
-            if s.isClosed {
-                guard s.hidden == nil, s.hover == .outside, config.openMode != .shortcutOnly else { break }
-                if config.hasPrimaryActivity {
-                    guard config.quickPeekOnHover else { s.hover = .inside; break }
-                    s.hover = .dwelling(since: now)
-                    fx.append(.scheduleDwell(HoverIntent.peekDwell))
-                } else {
-                    s.hover = .dwelling(since: now)
-                    fx.append(.scheduleDwell(config.hoverDelay))
-                }
-            } else {
-                s.hover = .inside
-                if s.graceDeadline != nil { s.graceDeadline = nil; fx.append(.cancelGrace) }
-            }
-
-        case .pointerLeft:
-            if s.isClosed {
-                if case .dwelling = s.hover { fx.append(.cancelDwell) }
-                s.hover = .outside
-            } else {
-                s.hover = .outside
-                scheduleGraceIfLeft()
-            }
-
-        case .dwellElapsed(let shouldOpen):
-            guard s.isClosed, case .dwelling = s.hover, s.hidden == nil else { break }
-            // Click mode (and VoiceOver) keep the breath: it says "noticed", the click opens.
-            guard config.openMode == .hover, !config.voiceOverRunning else { break }
-            guard shouldOpen else { s.hover = .inside; break }       // passing through: no open until re-entry
-            if config.hasPrimaryActivity {
-                s.surface = .peek(.hover)
-                s.hover = .inside
-            } else {
-                open(page: nil, reason: .hover)
-                s.hover = .inside
-            }
-
-        case .graceElapsed:
-            guard s.graceDeadline != nil else { break }
-            s.graceDeadline = nil
-            guard s.hover == .outside, mayAutoClose(s, config: config) else { break }
-            close()
-
+        case .pointerEntered: pointerEntered()
+        case .pointerLeft: pointerLeft()
+        case .dwellElapsed(let shouldOpen): dwellElapsed(shouldOpen: shouldOpen)
+        case .timerElapsed(let timer): timerElapsed(timer)
         case .click:
-            guard s.hidden == nil else { break }
-            switch s.surface {
-            case .closed, .peek: open(page: nil, reason: .click)
-            case .open: break
-            }
-
+            guard !s.blocksInput, !s.isOpen else { break }
+            open(page: config.primaryWidgetPage, focus: config.primaryWidget, reason: .click)
         case .hotKey:
-            if s.isOpen { close() } else { open(page: nil, reason: .keyboard) }
-
-        case .escape:
-            guard case .open(var o) = s.surface else { close(); break }
-            if o.mode != .grid {                                          // palette / edit / focus → grid first
-                o.mode = .grid
-                s.surface = .open(o)
-            } else {
-                close()
-            }
-
+            if s.isOpen { close() } else if !s.blocksInput { open(page: nil, focus: nil, reason: .keyboard) }
+        case .escape: escape()
         case let .open(page, focus, reason):
-            guard s.hidden == nil else { break }
+            guard !s.blocksInput else { break }
             open(page: page, focus: focus, reason: reason)
-
-        case .close:
-            close()
-
+        case .close: close()
         case .setPinned(let pinned):
             guard s.pinned != pinned else { break }
             s.pinned = pinned
             fx.append(.emit(.pinned(pinned)))
-            if !pinned { scheduleGraceIfLeft() }
-
-        case let .hold(reason, on):
-            if on { s.holds.insert(reason) } else { s.holds.remove(reason) }
-            if !on { scheduleGraceIfLeft() }
-
-        case .setMode(let mode):
-            guard case .open(var o) = s.surface else { break }
-            o.mode = mode
-            s.surface = .open(o)
-
-        case let .autoPeek(id, until):
-            guard s.hidden == nil, !s.isOpen else { break }
-            s.surface = .peek(.auto(id, until: until))
-
+            if pinned { cancel(.grace) } else { scheduleGraceIfLeft() }
+        case let .hold(reason, on): hold(reason, on)
+        case .setMode(let mode): setMode(mode)
         case .selectPage(let page):
-            guard case .open(var o) = s.surface, o.page != page else { break }
+            guard var o = s.openState, o.page != page else { break }
             o.page = page
             o.mode = .grid
             s.surface = .open(o)
             fx.append(.emit(.pageChanged(page)))
+        case .setFocus(let widget):
+            guard var o = s.openState, o.focus != widget else { break }
+            o.focus = widget
+            s.surface = .open(o)
+        case let .autoPeek(id, until): autoPeek(id, until: until)
+        case let .swipe(direction, target): swipe(direction, over: target)
+        case .fileDragEntered(let types): fileDragEntered(types)
+        case .fileDragEnded: fileDragEnded()
+        case .filesDropped(let count): filesDropped(count)
+        case .environment(let environment): setEnvironment(environment)
+        case .activityChanged:
+            s.compactCollapsed = false
+            s.handleHidden = false
+            cancel(.compactIdle)                                                 // re-armed for the new revision
+            cancel(.handleIdle)
+        case .configChanged: break                                               // `syncIdleTimers` does the work
+        case .band(let position): band(position)
+        case .calibration(let on): s.calibrating = on
         }
-        return (s, fx)
+    }
+
+    // MARK: Hover (§4.3, §4.4, DESIGN.md §4.6)
+
+    private mutating func pointerEntered() {
+        s.handleHidden = false                                                   // geometric: works while invisible
+        if s.wingsRetracted { s.wingsRetracted = false; cancel(.wingsReturn) }   // the pointer came for the notch
+        guard !s.blocksInput else { return }
+        switch s.surface {
+        case .closed:
+            guard s.hover == .outside else { return }
+            guard config.openMode != .shortcutOnly else { s.hover = .inside; return }
+            if config.hasPrimaryActivity {
+                guard config.quickPeekOnHover else { s.hover = .inside; return }
+                s.hover = .dwelling(since: now)
+                schedule(.dwell, dwell(HoverIntent.peekDwell))
+            } else {
+                s.hover = .dwelling(since: now)
+                schedule(.dwell, dwell(config.hoverDelay))
+            }
+        case .peek, .open:
+            s.hover = .inside
+            cancel(.grace)
+            if s.isCatching { cancel(.catchEnd) }
+        }
+    }
+
+    private mutating func pointerLeft() {
+        switch s.surface {
+        case .closed:
+            cancel(.dwell)
+            s.hover = .outside
+        case .peek, .open:
+            s.hover = .outside
+            if s.isCatching { schedule(.catchEnd, HoverIntent.closeGrace) } else { scheduleGraceIfLeft() }
+        }
+    }
+
+    private mutating func dwellElapsed(shouldOpen: Bool) {
+        s.timers.remove(.dwell)
+        guard s.isClosed, case .dwelling = s.hover, !s.blocksInput else { return }
+        // Click mode (and VoiceOver) keep the breath: it says "noticed", the click opens.
+        guard config.openMode == .hover, !config.voiceOverRunning else { return }
+        guard shouldOpen else { s.hover = .inside; return }                     // passing through: no open until re-entry
+        if config.hasPrimaryActivity {
+            s.surface = .peek(.hover)
+        } else {
+            open(page: nil, focus: nil, reason: .hover)
+        }
+        s.hover = .inside
+    }
+
+    /// Full-screen Spaces (`.alertsAndHUD`) need a longer dwell: tabs and toolbars live up there.
+    private func dwell(_ delay: TimeInterval) -> TimeInterval {
+        s.environment.restrictsToAlerts ? max(delay, HoverIntent.fullScreenDwell) : delay
+    }
+
+    // MARK: Open and close
+
+    private mutating func open(page: PageID?, focus: WidgetID?, mode: NookMode = .grid, reason: OpenReason) {
+        let previous = s.openState
+        // Re-opening an open panel without naming a page keeps the page it shows.
+        let page = page ?? previous?.page ?? config.lastPage
+        s.surface = .open(OpenState(page: page, focus: focus, mode: mode, reason: reason))
+        if s.hover != .outside { s.hover = .inside }
+        s.handleHidden = false
+        for timer in [NotchTimer.dwell, .grace, .peekEnd, .catchEnd] { cancel(timer) }
+        // Keyboard opens take focus; so does a programmatic open that names a widget ("gives it keyboard focus").
+        if reason == .keyboard || (focus != nil && [.programmatic, .activity, .tutorial].contains(reason)) {
+            fx.append(.makeKey)
+        }
+        if let previous {
+            if previous.page != page { fx.append(.emit(.pageChanged(page))) }
+        } else {
+            fx.append(.emit(.opened(reason)))
+        }
+    }
+
+    private mutating func close() {
+        switch s.surface {
+        case .closed:
+            return
+        case .peek:
+            s.surface = .closed
+        case .open:
+            s.surface = .closed
+            fx += [.relinquishKey, .emit(.closed)]
+        }
+        for timer in [NotchTimer.dwell, .grace, .peekEnd, .catchEnd] { cancel(timer) }
+        // A pointer still over the shape must leave and come back before it opens again.
+        if s.hover != .outside { s.hover = .inside }
+    }
+
+    private mutating func scheduleGraceIfLeft() {
+        guard s.hover == .outside, !s.timers.contains(.grace) else { return }
+        switch s.surface {
+        case .closed:
+            return
+        case .peek:
+            guard s.holds.isEmpty else { return }
+        case .open:
+            guard !s.isCatching, NotchMachine.mayAutoClose(s, config: config) else { return }
+        }
+        schedule(.grace, HoverIntent.closeGrace)
+    }
+
+    private mutating func escape() {
+        guard var o = s.openState else { close(); return }
+        switch o.mode {
+        case .palette, .editLayout, .focus:                                     // leave the mode first
+            o.mode = .grid
+            s.surface = .open(o)
+            scheduleGraceIfLeft()
+        case .grid, .catchFiles:
+            close()
+        }
+    }
+
+    private mutating func hold(_ reason: String, _ on: Bool) {
+        if on {
+            s.holds.insert(reason)
+            cancel(.grace)
+        } else if s.holds.remove(reason) != nil {
+            scheduleGraceIfLeft()
+        }
+    }
+
+    private mutating func setMode(_ mode: NookMode) {
+        guard var o = s.openState, o.mode != mode else { return }
+        let wasPalette = o.mode == .palette
+        o.mode = mode
+        s.surface = .open(o)
+        if mode == .palette && !wasPalette { fx.append(.emit(.paletteOpened)) }
+        if s.modeHoldsOpen { cancel(.grace) } else { scheduleGraceIfLeft() }
+    }
+
+    // MARK: Peeks (§4.7)
+
+    private mutating func autoPeek(_ id: ActivityID, until: TimeInterval) {
+        guard !s.blocksInput, !s.isOpen, s.surface != .peek(.hover) else { return }   // a hover peek already shows it
+        s.handleHidden = false
+        s.surface = .peek(.auto(id, until: until))
+        cancel(.grace)
+        if until.isFinite { schedule(.peekEnd, max(until - now, 0)) } else { cancel(.peekEnd) }
+    }
+
+    // MARK: Timers
+
+    private mutating func timerElapsed(_ timer: NotchTimer) {
+        guard s.timers.remove(timer) != nil else { return }                     // cancelled meanwhile
+        switch timer {
+        case .dwell:
+            break                                                                // `dwellElapsed` carries the decision
+        case .grace:
+            guard s.hover == .outside else { return }
+            switch s.surface {
+            case .closed: break
+            case .peek: if s.holds.isEmpty { close() }
+            case .open: if !s.isCatching, NotchMachine.mayAutoClose(s, config: config) { close() }
+            }
+        case .peekEnd:
+            guard case .peek(.auto) = s.surface, s.hover != .inside else { return }   // a hover keeps it
+            close()
+        case .catchEnd:
+            guard var o = s.openState, case .catchFiles = o.mode else { return }
+            guard s.fileDrag == nil || s.hover == .outside else { return }       // still dragging over it
+            s.holds.remove(NotchMachineState.dragHold)
+            if s.pinned { o.mode = .grid; s.surface = .open(o) } else { close() }
+        case .inactivity:
+            if idleCloseAllowed { close() }
+        case .compactIdle:
+            if NotchMachine.compactIsVisible(s, config: config) { s.compactCollapsed = true }
+        case .handleIdle:
+            if handleMayHide { s.handleHidden = true }
+        case .wingsReturn:
+            s.wingsRetracted = false
+        }
+    }
+
+    // MARK: Swipes (§4.4, DESIGN.md §4.4)
+
+    private mutating func swipe(_ direction: SwipeDirection, over target: SwipeTarget) {
+        guard !s.blocksInput else { return }
+        let compact = NotchMachine.compactIsVisible(s, config: config)
+        switch (s.surface, direction, target) {
+        case (.closed, .down, .shape):
+            guard config.swipeOpenClose else { return }
+            fx.append(.haptic(.alignment))
+            open(page: nil, focus: nil, reason: .swipe)
+        case (.open, .up, .header):
+            guard config.swipeOpenClose else { return }
+            fx.append(.haptic(.alignment))
+            close()
+        case (.closed, .up, .satellite):
+            guard config.swipeToDismiss, compact, let satellite = config.satellite else { return }
+            fx += [.haptic(.alignment), .dismissActivity(satellite)]
+        case (.closed, .up, .shape), (.peek, .up, .shape):
+            if (compact || s.isPeeking), config.swipeToDismiss, let primary = config.primary {
+                fx += [.haptic(.alignment), .dismissActivity(primary)]
+                if s.isPeeking { close() }
+            } else if s.isClosed, config.hasHandle, config.primary == nil, !s.handleHidden {
+                fx.append(.haptic(.alignment))
+                s.handleHidden = true                                            // until the next activity
+            }
+        case (.closed, .left, .shape), (.closed, .right, .shape), (.peek, .left, .shape), (.peek, .right, .shape):
+            guard config.trackSwipe, compact || s.isPeeking, let primary = config.primary else { return }
+            let gesture: ActivityGesture = direction == .left ? .swipeLeft : .swipeRight
+            fx += [.haptic(.alignment), .activityGesture(primary, gesture), .emit(.activityGesture(primary, gesture))]
+        default:
+            break
+        }
+    }
+
+    // MARK: File drags (§4.4, §5.5–§5.6)
+
+    private mutating func fileDragEntered(_ types: [UTType]) {
+        s.fileDrag = types
+        guard !s.blocksInput else { return }
+        s.handleHidden = false
+        s.holds.insert(NotchMachineState.dragHold)
+        cancel(.grace)
+        switch s.surface {
+        case .closed, .peek:
+            guard config.acceptsFileDrags else { return }
+            open(page: nil, focus: nil, mode: .catchFiles(types), reason: .drag)
+        case .open(var o):
+            guard case .catchFiles = o.mode else { return }                     // the grid stays: widget zones take it
+            o.mode = .catchFiles(types)
+            s.surface = .open(o)
+            cancel(.catchEnd)
+        }
+    }
+
+    private mutating func fileDragEnded() {
+        guard s.fileDrag != nil else { return }
+        s.fileDrag = nil
+        s.holds.remove(NotchMachineState.dragHold)
+        if s.isCatching { schedule(.catchEnd, HoverIntent.closeGrace) } else { scheduleGraceIfLeft() }
+    }
+
+    private mutating func filesDropped(_ count: Int) {
+        s.fileDrag = nil
+        s.holds.remove(NotchMachineState.dragHold)
+        if count > 0 { fx += [.emit(.filesCaught(count: count)), .haptic(.generic), .playSound(.pop)] }
+        if s.isCatching { schedule(.catchEnd, count > 0 ? NotchMachine.catchGulp : HoverIntent.closeGrace) }
+        else { scheduleGraceIfLeft() }
+    }
+
+    // MARK: Environment (§4.8, §4.9)
+
+    private mutating func setEnvironment(_ environment: NotchEnvironment) {
+        let wasDemo = s.environment.demoMode
+        s.environment = environment
+        if environment.hardHidden != nil {
+            close()
+            cancel(.dwell)
+            if case .dwelling = s.hover { s.hover = .inside }
+        }
+        if wasDemo && !environment.demoMode { scheduleGraceIfLeft() }
+    }
+
+    // MARK: Menu-bar courtesy (DESIGN.md §4.6)
+
+    private mutating func band(_ position: BandPosition) {
+        switch position {
+        case .courtesy:
+            guard config.menuBarCourtesy, NotchMachine.compactIsVisible(s, config: config) || s.wingsRetracted else { return }
+            s.wingsRetracted = true
+            cancel(.wingsReturn)
+        case .band:
+            cancel(.wingsReturn)
+        case .outside:
+            if s.wingsRetracted, !s.timers.contains(.wingsReturn) { schedule(.wingsReturn, NotchMachine.wingsReturnDelay) }
+        }
+    }
+
+    // MARK: Idle timers (armed while their condition holds, cancelled when it stops)
+
+    private var idleCloseAllowed: Bool {
+        s.isOpen && !s.isCatching && s.hover == .outside && !s.pinned && s.holds.isEmpty && !s.modeHoldsOpen
+            && !s.environment.demoMode
+    }
+    private var handleMayHide: Bool {
+        config.hidesIdleHandle && config.hasHandle && s.isClosed && config.primary == nil && s.hover == .outside
+            && !s.handleHidden && s.hidden == nil
+    }
+
+    mutating func syncIdleTimers() {
+        arm(.inactivity, config.openInactivityTimeout, when: config.openInactivityTimeout > 0 && idleCloseAllowed)
+        arm(.compactIdle, config.compactInactivityTimeout,
+            when: config.compactInactivityTimeout > 0 && NotchMachine.compactIsVisible(s, config: config)
+                && s.hover == .outside && s.hidden == nil)
+        arm(.handleIdle, config.handleIdleDelay, when: handleMayHide)
+    }
+
+    private mutating func arm(_ timer: NotchTimer, _ delay: TimeInterval, when condition: Bool) {
+        if condition { if !s.timers.contains(timer) { schedule(timer, delay) } } else { cancel(timer) }
+    }
+
+    private mutating func schedule(_ timer: NotchTimer, _ delay: TimeInterval) {
+        s.timers.insert(timer)
+        fx.append(.schedule(timer, after: delay))
+    }
+
+    private mutating func cancel(_ timer: NotchTimer) {
+        guard s.timers.remove(timer) != nil else { return }
+        fx.append(.cancel(timer))
     }
 }

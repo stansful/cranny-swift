@@ -6,6 +6,10 @@
 // - Configuration and root-view hit testing run everywhere (CI included).
 // - The on-screen checks put a real panel at the top of the primary display for about two seconds, so they are
 //   opt-in: `CRANNY_INTEGRATION=1 swift test --filter PanelSelfTests` (ARCHITECTURE.md §9.6).
+// - `keyboardFocusIsTakenAndHandedBack` (also opt-in) checks that the hot key's programmatic `makeKey()` gives the
+//   non-activating panel key status without activating Cranny or changing the frontmost app, and that closing
+//   hands it back (ARCHITECTURE.md §4.10 [UNVERIFIED before WP13]). It briefly takes the keyboard: run it on an idle
+//   or locked Mac.
 // - Not covered without real input (manual, §11.2 hardware checklist): a real click is delivered without
 //   activating the app, and the panel shows above another app's full-screen Space.
 import AppKit
@@ -44,6 +48,16 @@ import Testing
 }
 
 private struct EmptyViewForTest: View { var body: some View { Color.clear } }
+
+/// AppKit owns drag and drop (§5.6): the root view takes file URLs and file promises, and drops are refused
+/// until a `DropRouter` is attached.
+@Test func rootViewIsThePanelsDropDestination() {
+    let root = NotchRootView(frame: CGRect(x: 0, y: 0, width: 400, height: 200))
+    #expect(root.registeredDraggedTypes.contains(.fileURL))
+    #expect(NSFilePromiseReceiver.readableDraggedTypes.allSatisfy { root.registeredDraggedTypes.contains(NSPasteboard.PasteboardType($0)) })
+    #expect(!root.wantsPeriodicDraggingUpdates())
+    #expect(DropRouter.canvasPoint(CGPoint(x: 10, y: 150), in: root) == CGPoint(x: 10, y: 50))   // top-left canvas
+}
 
 // MARK: - On screen (opt-in)
 
@@ -122,5 +136,24 @@ private extension NSScreen {
     #expect(eventually { hits(CGPoint(x: open.midX, y: open.minY + open.height * 0.3)) })   // inside the open panel
     #expect(!hits(CGPoint(x: open.minX + 2, y: open.minY + 2)))                // outside the rounded bottom corner
     #expect(!hits(CGPoint(x: open.midX, y: open.minY - 6)))                    // the shadow does not capture
+    #expect(NSWorkspace.shared.frontmostApplication?.processIdentifier == frontBefore)
+}
+
+@Test(.enabled(if: integration)) func keyboardFocusIsTakenAndHandedBack() throws {
+    _ = NSApplication.shared
+    let screen = try #require(NSScreen.screens.first)
+    let frontBefore = NSWorkspace.shared.frontmostApplication?.processIdentifier
+    let registry = ModuleRegistry(services: .preview())
+    let controller = NotchPanelController(screen: screen, key: "selftest.keys", style: .floatingIsland, registry: registry)
+    defer { controller.close() }
+    spin(0.5)
+    controller.viewModel.send(.hotKey)                                          // opens with `makeKey`
+    #expect(eventually(within: 3) { controller.panel.isKeyWindow })
+    #expect(controller.viewModel.state.holds.contains(NotchMachineState.typingHold))   // key status is a hold (§4.5)
+    #expect(NSWorkspace.shared.frontmostApplication?.processIdentifier == frontBefore)  // no activation (R1 §3.5)
+    controller.viewModel.send(.escape)                                          // closes and hands focus back
+    #expect(eventually(within: 3) { !controller.panel.isKeyWindow })
+    #expect(!controller.viewModel.state.holds.contains(NotchMachineState.typingHold))
+    #expect(controller.panel.isVisible)                                         // orderOut + orderFrontRegardless
     #expect(NSWorkspace.shared.frontmostApplication?.processIdentifier == frontBefore)
 }
