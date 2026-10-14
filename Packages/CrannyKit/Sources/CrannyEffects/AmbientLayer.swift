@@ -12,6 +12,10 @@ import SwiftUI
 ///   frame under Reduce Motion, and uses the dedicated Metal layer whenever shaders run (no SwiftUI work per frame).
 /// - Wrap it in `FirstLight` for the first open of a session, and apply `songChangeRipple(_:)` around it for track
 ///   changes.
+/// - Frame it to the shape's current bounds: while the size changes (the open and close morph) each layout pass
+///   draws one synchronous frame at the new size; at rest it draws only at the budget's frame rate.
+/// - Rendering: a dedicated Metal layer whenever shaders run, which `ImageRenderer`, `cacheDisplay`,
+///   `drawingGroup()` and shader effects over the light cannot see; `ambientLightRendering(.inline)` keeps it in SwiftUI.
 public struct AmbientLayer: View, Animatable {
     /// The light's colours; animate a change with `CrannyMotion.Kind.colorShift` to cross-fade.
     public var palette: AmbientPalette

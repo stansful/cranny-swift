@@ -24,8 +24,17 @@ extension EnvironmentValues {
     @Entry var ambientReveal: AmbientReveal? = nil
     /// The date of the last song change, set by `songChangeRipple(_:)`.
     @Entry var ambientRippleStart: Date? = nil
-    /// `.inline` keeps the ambient light inside SwiftUI (tests, `ImageRenderer`).
-    @Entry var effectRendering: EffectRendering = .automatic
+    /// `.inline` keeps the ambient light inside SwiftUI (`ambientLightRendering(_:)`).
+    @Entry var effectRendering: AmbientLightRendering = .automatic
+}
+
+public extension View {
+    /// How the ambient light inside this view is drawn. The default, `.automatic`, uses a dedicated Metal layer that
+    /// snapshots (`ImageRenderer`, `cacheDisplay`), `drawingGroup()` and shader effects over the light cannot see;
+    /// `.inline` keeps the light in SwiftUI for them, at a higher CPU cost while it animates.
+    func ambientLightRendering(_ rendering: AmbientLightRendering) -> some View {
+        environment(\.effectRendering, rendering)
+    }
 }
 
 /// Debug-only measurement switch: launching a Debug-flagged build with `-CrannyQAEffectsAlwaysOn YES` keeps the

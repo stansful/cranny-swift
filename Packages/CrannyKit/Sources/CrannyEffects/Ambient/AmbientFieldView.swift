@@ -214,7 +214,7 @@ struct RippleDistortion: ViewModifier {
                          budget: .previewRunning, restingTime: 7.3)
         AmbientFieldView(effect: .aurora, palette: .afterglow, level: .vivid, energy: 0, fill: 1,
                          budget: .previewRunning, restingTime: 7.3)
-            .environment(\.effectRendering, .inline)
+            .ambientLightRendering(.inline)
         AmbientFieldView(effect: .aurora, palette: .afterglow, level: .vivid, energy: 0, fill: 1,
                          budget: .previewReduceMotion, restingTime: 7.3)
     }

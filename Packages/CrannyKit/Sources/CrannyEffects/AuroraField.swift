@@ -12,6 +12,8 @@ import SwiftUI
 
 /// Curtains of content colour rising from the bottom edge of the open panel. The top 40 % stays black so the
 /// band merges with the hardware. Alpha is clamped to `Glow.ambientAlphaCap(level)` on every path.
+/// - Rendering: a dedicated Metal layer whenever shaders run, which `ImageRenderer`, `cacheDisplay`,
+///   `drawingGroup()` and shader effects over the light cannot see; `ambientLightRendering(.inline)` keeps it in SwiftUI.
 public struct AuroraField: View, Animatable {
     /// The light's colours (`glow1…3`); a change cross-fades when animated (`CrannyMotion.Kind.colorShift`).
     public var palette: AmbientPalette

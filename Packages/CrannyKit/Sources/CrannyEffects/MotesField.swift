@@ -7,6 +7,8 @@ import SwiftUI
 
 /// Thirty-six slow, twinkling specks of palette light rising from the bottom edge; they fade out before the top
 /// 40 %, so the band stays black. Alpha is clamped to `Glow.ambientAlphaCap(level)` on every path.
+/// - Rendering: a dedicated Metal layer whenever shaders run, which `ImageRenderer`, `cacheDisplay`,
+///   `drawingGroup()` and shader effects over the light cannot see; `ambientLightRendering(.inline)` keeps it in SwiftUI.
 public struct MotesField: View, Animatable {
     /// The light's colours: mote n takes stop n mod 3.
     public var palette: AmbientPalette

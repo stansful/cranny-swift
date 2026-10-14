@@ -5,6 +5,8 @@ import CrannyCore
 import SwiftUI
 
 /// A soft Gaussian bloom of `glow1`: alpha 0.6 · cap at `center`, fading to nothing past `radius`.
+/// - Rendering: a dedicated Metal layer whenever shaders run, which `ImageRenderer`, `cacheDisplay`,
+///   `drawingGroup()` and shader effects over the light cannot see; `ambientLightRendering(.inline)` keeps it in SwiftUI.
 public struct HaloField: View, Animatable {
     /// The light's colours (`glow1` blooms).
     public var palette: AmbientPalette

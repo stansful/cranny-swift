@@ -17,7 +17,7 @@ nonisolated enum AmbientPath: Equatable, Sendable {
 
     /// - Parameters:
     ///   - shadersAvailable: `ShaderEffects.isAvailable`.
-    ///   - layerAllowed: the layer may be used here (`ShaderEffects.allowsLayer` and the view's `EffectRendering`).
+    ///   - layerAllowed: the layer may be used here (`ShaderEffects.allowsLayer` and the view's `AmbientLightRendering`).
     static func resolve(budget: EffectBudget, shadersAvailable: Bool, layerAllowed: Bool) -> AmbientPath {
         if budget.lowPower { return .staticHalo }
         if budget.reduceMotion || !shadersAvailable { return .fallback }
@@ -43,9 +43,15 @@ nonisolated enum MomentPath: Equatable, Sendable {
     }
 }
 
-/// Where a view may draw its ambient light. `.inline` keeps every path inside SwiftUI (no `NSView`), for
-/// `ImageRenderer` snapshots and tests; `.automatic` uses the Metal layer whenever shaders run.
-nonisolated enum EffectRendering: Equatable, Sendable {
+/// Where the ambient light (`AmbientLayer`, `AuroraField`, `MotesField`, `TideField`, `HaloField`) is drawn. Set it
+/// with `View.ambientLightRendering(_:)`.
+public nonisolated enum AmbientLightRendering: Equatable, Sendable {
+    /// The default: a dedicated `CAMetalLayer` (a platform view) whenever shaders run, so SwiftUI does no work per
+    /// frame. Like any platform view it is invisible to `ImageRenderer`, `NSView.cacheDisplay(in:to:)` and
+    /// `drawingGroup()`, and `.layerEffect`, `.colorEffect` or `.distortionEffect` applied over it do not reach it.
     case automatic
+    /// Every path stays inside SwiftUI (the stitchable shaders, timed by `EffectClock`): for snapshots, offscreen
+    /// rendering and effects composited over the light. SwiftUI then redraws the light on every frame (at 30 fps about
+    /// twice the CPU of the Metal layer, ARCHITECTURE.md §10.1 issue 1), so keep the default on screen.
     case inline
 }

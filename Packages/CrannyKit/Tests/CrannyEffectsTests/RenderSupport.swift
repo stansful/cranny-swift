@@ -126,7 +126,7 @@ struct Raster {
 /// Renders `view` at `size` points and `scale` into a premultiplied sRGB RGBA8 raster.
 @MainActor func rasterize(_ view: some View, size: CGSize, scale: CGFloat = 1) throws -> Raster {
     let renderer = ImageRenderer(content: view.frame(width: size.width, height: size.height)
-        .environment(\.effectRendering, .inline))
+        .ambientLightRendering(.inline))
     renderer.scale = scale
     let image = try #require(renderer.cgImage)
     let (w, h) = (image.width, image.height)

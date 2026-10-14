@@ -7,6 +7,8 @@ import SwiftUI
 
 /// Three soft wave lines of palette light near the bottom edge (line i in stop i); they thin and fade toward
 /// both ends. Louder audio raises the waves (3 → 10 pt). Alpha is clamped to `Glow.ambientAlphaCap(level)`.
+/// - Rendering: a dedicated Metal layer whenever shaders run, which `ImageRenderer`, `cacheDisplay`,
+///   `drawingGroup()` and shader effects over the light cannot see; `ambientLightRendering(.inline)` keeps it in SwiftUI.
 public struct TideField: View, Animatable {
     /// The light's colours: line i takes stop i.
     public var palette: AmbientPalette
