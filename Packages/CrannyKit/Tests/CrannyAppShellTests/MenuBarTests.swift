@@ -132,6 +132,22 @@ private func policy(_ selection: DisplaySelection, _ perDisplay: [DisplayKey: Di
     #expect(control.updates?.isConfigured == true)
 }
 
+@Test func openCrannyInTheMenuNeverCloses() {
+    let (services, _, overlay) = makeServices()
+    services.start()
+    let control = services.appControl
+    #expect(control.openRequest == .hotKey)                                         // nothing open: opens like ⌃⌥N
+    overlay.notchControl.emit(.opened(.hover))
+    #expect(control.isPanelOpen && control.openRequest == .reopen)                  // open: opens again, never closes
+    overlay.notchControl.emit(.pinned(true))
+    #expect(control.openRequest == .reopen)
+    overlay.notchControl.emit(.closed)
+    #expect(!control.isPanelOpen && control.openRequest == .hotKey)
+    services.stop()
+    overlay.notchControl.emit(.opened(.click))
+    #expect(control.openRequest == .hotKey)                                         // stopped: no longer followed
+}
+
 @Test func theMenuChecksForUpdatesAndSettingsShowsTheResult() async throws {
     let transport = FakeUpdateTransport([.ok(Data(#"{"tag_name": "v0.2.0", "draft": false, "prerelease": false}"#.utf8), etag: nil)])
     let (services, _, _) = makeServices(transport: transport)

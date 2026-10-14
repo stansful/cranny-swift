@@ -17,7 +17,7 @@ struct MenuBarContent: View {
     let appControl: ShellAppControl
 
     var body: some View {
-        Button { appControl.toggleOpen() } label: {
+        Button { appControl.openPanel() } label: {                    // opens; only the hot key toggles
             Text("Open Cranny", bundle: .module, comment: "Menu bar and Settings ▸ Keyboard: item and shortcut that open the panel")
         }
         .keyboardShortcut(appControl.menuShortcut(.openNook))        // shows the binding; the hot key does the work

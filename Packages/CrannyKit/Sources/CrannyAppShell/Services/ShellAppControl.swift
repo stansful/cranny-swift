@@ -28,6 +28,9 @@ import SwiftUI
     @ObservationIgnored private var tutorial: TutorialController?
     /// Default combinations of the registered global shortcuts (the menu shows the effective binding).
     @ObservationIgnored private var defaultCombos: [ShortcutID: KeyCombo] = [:]
+    /// Whether a panel is open, followed through the notch events (the coordinator keeps at most one open).
+    @ObservationIgnored private(set) var isPanelOpen = false
+    @ObservationIgnored private var notchEvents: (control: ShellNotchControl, id: UUID)?
 
     init() {}
 
@@ -35,6 +38,23 @@ import SwiftUI
                  welcomeWindow: WelcomeWindowController, hotKeys: HotKeyCenter) {
         self.settings = settings; self.overlay = overlay; self.settingsWindow = settingsWindow
         self.welcomeWindow = welcomeWindow; self.hotKeys = hotKeys
+        if let notchEvents { notchEvents.control.removeEventObserver(notchEvents.id) }
+        let id = overlay.notchControl.addEventObserver { [weak self] event in self?.notchEvent(event) }
+        notchEvents = (overlay.notchControl, id)
+    }
+
+    /// Stops following the panel (`ShellAppServices.stop`).
+    func disconnect() {
+        if let notchEvents { notchEvents.control.removeEventObserver(notchEvents.id) }
+        notchEvents = nil
+    }
+
+    private func notchEvent(_ event: NotchEvent) {
+        switch event {
+        case .opened: isPanelOpen = true
+        case .closed: isPanelOpen = false
+        default: break
+        }
     }
 
     func attach(loginItems: LoginItemController, updates: UpdateChecker, pause: PauseController, demo: DemoMode,
@@ -78,8 +98,23 @@ import SwiftUI
         set { settings?[CoreSettings.showsMenuBarIcon] = newValue }
     }
     var isPinned: Bool { overlay?.isPinned ?? false }
-    func toggleOpen() { overlay?.toggleOpen() }
     func setPinned(_ pinned: Bool) { overlay?.setPinned(pinned) }
+
+    /// How "Open Cranny" in the menu opens the panel: like ⌃⌥N while nothing is open (the pointer's display,
+    /// keyboard focus), otherwise by opening on the pointer's display again — never by closing, unlike the
+    /// hot key, which toggles. (If the open panel's display went away, that opens a new one where the user is.)
+    enum OpenRequest: Equatable { case hotKey, reopen }
+    var openRequest: OpenRequest { isPanelOpen ? .reopen : .hotKey }
+
+    /// "Open Cranny" (menu bar): opens, never closes.
+    func openPanel() {
+        guard let overlay else { return }
+        switch openRequest {
+        case .hotKey: overlay.toggleOpen()                     // nothing is open: the hot key's open
+        case .reopen: overlay.notchControl.open(page: nil, focus: nil, reason: .keyboard)
+        }
+    }
+
     /// "About Cranny" opens Settings ▸ About: the icon, version, updates, licence and acknowledgements (§11.1).
     func showAbout() { openSettings(.about) }
 
