@@ -210,7 +210,7 @@ struct TraySettingsPane: View {
                 .confirmationDialog(Text("Remove every item from the Tray?", bundle: .module, comment: "Settings ▸ Tray: Clear confirmation"),
                                     isPresented: $confirmsClear) {
                     Button(role: .destructive, action: store.clear) {
-                        Text("Clear Tray", bundle: .module, comment: "Settings ▸ Tray: Clear confirmation button")
+                        Text("Clear Tray", bundle: .module, comment: "Settings ▸ Tray and command palette: remove every item from the Tray (confirmation button, command)")
                     }
                 } message: {
                     Text("Copies kept by the Tray are deleted. Your own files are not touched.", bundle: .module,

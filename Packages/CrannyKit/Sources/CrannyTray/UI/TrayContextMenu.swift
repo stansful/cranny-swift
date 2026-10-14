@@ -32,7 +32,7 @@ enum TrayItemCommand: CaseIterable {
         case .open: String(localized: "Open", bundle: .module, comment: "Tray tile: context menu item and VoiceOver action")
         case .reveal: String(localized: "Reveal in Finder", bundle: .module, comment: "Tray action and pipeline step: show the files in Finder")
         case .quickLook: String(localized: "Quick Look", bundle: .module, comment: "Tray tile: context menu item and VoiceOver action (Apple's feature name)")
-        case .copyPath: String(localized: "Copy Path", bundle: .module, comment: "Tray tile: context menu item and VoiceOver action")
+        case .copyPath: String(localized: "Copy path", bundle: .module, comment: "Tray tile: context menu item and VoiceOver action")
         case .airDrop: "AirDrop"
         case .share: String(localized: "Share…", bundle: .module, comment: "Tray tile: context menu item and VoiceOver action; opens the share picker")
         case .remove: String(localized: "Remove from Tray", bundle: .module, comment: "Tray tile: hover button and menu item that removes the file from the Tray")

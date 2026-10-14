@@ -244,7 +244,7 @@ private let log = Log.logger(.tray)
         scheduleExpiry()
     }
 
-    /// Clear (⌥⌘⌫, ⌘K "Clear tray").
+    /// Clear (⌥⌘⌫, ⌘K "Clear Tray").
     func clear() {
         remove(Set(order))
         jobs.removeAll { $0.failure != nil }
