@@ -19,9 +19,21 @@ extension TrayStore {
     func click(_ id: UUID, modifiers: TraySelection.Modifiers) {
         selection.click(id, modifiers: modifiers, order: order)
         failures[id] = nil
+        followSelectionInQuickLook()
     }
-    func selectAll() { selection.selectAll(order) }
-    func moveSelection(forward: Bool, extend: Bool) { selection.move(forward: forward, extend: extend, order: order) }
+    func selectAll() { selection.selectAll(order); followSelectionInQuickLook() }
+    func moveSelection(forward: Bool, extend: Bool) {
+        selection.move(forward: forward, extend: extend, order: order)
+        followSelectionInQuickLook()
+    }
+
+    /// Like Finder: while Quick Look is up, it shows what is selected.
+    private func followSelectionInQuickLook() {
+        guard system.isQuickLookVisible, !selection.isEmpty else { return }
+        let targets = selectedItems
+        let start = selection.cursor.flatMap { c in targets.firstIndex { $0.id == c } } ?? 0
+        system.quickLook(urls(of: targets), at: start)
+    }
     func clearSelection() { selection.clear() }
 
     /// Leaving the Tray page: "new" dots go, the selection stays.

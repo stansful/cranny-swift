@@ -49,6 +49,7 @@ struct TrayTileRow: View {
         .focusEffectDisabled()
         .focused($focused)
         .onKeyPress(phases: .down) { press in handle(press) }
+        .onCommand(#selector(NSResponder.selectAll(_:))) { usedKeyboard = true; store.selectAll() }   // Edit ▸ Select All (⌘A)
         .onCopyCommand {
             let urls = store.urls(of: store.selectedItems)
             return urls.map { NSItemProvider(object: $0 as NSURL) }

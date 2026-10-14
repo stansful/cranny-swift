@@ -12,17 +12,21 @@ struct TraySettingsPane: View {
     @State private var confirmsClear = false
 
     private var settings: SettingsStore { store.settings }
+    private static let lastSection = "tray.settings.content"
 
     var body: some View {
-        Form {
-            storage
-            dropping
-            pinned
-            userPipelines
-            defaults
-            content
+        ScrollViewReader { proxy in
+            Form {
+                storage
+                dropping
+                pinned
+                userPipelines
+                defaults
+                content.id(Self.lastSection)
+            }
+            .formStyle(.grouped)
+            .onAppear { if TrayQA.scrollsSettingsToBottom { proxy.scrollTo(Self.lastSection, anchor: .bottom) } }
         }
-        .formStyle(.grouped)
         .sheet(item: $editing) { pipeline in
             PipelineEditor(pipeline: pipeline, maxDimension: settings[TraySettings.maxDimension]) { saved in
                 save(saved)

@@ -24,9 +24,9 @@ import SwiftUI
 
 /// The real thing. Writing the general pasteboard never triggers the paste alert (only reading does, R1 §5.1).
 @MainActor final class LiveTraySystem: TraySystem {
-    private let quickLook: QuickLookPresenter
+    private let quickLook = QuickLookPresenter()
 
-    init(notch: any NotchControl) { quickLook = QuickLookPresenter(notch: notch) }
+    init() {}
 
     func copy(text: String) {
         let pasteboard = NSPasteboard.general

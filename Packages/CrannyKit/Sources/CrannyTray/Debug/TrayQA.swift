@@ -6,6 +6,7 @@
 //   --qa-tray-states            show a running pipeline, a failure and a fresh result on sample tiles
 //   --qa-tray-catch <uti,…>     the Tray page shows the drag catch view for these types (e.g. public.png)
 //   --qa-tray-quicklook         open Quick Look on the first item after 2 s (activates Cranny, then gives focus back)
+//   --qa-tray-settings-bottom   Settings ▸ Tray opens scrolled to its last section
 //
 // Nothing here is compiled into Release builds; no input is synthesized.
 import AppKit
@@ -29,7 +30,9 @@ enum TrayQA {
         value("--qa-tray-catch").map { $0.split(separator: ",").compactMap { UTType(String($0)) } }
     }
     static var directories: TrayDirectories? { usesSamples ? .temporary() : nil }
+    static var scrollsSettingsToBottom: Bool { arguments.contains("--qa-tray-settings-bottom") }
     #else
+    static var scrollsSettingsToBottom: Bool { false }
     static var catchTypes: [UTType]? { nil }
     static var directories: TrayDirectories? { nil }
     #endif

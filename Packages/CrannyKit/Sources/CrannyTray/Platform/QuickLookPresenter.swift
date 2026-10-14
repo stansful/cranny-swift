@@ -1,11 +1,13 @@
-// CrannyTray/Platform/QuickLookPresenter.swift — Quick Look for tray items from a non-activating panel
-// (ARCHITECTURE.md §7.8, decision documented in the WP8 report).
+// CrannyTray/Platform/QuickLookPresenter.swift — Quick Look for tray items (ARCHITECTURE.md §7.8; decision recorded in
+// the WP8 report).
 //
-// `QLPreviewPanel` needs a controller in the KEY window's responder chain and, like every floating panel of an
-// inactive app, does not show while Cranny is inactive. The notch panel is non-activating and usually not key, so:
-// remember the frontmost app, activate Cranny (an explicit user action: Space or "Quick Look"), make a tiny invisible
-// anchor window key whose content view is the panel's controller, then show the panel. When Quick Look ends, the
-// anchor goes away and the previous app is re-activated (macOS 14 cooperative activation).
+// Decision: the shared `QLPreviewPanel` is NOT used. It finds its data source through the KEY window's responder chain
+// and, like every floating panel of an inactive app, only shows while its app is active — so from the non-activating
+// notch panel it would have to activate Cranny and take focus from the user's app (and with Cranny inactive it came up
+// empty: "No items selected", verified on macOS 27). Instead the same Quick Look preview (`QLPreviewView`, every type
+// Quick Look supports, with its media controls) is shown in Cranny's own non-activating floating panel: Cranny is never
+// activated, Space and Esc close it, ← → step through the items, and closing hands key focus back to the previous
+// window (the window server does this when a non-activating panel orders out, R1 §3.5).
 import AppKit
 import CrannyCore
 import Foundation
@@ -14,110 +16,108 @@ import QuickLookUI
 
 private let log = Log.logger(.tray)
 
-@MainActor final class QuickLookPresenter: NSObject, QLPreviewPanelDataSource, QLPreviewPanelDelegate {
-    private let notch: any NotchControl
+@MainActor final class QuickLookPresenter {
+    private var panel: TrayPreviewPanel?
     private var urls: [URL] = []
-    private var anchor: QuickLookAnchorWindow?
-    private var previousApp: NSRunningApplication?
-    private(set) var isVisible = false
+    private var index = 0
 
-    init(notch: any NotchControl) { self.notch = notch }
+    var isVisible: Bool { panel?.isVisible == true }
 
+    /// Shows `urls[index]`; if the preview is already up, switches to the new items in place.
     func show(_ urls: [URL], at index: Int) {
-        guard !urls.isEmpty, let panel = QLPreviewPanel.shared() else { return }
+        guard !urls.isEmpty else { return }
         self.urls = urls
-        let start = min(max(index, 0), urls.count - 1)
-        if isVisible, panel.isVisible {
-            panel.reloadData()
-            panel.currentPreviewItemIndex = start
-            return
+        self.index = min(max(index, 0), urls.count - 1)
+        guard let panel = panel ?? makePanel() else { return }
+        self.panel = panel
+        display()
+        if !panel.isVisible {
+            panel.setFrame(Self.frame(for: NSEvent.mouseLocation), display: false)
+            panel.makeKeyAndOrderFront(nil)             // key without activating Cranny (.nonactivatingPanel)
         }
-        let front = NSWorkspace.shared.frontmostApplication
-        previousApp = front?.processIdentifier == NSRunningApplication.current.processIdentifier ? nil : front
-        let window = anchor ?? QuickLookAnchorWindow(presenter: self)
-        anchor = window
-        isVisible = true
-        NSApp.activate()
-        window.makeKeyAndOrderFront(nil)
-        window.makeFirstResponder(window.contentView)
-        panel.makeKeyAndOrderFront(nil)
-        panel.currentPreviewItemIndex = start
         log.info("quick look: \(urls.count, privacy: .public) item(s)")
     }
 
     func close() {
-        guard isVisible else { return }
-        QLPreviewPanel.shared()?.orderOut(nil)
-        finish()
+        panel?.preview.previewItem = nil          // stops a playing movie; the view stays usable (close() would end it)
+        panel?.orderOut(nil)
     }
 
-    // MARK: Controller (called by the anchor view)
-
-    func begin(_ panel: QLPreviewPanel) {
-        panel.dataSource = self
-        panel.delegate = self
-        panel.reloadData()
+    private func step(_ delta: Int) {
+        guard urls.count > 1 else { return }
+        index = (index + delta + urls.count) % urls.count
+        display()
     }
 
-    func end(_ panel: QLPreviewPanel) {
-        panel.dataSource = nil
-        panel.delegate = nil
-        finish()
+    private func display() {
+        guard let panel, urls.indices.contains(index) else { return }
+        panel.preview.previewItem = urls[index] as NSURL
+        panel.title = urls[index].lastPathComponent
     }
 
-    private func finish() {
-        guard isVisible else { return }
-        isVisible = false
-        anchor?.orderOut(nil)
-        if let previousApp, NSApp.isActive, !previousApp.isTerminated {
-            NSApp.yieldActivation(to: previousApp)
-            previousApp.activate(from: .current, options: [])
+    private func makePanel() -> TrayPreviewPanel? {
+        guard let preview = QLPreviewView(frame: .zero, style: .normal) else { return nil }
+        return TrayPreviewPanel(preview: preview) { [weak self] command in
+            switch command {
+            case .close: self?.close()
+            case .previous: self?.step(-1)
+            case .next: self?.step(1)
+            }
         }
-        previousApp = nil
     }
 
-    // MARK: QLPreviewPanelDataSource
-
-    func numberOfPreviewItems(in panel: QLPreviewPanel!) -> Int { urls.count }
-
-    func previewPanel(_ panel: QLPreviewPanel!, previewItemAt index: Int) -> (any QLPreviewItem)! {
-        urls.indices.contains(index) ? urls[index] as NSURL : nil
+    /// 62 % of the visible frame of the screen under the pointer, centred a little above the middle.
+    static func frame(for point: CGPoint) -> CGRect {
+        let screen = NSScreen.screens.first { $0.frame.contains(point) } ?? NSScreen.main
+        let visible = screen?.visibleFrame ?? CGRect(x: 0, y: 0, width: 1440, height: 900)
+        let size = CGSize(width: min(max(visible.width * 0.62, 480), 1100), height: min(max(visible.height * 0.62, 360), 820))
+        return CGRect(x: visible.midX - size.width / 2, y: visible.midY - size.height / 2 + visible.height * 0.04,
+                      width: size.width, height: size.height).integral
     }
 }
 
-/// A 1-pt, fully transparent window that only exists to put `QuickLookAnchorView` in the key window's chain.
-@MainActor private final class QuickLookAnchorWindow: NSWindow {
-    init(presenter: QuickLookPresenter) {
-        let screen = NSScreen.main?.frame ?? .zero
-        super.init(contentRect: CGRect(x: screen.midX, y: screen.maxY - 2, width: 1, height: 1),
-                   styleMask: [.borderless], backing: .buffered, defer: true)
+/// A floating, non-activating panel hosting a `QLPreviewView`. Space, Esc and ⌘W close it; ← → page through items.
+@MainActor final class TrayPreviewPanel: NSPanel {
+    enum Command { case close, previous, next }
+
+    let preview: QLPreviewView
+    private let handle: @MainActor (Command) -> Void
+
+    init(preview: QLPreviewView, handle: @escaping @MainActor (Command) -> Void) {
+        self.preview = preview
+        self.handle = handle
+        super.init(contentRect: CGRect(x: 0, y: 0, width: 760, height: 540),
+                   styleMask: [.titled, .closable, .resizable, .fullSizeContentView, .nonactivatingPanel],
+                   backing: .buffered, defer: true)
+        isFloatingPanel = true
+        level = .floating
+        hidesOnDeactivate = false                      // Cranny is never the active app
+        becomesKeyOnlyIfNeeded = false
         isReleasedWhenClosed = false
-        alphaValue = 0
-        hasShadow = false
-        ignoresMouseEvents = true
-        collectionBehavior = [.canJoinAllSpaces, .transient, .ignoresCycle]
-        isExcludedFromWindowsMenu = true
-        contentView = QuickLookAnchorView(presenter: presenter)
+        titlebarAppearsTransparent = true
+        collectionBehavior = [.fullScreenAuxiliary, .moveToActiveSpace]
+        animationBehavior = .documentWindow
+        preview.shouldCloseWithWindow = false
+        preview.autostarts = true
+        contentView = preview
     }
-    override var canBecomeKey: Bool { true }
-    override var canBecomeMain: Bool { true }
-}
 
-/// The Quick Look panel's controller (the `QLPreviewPanelController` informal protocol on `NSResponder`).
-@MainActor private final class QuickLookAnchorView: NSView {
-    private weak var presenter: QuickLookPresenter?
-    init(presenter: QuickLookPresenter) {
-        self.presenter = presenter
-        super.init(frame: .zero)
+    override var canBecomeKey: Bool { true }
+
+    /// Keys are taken before the preview sees them (a playing movie would otherwise keep Space).
+    override func sendEvent(_ event: NSEvent) {
+        if event.type == .keyDown {
+            let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
+            switch (event.keyCode, modifiers) {
+            case (49, []), (53, []): return handle(.close)                      // Space, Esc
+            case (13, .command): return handle(.close)                          // ⌘W
+            case (123, []): return handle(.previous)                            // ←
+            case (124, []): return handle(.next)                                // →
+            default: break
+            }
+        }
+        super.sendEvent(event)
     }
-    required init?(coder: NSCoder) { nil }
-    override var acceptsFirstResponder: Bool { true }
-    // QLPreviewPanel calls its controller on the main thread (it is an AppKit panel driven by the responder chain).
-    nonisolated override func acceptsPreviewPanelControl(_ panel: QLPreviewPanel!) -> Bool { true }
-    nonisolated override func beginPreviewPanelControl(_ panel: QLPreviewPanel!) {
-        MainActor.assumeIsolated { if let shared = QLPreviewPanel.shared() { presenter?.begin(shared) } }
-    }
-    nonisolated override func endPreviewPanelControl(_ panel: QLPreviewPanel!) {
-        MainActor.assumeIsolated { if let shared = QLPreviewPanel.shared() { presenter?.end(shared) } }
-    }
+
+    override func performClose(_ sender: Any?) { handle(.close) }
 }
