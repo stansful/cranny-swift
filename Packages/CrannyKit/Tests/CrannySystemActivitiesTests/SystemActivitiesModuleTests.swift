@@ -43,6 +43,7 @@ import Testing
         #expect(registry.permissionUses.map(\.kind) == [.bluetooth])
         #expect(registry.permissionUses.first?.module == .system)
         #expect(registry.permissionUses.first?.reason.isEmpty == false)
+        #expect(registry.permissionUses.first?.optIn == SystemSettings.showsAllBluetoothDevices)   // onboarding asks only while on
     }
 
     @Test func settingsDefaultsMatchTheArchitecture() {

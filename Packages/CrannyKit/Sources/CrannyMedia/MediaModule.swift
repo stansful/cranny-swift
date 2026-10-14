@@ -35,7 +35,8 @@ public enum MediaModule: FeatureModule {
         for player in ScriptablePlayer.all {
             registry.declare(.automation(bundleID: player.bundleID), reason: String(
                 localized: "Read and control Music or Spotify when the media helper can't. Only if you turn on the Apple Events fallback.",
-                bundle: .module, comment: "Permissions pane: why Media may ask for Automation"))
+                bundle: .module, comment: "Permissions pane: why Media may ask for Automation"),
+                optIn: MediaSettings.allowAppleEvents)              // off by default: onboarding asks only while on
         }
         registry.declare(.systemAudioRecording, reason: String(
             localized: "Let the Live visualizer move with the sound. Cranny never records or saves audio.",

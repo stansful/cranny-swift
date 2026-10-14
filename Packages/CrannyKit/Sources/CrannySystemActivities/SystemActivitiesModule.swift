@@ -29,7 +29,7 @@ public enum SystemActivitiesModule: FeatureModule {
                      options: { AnyView(LowBatteryOptionsView(settings: services.settings)) })
         registry.add(activity: bluetooth, kind: bluetoothKind, sample: { BluetoothActivity.sample() },
                      options: { AnyView(BluetoothOptionsView(settings: services.settings, permissions: services.permissions)) })
-        registry.declare(.bluetooth, reason: SystemCopy.bluetoothPermissionReason)
+        registry.declare(.bluetooth, reason: SystemCopy.bluetoothPermissionReason, optIn: SystemSettings.showsAllBluetoothDevices)
 
         registry.onLaunch {
             #if DEBUG

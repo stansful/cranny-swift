@@ -135,7 +135,12 @@ public nonisolated struct PermissionUse: Hashable, Sendable {
     public let kind: PermissionKind
     public let module: ModuleID
     public let reason: String               // "Show your events in Cranny. Cranny never edits or uploads them."
-    public init(kind: PermissionKind, module: ModuleID, reason: String) {
-        self.kind = kind; self.module = module; self.reason = reason
+    /// The module's switch for the feature the permission serves, when that feature is off by default and a
+    /// grant alone changes nothing (Media's Apple Events fallback, every Bluetooth device); nil when the
+    /// feature uses the permission as soon as it is granted. Onboarding asks for such a use only while the
+    /// switch is on; the switch itself asks when it is turned on.
+    public let optIn: SettingKey<Bool>?
+    public init(kind: PermissionKind, module: ModuleID, reason: String, optIn: SettingKey<Bool>? = nil) {
+        self.kind = kind; self.module = module; self.reason = reason; self.optIn = optIn
     }
 }

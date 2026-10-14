@@ -60,8 +60,9 @@ import SwiftUI
     public func add(commands provider: any PaletteCommandProvider) { commandProviders.append(provider) }
     public func add(shortcut: GlobalShortcut) { shortcuts.append(shortcut) }
     public func add(captureTarget: CaptureTarget) { captureTargets.append(captureTarget) }
-    public func declare(_ kind: PermissionKind, reason: String) {
-        permissionUses.append(PermissionUse(kind: kind, module: registeringModule ?? .shell, reason: reason))
+    /// `optIn`: the module's off-by-default switch that the permission serves (`PermissionUse.optIn`).
+    public func declare(_ kind: PermissionKind, reason: String, optIn: SettingKey<Bool>? = nil) {
+        permissionUses.append(PermissionUse(kind: kind, module: registeringModule ?? .shell, reason: reason, optIn: optIn))
     }
 
     /// Runs after ALL modules registered and the services are wired (start observers, load files here).
