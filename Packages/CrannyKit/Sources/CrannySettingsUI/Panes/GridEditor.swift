@@ -86,10 +86,12 @@ private struct EditorCard: View {
         let p = theme.palette
         VStack(spacing: Space.xs) {
             Image(systemName: info.symbol).font(.system(size: 16, weight: .medium)).foregroundStyle(p.secondaryLabel)
-            Text(verbatim: info.title).crannyFont(.caption).foregroundStyle(p.label).lineLimit(1).minimumScaleFactor(0.8)
+            Text(verbatim: info.title).crannyFont(.caption).foregroundStyle(p.label)
+                .lineLimit(2).multilineTextAlignment(.center).minimumScaleFactor(0.85)
             Text(verbatim: LayoutRows.cells(shown)).crannyFont(.caption).foregroundStyle(p.tertiaryLabel).lineLimit(1)
         }
-        .padding(.horizontal, Space.xs)
+        .padding(.leading, Space.xs)
+        .padding(.trailing, Space.m + Space.s)                 // clear of the resize handle
         .frame(width: metrics.width(cells: shown), height: metrics.cardHeight)
         .background(RoundedRectangle(cornerRadius: Radius.tile, style: .continuous).fill(isTargeted ? p.cardHover : p.card))
         .overlay(RoundedRectangle(cornerRadius: Radius.tile, style: .continuous)

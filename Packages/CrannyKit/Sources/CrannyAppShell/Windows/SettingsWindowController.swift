@@ -61,6 +61,10 @@ import SwiftUI
         self.host = host
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)
+        #if DEBUG
+        applyQAAppearance(to: window)
+        scheduleQASnapshot()
+        #endif
     }
 
     func windowWillClose(_ notification: Notification) {
@@ -68,6 +72,36 @@ import SwiftUI
         if let previousApp, !previousApp.isTerminated { previousApp.activate() }
         previousApp = nil
     }
+
+    #if DEBUG
+    /// Visual QA (Debug only): `-CrannyQAAppearance light|dark` pins this window's appearance (Settings otherwise
+    /// follows the system, DESIGN.md §11.1).
+    private func applyQAAppearance(to window: NSWindow) {
+        switch defaults.string(forKey: "CrannyQAAppearance") {
+        case "light": window.appearance = NSAppearance(named: .aqua)
+        case "dark": window.appearance = NSAppearance(named: .darkAqua)
+        default: break
+        }
+    }
+
+    /// Visual QA (Debug only): `-CrannyQASnapshot <file.png>` renders the window's own view hierarchy to a PNG after
+    /// `-CrannyQASnapshotDelay` seconds (default 3). Unlike `screencapture`, it works while the displays sleep.
+    private func scheduleQASnapshot() {
+        guard let path = defaults.string(forKey: "CrannyQASnapshot") else { return }
+        let delay = defaults.double(forKey: "CrannyQASnapshotDelay")
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(delay > 0 ? delay : 3))
+            self?.writeSnapshot(to: URL(fileURLWithPath: path))
+        }
+    }
+
+    private func writeSnapshot(to url: URL) {
+        guard let view = window?.contentView?.superview ?? window?.contentView,
+              let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { return }
+        view.cacheDisplay(in: view.bounds, to: rep)
+        try? rep.representation(using: .png, properties: [:])?.write(to: url)
+    }
+    #endif
 
     private var lastPage: SettingsPageID? {
         defaults.string(forKey: Self.lastPaneKey).map(SettingsPageID.init(rawValue:))
