@@ -126,3 +126,30 @@ private func earWidth(body: CGFloat, ear: CGFloat, y: CGFloat = 0.25) -> CGFloat
     }
 }
 
+
+@MainActor @Suite("Rendered geometry · accessibility variants") struct VariantGeometryTests {
+    /// Reduce Motion swaps the morph for a cross-fade; Increase Contrast and Reduce Transparency change tokens.
+    /// None of them may change a size.
+    @Test(arguments: ["reduceMotion", "increaseContrast", "reduceTransparency", "vivid"])
+    func variantsKeepTheGeometry(variant: String) throws {
+        for (phase, height, width, row) in [(NotchPhase.open, 170.0, 656.0, 100.0), (.compact, 32, 289, 16), (.peek, 92, 425, 50)] {
+            let (model, registry) = scene(phase) { model in
+                var theme = model.theme
+                switch variant {
+                case "reduceMotion": theme.reduceMotion = true
+                case "increaseContrast": theme.increaseContrast = true
+                case "reduceTransparency": theme.reduceTransparency = true
+                default: theme.ambience = .vivid
+                }
+                model.theme = theme
+                model.openColumns = 10
+            }
+            let probe = try #require(Snapshot.probe(model, registry))
+            // Increase Contrast strokes a 45 % keyline ON the outline: its inner pixel is lighter than the probe's
+            // dark threshold, so the measured width can lose one device pixel per side.
+            let tolerance: CGFloat = variant == "increaseContrast" ? 1 : 0.5
+            #expect(near(probe.verticalExtent?.bottom, height, tolerance), "\(variant) \(phase)")
+            #expect(near(probe.rowWidth(atPoint: row), width, tolerance), "\(variant) \(phase)")
+        }
+    }
+}
