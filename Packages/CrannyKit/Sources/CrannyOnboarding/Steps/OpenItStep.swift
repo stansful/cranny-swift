@@ -39,6 +39,7 @@ struct OpenItStep: View {
                 Text("Delay", bundle: .module, comment: "Welcome step 2: hover delay picker label")
             }
             .pickerStyle(.menu)
+            .labelsHidden()                                      // the value reads on its own; VoiceOver keeps the label
             .controlSize(.small)
             .fixedSize()
             .padding(Space.l)

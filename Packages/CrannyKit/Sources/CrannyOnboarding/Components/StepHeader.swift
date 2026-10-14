@@ -5,6 +5,7 @@ import CrannyCore
 import SwiftUI
 
 struct StepHeader: View {
+    @AccessibilityFocusState private var isFocused: Bool
     let title: String
     let message: String
 
@@ -21,6 +22,8 @@ struct StepHeader: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .accessibilityElement(children: .combine)
+        .accessibilityFocused($isFocused)
+        .onAppear { isFocused = true }          // a new step: VoiceOver starts reading it from the top
     }
 }
 

@@ -46,11 +46,12 @@ private struct MiniPanelBody: View {
             HStack(spacing: grid.gutter) {
                 ForEach(Array(items.enumerated()), id: \.offset) { _, item in
                     let shape = RoundedRectangle(cornerRadius: grid.cardRadius, style: .continuous)
-                    shape.fill(theme.palette.card)
-                        .overlay(shape.strokeBorder(theme.palette.hairline, lineWidth: StrokeWidth.regular))
+                    // `controlHover` rather than the smoked card: at a sixth of the size the card must still read.
+                    shape.fill(theme.palette.controlHover)
                         .overlay {
                             Image(systemName: symbols[item.widget] ?? "app.dashed")
-                                .font(.system(size: grid.cell * 0.72, weight: .medium))
+                                // Large at reference size, so it still reads at the miniature's scale.
+                                .font(.system(size: min(grid.height * 0.5, grid.width(cells: item.cells) * 0.75), weight: .medium))
                                 .foregroundStyle(theme.palette.secondaryLabel)
                         }
                         .frame(width: grid.width(cells: item.cells), height: grid.height)

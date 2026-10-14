@@ -205,13 +205,13 @@
         }
       }
     },
-    "Control Music and Spotify when other ways fail." : {
+    "Control Music and Spotify when other ways fail. Cranny sends only playback commands." : {
       "comment" : "Welcome step 5: fallback reason for the Automation permission",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Управлять Музыкой и Spotify, если другие способы не сработали."
+            "value" : "Управлять Музыкой и Spotify, если другие способы не сработали. Cranny отправляет только команды воспроизведения."
           }
         }
       }
@@ -854,35 +854,35 @@
         }
       }
     },
-    "Show the battery of every Bluetooth device." : {
+    "Show the battery of every Bluetooth device. Cranny never connects to them." : {
       "comment" : "Welcome step 5: fallback reason for the Bluetooth permission",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Показывать заряд всех Bluetooth-устройств."
+            "value" : "Показывать заряд всех Bluetooth-устройств. Cranny никогда к ним не подключается."
           }
         }
       }
     },
-    "Show volume and brightness in the notch instead of the system HUD." : {
+    "Show volume and brightness in the notch instead of the system HUD. Cranny reads no other keys." : {
       "comment" : "Welcome step 5: fallback reason for the Accessibility permission",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Показывать громкость и яркость в вырезе вместо системного индикатора."
+            "value" : "Показывать громкость и яркость в вырезе вместо системного индикатора. Другие клавиши Cranny не читает."
           }
         }
       }
     },
-    "Show your events in Cranny." : {
+    "Show your events in Cranny. Cranny never edits or uploads them." : {
       "comment" : "Welcome step 5: fallback reason for the Calendars permission",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Показывать ваши события в Cranny."
+            "value" : "Показывать ваши события в Cranny. Cranny никогда не изменяет и не выгружает их."
           }
         }
       }

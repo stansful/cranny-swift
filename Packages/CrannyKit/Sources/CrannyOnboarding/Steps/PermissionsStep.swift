@@ -103,13 +103,13 @@ extension PermissionGroup {
         }
     }
 
-    /// Used only if a module declared the kind without a reason.
+    /// Used only if a module declared the kind without a reason: why, and what Cranny does not do.
     var fallbackReason: String {
         switch self {
-        case .calendar: String(localized: "Show your events in Cranny.", bundle: .module, comment: "Welcome step 5: fallback reason for the Calendars permission")
-        case .accessibility: String(localized: "Show volume and brightness in the notch instead of the system HUD.", bundle: .module, comment: "Welcome step 5: fallback reason for the Accessibility permission")
-        case .automation: String(localized: "Control Music and Spotify when other ways fail.", bundle: .module, comment: "Welcome step 5: fallback reason for the Automation permission")
-        case .bluetooth: String(localized: "Show the battery of every Bluetooth device.", bundle: .module, comment: "Welcome step 5: fallback reason for the Bluetooth permission")
+        case .calendar: String(localized: "Show your events in Cranny. Cranny never edits or uploads them.", bundle: .module, comment: "Welcome step 5: fallback reason for the Calendars permission")
+        case .accessibility: String(localized: "Show volume and brightness in the notch instead of the system HUD. Cranny reads no other keys.", bundle: .module, comment: "Welcome step 5: fallback reason for the Accessibility permission")
+        case .automation: String(localized: "Control Music and Spotify when other ways fail. Cranny sends only playback commands.", bundle: .module, comment: "Welcome step 5: fallback reason for the Automation permission")
+        case .bluetooth: String(localized: "Show the battery of every Bluetooth device. Cranny never connects to them.", bundle: .module, comment: "Welcome step 5: fallback reason for the Bluetooth permission")
         }
     }
 

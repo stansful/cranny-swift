@@ -29,12 +29,17 @@ import Observation
     var openColumns: Int { model.openColumns }
     var gestureTranslation: CGSize { model.gestureTranslation }
     var isPreview: Bool { model.context.isPreview }
+    var delight: DelightMoment? { model.delight }
+    var delightSerial: Int { model.delightSerial }
 
     @ObservationIgnored private let registry: ModuleRegistry
     @ObservationIgnored private let greeting: StageGreeting
     @ObservationIgnored private var sequence: Task<Void, Never>?
     /// The media module's sample Now Playing (never the real one), when it provides a sample.
     @ObservationIgnored private var trackSample: (any LiveActivity)?
+    @ObservationIgnored private var reduceMotion = false
+    /// "First light" plays once, the first time the stage opens (DESIGN.md §5.5).
+    @ObservationIgnored private var hasPlayedFirstLight = false
 
     init(registry: ModuleRegistry, layout: NotchLayout, theme: CrannyTheme, ambient: AmbientPalette, greeting: String) {
         self.registry = registry
@@ -71,6 +76,7 @@ import Observation
 
     /// Shows a step's presentation. `reduceMotion` holds still frames instead of playing sequences.
     func show(_ presentation: Presentation, reduceMotion: Bool) {
+        self.reduceMotion = reduceMotion
         sequence?.cancel()
         self.presentation = presentation
         setGesture(.zero)
@@ -117,6 +123,7 @@ import Observation
             refreshLayout()
             model.open = OpenState(page: .nook, reason: .programmatic)
             setPhase(.open)
+            playFirstLight()
         } else if let trackSample, case .practice(true) = presentation {
             setCompact(trackSample)
         } else {
@@ -166,6 +173,14 @@ import Observation
         if phase == .idle { model.primary = nil }
         model.phase = phase
         model.context.phase = phase
+    }
+
+    /// The owner applies the delight caps (ARCHITECTURE.md §4.12): once, never under Calm, Instant or Reduce Motion.
+    private func playFirstLight() {
+        guard !hasPlayedFirstLight, !reduceMotion, model.theme.motion != .calm, model.theme.motion != .instant else { return }
+        hasPlayedFirstLight = true
+        model.delight = .firstLight
+        model.delightSerial += 1
     }
 
     private func setCompact(_ activity: any LiveActivity) {

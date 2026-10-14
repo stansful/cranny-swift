@@ -44,3 +44,15 @@ struct WelcomeFooter: View {
         .controlSize(.large)
     }
 }
+
+#Preview("Footer · step 2, not tried yet") {
+    WelcomeFooter(flow: WelcomePreview(step: .openIt).flow)
+        .padding(WelcomeMetrics.inset)
+        .frame(width: WelcomeMetrics.window.width)
+}
+
+#Preview("Footer · last step") {
+    WelcomeFooter(flow: WelcomePreview(step: .done).flow)
+        .padding(WelcomeMetrics.inset)
+        .frame(width: WelcomeMetrics.window.width)
+}

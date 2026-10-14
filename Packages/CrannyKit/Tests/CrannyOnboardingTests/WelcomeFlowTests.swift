@@ -264,6 +264,20 @@ import Testing
         #expect(stage.gestureTranslation == .zero)
     }
 
+    @Test func firstLightPlaysOnceAndNeverUnderReduceMotion() {
+        let calm = makeStage(makeRegistry())
+        calm.show(.open, reduceMotion: true)
+        #expect(calm.delightSerial == 0)
+
+        let stage = makeStage(makeRegistry())
+        stage.show(.open, reduceMotion: false)
+        #expect(stage.delight == .firstLight)
+        #expect(stage.delightSerial == 1)
+        stage.setOpen(false)
+        stage.setOpen(true)
+        #expect(stage.delightSerial == 1)
+    }
+
     @Test func theGreetingPlaysThenLeaves() async {
         let stage = makeStage(makeRegistry())
         stage.show(.greeting, reduceMotion: false)
