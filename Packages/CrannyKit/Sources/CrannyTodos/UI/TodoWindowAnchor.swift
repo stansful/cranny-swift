@@ -1,6 +1,7 @@
 // CrannyTodos/UI/TodoWindowAnchor.swift — the window a SwiftUI view is in, read when an action needs it (for
 // `TodoUndo.undoManager(hostedIn:fallback:)`). Not observed: reading it never re-renders anything.
 import AppKit
+import CrannyCore
 import SwiftUI
 
 @MainActor final class TodoWindowAnchor {
@@ -21,4 +22,13 @@ struct TodoWindowAnchorView: NSViewRepresentable {
     }
 
     func updateNSView(_ view: NSView, context: Context) { anchor.view = view }
+}
+
+#Preview("Window anchor") {
+    Text(verbatim: "Options")
+        .crannyFont(.body)
+        .padding(Space.l)
+        .background(TodoWindowAnchorView(anchor: TodoWindowAnchor()))
+        .background(.black)
+        .crannyThemeRoot(CrannyTheme())
 }
