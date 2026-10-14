@@ -35,10 +35,8 @@ private let log = Log.logger(.hud)
     @ObservationIgnored private var tokens: [ObservationToken] = []
     @ObservationIgnored private var activationObserver: (any NSObjectProtocol)?
     @ObservationIgnored private var state = HUDPresentationState()
-    @ObservationIgnored private var hideDeadline: Date?
-    @ObservationIgnored private var hideTask: Task<Void, Never>?
-    @ObservationIgnored private var announceDeadline: Date?
-    @ObservationIgnored private var announceTask: Task<Void, Never>?
+    @ObservationIgnored private lazy var hideTimer = MovableDeadline(now: { [weak self] in self?.now() ?? Date() })
+    @ObservationIgnored private lazy var announceTimer = MovableDeadline(now: { [weak self] in self?.now() ?? Date() })
     @ObservationIgnored private var pollTask: Task<Void, Never>?
     @ObservationIgnored private var lastPress = Date.distantPast
     /// The clock of sessions and deadlines (tests freeze it; sleeps still use real time).
@@ -211,19 +209,8 @@ private let log = Log.logger(.hud)
 
     /// One sleep per session; a press only moves the deadline (no task per key repeat).
     private func scheduleHide(at deadline: Date) {
-        hideDeadline = deadline
-        guard hideTask == nil else { return }
-        hideTask = Task { [weak self] in
-            while let wait = self?.secondsUntilHide(), wait > 0 {
-                try? await Task.sleep(for: .seconds(wait))
-                if Task.isCancelled { return }
-            }
-            self?.hideTask = nil
-            self?.hideExpired()
-        }
+        hideTimer.schedule(at: deadline) { [weak self] in self?.hideExpired() }
     }
-
-    private func secondsUntilHide() -> TimeInterval? { hideDeadline.map { $0.timeIntervalSince(now()) } }
 
     private func hideExpired() {
         state = HUDPresentation.hide(state, now: now())
@@ -233,12 +220,8 @@ private let log = Log.logger(.hud)
     /// Hides the HUD now and cancels everything that only runs while it is visible.
     private func endSession() {
         state.session = nil
-        hideDeadline = nil
-        hideTask?.cancel()
-        hideTask = nil
-        announceDeadline = nil
-        announceTask?.cancel()
-        announceTask = nil
+        hideTimer.cancel()
+        announceTimer.cancel()
         activity.present(nil)
         updateBrightnessPolling()
     }
@@ -246,20 +229,10 @@ private let log = Log.logger(.hud)
     /// DESIGN.md §16: "Volume, 62 %" once the value has settled for 0.5 s, only while VoiceOver runs.
     private func scheduleAnnouncement() {
         guard NSWorkspace.shared.isVoiceOverEnabled else { return }
-        announceDeadline = Date().addingTimeInterval(0.5)
-        guard announceTask == nil else { return }
-        announceTask = Task { [weak self] in
-            while let wait = self?.announceDeadline?.timeIntervalSinceNow, wait > 0 {
-                try? await Task.sleep(for: .seconds(wait))
-                if Task.isCancelled { return }
-            }
-            self?.announceTask = nil
-            self?.announce()
-        }
+        announceTimer.schedule(at: now().addingTimeInterval(0.5)) { [weak self] in self?.announce() }
     }
 
     private func announce() {
-        announceDeadline = nil
         guard let display = state.session?.display, NSWorkspace.shared.isVoiceOverEnabled else { return }
         AccessibilityNotification.Announcement(HUDCopy.announcement(display)).post()
     }
@@ -278,7 +251,7 @@ private let log = Log.logger(.hud)
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(500))
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, self != nil else { return }
                 if let level = await Self.readLevel(brightness) { self?.observedBrightness(level) }
             }
         }

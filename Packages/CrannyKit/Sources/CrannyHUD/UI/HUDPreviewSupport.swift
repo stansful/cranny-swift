@@ -36,3 +36,7 @@ struct HUDBandPreview: View {
     configure(settings)
     return HUDActivity.sample(settings: settings, display: display)
 }
+
+#Preview("Band preview · brightness") {
+    HUDBandPreview(activity: previewHUD(HUDDisplay(kind: .brightness, level: 0.75)))
+}
