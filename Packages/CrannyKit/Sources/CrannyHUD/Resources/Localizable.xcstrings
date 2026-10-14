@@ -100,17 +100,6 @@
         }
       }
     },
-    "Changed from the default" : {
-      "comment" : "Settings ▸ HUD: tooltip of the dot before a changed row",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Изменено по сравнению со значением по умолчанию"
-          }
-        }
-      }
-    },
     "Colors" : {
       "comment" : "Settings ▸ HUD: picker for the level bar's colour",
       "localizations" : {
@@ -327,17 +316,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Заменять системный индикатор громкости и яркости. Cranny использует доступ только для этих клавиш."
-          }
-        }
-      }
-    },
-    "Reset to Default" : {
-      "comment" : "Settings ▸ HUD: row context menu item",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Вернуть значение по умолчанию"
           }
         }
       }

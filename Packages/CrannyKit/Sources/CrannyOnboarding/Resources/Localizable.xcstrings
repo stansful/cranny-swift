@@ -981,17 +981,6 @@
         }
       }
     },
-    "That’s the tour. Replay it any time from the menu bar." : {
-      "comment" : "Tutorial: last bubble after every step is done",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Вот и весь тур. Повторить его можно в любой момент из строки меню."
-          }
-        }
-      }
-    },
     "The tutorial ended. Replay it any time from the menu bar." : {
       "comment" : "Tutorial: VoiceOver announcement when a step waited for minutes and the tutorial ended by itself",
       "localizations" : {

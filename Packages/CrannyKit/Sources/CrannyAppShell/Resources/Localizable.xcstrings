@@ -562,24 +562,13 @@
         }
       }
     },
-    "macOS didn't add Cranny to your login items. Open Login Items in System Settings to add it." : {
-      "comment" : "Settings ▸ General ▸ Launch at login: footnote when registration failed",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "macOS не добавила Cranny в объекты входа. Добавьте его в разделе «Объекты входа» в Системных настройках."
-          }
-        }
-      }
-    },
     "macOS didn’t add Cranny to your login items. Open Login Items in System Settings to add it." : {
       "comment" : "Settings ▸ General ▸ Launch at login: footnote when registration failed",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "macOS не добавил Cranny в объекты входа. Добавьте его в разделе «Объекты входа» в Системных настройках."
+            "value" : "macOS не добавила Cranny в объекты входа. Добавьте его в разделе «Объекты входа» в Системных настройках."
           }
         }
       }

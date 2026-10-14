@@ -331,17 +331,6 @@
         }
       }
     },
-    "Clear tray" : {
-      "comment" : "Command palette: remove every item from the Tray",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Очистить полку"
-          }
-        }
-      }
-    },
     "Compress" : {
       "comment" : "Tray pipeline: compress images (chip, drop zone, editor step)",
       "localizations" : {

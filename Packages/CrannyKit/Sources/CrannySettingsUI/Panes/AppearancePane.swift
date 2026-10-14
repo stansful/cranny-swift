@@ -29,7 +29,7 @@ struct AppearancePane: View {
                 ], footnote: String(localized: "With Reduce Motion turned on in System Settings, shapes fade instead of moving.", bundle: .module,
                                     comment: "Settings ▸ Appearance: footnote of Motion"))
                 ToggleRow(info: AppearanceRows.typingEffect, settings: settings, key: CoreSettings.typingEffect,
-                          footnote: String(localized: "New characters in notes appear in the accent colour, then settle.", bundle: .module,
+                          footnote: String(localized: "New characters in notes appear in the accent color, then settle.", bundle: .module,
                                            comment: "Settings ▸ Appearance: footnote of Typing effect"))
             }
             Section {

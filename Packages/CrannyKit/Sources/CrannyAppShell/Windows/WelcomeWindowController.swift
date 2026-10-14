@@ -1,7 +1,7 @@
 // CrannyAppShell/Windows/WelcomeWindowController.swift — the Welcome window (ARCHITECTURE.md §5.9), WP15.
 // 640 × 480, full-size content, hidden title bar, not resizable, centred, hosting `WelcomeView`. Shown on first
 // launch (`onboardingCompletedVersion == nil`, from a launch hook once every module has started) and from
-// "Show welcome". "Take the 1-minute tour" closes the window and asks `AppControl.startTutorial()`, so the app keeps
+// "Show welcome". "Take the 1-minute tutorial" closes the window and asks `AppControl.startTutorial()`, so the app keeps
 // one `TutorialController` (the app services own it, WP16) for the welcome, the menu bar and Settings ▸ About.
 // The controller's decisions are pure (`WelcomeWindowPolicy`) and tested without windows.
 import AppKit

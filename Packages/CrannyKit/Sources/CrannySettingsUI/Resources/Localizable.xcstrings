@@ -1972,7 +1972,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ниже"
+            "value" : "Переместить вниз"
           }
         }
       }
@@ -1983,7 +1983,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Влево"
+            "value" : "Переместить влево"
           }
         }
       }
@@ -1994,7 +1994,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вправо"
+            "value" : "Переместить вправо"
           }
         }
       }
@@ -2005,7 +2005,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Выше"
+            "value" : "Переместить вверх"
           }
         }
       }
@@ -2028,50 +2028,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Переход между виджетами"
-          }
-        }
-      }
-    },
-    "Move down" : {
-      "comment" : "Settings ▸ Live Activities: context menu item and VoiceOver action that lowers an activity",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Переместить вниз"
-          }
-        }
-      }
-    },
-    "Move left" : {
-      "comment" : "Settings ▸ Layout & Widgets: move a widget or a page one place left",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Переместить влево"
-          }
-        }
-      }
-    },
-    "Move right" : {
-      "comment" : "Settings ▸ Layout & Widgets: move a widget or a page one place right",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Переместить вправо"
-          }
-        }
-      }
-    },
-    "Move up" : {
-      "comment" : "Settings ▸ Live Activities: context menu item and VoiceOver action that raises an activity",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Переместить вверх"
           }
         }
       }
@@ -2109,7 +2065,7 @@
         }
       }
     },
-    "New characters in notes appear in the accent colour, then settle." : {
+    "New characters in notes appear in the accent color, then settle." : {
       "comment" : "Settings ▸ Appearance: footnote of Typing effect",
       "localizations" : {
         "ru" : {
