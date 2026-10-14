@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Testing
 @testable import CrannyCore
@@ -158,4 +159,124 @@ private let spotify = "com.spotify.client"
 /// installed) answers "unknown".
 @Test func theSystemProbeAnswersUnknownForAnAppThatIsNotRunning() async {
     #expect(await PermissionsCenter.systemAutomationStatus("com.example.cranny.not-installed", ask: false) == .unknown)
+}
+
+// MARK: - Background refreshes (the kinds with a query API)
+
+/// The answers a status probe gives per kind and every kind it was asked for, in order.
+private actor StatusAnswers {
+    private var answers: [PermissionKind: PermissionStatus] = [:]
+    private(set) var questions: [PermissionKind] = []
+    /// While true, every question waits for `release()` (an answer still on its way).
+    private var holds = false
+    private var waiting: [CheckedContinuation<Void, Never>] = []
+
+    func answer(_ kind: PermissionKind) async -> PermissionStatus {
+        questions.append(kind)
+        let answer = answers[kind] ?? .unknown
+        if holds { await withCheckedContinuation { waiting.append($0) } }
+        return answer
+    }
+
+    func set(_ status: PermissionStatus, for kind: PermissionKind) { answers[kind] = status }
+    func hold(_ on: Bool) { holds = on }
+    func release() {
+        let all = waiting
+        waiting.removeAll()
+        for continuation in all { continuation.resume() }
+    }
+    var count: Int { questions.count }
+}
+
+@MainActor private func center(statuses answers: StatusAnswers, refreshesOnActivation: Bool = false) -> PermissionsCenter {
+    PermissionsCenter(automationProbe: { _, _ in .unknown }, statusProbe: { await answers.answer($0) },
+                      refreshesOnActivation: refreshesOnActivation)
+}
+
+/// A status other than macOS's real answer for `kind` (the tests' probe says it, so its landing is visible).
+private func anotherStatus(than kind: PermissionKind) -> PermissionStatus {
+    PermissionsCenter.systemStatus(kind) == .restricted ? .denied : .restricted
+}
+
+/// `refresh()` answers at once, for a caller that reads the status right after it (the Mirror's click): the
+/// background probe is not asked.
+@MainActor @Test func aRefreshAnswersAtOnce() async {
+    let answers = StatusAnswers()
+    let permissions = center(statuses: answers)
+    permissions.refresh()
+    #expect(permissions.status(.calendar) == PermissionsCenter.systemStatus(.calendar))
+    try? await Task.sleep(for: .milliseconds(50))
+    #expect(await answers.count == 0)
+}
+
+/// A background refresh of one kind asks macOS for that kind only, off the main actor; the old status stays until
+/// the answer lands.
+@MainActor @Test func aBackgroundRefreshAsksForItsKindAndLandsLater() async {
+    let answers = StatusAnswers()
+    let permissions = center(statuses: answers)
+    let before = permissions.status(.calendar)                           // the synchronous query at launch
+    let later = anotherStatus(than: .calendar)
+    await answers.set(later, for: .calendar)
+    await answers.hold(true)
+    permissions.refreshInBackground(.calendar)
+    await eventually { await answers.count == 1 }
+    #expect(permissions.status(.calendar) == before)                     // kept while asking
+    await answers.release()
+    await eventually { permissions.status(.calendar) == later }
+    #expect(permissions.status(.calendar) == later)
+    #expect(await answers.questions == [.calendar])                      // not Accessibility, Camera or Bluetooth
+}
+
+/// One background query runs at a time: refreshes asked for meanwhile are answered by one more query, for every
+/// kind they asked for, when the first one lands.
+@MainActor @Test func backgroundRefreshesRunOneAtATime() async {
+    let answers = StatusAnswers()
+    let permissions = center(statuses: answers)
+    await answers.hold(true)
+    permissions.refreshInBackground(.calendar)
+    await eventually { await answers.count == 1 }
+    permissions.refreshInBackground(.calendar)
+    permissions.refreshInBackground()                                    // every kind, while the first one runs
+    try? await Task.sleep(for: .milliseconds(50))
+    #expect(await answers.count == 1)                                    // nothing asked while it runs
+    await answers.hold(false)
+    await answers.release()
+    await eventually { await answers.count == 5 }
+    try? await Task.sleep(for: .milliseconds(50))
+    #expect(await answers.questions == [.calendar, .accessibility, .calendar, .camera, .bluetooth])
+}
+
+/// An answer newer than a background query on its way wins: a recorded observation, a synchronous refresh.
+@MainActor @Test func aNewerAnswerWinsOverABackgroundQuery() async {
+    let answers = StatusAnswers()
+    let permissions = center(statuses: answers)
+    await answers.set(.granted, for: .camera)
+    await answers.set(anotherStatus(than: .calendar), for: .calendar)
+    await answers.hold(true)
+
+    permissions.refreshInBackground(.camera)
+    await eventually { await answers.count == 1 }
+    permissions.record(.denied, for: .camera)                            // observed after the query began
+    await answers.release()
+    try? await Task.sleep(for: .milliseconds(50))
+    #expect(permissions.status(.camera) == .denied)                      // the stale "granted" was dropped
+
+    permissions.refreshInBackground(.calendar)
+    await eventually { await answers.count == 2 }
+    permissions.refresh()                                                // asked now, synchronously
+    await answers.release()
+    try? await Task.sleep(for: .milliseconds(50))
+    #expect(permissions.status(.calendar) == PermissionsCenter.systemStatus(.calendar))
+}
+
+/// The app's center refreshes on every activation of Cranny, in the background (nothing reads the statuses in that
+/// turn): every kind with a query API is asked off the main actor.
+@MainActor @Test func anActivationRefreshesInTheBackground() async {
+    let answers = StatusAnswers()
+    let permissions = center(statuses: answers, refreshesOnActivation: true)
+    NotificationCenter.default.post(name: NSApplication.didBecomeActiveNotification, object: nil)
+    await eventually { await answers.count >= 4 }
+    // A parallel suite may post another activation; it is answered after this one.
+    #expect(Array(await answers.questions.prefix(4)) == [.accessibility, .calendar, .camera, .bluetooth])
+    withExtendedLifetime(permissions) {}
 }

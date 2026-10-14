@@ -5,7 +5,6 @@ import AppKit
 import ApplicationServices
 import AVFoundation
 import CoreBluetooth
-import CoreServices
 import EventKit
 import Observation
 
@@ -43,37 +42,60 @@ public nonisolated enum PermissionStatus: String, Codable, Sendable {
 /// user action (a widget's permission state, Settings ▸ Permissions, onboarding).
 ///
 /// Automation answers are cached per app (§10.20 #27): `AEDeterminePermissionToAutomateTarget` is asked off the main
-/// actor, never from a view body, and only again on `refresh()` (Settings appearing, the app becoming active), after a
+/// actor, never from a view body, and only again on a refresh (Settings appearing, the app becoming active), after a
 /// request, or when a caller needs a fresh answer (`currentStatus`). Until an app's first answer lands, `knownStatus`
-/// is nil (rows show a spinner) and `status` reads `.unknown`. The other kinds are cheap synchronous queries.
+/// is nil (rows show a spinner) and `status` reads `.unknown`.
+///
+/// The other kinds are synchronous queries (`init`, `refresh()`, after a request, `currentStatus`), except where
+/// nothing reads the answer in the same turn: an activation of Cranny and `refreshInBackground` ask macOS off the main
+/// actor (`EKEventStore.authorizationStatus` alone can take 20 ms when its cache is cold, a stall in the middle of an
+/// animation), and the answers land a moment later for the observers of `statuses`. One such query runs at a time: a
+/// refresh asked for while it runs asks once more when it lands, and an answer newer than the query (a synchronous
+/// refresh, a request, `record`) wins over it.
 @MainActor @Observable public final class PermissionsCenter {
     /// macOS's Automation answer for one app, computed off the main actor (`@concurrent`: awaiting it returns to the
     /// main actor); `ask` false never prompts. The app uses `systemAutomationStatus`; tests inject a probe that records
     /// its calls.
     public typealias AutomationProbe = @concurrent @Sendable (_ bundleID: String, _ ask: Bool) async -> PermissionStatus
+    /// macOS's answer for a kind with a query API (Accessibility, Calendar, Camera, Bluetooth), off the main actor;
+    /// never prompts. The app uses `systemStatus`; tests inject a probe that records its calls.
+    public typealias StatusProbe = @concurrent @Sendable (_ kind: PermissionKind) async -> PermissionStatus
+
+    /// The kinds with a query API (System Audio Recording has none; Automation is asked per app).
+    private static let queriedKinds: [PermissionKind] = [.accessibility, .calendar, .camera, .bluetooth]
 
     /// The last known status of each permission (observable).
     public private(set) var statuses: [PermissionKind: PermissionStatus] = [:]
     @ObservationIgnored private var accessibilityWatch: Task<Void, Never>?
     @ObservationIgnored private var recorded: [PermissionKind: PermissionStatus] = [:]
     @ObservationIgnored private let automationProbe: AutomationProbe
-    /// Per app, the number of the latest Automation query or answer; an older query that lands later is dropped.
-    @ObservationIgnored private var automationGeneration: [String: Int] = [:]
+    @ObservationIgnored private let statusProbe: StatusProbe
+    /// Per kind (Automation: per app), the number of the latest query or answer; an older query that lands later is
+    /// dropped.
+    @ObservationIgnored private var generation: [PermissionKind: Int] = [:]
     /// Apps whose first Automation query runs (`knownStatus` starts one at most).
     @ObservationIgnored private var firstQueries: Set<String> = []
+    /// A background query (`statusProbe`) is on its way.
+    @ObservationIgnored private var isQuerying = false
+    /// Kinds asked for while that query ran: asked again when it lands.
+    @ObservationIgnored private var queryAgain: Set<PermissionKind> = []
     @ObservationIgnored private var activationObserver: (any NSObjectProtocol)?
 
     /// Queries every permission except Automation once (cheap, never prompts). `automationProbe` answers Automation
-    /// questions off the main actor. With `refreshesOnActivation` (the app's one center), every activation of Cranny
-    /// refreshes the statuses: the user may have changed them in System Settings meanwhile.
+    /// questions and `statusProbe` the background queries, both off the main actor. With `refreshesOnActivation`
+    /// (the app's one center), every activation of Cranny refreshes the statuses in the background: the user may have
+    /// changed them in System Settings meanwhile. Nothing reads them in that turn: rows and the HUD's config follow
+    /// them by observation, and the HUD's own check refreshes synchronously when it finds Accessibility stale.
     public init(automationProbe: @escaping AutomationProbe = { await PermissionsCenter.systemAutomationStatus($0, ask: $1) },
+                statusProbe: @escaping StatusProbe = { PermissionsCenter.systemStatus($0) },
                 refreshesOnActivation: Bool = false) {
         self.automationProbe = automationProbe
-        refresh()
+        self.statusProbe = statusProbe
+        for kind in Self.queriedKinds + [.systemAudioRecording] { update(kind, to: query(kind)) }
         if refreshesOnActivation {
             activationObserver = NotificationCenter.default.addObserver(
                 forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.refresh() }                     // queue: .main
+                MainActor.assumeIsolated { self?.refreshInBackground() }         // queue: .main
             }
         }
     }
@@ -105,18 +127,39 @@ public nonisolated enum PermissionStatus: String, Codable, Sendable {
     public func currentStatus(_ kind: PermissionKind) async -> PermissionStatus {
         guard case .automation(let bundleID) = kind else {
             let answer = query(kind)
-            update(kind, to: answer)
+            land(answer, for: kind)
             return answer
         }
         return await queryAutomation(bundleID)
     }
 
-    /// Re-query everything (Cranny became active, Settings ▸ Permissions appeared): the cheap kinds at once, the
-    /// Automation answers already known off the main actor (they land a moment later).
+    /// Re-query everything (Settings ▸ Permissions appeared, a click about to act on the status): the cheap kinds at
+    /// once, the Automation answers already known off the main actor (they land a moment later).
     public func refresh() {
-        for kind in [PermissionKind.accessibility, .calendar, .camera, .bluetooth, .systemAudioRecording] {
-            update(kind, to: query(kind))
+        for kind in Self.queriedKinds + [.systemAudioRecording] { land(query(kind), for: kind) }
+        refreshKnownApps()
+    }
+
+    /// `refresh()` with every query off the main actor: the answers land a moment later. For a caller that follows
+    /// `statuses` by observation (a pane as it appears, an activation of Cranny); never for one that reads a status
+    /// right after the call (that one uses `refresh()`).
+    public func refreshInBackground() {
+        queryInBackground(Self.queriedKinds)
+        refreshKnownApps()
+    }
+
+    /// `refreshInBackground()` for one kind, for a caller that shows only that permission (a widget as it appears in
+    /// the opening Nook).
+    public func refreshInBackground(_ kind: PermissionKind) {
+        switch kind {
+        case .accessibility, .calendar, .camera, .bluetooth: queryInBackground([kind])
+        case .systemAudioRecording: update(kind, to: query(kind))
+        case .automation(let bundleID): Task { [weak self] in await self?.queryAutomation(bundleID) }
         }
+    }
+
+    /// Asks again for every app whose Automation answer is known, off the main actor.
+    private func refreshKnownApps() {
         for case .automation(let bundleID) in statuses.keys {
             Task { [weak self] in await self?.queryAutomation(bundleID) }
         }
@@ -140,12 +183,11 @@ public nonisolated enum PermissionStatus: String, Codable, Sendable {
             break   // prompted by AudioDeviceStart in CrannyMedia; it reports back via `record`
         case .automation(let bundleID):
             let answer = await automationProbe(bundleID, true)           // off the main actor: it blocks while asking
-            _ = nextAutomationGeneration(bundleID)                       // the person's answer: queries begun before
-            update(kind, to: answer)                                     // it (during the prompt) are dropped
-            return answer
+            land(answer, for: kind)                                      // the person's answer: queries begun before
+            return answer                                                // it (during the prompt) are dropped
         }
         let s = query(kind)
-        update(kind, to: s)
+        land(s, for: kind)                                               // likewise
         return s
     }
 
@@ -155,27 +197,64 @@ public nonisolated enum PermissionStatus: String, Codable, Sendable {
     }
 
     /// For kinds without a query API, or an answer a feature observed (tap delivered audio → granted; an Apple Event
-    /// refused with −1743 → denied). An Automation query still running is superseded.
+    /// refused with −1743 → denied). A query for the kind still running is superseded.
     public func record(_ status: PermissionStatus, for kind: PermissionKind) {
-        if case .automation(let bundleID) = kind { _ = nextAutomationGeneration(bundleID) }
         recorded[kind] = status
-        update(kind, to: status)
+        land(status, for: kind)
     }
 
-    // MARK: Automation cache
+    // MARK: Answers
 
     /// Asks `automationProbe` (never prompts) and stores the answer unless a newer query or answer came meanwhile.
     @discardableResult
     private func queryAutomation(_ bundleID: String) async -> PermissionStatus {
-        let generation = nextAutomationGeneration(bundleID)
+        let kind = PermissionKind.automation(bundleID: bundleID)
+        let asked = nextGeneration(kind)
         let answer = await automationProbe(bundleID, false)
-        if automationGeneration[bundleID] == generation { update(.automation(bundleID: bundleID), to: answer) }
+        if generation[kind] == asked { update(kind, to: answer) }
         return answer
     }
 
-    private func nextAutomationGeneration(_ bundleID: String) -> Int {
-        let next = (automationGeneration[bundleID] ?? 0) + 1
-        automationGeneration[bundleID] = next
+    /// Asks `statusProbe` for `kinds` off the main actor, one query at a time: kinds asked for while one runs are
+    /// asked again when it lands. Each answer is stored unless a newer answer for its kind came meanwhile.
+    private func queryInBackground(_ kinds: [PermissionKind]) {
+        queryAgain.formUnion(kinds)
+        guard !isQuerying else { return }
+        let ask = Self.queriedKinds.filter(queryAgain.contains)
+        queryAgain.removeAll()
+        guard !ask.isEmpty else { return }
+        isQuerying = true
+        let asked = ask.map { (kind: $0, generation: nextGeneration($0)) }
+        let probe = statusProbe
+        Task { [weak self] in
+            let answers = await Self.answers(for: ask, probe)
+            guard let self else { return }
+            self.isQuerying = false
+            for (kind, generation) in asked where self.generation[kind] == generation {
+                if let answer = answers[kind] { self.update(kind, to: answer) }
+            }
+            self.queryInBackground([])                                       // asked for meanwhile
+        }
+    }
+
+    /// `probe`'s answers for `kinds`, all asked in one hop off the main actor.
+    @concurrent private nonisolated static func answers(for kinds: [PermissionKind],
+                                                        _ probe: StatusProbe) async -> [PermissionKind: PermissionStatus] {
+        var answers: [PermissionKind: PermissionStatus] = [:]
+        for kind in kinds { answers[kind] = await probe(kind) }
+        return answers
+    }
+
+    /// An answer newer than any query on its way (a request, a recorded observation): stored now, and a query that
+    /// began before it is dropped when it lands.
+    private func land(_ status: PermissionStatus, for kind: PermissionKind) {
+        _ = nextGeneration(kind)
+        update(kind, to: status)
+    }
+
+    private func nextGeneration(_ kind: PermissionKind) -> Int {
+        let next = (generation[kind] ?? 0) + 1
+        generation[kind] = next
         return next
     }
 
@@ -184,35 +263,13 @@ public nonisolated enum PermissionStatus: String, Codable, Sendable {
         if statuses[kind] != status { statuses[kind] = status }
     }
 
-    // MARK: Queries (cheap, never prompt)
+    // MARK: Queries (never prompt)
+
+    /// The synchronous answer (`init`, `refresh()`, after a request, `currentStatus`).
     private func query(_ kind: PermissionKind) -> PermissionStatus {
         switch kind {
-        case .accessibility:
-            return AXIsProcessTrusted() ? .granted : .notDetermined
-        case .calendar:
-            return switch EKEventStore.authorizationStatus(for: .event) {
-            case .fullAccess: .granted
-            case .denied, .writeOnly: .denied
-            case .restricted: .restricted
-            case .notDetermined: .notDetermined
-            @unknown default: .unknown
-            }
-        case .camera:
-            return switch AVCaptureDevice.authorizationStatus(for: .video) {
-            case .authorized: .granted
-            case .denied: .denied
-            case .restricted: .restricted
-            case .notDetermined: .notDetermined
-            @unknown default: .unknown
-            }
-        case .bluetooth:
-            return switch CBManager.authorization {
-            case .allowedAlways: .granted
-            case .denied: .denied
-            case .restricted: .restricted
-            case .notDetermined: .notDetermined
-            @unknown default: .unknown
-            }
+        case .accessibility, .calendar, .camera, .bluetooth:
+            return Self.systemStatus(kind)
         case .systemAudioRecording:
             return recorded[kind] ?? .unknown
         case .automation:
@@ -227,26 +284,8 @@ public nonisolated enum PermissionStatus: String, Codable, Sendable {
             for _ in 0..<80 {
                 try? await Task.sleep(for: .milliseconds(1500))
                 guard let self, !Task.isCancelled else { return }
-                if AXIsProcessTrusted() { self.statuses[.accessibility] = .granted; return }
+                if AXIsProcessTrusted() { self.land(.granted, for: .accessibility); return }
             }
-        }
-    }
-
-    /// macOS's Automation answer for `bundleID` (`AEDeterminePermissionToAutomateTarget`), off the main actor. It
-    /// sends nothing to the app; with `ask` it shows the system prompt and blocks until it is answered (never on the
-    /// main thread). `.unknown` while the app is not running (procNotFound).
-    @concurrent public nonisolated static func systemAutomationStatus(_ bundleID: String, ask: Bool) async -> PermissionStatus {
-        let target = NSAppleEventDescriptor(bundleIdentifier: bundleID)
-        guard let desc = target.aeDesc else { return .unknown }
-        return map(AEDeterminePermissionToAutomateTarget(desc, typeWildCard, typeWildCard, ask))
-    }
-
-    nonisolated private static func map(_ status: OSStatus) -> PermissionStatus {
-        switch status {
-        case noErr: .granted
-        case OSStatus(errAEEventNotPermitted): .denied
-        case OSStatus(errAEEventWouldRequireUserConsent): .notDetermined
-        default: .unknown          // procNotFound (-600): the player is not running
         }
     }
 }
