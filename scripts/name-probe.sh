@@ -8,6 +8,9 @@
 #   scripts/name-probe.sh            # regenerate after adding public Core types (commit the result)
 #   CHECK=1 scripts/name-probe.sh    # fail if the committed probe is out of date (CI)
 source "$(dirname "$0")/lib.sh"
+# The output is committed and compared byte for byte (CHECK=1): sort the same way in every locale
+# (CI images export LC_ALL=en_US.UTF-8; contributors may run ru_RU.UTF-8, whose collation differs from C).
+export LC_ALL=C
 
 PROBE="$PACKAGE_DIR/Tests/CrannyCoreTests/SDKNameCollisionProbe.swift"
 FRAMEWORKS=(AppKit AVFoundation AudioToolbox Carbon CoreAudio CoreBluetooth CoreGraphics CoreServices EventKit
