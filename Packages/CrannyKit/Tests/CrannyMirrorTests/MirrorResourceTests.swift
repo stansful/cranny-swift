@@ -17,13 +17,19 @@ import Testing
         #expect(MirrorSymbol.all.allSatisfy { !$0.hasPrefix("video") })
     }
 
+    /// The source catalog, read from disk (the tests see every key and its Russian value whatever the locale).
+    private static let catalogURL = URL(fileURLWithPath: #filePath)
+        .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+        .appending(path: "Sources/CrannyMirror/Resources/Localizable.xcstrings")
+
+    private func catalogStrings() throws -> [String: Any] {
+        let catalog = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: Self.catalogURL)) as? [String: Any])
+        return try #require(catalog["strings"] as? [String: Any])
+    }
+
     /// Reads the source catalog: every key needs a "Surface: purpose" comment and a translated Russian value.
     @Test func everyKeyIsTranslatedIntoRussian() throws {
-        let url = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-            .appending(path: "Sources/CrannyMirror/Resources/Localizable.xcstrings")
-        let catalog = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
-        let strings = try #require(catalog["strings"] as? [String: Any])
+        let strings = try catalogStrings()
         #expect(strings.count >= 25)
         for (key, value) in strings {
             let entry = try #require(value as? [String: Any], "\(key)")
@@ -40,11 +46,58 @@ import Testing
     }
 
     @Test func noCompetitorTermsInCopy() throws {
-        let url = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
-            .appending(path: "Sources/CrannyMirror/Resources/Localizable.xcstrings")
-        let text = try String(contentsOf: url, encoding: .utf8).lowercased()
+        let text = try String(contentsOf: Self.catalogURL, encoding: .utf8).lowercased()
         for term in ["nook", "boring.notch", "alcove", "atoll"] { #expect(!text.contains(term), "\(term)") }
+    }
+
+    // MARK: Chips
+
+    /// Every chip title of the catalog (comment "Mirror widget: chip …") in English and Russian.
+    private func chipTitles() throws -> [(en: String, ru: String)] {
+        try catalogStrings().compactMap { key, value in
+            let entry = try #require(value as? [String: Any], "\(key)")
+            guard (entry["comment"] as? String ?? "").hasPrefix("Mirror widget: chip") else { return nil }
+            let localizations = entry["localizations"] as? [String: Any]
+            let unit = (localizations?["ru"] as? [String: Any])?["stringUnit"] as? [String: Any]
+            return (en: key, ru: try #require(unit?["value"] as? String, "ru for \(key)"))
+        }
+    }
+
+    /// A chip title is one line with no room to wrap: every title, in both languages, fits the card at its minimum
+    /// size at every density and text size, without the view's safety scale-down. "Open System Settings" would not
+    /// fit, and "Open Settings" was clipped in compact density.
+    @Test func chipTitlesFitTheNarrowestCard() throws {
+        let chips = try chipTitles()
+        // Both chips the widget draws are covered (in whichever language the tests run).
+        for title in [MirrorCopy.allowCamera, MirrorCopy.tryAgain] {
+            #expect(chips.contains { $0.en == title || $0.ru == title }, "\(title)")
+        }
+        let cells = MirrorWidget(model: .preview()).sizes.minimum
+        let caption = CrannyTextStyle.caption
+        for density in NookDensity.allCases {
+            for textSize in CrannyTextSize.allCases {
+                let grid = NookGrid(density: density, textSize: textSize)        // cards: the narrower gutter
+                let room = grid.width(cells: cells) - 2 * density.cardPadding - 2 * MirrorMetrics.chipPadding
+                let font = NSFont.systemFont(ofSize: caption.pointSize(textSize: textSize, notchUnit: 1), weight: .semibold)
+                for title in chips.flatMap({ [$0.en, $0.ru] }) {
+                    let width = NSAttributedString(string: title, attributes: [.font: font, .kern: caption.spec.tracking])
+                        .size().width
+                    #expect(width <= room, "\(title): \(width) pt > \(room) pt (\(density), \(textSize))")
+                }
+            }
+        }
+    }
+
+    /// In Cranny, "Settings" (the panel's gear, ⌘,) is Cranny's own Settings. A chip that leads to System Settings
+    /// says what it is for ("Allow…") or names System Settings in full, in both languages.
+    @Test func chipsNeverSayJustSettings() throws {
+        let chips = try chipTitles()
+        #expect(!chips.isEmpty)
+        for chip in chips {
+            #expect(!chip.en.contains("Settings") || chip.en.contains("System Settings"), "\(chip.en)")
+            let ru = chip.ru.lowercased()
+            #expect(!ru.contains("настройк") || ru.contains("системн"), "\(chip.ru)")
+        }
     }
 
     @Test(arguments: [2, 3])

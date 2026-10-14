@@ -18,8 +18,8 @@ private let log = Log.logger(.mirror)
     /// After answering the camera prompt the user has this long to come back to the widget before the hold ends
     /// anyway, so the panel closes as usual if they went elsewhere (a pointer inside the panel keeps it open).
     static let returnTimeout: Duration = .seconds(10)
-    /// After "Open Settings", appearances re-read the camera permission for this long (the user may allow the
-    /// camera in System Settings and come back by hovering, which never activates the app).
+    /// After the "Allow…" chip opens System Settings, appearances re-read the camera permission for this long (the
+    /// user may allow the camera there and come back by hovering, which never activates the app).
     static let settingsRecheckWindow: Duration = .seconds(600)
 
     private(set) var phase: MirrorPhase = .off
@@ -40,7 +40,7 @@ private let log = Log.logger(.mirror)
     /// Ends the permission hold if the user does not come back (`returnTimeout`; tests shorten it).
     @ObservationIgnored var returnTimeout = MirrorModel.returnTimeout
     @ObservationIgnored private var returnTask: Task<Void, Never>?
-    /// When "Open Settings" last sent the user to System Settings (see `settingsRecheckWindow`).
+    /// When the "Allow…" chip last sent the user to System Settings (see `settingsRecheckWindow`).
     @ObservationIgnored private var settingsOpenedAt: ContinuousClock.Instant?
     @ObservationIgnored private var observations: [ObservationToken] = []
     @ObservationIgnored private var notchObserver: UUID?
@@ -185,8 +185,8 @@ private let log = Log.logger(.mirror)
         if event == .failed(.suspended) { catalog.requestRefresh() }
     }
 
-    /// Only after "Open Settings" (the user may have allowed the camera there): `PermissionsCenter.refresh`
-    /// re-queries every permission, which never belongs on the panel-open path otherwise.
+    /// Only after the "Allow…" chip opened System Settings (the user may have allowed the camera there):
+    /// `PermissionsCenter.refresh` re-queries every permission, which never belongs on the panel-open path otherwise.
     private func recheckAccessAfterSettings() {
         guard let opened = settingsOpenedAt else { return }
         guard ContinuousClock.now - opened < Self.settingsRecheckWindow, authorization.status != .granted else {

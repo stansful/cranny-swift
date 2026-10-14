@@ -17,7 +17,13 @@ nonisolated enum MirrorCopy {
     static var waitingForAccess: String { String(localized: "Waiting for camera access", bundle: .module, comment: "Mirror widget: the system camera permission prompt is showing") }
     static var accessOff: String { String(localized: "Camera access is off", bundle: .module, comment: "Mirror widget: camera permission was denied") }
     static var accessRestricted: String { String(localized: "Camera access is restricted", bundle: .module, comment: "Mirror widget: camera blocked by a device management profile or Screen Time") }
-    static var openSettings: String { String(localized: "Open Settings", bundle: .module, comment: "Mirror widget: chip that opens System Settings ▸ Privacy & Security ▸ Camera") }
+    /// The chip under `accessOff` names the outcome, not the destination: "Settings" alone reads as Cranny's own
+    /// Settings (the panel's gear, ⌘,), and "Open System Settings" does not fit one line of a 2-cell card
+    /// (`MirrorResourceTests.chipTitlesFitTheNarrowestCard`). The VoiceOver hint names System Settings.
+    static var allowCamera: String {
+        String(localized: "Allow…", bundle: .module,
+               comment: "Mirror widget: chip under “Camera access is off”; a click opens System Settings ▸ Privacy & Security ▸ Camera to allow the camera (a word or two: one line in a 2-cell card)")
+    }
     static var noCamera: String { String(localized: "No camera connected", bundle: .module, comment: "Mirror widget: no camera is connected") }
     static var unavailable: String { String(localized: "Camera unavailable", bundle: .module, comment: "Mirror widget: the camera is suspended (first line)") }
     static var lidClosed: String { String(localized: "The lid is closed", bundle: .module, comment: "Mirror widget: why the built-in camera is suspended (second line)") }

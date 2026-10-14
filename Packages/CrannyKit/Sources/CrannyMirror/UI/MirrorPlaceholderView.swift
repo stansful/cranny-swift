@@ -19,6 +19,9 @@ enum MirrorMetrics {
     static let backdropGlow: CGFloat = 72
     /// The chip under a message: the height of `CrannyChipButtonStyle` (the chip is drawn, the card is the button).
     static let chipHeight: CGFloat = 22
+    /// The chip's side padding, as in `CrannyChipButtonStyle`. A chip title is one line; in the narrowest card
+    /// (2 cells, compact density) it gets 74 pt, so titles stay a word or two (`MirrorResourceTests`).
+    static let chipPadding: CGFloat = Space.m
 }
 
 /// The dark gradient behind every non-live state: a smoked card, a touch lighter at the top, with soft light
@@ -70,8 +73,9 @@ struct MirrorPlaceholderView: View {
                 Text(verbatim: title)
                     .crannyFont(.caption).fontWeight(.semibold)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.9)                    // a safety net only: every title fits as is
                     .foregroundStyle(p.label)
-                    .padding(.horizontal, Space.m)
+                    .padding(.horizontal, MirrorMetrics.chipPadding)
                     .frame(minHeight: MirrorMetrics.chipHeight)
                     .background(Capsule(style: .continuous).fill(isHovered ? p.controlHover : p.control))
                     .padding(.top, Space.xxs)
@@ -111,7 +115,7 @@ struct MirrorPlaceholderView: View {
 #Preview("Placeholder states · 2 cells") {
     let states: [MirrorPresentation] = [
         MirrorPresentation(message: MirrorCopy.previewCamera, action: .turnOn),
-        MirrorPresentation(message: MirrorCopy.accessOff, actionTitle: MirrorCopy.openSettings, action: .openSettings),
+        MirrorPresentation(message: MirrorCopy.accessOff, actionTitle: MirrorCopy.allowCamera, action: .openSettings),
         MirrorPresentation(message: MirrorCopy.unavailable, detail: MirrorCopy.lidClosed),
         MirrorPresentation(glyph: .problem, message: MirrorCopy.stopped, actionTitle: MirrorCopy.tryAgain, action: .turnOn),
     ]

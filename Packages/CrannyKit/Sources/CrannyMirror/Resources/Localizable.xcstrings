@@ -12,6 +12,17 @@
         }
       }
     },
+    "Allow…" : {
+      "comment" : "Mirror widget: chip under “Camera access is off”; a click opens System Settings ▸ Privacy & Security ▸ Camera to allow the camera (a word or two: one line in a 2-cell card)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешить…"
+          }
+        }
+      }
+    },
     "Automatic" : {
       "comment" : "Mirror widget: camera menu item that follows the system's preferred camera",
       "localizations" : {
@@ -151,17 +162,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "включено"
-          }
-        }
-      }
-    },
-    "Open Settings" : {
-      "comment" : "Mirror widget: chip that opens System Settings ▸ Privacy & Security ▸ Camera",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Настройки"
           }
         }
       }

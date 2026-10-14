@@ -283,7 +283,7 @@ import Testing
         let h = MirrorHarness(.denied)
         let first = await h.show()
         #expect(h.model.presentation(isLive: true).action == .openSettings)
-        await h.model.tap()                           // "Open Settings"
+        await h.model.tap()                           // the "Allow…" chip: System Settings
         #expect(h.authorization.settingsOpened == 1)
         let refreshes = h.authorization.refreshes
 
