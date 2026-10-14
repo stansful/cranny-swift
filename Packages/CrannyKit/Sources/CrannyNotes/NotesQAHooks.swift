@@ -14,9 +14,8 @@ import Foundation
 enum NotesQAHooks {
     /// The raw `--qa-notes` actions of this process (tests may set them for offscreen snapshots).
     static var actions: [String] = {
-        let arguments = ProcessInfo.processInfo.arguments
-        guard let i = arguments.firstIndex(of: "--qa-notes"), i + 1 < arguments.count else { return [] }
-        return arguments[i + 1].split(separator: ",").map(String.init)
+        guard let value = LaunchArguments.current.value(after: "--qa-notes") else { return [] }
+        return value.split(separator: ",").map(String.init)
     }()
 
     /// The editor draws the typing effect frozen mid-way on the last characters (checks rendering attributes).
