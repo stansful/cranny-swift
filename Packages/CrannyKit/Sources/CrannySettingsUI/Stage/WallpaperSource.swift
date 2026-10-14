@@ -10,7 +10,7 @@ import Foundation
 import ImageIO
 import os
 
-private let log = Log.logger(.settings)
+nonisolated private let log = Log.logger(.settings)
 
 enum WallpaperSource {
     /// A decoded miniature plus whether its top band is light (the menu bar miniature then uses dark content).
@@ -26,18 +26,18 @@ enum WallpaperSource {
     /// The miniature of the wallpaper on `screen`, or nil (unsafe location, unreadable or a video wallpaper).
     @MainActor static func miniature(for screen: NSScreen, maxPixelSize: Int = 960) async -> Miniature? {
         guard let url = NSWorkspace.shared.desktopImageURL(for: screen) else { return nil }
-        guard ProtectedLocations.isSafeToRead(url) else {
-            log.info("wallpaper is in a protected folder; using the neutral stage")
-            return nil
-        }
         if let cached = cache[url] { return cached }
         let miniature = await decode(url, maxPixelSize: maxPixelSize)
         if let miniature { cache[url] = miniature }
         return miniature
     }
 
-    /// Thumbnail decode and top-band luminance, off the main actor.
+    /// The safety check (it may read symbolic links), thumbnail decode and top-band luminance, off the main actor.
     @concurrent private static func decode(_ url: URL, maxPixelSize: Int) async -> Miniature? {
+        guard ProtectedLocations.isSafeToRead(url) else {
+            log.info("wallpaper is in a protected place; using the neutral stage")
+            return nil
+        }
         guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
         let options: [CFString: Any] = [
             kCGImageSourceCreateThumbnailFromImageAlways: true,

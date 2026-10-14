@@ -2,13 +2,15 @@
 // in the design's order (Open Cranny ⌃⌥N on; Open Tray, New note, Start timer, Toggle pin, Pause activities off by
 // default; then any other module's), the type-to-capture target, and a read-only reference of the keys inside Cranny
 // (the same data as the hold-⌘ overlay).
+import AppKit
 import CrannyCore
 import Foundation
 import SwiftUI
 
 struct KeyboardPane: View {
     let registry: ModuleRegistry
-    @State private var system = SystemShortcuts.enabled(from: SystemShortcuts.readDomain())
+    /// The enabled macOS shortcuts: the well-known defaults until the domain is read (off the main actor).
+    @State private var system = SystemShortcuts.knownDefaults
 
     private var settings: SettingsStore { registry.services.settings }
 
@@ -41,7 +43,13 @@ struct KeyboardPane: View {
             }
             KeyboardReference()
         }
-        .onReceiveAppActivation { system = SystemShortcuts.enabled(from: SystemShortcuts.readDomain()) }
+        .task {
+            // Read when the pane appears and again whenever Cranny becomes active (System Settings may have changed them).
+            system = await SystemShortcuts.load()
+            for await _ in NotificationCenter.default.notifications(named: NSApplication.didBecomeActiveNotification) {
+                system = await SystemShortcuts.load()
+            }
+        }
     }
 }
 

@@ -53,7 +53,7 @@ enum PermissionsRows {
 
     static func title(_ kind: PermissionKind) -> String {
         if case .automation(let bundleID) = kind {
-            return String(localized: "Automation: \(AppIdentity.resolve(bundleID).name)", bundle: .module,
+            return String(localized: "Automation: \(AppIdentities.shared.identity(of: bundleID).name)", bundle: .module,
                           comment: "Settings ▸ Permissions: Apple Events permission for one app; the argument is the app's name")
         }
         return kind.title

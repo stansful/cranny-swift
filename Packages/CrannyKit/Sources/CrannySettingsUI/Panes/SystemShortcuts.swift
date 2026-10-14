@@ -8,7 +8,7 @@ import CrannyCore
 import Foundation
 
 /// One macOS shortcut that is turned on.
-struct SystemShortcut: Equatable {
+nonisolated struct SystemShortcut: Equatable, Sendable {
     let id: Int
     let keyCode: UInt16
     let modifiers: KeyCombo.Modifiers
@@ -16,7 +16,12 @@ struct SystemShortcut: Equatable {
     func matches(_ combo: KeyCombo) -> Bool { combo.keyCode == keyCode && combo.modifiers == modifiers }
 }
 
-enum SystemShortcuts {
+nonisolated enum SystemShortcuts {
+    /// The enabled shortcuts, read off the main actor (a preferences domain of another process).
+    @concurrent static func load() async -> [SystemShortcut] {
+        enabled(from: readDomain())
+    }
+
     /// The enabled shortcuts: the user's entries from the domain, plus the defaults of well-known ids it does not list.
     static func enabled(from domain: [String: Any]?) -> [SystemShortcut] {
         var byID: [Int: SystemShortcut?] = [:]
@@ -57,6 +62,9 @@ enum SystemShortcuts {
     static func readDomain() -> [String: Any]? {
         UserDefaults(suiteName: "com.apple.symbolichotkeys")?.dictionary(forKey: "AppleSymbolicHotKeys")
     }
+
+    /// The well-known defaults alone (before the domain is read).
+    static let knownDefaults: [SystemShortcut] = enabled(from: nil)
 
     /// macOS defaults of shortcuts that collide most often (screenshots, Spaces, input sources, Spotlight).
     static let defaults: [Int: SystemShortcut] = {
