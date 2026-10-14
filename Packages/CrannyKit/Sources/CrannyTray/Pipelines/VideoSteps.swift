@@ -1,6 +1,6 @@
 // CrannyTray/Pipelines/VideoSteps.swift — Compress video with AVAssetExportSession (HEVC 1080p, falling back to
 // H.264 720p): `export(to:as:)` on macOS 15+, the older `export()` on 14 (ARCHITECTURE.md §7.8). Cancelling the
-// pipeline task cancels the export.
+// pipeline task cancels the export. A result that is not smaller than the input is discarded (`notSmaller`).
 import AVFoundation
 import Foundation
 
@@ -40,6 +40,11 @@ nonisolated enum VideoSteps {
         if Task.isCancelled {
             try? FileManager.default.removeItem(at: output)
             throw CancellationError()
+        }
+        // Like image Compress: never hand back a bigger file (an already efficient HEVC clip re-encodes larger).
+        if ImageSteps.fileSize(output) >= ImageSteps.fileSize(input) {
+            try? FileManager.default.removeItem(at: output)
+            throw TrayError.notSmaller
         }
         return output
     }

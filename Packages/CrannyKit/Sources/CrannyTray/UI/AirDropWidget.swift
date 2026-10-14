@@ -81,7 +81,7 @@ struct CompactDropTarget: View {
         let shape = RoundedRectangle(cornerRadius: theme.grid.innerRadius, style: .continuous)
         Image(systemName: symbol)
             .font(.system(size: TrayMetrics.thumbnail / 2, weight: .medium))
-            .symbolEffect(.bounce, value: targeted)
+            .symbolEffect(.bounce, value: theme.reduceMotion ? false : targeted)     // no bounce under Reduce Motion (§14.1)
             .foregroundStyle(targeted ? p.label : p.secondaryLabel)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(shape.fill(targeted ? tint.opacity(0.15) : .clear))

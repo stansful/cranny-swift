@@ -167,7 +167,9 @@ private struct StepRow: View {
             }
             .fixedSize()
         case .resize(let target):
-            Picker(selection: Binding { target } set: { step = .resize(to: $0) }) {
+            // A saved fixed size equal to the current setting reads as "Max <setting>" (that choice has no own tag).
+            let shown = target == .maxDimension(pixels: maxDimension) ? TrayResize.maxDimension(pixels: 0) : target
+            Picker(selection: Binding { shown } set: { step = .resize(to: $0) }) {
                 ForEach([25, 50, 75], id: \.self) { percent in
                     Text(verbatim: PipelineTitles.step(.resize(to: .scale(percent: percent)), maxDimension: maxDimension))
                         .tag(TrayResize.scale(percent: percent))

@@ -186,11 +186,19 @@ import UniformTypeIdentifiers
 
     @Test func compressVideoWritesASmallerMP4() async throws {
         let folder = Fixtures.folder("video")
-        let movie = try await MovieFixture.write(to: folder.appending(path: "Clip.mov"))
+        let movie = try await MovieFixture.write(to: folder.appending(path: "Clip.mov"), side: 320, bitRate: 40_000_000, noise: true)
         let output = try await VideoSteps.compressVideo(movie, into: folder, naming: .english)
         #expect(output.lastPathComponent == "Clip (compressed).mp4")
+        #expect(Fixtures.size(output) < Fixtures.size(movie))
         let duration = try await AVURLAsset(url: output).load(.duration)
         #expect(duration.seconds > 0.5)
+    }
+
+    @Test func compressVideoNeverHandsBackABiggerFile() async throws {
+        let folder = Fixtures.folder("video-small")
+        let movie = try await MovieFixture.write(to: folder.appending(path: "Tiny.mov"), side: 64, bitRate: 8_000, noise: false)
+        await #expect(throws: TrayError.notSmaller) { try await VideoSteps.compressVideo(movie, into: folder, naming: .english) }
+        #expect(!FileManager.default.fileExists(atPath: folder.appending(path: "Tiny (compressed).mp4").path))
     }
 
     @Test func compressVideoRejectsOtherFiles() async {
@@ -200,28 +208,40 @@ import UniformTypeIdentifiers
     }
 }
 
-/// A one-second 128 × 128 H.264 movie written with AVAssetWriter.
+/// A one-second square H.264 movie written with AVAssetWriter: flat grey frames, or noise at a high bit rate (a file
+/// that compresses well).
 enum MovieFixture {
-    static func write(to url: URL) async throws -> URL {
+    static func write(to url: URL, side: Int = 128, bitRate: Int = 2_000_000, noise: Bool = false) async throws -> URL {
         let writer = try AVAssetWriter(outputURL: url, fileType: .mov)
         let input = AVAssetWriterInput(mediaType: .video, outputSettings: [
-            AVVideoCodecKey: AVVideoCodecType.h264, AVVideoWidthKey: 128, AVVideoHeightKey: 128,
+            AVVideoCodecKey: AVVideoCodecType.h264, AVVideoWidthKey: side, AVVideoHeightKey: side,
+            AVVideoCompressionPropertiesKey: [AVVideoAverageBitRateKey: bitRate],
         ])
         let adaptor = AVAssetWriterInputPixelBufferAdaptor(assetWriterInput: input, sourcePixelBufferAttributes: [
             kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA,
-            kCVPixelBufferWidthKey as String: 128, kCVPixelBufferHeightKey as String: 128,
+            kCVPixelBufferWidthKey as String: side, kCVPixelBufferHeightKey as String: side,
         ])
         writer.add(input)
         writer.startWriting()
         writer.startSession(atSourceTime: .zero)
+        var seed: UInt32 = 7
         for frame in 0..<30 {
             while !input.isReadyForMoreMediaData { try await Task.sleep(for: .milliseconds(5)) }
             var buffer: CVPixelBuffer?
-            CVPixelBufferCreate(nil, 128, 128, kCVPixelFormatType_32BGRA, nil, &buffer)
+            CVPixelBufferCreate(nil, side, side, kCVPixelFormatType_32BGRA, nil, &buffer)
             guard let buffer else { continue }
             CVPixelBufferLockBaseAddress(buffer, [])
             if let base = CVPixelBufferGetBaseAddress(buffer) {
-                memset(base, Int32(frame * 8), CVPixelBufferGetDataSize(buffer))
+                let count = CVPixelBufferGetDataSize(buffer)
+                if noise {
+                    let bytes = base.bindMemory(to: UInt8.self, capacity: count)
+                    for i in 0..<count {
+                        seed = seed &* 1_664_525 &+ 1_013_904_223
+                        bytes[i] = UInt8(truncatingIfNeeded: seed >> 24)
+                    }
+                } else {
+                    memset(base, Int32(frame * 8), count)
+                }
             }
             CVPixelBufferUnlockBaseAddress(buffer, [])
             adaptor.append(buffer, withPresentationTime: CMTime(value: CMTimeValue(frame), timescale: 30))

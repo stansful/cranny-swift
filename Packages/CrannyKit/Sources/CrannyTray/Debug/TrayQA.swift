@@ -5,7 +5,7 @@
 //   --qa-tray-select <n>        select the first n items (chip row)
 //   --qa-tray-states            show a running pipeline, a failure, a fresh result and a file that could not be kept
 //   --qa-tray-catch <uti,…>     the Tray page shows the drag catch view for these types (e.g. public.png)
-//   --qa-tray-quicklook         open Quick Look on the first item after 2 s (activates Cranny, then gives focus back)
+//   --qa-tray-quicklook         open Quick Look on the first item after 2 s (Cranny's own non-activating preview panel)
 //   --qa-tray-settings-bottom   Settings ▸ Tray opens scrolled to its last section
 //
 // Nothing here is compiled into Release builds; no input is synthesized.

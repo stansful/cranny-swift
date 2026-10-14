@@ -158,7 +158,8 @@ struct ChipMenu<Items: View>: View {
                 if let title { Text(verbatim: title) }
                 if title != nil {
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 8, weight: .bold))
+                        .crannyFont(.micro)
+                        .imageScale(.small)
                         .foregroundStyle(theme.palette.secondaryLabel)
                 }
             }
