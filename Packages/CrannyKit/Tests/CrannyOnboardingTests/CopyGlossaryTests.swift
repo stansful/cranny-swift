@@ -56,5 +56,7 @@ import Testing
                 #expect(text.range(of: player, options: .caseInsensitive) == nil, "\(text)")
             }
         }
+        // Media's Russian word for a media app is «плеер» («Открыть плеер», «Не видит плеер»).
+        #expect(russianValue.contains("плеерах") && !russianValue.contains("медиаприлож"), "\(russianValue)")
     }
 }

@@ -2671,7 +2671,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Удалить «%@»"
+            "value" : "Убрать «%@»"
           }
         }
       }
@@ -2693,7 +2693,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Удалить приложение"
+            "value" : "Убрать приложение"
           }
         }
       }
