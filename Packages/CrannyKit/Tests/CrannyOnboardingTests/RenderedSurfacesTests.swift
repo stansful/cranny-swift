@@ -71,7 +71,7 @@ import Testing
         #expect(image?.size.width == TipBubble.width + 2 * Space.huge)
     }
 
-    @Test func theTipPanelTakesTheBubblesSize() {
+    @Test func theTipPanelTakesTheBubblesSize() throws {
         let model = TipModel(content: TipContent(text: "Swipe sideways with two fingers to change the track and more words to wrap",
                                                  progress: "3 of 5", mark: .symbol("hand.draw.fill"), actionTitle: "Skip tutorial"))
         let hosting = TipHostingView(rootView: TipBubbleView(model: model))
@@ -85,6 +85,19 @@ import Testing
         let coach = hosting.intrinsicContentSize
         #expect(coach.width < tour.width)                            // the coach mark hugs its single line
         #expect(coach.height < tour.height)
+
+        // The longest step sentence (step 5 while Cranny is closed), in Russian, wraps inside the same bubble.
+        let russian = try #require(Bundle.onboardingStrings("ru"))
+        let key = "Open Cranny, pin it with the pin button, then press Esc"
+        let longest = russian.localizedString(forKey: key, value: nil, table: nil)
+        #expect(longest != key)
+        model.content = TipContent(text: longest, keys: "esc", progress: "4 из 4", mark: .symbol("pin.fill"),
+                                   actionTitle: russian.localizedString(forKey: "Skip tutorial", value: nil, table: nil))
+        hosting.layoutSubtreeIfNeeded()
+        let long = hosting.intrinsicContentSize
+        #expect(long.width == tour.width)
+        #expect(long.height >= tour.height && long.height < 220)      // a line or so more, never a column of words
+        #expect(render(TipBubbleView(model: model).environment(\.colorScheme, .dark), name: "tip-longest-ru") != nil)
 
         let frame = TipPanelPresenter.frame(size: coach, under: CGRect(x: 1000, y: 1400, width: 200, height: 32))
         #expect(abs(frame.midX - 1100) <= 0.5)
