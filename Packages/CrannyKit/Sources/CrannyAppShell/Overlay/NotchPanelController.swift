@@ -17,6 +17,7 @@ import SwiftUI
     private let registry: ModuleRegistry
     private var pointerInside = false
     private var keyMonitor: Any?
+    private var keyObservers: [any NSObjectProtocol] = []
     private var appearanceToken: ObservationToken?
     /// A layout change that arrived while the panel was not idle (applied after the next close).
     private var pendingAppearance: Appearance?
@@ -54,6 +55,12 @@ import SwiftUI
             self.viewModel.send(.escape)
             return nil
         }
+        // §4.4/§4.5: while the panel is key (hot key, a clicked text field) leaving it never closes it.
+        for (name, isKey) in [(NSWindow.didBecomeKeyNotification, true), (NSWindow.didResignKeyNotification, false)] {
+            keyObservers.append(NotificationCenter.default.addObserver(forName: name, object: panel, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.viewModel.send(.hold(NotchMachineState.typingHold, isKey)) }   // queue: .main
+            })
+        }
         // Theme, layout and light follow the settings live (observed, no polling).
         appearanceToken = observe({ [weak self] in self.map { Self.appearance(screen: $0.screen, style: $0.style, registry: $0.registry) } }) {
             [weak self] appearance in
@@ -71,6 +78,8 @@ import SwiftUI
     func close() {
         if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
         keyMonitor = nil
+        for observer in keyObservers { NotificationCenter.default.removeObserver(observer) }
+        keyObservers.removeAll()
         appearanceToken?.cancel()
         relinquishKeyIfNeeded()
         panel.orderOut(nil)

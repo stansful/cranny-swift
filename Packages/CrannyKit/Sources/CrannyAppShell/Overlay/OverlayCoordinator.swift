@@ -28,6 +28,8 @@ private let log = Log.logger(.overlay)
     @ObservationIgnored private let rebuildDebouncer = Debouncer(delay: .milliseconds(250))
     @ObservationIgnored private var tokens: [ObservationToken] = []
     @ObservationIgnored private var playTask: Task<Void, Never>?
+    @ObservationIgnored private var menuObservers: [any NSObjectProtocol] = []
+    @ObservationIgnored private var trackingMenus = 0
 
     init(registry: ModuleRegistry, environment: ShellEnvironment) {
         self.registry = registry
@@ -47,6 +49,13 @@ private let log = Log.logger(.overlay)
         let settings = registry.services.settings
         tokens.append(observe({ Self.displayPolicy(settings) }) { [weak self] _ in self?.rebuildPanels() })
         tokens.append(observe({ [weak self] in self?.arbitrate() ?? Arbitration() }) { [weak self] result in self?.apply(result) })
+        // §4.5: a tracking menu (a context menu in the panel, the menu bar extra's menu) holds the open panel.
+        menuObservers = [NSMenu.didBeginTrackingNotification, NSMenu.didEndTrackingNotification].map { name in
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
+                let began = note.name == NSMenu.didBeginTrackingNotification
+                MainActor.assumeIsolated { self?.menuTracking(began: began) }          // queue: .main
+            }
+        }
         pointer.start { [weak self] point in self?.pointerMoved(point) }
         hotKeys.start(registry: registry)
     }
@@ -204,6 +213,12 @@ private let log = Log.logger(.overlay)
 
     private func pointerMoved(_ point: CGPoint) {
         for controller in controllers.values { controller.pointerMoved(to: point) }
+    }
+
+    /// Menus nest (submenus): hold while any tracking session is open.
+    private func menuTracking(began: Bool) {
+        trackingMenus = max(0, trackingMenus + (began ? 1 : -1))
+        setHoldOpen(trackingMenus > 0, reason: NotchMachineState.menuHold)
     }
 
     /// One open panel at a time; the menu bar's "Keep Cranny Open" follows the open panel's pin.

@@ -21,6 +21,13 @@ nonisolated struct NotchMachineState: Equatable {
 
     var isOpen: Bool { if case .open = surface { true } else { false } }
     var isClosed: Bool { surface == .closed }
+
+    // MARK: Shell-owned hold reasons (§4.5); module reasons are namespaced ("notes.editing").
+
+    /// The panel is key (opened by the hot key, a text field clicked, `requestKeyboardFocus`): §4.4 "panel not key".
+    static let typingHold = "typing"
+    /// An `NSMenu` is tracking (a context menu in the panel, the menu bar extra's menu).
+    static let menuHold = "menu"
 }
 
 /// Settings and facts the reducer reads; the view model snapshots them for every input.
@@ -81,7 +88,8 @@ nonisolated enum NotchMachine {
         }
     }
 
-    /// Whether leaving may close (§4.4: closeOnLeave; not pinned; no holds).
+    /// Whether leaving may close (§4.4: closeOnLeave; not pinned; no holds — the panel being key and a tracking
+    /// menu are holds too, `typingHold` and `menuHold`).
     static func mayAutoClose(_ s: NotchMachineState, config: NotchMachineConfig) -> Bool {
         config.closeOnLeave && !s.pinned && s.holds.isEmpty
     }

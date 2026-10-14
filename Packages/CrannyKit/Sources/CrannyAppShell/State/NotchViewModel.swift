@@ -13,6 +13,10 @@ import Foundation
     private let registry: ModuleRegistry
     private var dwellTask: Task<Void, Never>?
     private var graceTask: Task<Void, Never>?
+    /// Inputs that arrive while an input is being reduced (an effect such as `makeKey` posts a key-window
+    /// notification synchronously) wait here and are reduced in order afterwards.
+    private var inbox: [NotchInput] = []
+    private var isReducing = false
 
     // Wired by NotchPanelController / OverlayCoordinator.
     var makeKey: () -> Void = {}
@@ -46,6 +50,14 @@ import Foundation
     // MARK: Inputs
 
     func send(_ input: NotchInput) {
+        inbox.append(input)
+        guard !isReducing else { return }
+        isReducing = true
+        defer { isReducing = false }
+        while !inbox.isEmpty { reduce(inbox.removeFirst()) }
+    }
+
+    private func reduce(_ input: NotchInput) {
         let config = currentConfig()
         let (next, effects) = NotchMachine.reduce(state, input, now: ProcessInfo.processInfo.systemUptime, config: config)
         state = next

@@ -67,6 +67,42 @@ private func run(_ inputs: [NotchInput], from start: NotchMachineState = NotchMa
     #expect(stays.isOpen)
 }
 
+/// §4.4 "pointer leaves exit zone → grace → closed" requires "panel not key"; §4.5 lists "panel is key (typing)"
+/// and a tracking menu as holds.
+@Test func aKeyPanelOrATrackingMenuIsNotClosedByLeaving() {
+    let typing = NotchMachineState.typingHold
+    let (open, _) = run([.hotKey, .hold(typing, true)])
+    let (crossed, fx) = run([.pointerEntered, .pointerLeft, .graceElapsed], from: open)
+    #expect(crossed.isOpen && crossed.graceDeadline == nil)
+    #expect(!fx.contains(.scheduleGrace(HoverIntent.closeGrace)) && !fx.contains(.relinquishKey))
+    let (resigned, fx2) = run([.hold(typing, false)], from: crossed)                // clicked elsewhere: key is gone
+    #expect(fx2 == [.scheduleGrace(HoverIntent.closeGrace)] && resigned.isOpen)
+    let (closed, _) = run([.graceElapsed], from: resigned)
+    #expect(closed.isClosed)
+
+    let (hovered, _) = run([.pointerEntered, .dwellElapsed(shouldOpen: true), .hold(NotchMachineState.menuHold, true)])
+    let (menu, fx3) = run([.pointerLeft, .graceElapsed], from: hovered)
+    #expect(menu.isOpen && !fx3.contains(.scheduleGrace(HoverIntent.closeGrace)))
+    let (menuClosed, _) = run([.hold(NotchMachineState.menuHold, false), .graceElapsed], from: menu)
+    #expect(menuClosed.isClosed)
+}
+
+/// `makeKey` posts didBecomeKey synchronously, so the key hold arrives while the hot key is being reduced.
+@Test func inputsFedBackByEffectsAreReducedInOrder() {
+    let registry = ModuleRegistry(services: .preview())
+    let viewModel = NotchViewModel(scene: NotchSceneModel(layout: NotchLayout(metrics: .reference), theme: CrannyTheme()),
+                                   registry: registry)
+    var events: [NotchEvent] = []
+    viewModel.makeKey = { viewModel.send(.hold(NotchMachineState.typingHold, true)) }
+    viewModel.onEvent = { events.append($0) }
+    viewModel.send(.hotKey)
+    #expect(viewModel.state.isOpen && viewModel.state.holds == [NotchMachineState.typingHold])
+    #expect(events == [.opened(.keyboard)])
+    viewModel.send(.pointerEntered)
+    viewModel.send(.pointerLeft)
+    #expect(viewModel.state.graceDeadline == nil)
+}
+
 @Test func escapeLeavesModesFirstThenClosesAndHandsFocusBack() {
     let (open, fx) = run([.hotKey])
     #expect(open.surface == .open(OpenState(page: .nook, reason: .keyboard)) && fx.contains(.makeKey))
