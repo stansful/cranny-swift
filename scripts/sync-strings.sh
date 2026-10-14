@@ -2,8 +2,9 @@
 # Update every CrannyKit String Catalog with the keys the compiler extracted from code
 # (what Xcode's editor does after a build, but scriptable/CI-friendly).
 #
-#   scripts/sync-strings.sh          # build targets that have a catalog, then sync
-#   CHECK=1 scripts/sync-strings.sh  # fail if a catalog would change (for CI)
+#   scripts/sync-strings.sh                  # build targets that have a catalog, then sync
+#   scripts/sync-strings.sh CrannyTimer      # just these targets (parallel work on one module)
+#   CHECK=1 scripts/sync-strings.sh [Target…]   # fail if a catalog would change (for CI)
 #
 # Uses the compiler-produced .stringsdata (exact keys such as "%lld minutes left").
 # `xcstringstool extract` exists too, but its lightweight parser turns interpolations
@@ -15,7 +16,16 @@ cd "$PACKAGE_DIR"
 
 scratch="$PACKAGE_DIR/.build-strings"
 changed=0
-for catalog in Sources/*/Resources/Localizable.xcstrings; do
+catalogs=()
+if (($#)); then
+  for t in "$@"; do
+    [[ -f "Sources/$t/Resources/Localizable.xcstrings" ]] || die "no String Catalog for target $t"
+    catalogs+=("Sources/$t/Resources/Localizable.xcstrings")
+  done
+else
+  catalogs=(Sources/*/Resources/Localizable.xcstrings)
+fi
+for catalog in "${catalogs[@]}"; do
   target="$(basename "$(dirname "$(dirname "$catalog")")")"
   log "$target"
   # The .stringsdata paths below are the swift-build backend's layout: request it explicitly
