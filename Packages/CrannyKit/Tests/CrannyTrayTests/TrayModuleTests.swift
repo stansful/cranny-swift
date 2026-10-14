@@ -47,11 +47,23 @@ import Testing
 
 @Test func errorsHaveOneLineDescriptions() {
     let errors: [TrayError] = [.cannotRead("a"), .cannotWrite, .unsupportedFile("a"), .formatUnavailable("AVIF"), .notSmaller,
-                               .archiveFailed, .unarchiveFailed, .noSubject, .noText, .pdfFailed, .videoFailed, .fileMissing]
+                               .archiveFailed, .unarchiveFailed, .noSubject, .noText, .pdfFailed, .videoFailed, .fileMissing,
+                               .cannotKeep("a")]
     for error in errors {
         let text = error.errorDescription ?? ""
         #expect(!text.isEmpty && !text.contains("\n"))
     }
+    #expect(Set(errors.map(\.caseName)).count == errors.count)
+}
+
+@Test func publicLogTextNeverNamesTheUsersFiles() {
+    let name = "Medical report.pdf"
+    #expect(TrayLogCode.of(TrayError.unsupportedFile(name)) == "TrayError.unsupportedFile")
+    let missing = CocoaError(.fileReadNoSuchFile, userInfo: [NSFilePathErrorKey: "/Users/someone/Desktop/\(name)"])
+    #expect(missing.localizedDescription.contains("Medical"))             // what used to be logged publicly
+    #expect(TrayLogCode.of(missing) == "NSCocoaErrorDomain 260")
+    #expect(TrayError.keeping(name, failedWith: missing) == .cannotRead(name))
+    #expect(TrayError.keeping(name, failedWith: CocoaError(.fileWriteOutOfSpace)) == .cannotKeep(name))
 }
 
 @Test func quickLookOpensCentredOnThePointersScreen() {

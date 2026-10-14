@@ -1,46 +1,13 @@
 // CrannyTray/Store/TrayStore.swift — the Tray's model (main actor, observable): items, selection, running pipelines,
 // the Undo offer. File work happens in `TrayStorage` and `PipelineRunner` off the main actor; this type only
 // orchestrates and publishes state (ARCHITECTURE.md §9.1). Pipelines: `TrayStore+Pipelines.swift`; user actions
-// (copy, reveal, Quick Look, AirDrop): `TrayStore+Actions.swift`.
+// (copy, reveal, Quick Look, AirDrop): `TrayStore+Actions.swift`. Folders: `TrayDirectories.swift`.
 import CrannyCore
 import Foundation
 import Observation
 import os
 
 private let log = Log.logger(.tray)
-
-/// The folders the Tray uses. `live(paths:)` in the app; temporary ones in tests and previews.
-nonisolated struct TrayDirectories: Sendable, Equatable {
-    /// Copies and `index.json`.
-    var root: URL
-    /// Scratch space for pipeline runs (emptied after each run).
-    var work: URL
-    /// Files under these are temporary: always copied, never written next to.
-    var temporaryRoots: [URL]
-    /// Results of tray-owned files.
-    var downloads: URL
-
-    /// No I/O: folders are created on first use (ARCHITECTURE.md §3.4, `register` stays cheap).
-    static func live(paths: AppPaths) -> TrayDirectories {
-        let fm = FileManager.default
-        let caches = paths.caches.appending(path: ModuleID.tray.rawValue, directoryHint: .isDirectory)
-        let screenshots = fm.homeDirectoryForCurrentUser.appending(path: "Library/Containers/com.apple.screencaptureui",
-                                                                   directoryHint: .isDirectory)
-        return TrayDirectories(
-            root: paths.root.appending(path: ModuleID.tray.rawValue, directoryHint: .isDirectory),
-            work: caches.appending(path: "Work", directoryHint: .isDirectory),
-            temporaryRoots: [caches, fm.temporaryDirectory, screenshots],
-            downloads: fm.urls(for: .downloadsDirectory, in: .userDomainMask).first
-                ?? fm.homeDirectoryForCurrentUser.appending(path: "Downloads", directoryHint: .isDirectory))
-    }
-
-    /// Everything inside one throw-away folder (tests, previews, Debug QA samples).
-    static func temporary(_ base: URL = FileManager.default.temporaryDirectory
-        .appending(path: "cranny-tray-\(UUID().uuidString)", directoryHint: .isDirectory)) -> TrayDirectories {
-        TrayDirectories(root: base.appending(path: "Tray"), work: base.appending(path: "Work"),
-                        temporaryRoots: [base.appending(path: "Incoming")], downloads: base.appending(path: "Downloads"))
-    }
-}
 
 @MainActor @Observable final class TrayStore {
     // MARK: Observed state
@@ -51,7 +18,7 @@ nonisolated struct TrayDirectories: Sendable, Equatable {
     private(set) var urls: [UUID: URL] = [:]
     private(set) var isLoaded = false
     var selection = TraySelection()
-    /// Running pipelines (tiles dim behind a ring) and failed runs of dropped files.
+    /// Running pipelines (tiles dim behind a ring), failed runs of dropped files and files that could not be kept.
     var jobs: [TrayJob] = []
     /// One line per tile that failed (DESIGN.md §8.2 "Error").
     var failures: [UUID: String] = [:]
@@ -59,6 +26,8 @@ nonisolated struct TrayDirectories: Sendable, Equatable {
     var freshItems: Set<UUID> = []
     /// The 5-s Undo chip after a pipeline wrote files.
     var undoOffer: TrayUndoOffer?
+    /// The Tray page is on screen (errors are shown there; the page is opened for them otherwise).
+    private(set) var isPageVisible = false
 
     // MARK: Dependencies
 
@@ -70,12 +39,13 @@ nonisolated struct TrayDirectories: Sendable, Equatable {
     @ObservationIgnored let directories: TrayDirectories
     @ObservationIgnored let thumbnails = ThumbnailCache()
     @ObservationIgnored var now: @MainActor () -> Date = { Date() }
+    /// Writes `index.json` (reads go through `TrayStorage.readIndex`, which tells a damaged index from a missing one).
     @ObservationIgnored private let index: JSONFileStore<TrayIndex>
     @ObservationIgnored private let saver = Debouncer(delay: .milliseconds(300))
     @ObservationIgnored private var hasUnsavedChanges = false
     @ObservationIgnored private var loading: Task<Void, Never>?
     @ObservationIgnored private var expiryTask: Task<Void, Never>?
-    @ObservationIgnored private var retentionToken: ObservationToken?
+    @ObservationIgnored private var settingTokens: [ObservationToken] = []
     @ObservationIgnored var tasks: [UUID: Task<Void, Never>] = [:]
     @ObservationIgnored var undoTask: Task<Void, Never>?
     @ObservationIgnored var lastAnnouncement: Date?
@@ -112,7 +82,18 @@ nonisolated struct TrayDirectories: Sendable, Equatable {
     }
 
     private func performLoad() async {
-        var loaded = await index.load().items
+        let read = await storage.readIndex()
+        var loaded: [TrayItem]
+        if case .loaded(let index) = read {
+            loaded = index.items
+        } else {
+            // No usable index: the copies are found again from their folders, never deleted for want of an index.
+            loaded = await storage.recoverCopies(now: now())
+            if !loaded.isEmpty {
+                hasUnsavedChanges = true
+                log.info("tray index rebuilt: \(loaded.count, privacy: .public) kept copies found")
+            }
+        }
         let policy = settings[TraySettings.retention]
         var gone = Retention.expired(loaded, policy: policy, now: now())
         if Retention.clearsOnQuit(policy) { gone = Set(loaded.map(\.id)) }
@@ -129,11 +110,14 @@ nonisolated struct TrayDirectories: Sendable, Equatable {
         urls = resolved.urls
         isLoaded = true
         if hasUnsavedChanges { persist() }
-        await storage.removeOrphans(keeping: loaded)
+        if case .loaded = read { await storage.removeOrphans(keeping: loaded) }
+        enforceCap(keeping: [])
         scheduleExpiry()
-        retentionToken = observe({ [weak self] in self?.settings[TraySettings.retention] }) { [weak self] _ in
-            self?.applyRetention()
-        }
+        settingTokens = [
+            observe({ [weak self] in self?.settings[TraySettings.retention] }) { [weak self] _ in self?.applyRetention() },
+            // A lower "Keep at most" applies at once, not at the next drop.
+            observe({ [weak self] in self?.settings[TraySettings.maxItems] }) { [weak self] _ in self?.enforceCap(keeping: []) },
+        ]
         log.info("tray loaded: \(loaded.count, privacy: .public) item(s)")
     }
 
@@ -145,45 +129,93 @@ nonisolated struct TrayDirectories: Sendable, Equatable {
         loading = Task {}
     }
 
-    /// Re-checks where linked files are (the Tray page appears); stale bookmarks are refreshed.
+    /// Re-checks where linked files are (the Tray page appears); stale bookmarks are refreshed. The result is merged:
+    /// items added while it resolved keep their URL, and items removed meanwhile do not get one back.
     func refreshLocations() async {
         guard isLoaded else { return }
         let snapshot = items
         let resolved = await storage.resolve(snapshot)
-        urls = resolved.urls
+        let present = Set(order)
+        for item in snapshot where present.contains(item.id) { urls[item.id] = resolved.urls[item.id] }
+        var changed = false
         for fresh in resolved.refreshed {
-            if let i = items.firstIndex(where: { $0.id == fresh.id }) { items[i] = fresh }
+            guard let i = items.firstIndex(where: { $0.id == fresh.id }) else { continue }
+            items[i].location = fresh.location
+            items[i].name = fresh.name
+            changed = true
         }
-        if !resolved.refreshed.isEmpty { persist() }
+        if changed { persist() }
     }
 
     // MARK: Adding
 
-    /// Keeps `urls` (copies by default). A file already in the Tray moves to the front instead of being kept twice.
-    /// Returns false only when nothing could be kept.
+    /// Keeps `urls` (copies by default). A file already in the Tray moves to the front (and counts as just added)
+    /// instead of being kept twice, unless the original changed since it was copied: then the copy is replaced.
+    /// Files that cannot be kept get an error tile. Returns false only when the drop held nothing to keep.
     @discardableResult
     func keep(_ incoming: [URL], opensTray: Bool = true) async -> Bool {
         guard !incoming.isEmpty else { return false }
         await load()
+        let matches = incoming.map { (url: $0, item: TrayDedup.match($0, in: items)) }
+        let copies = matches.compactMap { match in match.item.flatMap { $0.isOwned ? (url: match.url, item: $0) : nil } }
+        let changed = copies.isEmpty ? [] : await storage.changedOriginals(copies)
         var existing: [UUID] = []
         var fresh: [URL] = []
-        for url in incoming {
-            if let match = TrayDedup.match(url, in: items) { existing.append(match.id) } else { fresh.append(url) }
+        var replacing: [URL: UUID] = [:]
+        for match in matches {
+            if let item = match.item, !changed.contains(item.id) {
+                existing.append(item.id)
+            } else {
+                fresh.append(match.url)
+                if let item = match.item { replacing[match.url] = item.id }
+            }
         }
-        let added = await storage.ingest(fresh, mode: settings[TraySettings.storageMode], now: now())
-        for item in added {
-            urls[item.id] = storage.ownedURL(item) ?? item.linkedURL
+        let results = await storage.ingestEach(fresh, mode: settings[TraySettings.storageMode], now: now())
+        var added: [TrayItem] = []
+        var outdated: Set<UUID> = []
+        var failed: [(name: String, error: TrayError)] = []
+        for (url, result) in zip(fresh, results) {
+            switch result {
+            case .success(let item):
+                added.append(item)
+                urls[item.id] = storage.ownedURL(item) ?? item.linkedURL
+                if let old = replacing[url] { outdated.insert(old) }
+            case .failure(let error):
+                failed.append((url.lastPathComponent, error))
+            }
         }
-        let moved = items.filter { existing.contains($0.id) }
+        let time = now()
+        var moved = items.filter { existing.contains($0.id) }
+        for i in moved.indices { moved[i].addedAt = time }          // retention and the cap count from the new drop
         items.removeAll { existing.contains($0.id) }
         items.insert(contentsOf: added + moved, at: 0)
-        enforceCap(keeping: Set(added.map(\.id)))
+        if !outdated.isEmpty { remove(outdated) }
+        enforceCap(keeping: Set((added + moved).map(\.id)))
+        showKeepFailures(failed)
         persist()
+        await saveNow()                     // a kept copy is in the index at once: a crash now must not lose it
         scheduleExpiry()
-        guard !added.isEmpty || !moved.isEmpty else { return false }
-        if opensTray && settings[TraySettings.opensTrayOnDrop] { notch.open(page: .tray, focus: nil, reason: .drag) }
-        return true
+        let kept = !added.isEmpty || !moved.isEmpty
+        if (kept && opensTray && settings[TraySettings.opensTrayOnDrop]) || (!failed.isEmpty && !isPageVisible) {
+            notch.open(page: .tray, focus: nil, reason: .drag)
+        }
+        return kept || !failed.isEmpty
     }
+
+    /// An error tile per file that could not be kept (dismissed like a failed drop run), and one announcement.
+    private func showKeepFailures(_ failed: [(name: String, error: TrayError)]) {
+        guard let first = failed.first else { return }
+        let title = String(localized: "Keep in Tray", bundle: .module, comment: "Drag catch state: drop zone that keeps the files")
+        for (name, error) in failed {
+            jobs.removeAll { $0.pipelineID == Self.keepJobID && $0.placeholderName == name }
+            jobs.append(TrayJob(id: UUID(), pipelineID: Self.keepJobID, title: title, sourceIDs: [], placeholderName: name,
+                                failure: error.errorDescription))
+        }
+        announce(first.error.errorDescription ?? title)
+    }
+
+    /// `TrayJob.pipelineID` of the error tile of a file that could not be kept.
+    static let keepJobID = "tray.keep"
 
     /// Inserts already-made items (pipeline results) after `anchor`, or at the front.
     func insert(_ newItems: [TrayItem], urls newURLs: [UUID: URL], after anchor: UUID?) {
@@ -230,9 +262,21 @@ nonisolated struct TrayDirectories: Sendable, Equatable {
         Set(candidates.filter { !FileManager.default.fileExists(atPath: $0.1.path) }.map(\.0))
     }
 
+    /// The oldest items beyond "Keep at most". Files of the drop being kept never make room for themselves, so one
+    /// drop larger than the cap is kept whole; the Tray is back at the cap after the next change.
     private func enforceCap(keeping: Set<UUID>) {
         let overflow = Retention.overflow(items, maxItems: settings[TraySettings.maxItems], keeping: keeping)
         if !overflow.isEmpty { remove(overflow) }
+    }
+
+    // MARK: Page
+
+    func pageDidAppear() { isPageVisible = true }
+
+    /// Leaving the Tray page: "new" dots go, the selection stays.
+    func pageDidDisappear() {
+        isPageVisible = false
+        freshItems = []
     }
 
     // MARK: Retention
@@ -268,7 +312,7 @@ nonisolated struct TrayDirectories: Sendable, Equatable {
         hasUnsavedChanges = false
         do { try await index.save(TrayIndex(items: items)) } catch {
             hasUnsavedChanges = true
-            log.error("could not save the tray index: \(error.localizedDescription, privacy: .public)")
+            log.error("could not save the tray index: \(TrayLogCode.of(error), privacy: .public) \(error.localizedDescription, privacy: .private)")
         }
     }
 
@@ -285,18 +329,5 @@ nonisolated struct TrayDirectories: Sendable, Equatable {
         }
         hasUnsavedChanges = false
         try? FileManager.default.removeItem(at: directories.work)
-    }
-}
-
-/// Matching a dropped file against the Tray (no duplicates).
-nonisolated enum TrayDedup {
-    /// The item that already holds `url` (by its original path or link path).
-    static func match(_ url: URL, in items: [TrayItem]) -> TrayItem? {
-        let path = url.standardizedFileURL.path
-        return items.first { item in
-            if item.originalPath == path { return true }
-            if case .linked(_, let linked) = item.location { return linked == path }
-            return false
-        }
     }
 }

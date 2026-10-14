@@ -3,7 +3,7 @@
 //
 //   --qa-tray-samples           use throw-away folders and keep generated sample files (never the user's Tray)
 //   --qa-tray-select <n>        select the first n items (chip row)
-//   --qa-tray-states            show a running pipeline, a failure and a fresh result on sample tiles
+//   --qa-tray-states            show a running pipeline, a failure, a fresh result and a file that could not be kept
 //   --qa-tray-catch <uti,…>     the Tray page shows the drag catch view for these types (e.g. public.png)
 //   --qa-tray-quicklook         open Quick Look on the first item after 2 s (activates Cranny, then gives focus back)
 //   --qa-tray-settings-bottom   Settings ▸ Tray opens scrolled to its last section
@@ -53,6 +53,9 @@ enum TrayQA {
                                       sourceIDs: [ids[1]], placeholderName: nil, progress: 0.42))
             store.failures[ids[2]] = TrayError.notSmaller.errorDescription
             store.freshItems.insert(ids[3])
+            let unkept = "Scan 2026-10-14.pdf"
+            store.jobs.append(TrayJob(id: UUID(), pipelineID: TrayStore.keepJobID, title: unkept, sourceIDs: [],
+                                      placeholderName: unkept, failure: TrayError.cannotRead(unkept).errorDescription))
         }
         if arguments.contains("--qa-tray-quicklook") {
             try? await Task.sleep(for: .seconds(2))

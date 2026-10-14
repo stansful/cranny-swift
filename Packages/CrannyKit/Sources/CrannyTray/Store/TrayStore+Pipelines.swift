@@ -117,41 +117,48 @@ extension TrayStore {
                         location: TrayOutputLocation, after anchor: UUID?, selectsResults: Bool) async {
         guard let job = jobs.first(where: { $0.id == jobID }) else { return }
         var finalURLs = inputs
+        var lostResults = false
         if !result.files.isEmpty {
-            let directory = placement.directory(for: destinationSource, location: location)
-            let placed = await Self.move(result.files, to: directory)
+            // Where results go is decided off the main actor too: it checks the folder (§9.2, may be a network volume).
+            let placed = await Self.move(result.files, placement: placement, source: destinationSource, location: location)
             guard !placed.isEmpty else { return fail(jobID, TrayError.cannotWrite) }
             let made = await storage.linkResults(placed, now: now())
-            var madeURLs: [UUID: URL] = [:]
-            for (item, url) in zip(made, placed) { madeURLs[item.id] = url }
-            insert(made, urls: madeURLs, after: anchor)
-            freshItems.formUnion(made.map(\.id))
-            if selectsResults { selection.set(made.map(\.id)) }
-            offerUndo(TrayUndoOffer(id: jobID, title: job.title, itemIDs: made.map(\.id), files: placed))
+            lostResults = placed.count < result.files.count || made.count < placed.count
+            insert(made.map(\.item), urls: Dictionary(uniqueKeysWithValues: made.map { ($0.item.id, $0.url) }), after: anchor)
+            freshItems.formUnion(made.map(\.item.id))
+            if selectsResults { selection.set(made.map(\.item.id)) }
+            offerUndo(TrayUndoOffer(id: jobID, title: job.title, itemIDs: made.map(\.item.id), files: placed))
             finalURLs = placed
         }
         if result.copiesPaths {
             system.copy(text: finalURLs.map(\.path).joined(separator: "\n"))
-            notch.flash(symbol: "link", label: finalURLs.count == 1
-                ? String(localized: "Path copied", bundle: .module, comment: "Notch flash after Copy paths (one file); at most 12 characters")
-                : String(localized: "Paths copied", bundle: .module, comment: "Notch flash after Copy paths (several files); at most 12 characters"))
+            notch.flash(symbol: "link", label: Self.pathsCopiedLabel(count: finalURLs.count))
         }
         if let text = result.text {
             system.copy(text: text)
             notch.flash(symbol: "doc.on.doc", label: String(localized: "Text copied", bundle: .module,
-                                                            comment: "Notch flash after Copy text; at most 12 characters"))
+                                                            comment: "Notch flash: Copy text confirmation; at most 12 characters"))
         }
         if result.reveals { system.reveal(finalURLs) }
         haptics.play(.generic)
+        // Some results could not be placed or linked: the ones that could are in the Tray, the source says the rest failed.
+        if lostResults { return fail(jobID, TrayError.cannotWrite) }
         announce(String(localized: "\(job.title) finished", bundle: .module,
-                        comment: "VoiceOver announcement when a tray pipeline finishes; the argument is the pipeline name"))
+                        comment: "VoiceOver announcement: a tray pipeline finished; the argument is the pipeline name"))
         endJob(jobID)
+    }
+
+    /// "Path copied" / "Paths copied" in the band (Copy paths chip, context menu, pipelines ending in Copy paths).
+    static func pathsCopiedLabel(count: Int) -> String {
+        count == 1
+            ? String(localized: "Path copied", bundle: .module, comment: "Notch flash: Copy paths confirmation (one file); at most 12 characters")
+            : String(localized: "Paths copied", bundle: .module, comment: "Notch flash: Copy paths confirmation (several files); at most 12 characters")
     }
 
     private func fail(_ jobID: UUID, _ error: any Error) {
         guard let i = jobs.firstIndex(where: { $0.id == jobID }) else { return }
         let message = (error as? TrayError)?.errorDescription ?? TrayError.cannotWrite.errorDescription ?? ""
-        log.error("pipeline \(self.jobs[i].pipelineID, privacy: .public) failed: \(String(describing: error), privacy: .public)")
+        log.error("pipeline \(self.jobs[i].pipelineID, privacy: .public) failed: \(TrayLogCode.of(error), privacy: .public) \(error.localizedDescription, privacy: .private)")
         tasks[jobID] = nil
         if jobs[i].sourceIDs.isEmpty {
             jobs[i].failure = message                       // dropped files: the placeholder tile shows the error
@@ -201,8 +208,10 @@ extension TrayStore {
 
     // MARK: Files (off the main actor)
 
-    /// Moves results into `directory` under unique names; returns where they landed.
-    @concurrent static func move(_ files: [URL], to directory: URL) async -> [URL] {
+    /// Moves results into the folder `placement` picks for `source` under unique names; returns where they landed.
+    @concurrent static func move(_ files: [URL], placement: OutputPlacement, source: URL?,
+                                 location: TrayOutputLocation) async -> [URL] {
+        let directory = placement.directory(for: source, location: location)
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         var placed: [URL] = []
         for file in files {
@@ -212,7 +221,7 @@ extension TrayStore {
                 try FileManager.default.moveItem(at: file, to: target)
                 placed.append(target)
             } catch {
-                log.error("could not place a result: \(error.localizedDescription, privacy: .public)")
+                log.error("could not place a result: \(TrayLogCode.of(error), privacy: .public) \(error.localizedDescription, privacy: .private)")
             }
         }
         return placed

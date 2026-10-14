@@ -2,7 +2,7 @@
   "sourceLanguage" : "en",
   "strings" : {
     "%@ finished" : {
-      "comment" : "VoiceOver announcement when a tray pipeline finishes; the argument is the pipeline name",
+      "comment" : "VoiceOver announcement: a tray pipeline finished; the argument is the pipeline name",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -485,6 +485,17 @@
         }
       }
     },
+    "Couldn’t keep “%@”" : {
+      "comment" : "Tray error (tile tooltip): a dropped file could not be copied into the Tray, for example because the disk is full",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось сохранить «%@» в лотке"
+          }
+        }
+      }
+    },
     "Couldn’t make the PDF" : {
       "comment" : "Tray error (tile tooltip): Make PDF failed",
       "localizations" : {
@@ -932,7 +943,7 @@
       }
     },
     "Path copied" : {
-      "comment" : "Notch flash after Copy paths (one file); at most 12 characters",
+      "comment" : "Notch flash: Copy paths confirmation (one file); at most 12 characters",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -943,7 +954,7 @@
       }
     },
     "Paths copied" : {
-      "comment" : "Notch flash after Copy paths (several files); at most 12 characters",
+      "comment" : "Notch flash: Copy paths confirmation (several files); at most 12 characters",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -1218,7 +1229,7 @@
       }
     },
     "Text copied" : {
-      "comment" : "Notch flash after Copy text; at most 12 characters",
+      "comment" : "Notch flash: Copy text confirmation; at most 12 characters",
       "localizations" : {
         "ru" : {
           "stringUnit" : {

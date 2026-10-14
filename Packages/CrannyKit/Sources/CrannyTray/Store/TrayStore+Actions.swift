@@ -36,9 +36,6 @@ extension TrayStore {
     }
     func clearSelection() { selection.clear() }
 
-    /// Leaving the Tray page: "new" dots go, the selection stays.
-    func pageDidDisappear() { freshItems = [] }
-
     // MARK: Files
 
     /// Double-click / ↩: opens in the default app.
@@ -68,13 +65,14 @@ extension TrayStore {
         let list = urls(of: targets(for: id))
         guard !list.isEmpty else { return }
         system.copy(text: list.map(\.path).joined(separator: "\n"))
-        notch.flash(symbol: "link", label: list.count == 1
-            ? String(localized: "Path copied", bundle: .module, comment: "Notch flash after Copy paths (one file); at most 12 characters")
-            : String(localized: "Paths copied", bundle: .module, comment: "Notch flash after Copy paths (several files); at most 12 characters"))
+        notch.flash(symbol: "link", label: Self.pathsCopiedLabel(count: list.count))
     }
 
     /// ⌘⌫ / ✕ / "Remove": removes the selection (or `id`).
     func removeTargets(_ id: UUID? = nil) { remove(Set(targets(for: id).map(\.id))) }
+
+    /// ⌘⌫ with nothing selected: hides the error tiles of failed drops (they cannot be selected).
+    func dismissFailedJobs() { jobs.removeAll { $0.failure != nil } }
 
     // MARK: Sharing (the shell anchors the sheets and gives focus back, R3 §7)
 

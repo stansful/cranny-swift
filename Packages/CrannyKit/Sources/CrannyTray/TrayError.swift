@@ -23,6 +23,8 @@ nonisolated enum TrayError: Error, LocalizedError, Equatable, Sendable {
     case videoFailed
     /// A linked file was moved away or deleted.
     case fileMissing
+    /// A dropped file could not be kept (not enough space, the Tray folder is not writable).
+    case cannotKeep(String)
 
     var errorDescription: String? {
         switch self {
@@ -50,6 +52,44 @@ nonisolated enum TrayError: Error, LocalizedError, Equatable, Sendable {
             String(localized: "Couldn’t compress the video", bundle: .module, comment: "Tray error (tile tooltip): video export failed")
         case .fileMissing:
             String(localized: "The file is no longer there", bundle: .module, comment: "Tray error (tile tooltip): a linked file was moved or deleted")
+        case .cannotKeep(let name):
+            String(localized: "Couldn’t keep “\(name)”", bundle: .module, comment: "Tray error (tile tooltip): a dropped file could not be copied into the Tray, for example because the disk is full")
         }
+    }
+
+    /// The case name without its payload: safe to log publicly (no file names, ARCHITECTURE.md §9.3).
+    var caseName: String {
+        switch self {
+        case .cannotRead: "cannotRead"
+        case .cannotWrite: "cannotWrite"
+        case .unsupportedFile: "unsupportedFile"
+        case .formatUnavailable: "formatUnavailable"
+        case .notSmaller: "notSmaller"
+        case .archiveFailed: "archiveFailed"
+        case .unarchiveFailed: "unarchiveFailed"
+        case .noSubject: "noSubject"
+        case .noText: "noText"
+        case .pdfFailed: "pdfFailed"
+        case .videoFailed: "videoFailed"
+        case .fileMissing: "fileMissing"
+        case .cannotKeep: "cannotKeep"
+        }
+    }
+
+    /// Why keeping `name` failed, from the copy's error: reading the original, or writing into the Tray.
+    static func keeping(_ name: String, failedWith error: any Error) -> TrayError {
+        let ns = error as NSError
+        let readErrors = CocoaError.Code.fileReadUnknown.rawValue..<CocoaError.Code.fileWriteUnknown.rawValue   // 256..<512
+        return ns.domain == NSCocoaErrorDomain && readErrors.contains(ns.code) ? .cannotRead(name) : .cannotKeep(name)
+    }
+}
+
+/// What may be logged publicly about an error: its domain and code, or the Tray error's case. Descriptions name the
+/// user's files, so they are only ever logged with `privacy: .private` (ARCHITECTURE.md §9.3).
+nonisolated enum TrayLogCode {
+    static func of(_ error: any Error) -> String {
+        if let tray = error as? TrayError { return "TrayError.\(tray.caseName)" }
+        let ns = error as NSError
+        return "\(ns.domain) \(ns.code)"
     }
 }

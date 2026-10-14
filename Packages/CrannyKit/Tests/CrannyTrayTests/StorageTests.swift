@@ -82,9 +82,66 @@ import UniformTypeIdentifiers
         #expect(!FileManager.default.fileExists(atPath: storage.ownedURL(orphan)?.path ?? "-"))
     }
 
-    @Test func unreadableFilesAreSkipped() async {
-        let items = await storage.ingest([URL(filePath: "/nonexistent/\(UUID().uuidString).txt")], mode: .copy, now: Date())
-        #expect(items.isEmpty)
+    @Test func unreadableFilesAreReportedNotKept() async throws {
+        let missing = URL(filePath: "/nonexistent/\(UUID().uuidString).txt")
+        let good = Fixtures.text("a.txt", in: Fixtures.folder("user-mixed"))
+        let results = await storage.ingestEach([missing, good], mode: .copy, now: Date())
+        #expect(results.count == 2)
+        #expect(throws: TrayError.cannotRead(missing.lastPathComponent)) { try results[0].get() }
+        #expect(try results[1].get().name == "a.txt")
+        #expect(await storage.ingest([missing], mode: .copy, now: Date()).isEmpty)
+        // Nothing half-made is left behind for a failed copy.
+        let folders = (try? FileManager.default.contentsOfDirectory(atPath: storage.root.path)) ?? []
+        #expect(folders.count == 1)
+    }
+
+    @Test func copiesRememberTheOriginalSoEditsAreNoticed() async throws {
+        let source = Fixtures.folder("user-edit")
+        let file = Fixtures.text("Report.txt", in: source, contents: "version 1")
+        let item = try #require(await storage.ingest([file], mode: .copy, now: Date()).first)
+        #expect(item.originalModified != nil)
+        #expect(await storage.changedOriginals([(file, item)]).isEmpty)
+        try FileManager.default.setAttributes([.modificationDate: Date().addingTimeInterval(60)], ofItemAtPath: file.path)
+        #expect(await storage.changedOriginals([(file, item)]) == [item.id])
+        var old = item
+        old.originalModified = nil                                          // an index from before the field existed
+        #expect(await storage.changedOriginals([(file, old)]) == [old.id])
+    }
+
+    @Test func resultLinksStayPairedWithTheirFiles() async throws {
+        let folder = Fixtures.folder("user-results")
+        let a = Fixtures.text("a.txt", in: folder), c = Fixtures.text("c.txt", in: folder)
+        let gone = folder.appending(path: "b.txt")                         // no bookmark can be made for it
+        let made = await storage.linkResults([a, gone, c], now: Date())
+        #expect(made.map(\.url) == [a, c])
+        #expect(made.map(\.item.name) == ["a.txt", "c.txt"])
+    }
+
+    // MARK: Index
+
+    @Test func aMissingOrDamagedIndexIsToldApart() async throws {
+        #expect(await storage.readIndex() == .missing)
+        storage.writeIndexNow(TrayIndex())
+        #expect(await storage.readIndex() == .loaded(TrayIndex()))
+        try Data("{\"items\":[{\"id\":".utf8).write(to: storage.indexURL)
+        #expect(await storage.readIndex() == .unreadable)
+        let names = try FileManager.default.contentsOfDirectory(atPath: storage.root.path)
+        #expect(!names.contains("index.json") && names.contains { $0.hasPrefix("index.json.corrupt-") })
+    }
+
+    @Test func copiesAreRecoveredFromTheirFolders() async throws {
+        let source = Fixtures.folder("user-recover")
+        let older = try #require(await storage.ingest([Fixtures.text("a.txt", in: source)], mode: .copy, now: Date()).first)
+        let dotfile = try #require(await storage.ingest([Fixtures.text(".env", in: source)], mode: .copy, now: Date()).first)
+        // A copy that never finished: only the staging file is there.
+        let unfinished = storage.root.appending(path: UUID().uuidString, directoryHint: .isDirectory)
+        try FileManager.default.createDirectory(at: unfinished, withIntermediateDirectories: true)
+        Fixtures.text(TrayStorage.stagingPrefix + "big.mov", in: unfinished)
+        let recovered = await storage.recoverCopies(now: Date())
+        #expect(Set(recovered.map(\.id)) == [older.id, dotfile.id])
+        #expect(Set(recovered.map(\.name)) == ["a.txt", ".env"])
+        #expect(recovered.allSatisfy { $0.isOwned && storage.ownedURL($0).map { FileManager.default.fileExists(atPath: $0.path) } == true })
+        #expect(!FileManager.default.fileExists(atPath: unfinished.path))
     }
 
     @Test func indexRoundTrips() async throws {

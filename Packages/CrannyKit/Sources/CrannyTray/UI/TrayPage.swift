@@ -40,6 +40,7 @@ struct TrayPage: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .center)
+        .onAppear { store.pageDidAppear() }
         .task { await store.refreshLocations() }
         .onDisappear { store.pageDidDisappear() }
     }
