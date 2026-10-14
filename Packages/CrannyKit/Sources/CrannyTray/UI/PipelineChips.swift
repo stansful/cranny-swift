@@ -5,6 +5,7 @@
 import CrannyCore
 import Foundation
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct PipelineChips: View {
     @Environment(\.cranny) private var theme
@@ -200,4 +201,17 @@ struct HorizontalFade: View {
                            startPoint: .leading, endPoint: .trailing)
         }
     }
+}
+
+#Preview("Chips · nothing selected / images selected") {
+    let width = NookGrid().width(cells: 8) - 2 * NookGrid().density.cardPadding
+    let images = TrayPreview.store(items: 3)
+    images.selection.set(images.items.filter { $0.contentType.conforms(to: .image) }.map(\.id))
+    return VStack(spacing: Space.l) {
+        PipelineChips(store: TrayPreview.store(items: 5)).frame(width: width)
+        PipelineChips(store: images).frame(width: width)
+    }
+    .padding(Space.l)
+    .background(.black)
+    .crannyThemeRoot(CrannyTheme())
 }

@@ -217,3 +217,19 @@ struct TrayRoundButton: View {
         .accessibilityLabel(Text(verbatim: label))
     }
 }
+
+#Preview("Tiles · states") {
+    let store = TrayPreview.store(items: 5, selected: 1)
+    let ids = store.order
+    store.jobs.append(TrayJob(id: UUID(), pipelineID: "builtin.compress", title: "Compress", sourceIDs: [ids[1]],
+                              placeholderName: nil, progress: 0.4))
+    store.failures[ids[2]] = TrayError.notSmaller.errorDescription
+    store.freshItems.insert(ids[3])
+    return HStack(spacing: Space.m) {
+        ForEach(store.items) { TrayTile(item: $0, store: store, isInteractive: false) }
+        TrayTile(item: store.items[0], store: store, showsCaption: false, isInteractive: false)
+    }
+    .padding(Space.l)
+    .background(.black)
+    .crannyThemeRoot(CrannyTheme())
+}

@@ -135,3 +135,11 @@ struct TrayJobTile: View {
         }
     }
 }
+
+#Preview("Tile row") {
+    TrayTileRow(store: TrayPreview.store(items: 8, selected: 2), isInteractive: false)
+        .frame(width: NookGrid().width(cells: 8) - 2 * NookGrid().density.cardPadding)
+        .padding(Space.l)
+        .background(.black)
+        .crannyThemeRoot(CrannyTheme())
+}

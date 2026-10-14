@@ -53,3 +53,19 @@ import Testing
         #expect(!text.isEmpty && !text.contains("\n"))
     }
 }
+
+@Test func quickLookOpensCentredOnThePointersScreen() {
+    let frame = QuickLookPresenter.frame(for: NSEvent.mouseLocation)
+    #expect((480...1101).contains(frame.width))           // `.integral` may add a point
+    #expect((360...821).contains(frame.height))
+    let screen = NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.main
+    if let visible = screen?.visibleFrame { #expect(visible.intersects(frame)) }
+}
+
+@Test func tileAccessibilityValueSaysStateThenFailure() {
+    let job = TrayJob(id: UUID(), pipelineID: "builtin.compress", title: "Compress", sourceIDs: [], placeholderName: nil, progress: 0.4)
+    let value = TrayTileAccessibility.value(selected: true, job: job, failure: "Nope")
+    #expect(value.hasPrefix(TrayTileAccessibility.value(selected: true, job: nil, failure: nil)))
+    #expect(value.contains("Compress") && value.hasSuffix("Nope"))
+    #expect(TrayTileAccessibility.value(selected: false, job: nil, failure: nil).isEmpty)
+}
