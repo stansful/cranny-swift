@@ -103,3 +103,14 @@ private struct Document: Codable, Equatable, Sendable {
     #expect(try #require(SemanticVersion("0.9.9")) < #require(SemanticVersion("0.10.0")))
     #expect(!(try #require(SemanticVersion("1.0.0")) < #require(SemanticVersion("1.0.0"))))
 }
+
+// MARK: - Effect clock
+
+@Test func effectClockKeepsItsCadenceAndNeverBursts() {
+    let clock = ContinuousClock()
+    let start = clock.now
+    let next = EffectClock<EmptyView>.nextDeadline(after: start, now: start.advanced(by: .milliseconds(5)), interval: 1.0 / 30)
+    #expect(next == start.advanced(by: .seconds(1.0 / 30)))                          // on time: one interval later
+    let late = start.advanced(by: .seconds(2))                                         // woke from sleep 2 s late
+    #expect(EffectClock<EmptyView>.nextDeadline(after: start, now: late, interval: 0.05) == late.advanced(by: .seconds(0.05)))
+}

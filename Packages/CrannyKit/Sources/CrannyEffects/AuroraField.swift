@@ -3,6 +3,8 @@
 // (ARCHITECTURE.md D13, DESIGN.md §5.6): `auroraField` in Shaders/Aurora.metal, chosen by
 // `ShaderEffects.usesShader(budget)`. Reduce Motion, Low Power / thermal and an unavailable library keep the
 // SwiftUI path; pausing (closed, occluded, full screen) only stops time and never switches paths.
+// One deviation from App. B.1: time comes from `EffectClock` instead of `TimelineView(.animation(…))`, whose
+// display-rate updates cost 11 % CPU on a 240 Hz display at any frame rate (see EffectClock, DESIGN.md §4.7).
 import SwiftUI
 import CrannyCore
 
@@ -29,8 +31,8 @@ public struct AuroraField: View, Animatable {
 
     public var body: some View {
         let interval = budget.minimumInterval
-        TimelineView(.animation(minimumInterval: interval ?? 1, paused: interval == nil)) { tl in
-            let t = interval == nil ? restingTime : tl.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3600)
+        EffectClock(minimumInterval: interval) { date in
+            let t = interval == nil ? restingTime : date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3600)
             Group {
                 if budget.effective(.aurora) == .halo {
                     RadialGradient(colors: [palette.glow1.color(cap * 0.6), .clear], center: .bottom, startRadius: 0, endRadius: 260)
@@ -106,7 +108,7 @@ public struct AuroraField: View, Animatable {
 // MARK: - Shader branch (DESIGN.md App. B.2)
 
 /// The aurora through `auroraField` (Aurora.metal). Same inputs as the SwiftUI path; `time` comes from the
-/// effect's TimelineView, so `EffectBudget` still decides the frame rate.
+/// effect's clock (`EffectClock`), so `EffectBudget` still decides the frame rate.
 @MainActor func auroraShader(palette: AmbientPalette, level: AmbienceLevel, energy: Double, time: Double,
                   displayScale: CGFloat) -> some View {
     Rectangle()
