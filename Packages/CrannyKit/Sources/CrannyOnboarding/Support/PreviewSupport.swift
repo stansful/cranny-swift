@@ -42,6 +42,8 @@ import SwiftUI
     private(set) var themes: [CrannyTheme] = []
     private(set) var hideCount = 0
     private(set) var isVisible = false
+    /// How often the owner said it was done with the bubble (`discardWhenHidden`).
+    private(set) var discardCount = 0
 
     init() {}
 
@@ -55,6 +57,7 @@ import SwiftUI
         hideCount += 1
         isVisible = false
     }
+    func discardWhenHidden() { discardCount += 1 }
     /// Tests: press the bubble's button.
     func pressAction() { onAction?() }
 }

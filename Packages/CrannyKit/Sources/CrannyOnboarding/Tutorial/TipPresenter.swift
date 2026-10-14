@@ -50,4 +50,12 @@ nonisolated struct TipContent: Equatable, Sendable {
     /// showing it without an anchor.
     func show(_ content: TipContent, under anchor: CGRect, theme: CrannyTheme)
     func hide()
+    /// The owner is done with the bubble (the tour ended): once it is hidden, its window may be released. A later
+    /// `show` builds it again.
+    func discardWhenHidden()
+}
+
+extension TipPresenter {
+    /// Keeps the bubble (stand-ins and presenters released with their owner have nothing to release).
+    func discardWhenHidden() {}
 }

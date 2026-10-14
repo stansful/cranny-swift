@@ -342,11 +342,14 @@ private let log = Log.logger(.onboarding)
         identities.refresh()
     }
 
+    /// Back in Cranny (from System Settings or an installer): the apps are looked up again. The statuses need no
+    /// refresh here: the app's center refreshes them itself on every activation (`refreshesOnActivation`), and the
+    /// rows follow them by observation.
     private func watchActivation() {
         guard activationObserver == nil else { return }
         activationObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.refreshPermissions() }                   // queue: .main
+            MainActor.assumeIsolated { self?.identities.refresh() }                   // queue: .main
         }
     }
 

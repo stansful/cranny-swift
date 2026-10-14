@@ -12,7 +12,7 @@ import Foundation
     /// Shows the system prompt where one exists; called only from an "Allow" button.
     @discardableResult func request(_ kind: PermissionKind) async -> PermissionStatus
     func openSystemSettings(_ kind: PermissionKind)
-    /// Re-query every status (when the app becomes active again, e.g. back from System Settings).
+    /// Re-query every status (step 5 appearing; on activation the app's center refreshes them itself).
     func refresh()
 }
 

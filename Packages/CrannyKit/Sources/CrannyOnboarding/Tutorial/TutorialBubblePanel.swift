@@ -6,6 +6,10 @@
 // frame: AppKit's window-frame animation stalls while the displays sleep and would leave it behind. Its owners
 // show it only under a real shape (`TipSurroundings`) and hide it otherwise. While VoiceOver runs, a new or
 // changed tour bubble posts a layout change pointing at itself, so "Skip tutorial" can be reached.
+//
+// Memory: the panel and its SwiftUI bubble are built by the first `show`. When the tour ends (`discardWhenHidden`),
+// they are released once the fade-out has finished, so they do not stay resident for the rest of the session; a
+// hide during the tour keeps them, so the bubble comes back without being rebuilt.
 import AppKit
 import CrannyCore
 import SwiftUI
@@ -25,10 +29,13 @@ import SwiftUI
     private var move: Task<Void, Never>?
     /// Where the move in flight goes (a repeated `show` for the same place lets it finish).
     private var moveTarget: CGRect?
+    /// The owner is done with the bubble: release the panel once it is hidden (a `show` cancels this).
+    private var discardsWhenHidden = false
 
     init() {}
 
     func show(_ content: TipContent, under anchor: CGRect, theme: CrannyTheme) {
+        discardsWhenHidden = false
         let (panel, hosting) = ensurePanel()
         let isNew = !panel.isVisible || orderOut != nil
         let isNewContent = isNew || model.content != content
@@ -94,7 +101,24 @@ import SwiftUI
             guard !Task.isCancelled, let self else { return }
             self.panel?.orderOut(nil)
             self.orderOut = nil
+            if self.discardsWhenHidden { self.discard() }
         }
+    }
+
+    func discardWhenHidden() {
+        guard let panel else { return }
+        discardsWhenHidden = true
+        guard orderOut == nil else { return }                     // fading out: released when it is ordered out
+        if panel.isVisible { hide() } else { discard() }
+    }
+
+    /// Releases the panel and its hosting view; `ensurePanel()` builds them again for the next `show`.
+    private func discard() {
+        discardsWhenHidden = false
+        cancelMove()
+        panel?.contentView = nil
+        panel = nil
+        hosting = nil
     }
 
     // MARK: Geometry

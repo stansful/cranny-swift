@@ -310,6 +310,19 @@ import Testing
         flow.stop()
     }
 
+    /// Back in Cranny, step 5 looks the apps up again but leaves the statuses to the app's center, which refreshes
+    /// them itself on every activation: one refresh per activation, not two.
+    @Test func anActivationLeavesTheStatusesToTheCenter() async {
+        let gateway = StaticPermissionGateway()
+        let (flow, _, _, _) = makeFlow(step: .permissions, permissions: gateway)
+        flow.start(reduceMotion: true)
+        #expect(gateway.refreshCount == 1)                       // step 5 appeared
+        NotificationCenter.default.post(name: NSApplication.didBecomeActiveNotification, object: nil)
+        await settle()
+        #expect(gateway.refreshCount == 1)
+        flow.stop()
+    }
+
     /// The row waits for an Automation answer still on its way instead of offering "Allow" (the players may be allowed
     /// already), then shows the answer.
     @Test func anAutomationRowWaitsForItsFirstAnswer() async throws {

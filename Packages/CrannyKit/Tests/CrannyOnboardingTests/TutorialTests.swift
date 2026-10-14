@@ -191,6 +191,23 @@ import Testing
         #expect(!registry.services.settings[CoreSettings.tutorialCompleted])
     }
 
+    /// When the tour ends the presenter may let the bubble's window go (it is not kept for the session); a replay
+    /// shows the bubble again.
+    @Test func theBubbleIsLetGoWhenTheTourEnds() {
+        let registry = makeRegistry()
+        let presenter = RecordingTipPresenter()
+        let tutorial = TutorialController(registry: registry, presenter: presenter)
+        tutorial.start()
+        #expect(presenter.isVisible)
+        let discards = presenter.discardCount
+        tutorial.stop()
+        #expect(!presenter.isVisible && presenter.discardCount == discards + 1)
+        let shown = presenter.shown.count
+        tutorial.start()                                      // "Replay tutorial"
+        #expect(presenter.isVisible && presenter.shown.count > shown)
+        tutorial.stop()
+    }
+
     @Test func theShortcutStepFollowsTheBinding() {
         let registry = makeRegistry()
         registry.services.settings[CoreSettings.shortcuts] = [.openNook: nil]

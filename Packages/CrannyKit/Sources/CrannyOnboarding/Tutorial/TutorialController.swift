@@ -85,6 +85,7 @@ private let log = Log.logger(.onboarding)
         surroundings = nil
         showing = nil
         tip.hide()
+        tip.presenter.discardWhenHidden()                        // the bubble's window is not kept between tours
         isRunning = false
     }
 
