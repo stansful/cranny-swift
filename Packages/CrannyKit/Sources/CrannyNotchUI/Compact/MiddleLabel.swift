@@ -2,7 +2,6 @@
 // the primary activity's `middleLabel` (`compactLabel`, ≤ 160 pt, e.g. the track title; DESIGN.md §3.5).
 // The scene's owner measures the label with `MiddleLabelMetrics` and writes `NotchSceneModel.middleLabelWidth`,
 // so the shape (`geometry`) and the wings (`CompactSlots(label:)`) agree on the width (open issue 3).
-import AppKit
 import CrannyCore
 import SwiftUI
 
@@ -16,40 +15,8 @@ public enum MiddleLabelMetrics {
     public static func width(of label: String?, layout: NotchLayout) -> CGFloat {
         guard !layout.metrics.hasNotch, layout.noNotchStyle != .off,
               let label = label?.trimmingCharacters(in: .whitespacesAndNewlines), !label.isEmpty else { return 0 }
-        let style = CrannyTextStyle.compactLabel
-        let font = font(style, size: style.pointSize(textSize: .standard, notchUnit: layout.u))
-        let width = (label as NSString).size(withAttributes: [.font: font, .kern: style.spec.tracking]).width
-        return min(width.rounded(.up), maximumWidth)
-    }
-
-    /// The AppKit twin of `CrannyTextStyle.font`: the same weight and design, and monospaced digits when the
-    /// style has them (`compactLabel` does, so "Track 11" is wider than its proportional-digit measure).
-    private static func font(_ style: CrannyTextStyle, size: CGFloat) -> NSFont {
-        let spec = style.spec
-        let base = NSFont.systemFont(ofSize: size, weight: weight(spec.weight))
-        var descriptor = base.fontDescriptor
-        if spec.design == .rounded, let rounded = descriptor.withDesign(.rounded) { descriptor = rounded }
-        if spec.monoDigits {
-            descriptor = descriptor.addingAttributes([.featureSettings: [[
-                NSFontDescriptor.FeatureKey.typeIdentifier: kNumberSpacingType,
-                NSFontDescriptor.FeatureKey.selectorIdentifier: kMonospacedNumbersSelector,
-            ]]])
-        }
-        return NSFont(descriptor: descriptor, size: size) ?? base
-    }
-
-    private static func weight(_ weight: Font.Weight) -> NSFont.Weight {
-        switch weight {
-        case .ultraLight: .ultraLight
-        case .thin: .thin
-        case .light: .light
-        case .medium: .medium
-        case .semibold: .semibold
-        case .bold: .bold
-        case .heavy: .heavy
-        case .black: .black
-        default: .regular
-        }
+        // `BandFont` has monospaced digits like `compactLabel`, so "Track 11" is wider than a proportional measure.
+        return min(WingTextMetrics.width(of: label, style: .compactLabel, notchUnit: layout.u), maximumWidth)
     }
 }
 
