@@ -31,6 +31,15 @@ import Testing
     #expect(EffectTiming.nextDeadline(after: start, now: late, interval: 0.5) == late.advanced(by: .seconds(0.5)))
 }
 
+/// Song change is "Colour only" under Calm and Reduce Motion (DESIGN.md §5.5), and Instant has no motion at all.
+@Test func songRipplePlaysOnlyWhereMomentsPlay() {
+    #expect(SongChangeRipple<Int>.plays(reduceMotion: false, motion: .standard))
+    #expect(SongChangeRipple<Int>.plays(reduceMotion: false, motion: .lively))
+    #expect(!SongChangeRipple<Int>.plays(reduceMotion: false, motion: .calm))
+    #expect(!SongChangeRipple<Int>.plays(reduceMotion: false, motion: .instant))
+    #expect(!SongChangeRipple<Int>.plays(reduceMotion: true, motion: .standard))
+}
+
 @Test func rippleWindowAndEnergyPulse() {
     let start = Date(timeIntervalSinceReferenceDate: 100)
     #expect(Ripple.elapsed(since: nil, at: start) == nil)
