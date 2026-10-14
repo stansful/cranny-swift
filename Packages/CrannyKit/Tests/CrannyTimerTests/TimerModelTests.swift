@@ -148,6 +148,30 @@ import Testing
         #expect(!h.model.adjust(byMinutes: 0))
     }
 
+    @Test func turningDownASetUpBelowOneMinuteNeverRaisesIt() {
+        let h = TimerHarness()
+        h.model.start(seconds: 30)
+        h.model.stop()
+        #expect(h.model.setupDuration == 30)
+        #expect(!h.model.adjust(byMinutes: -1))                                 // no change, so no detent haptic
+        #expect(h.model.draft == nil)
+        #expect(h.model.setupDuration == 30)
+        #expect(h.model.adjust(byMinutes: 1))
+        #expect(h.model.draft == 90)
+        #expect(h.model.adjust(byMinutes: -1))                                  // 90 → 60: still a decrease
+        #expect(h.model.draft == 60)
+        #expect(!h.model.adjust(byMinutes: -1))
+    }
+
+    @Test func turningUpAtTheMaximumIsRefused() {
+        let h = TimerHarness()
+        h.model.start(seconds: Int(TimerLimits.maximum))
+        h.model.stop()
+        #expect(!h.model.adjust(byMinutes: 1))
+        #expect(h.model.adjust(byMinutes: -1))
+        #expect(h.model.draft == Int(TimerLimits.maximum) - 60)
+    }
+
     @Test func startUsesTheLastDurationAndPresetsAreSanitised() {
         let h = TimerHarness()
         h.services.settings[TimerSettings.presets] = [0, 90, -5, 600, 1500, 3000, 99_999_999]

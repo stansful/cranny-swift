@@ -120,7 +120,9 @@ private let log = Log.logger(.timer)
         guard !state.isDone else { return false }
         let base = TimeInterval(setupDuration)
         let target = min(max(base + delta, TimerLimits.step), TimerLimits.maximum)
-        guard target != base else { return false }
+        // Only a move in the asked direction counts: turning down a set-up value below one minute ("30s") would
+        // otherwise clamp it UP to 1:00 (and play a detent haptic).
+        guard delta > 0 ? target > base : target < base else { return false }
         draft = Int(target)
         return true
     }
