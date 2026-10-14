@@ -75,6 +75,10 @@ nonisolated final class MediaKeyHandler: Sendable {
     /// The tap saw `tapDisabledBy…` (and re-enabled itself): the main actor re-checks the Accessibility grant.
     func tapWasDisabled() { sink(.tapDisabled) }
 
+    /// A key whose key-down was consumed is not released yet: the tap must stay on for its key-up
+    /// (`MediaKeyInterceptor.receivesEvents`).
+    var isHoldingConsumedKey: Bool { state.withLock { !$0.consumedKeys.isEmpty } }
+
     // MARK: Key-up
 
     private func release(_ event: MediaKeyEvent) -> Bool {

@@ -4,10 +4,17 @@
 //
 // Thread: the tap lives on its own `Thread` with its own CFRunLoop, so a busy main thread never makes macOS
 // disable it (`tapDisabledByTimeout`); the callback re-enables a disabled tap. The callback reads only the
-// immutable handler and the port. Creating the tap needs Accessibility: without it `CGEvent.tapCreate` returns
-// nil and keys stay with macOS. The controller creates a tap only when "Replace the system HUD" is on AND
-// `AXIsProcessTrusted()` is true, so this file never causes a permission prompt. A crashed or stalled tap
-// hands the keys back to macOS automatically.
+// immutable handler and the locked loop state. Creating the tap needs Accessibility: without it
+// `CGEvent.tapCreate` returns nil and keys stay with macOS. The controller creates a tap only when "Replace the
+// system HUD" is on AND `AXIsProcessTrusted()` is true, so this file never causes a permission prompt. A crashed
+// or stalled tap hands the keys back to macOS automatically.
+//
+// Energy: while the HUD cannot be shown (locked, displays asleep, a full-screen app under "Hide everything", the
+// HUD's display without it) the tap would hand every event straight back to macOS, so the controller turns it
+// off (`setEnabled(false)`) and the window server stops routing system-defined events — media keys and every
+// mouse-button transition — through Cranny; the tap stays installed. The switch happens on the tap thread,
+// between two events, and a key whose key-down was consumed keeps the tap on until its key-up
+// (`receivesEvents`): macOS never sees a key-up without its key-down.
 import AppKit
 import CoreGraphics
 import CrannyCore
@@ -18,6 +25,9 @@ import os
 nonisolated protocol KeyInterceptor: AnyObject, Sendable {
     /// false = the tap could not be created (Accessibility missing or revoked).
     func start() -> Bool
+    /// false while the HUD cannot be shown: every event would go back to macOS, so the tap stops receiving them
+    /// and stays installed; true resumes. A new interceptor receives events.
+    func setEnabled(_ on: Bool)
     func stop()
 }
 
@@ -43,10 +53,19 @@ nonisolated final class MediaKeyInterceptor: KeyInterceptor {
         var runLoop: CFRunLoop?
         /// Bumped by every start and stop, so a tap thread that starts late never attaches a newer tap's port.
         var generation = 0
+        /// The controller wants events (`setEnabled`).
+        var wantsEvents = true
+        /// The tap is enabled as far as this class set it (macOS may also disable it: `reenable`).
+        var isEnabled = false
     }
 
+    /// Whether the tap receives events: while the controller wants them, and while a consumed key's key-up is
+    /// still to come (its key-down never reached macOS, so its key-up must not either). Pure, tested.
+    static func receivesEvents(wanted: Bool, holdingConsumedKey: Bool) -> Bool { wanted || holdingConsumedKey }
+
     private let handler: MediaKeyHandler
-    // CFMachPort / CFRunLoop are thread-safe CF objects; the lock only orders start, stop and the thread's setup.
+    // CFMachPort / CFRunLoop are thread-safe CF objects; the lock orders start, stop, the thread's setup and the
+    // enabled state (set by the controller, applied on the tap thread).
     private let loop = OSAllocatedUnfairLock(uncheckedState: Loop())
 
     init(handler: MediaKeyHandler) { self.handler = handler }
@@ -88,25 +107,68 @@ nonisolated final class MediaKeyInterceptor: KeyInterceptor {
         log.info("event tap stopped")
     }
 
+    func setEnabled(_ on: Bool) {
+        let runLoop = loop.withLockUnchecked { state -> CFRunLoop? in
+            state.wantsEvents = on
+            return state.port == nil ? nil : state.runLoop
+        }
+        // Not attached yet: `runTapLoop` reads `wantsEvents` when it attaches. Otherwise on the tap thread,
+        // between two events.
+        guard let runLoop else { return }
+        CFRunLoopPerformBlock(runLoop, CFRunLoopMode.commonModes.rawValue) { [self] in applyEnabled() }
+        CFRunLoopWakeUp(runLoop)
+    }
+
     /// The tap thread's body: attach the port to this thread's run loop and run it until `stop()`.
     private func runTapLoop(generation: Int) {
         let current = CFRunLoopGetCurrent()
-        let attached = loop.withLockUnchecked { state -> CFMachPort? in
+        let holding = handler.isHoldingConsumedKey
+        let attached = loop.withLockUnchecked { state -> (port: CFMachPort, enabled: Bool)? in
             guard state.generation == generation, let port = state.port else { return nil }   // stopped meanwhile
             state.runLoop = current
-            return port
+            state.isEnabled = Self.receivesEvents(wanted: state.wantsEvents, holdingConsumedKey: holding)
+            return (port, state.isEnabled)
         }
-        guard let port = attached, let source = CFMachPortCreateRunLoopSource(nil, port, 0) else { return }
+        guard let (port, enabled) = attached, let source = CFMachPortCreateRunLoopSource(nil, port, 0) else { return }
         CFRunLoopAddSource(current, source, .commonModes)
-        CGEvent.tapEnable(tap: port, enable: true)
+        CGEvent.tapEnable(tap: port, enable: enabled)
         CFRunLoopRun()
         CFRunLoopRemoveSource(current, source, .commonModes)
     }
 
+    /// On the tap thread: enables or disables the tap as `receivesEvents` says (a no-op when it already is).
+    private func applyEnabled() {
+        let holding = handler.isHoldingConsumedKey               // changes only on this thread
+        let change = loop.withLockUnchecked { state -> (port: CFMachPort, on: Bool)? in
+            guard let port = state.port else { return nil }
+            let on = Self.receivesEvents(wanted: state.wantsEvents, holdingConsumedKey: holding)
+            guard on != state.isEnabled else { return nil }
+            state.isEnabled = on
+            return (port, on)
+        }
+        guard let (port, on) = change else { return }
+        CGEvent.tapEnable(tap: port, enable: on)
+        log.info("event tap \(on ? "enabled" : "disabled", privacy: .public): the HUD \(on ? "can" : "cannot", privacy: .public) be shown")
+    }
+
+    /// After each event while the controller wants none: the key-up of a consumed key turns the tap off.
+    private func eventHandled() {
+        guard !loop.withLockUnchecked({ $0.wantsEvents }) else { return }
+        applyEnabled()
+    }
+
     private func reenable() {
-        guard let port = loop.withLockUnchecked({ $0.port }) else { return }
-        CGEvent.tapEnable(tap: port, enable: true)
-        log.info("event tap re-enabled after macOS disabled it")
+        let holding = handler.isHoldingConsumedKey
+        let target = loop.withLockUnchecked { state -> (port: CFMachPort, on: Bool)? in
+            guard let port = state.port else { return nil }
+            state.isEnabled = Self.receivesEvents(wanted: state.wantsEvents, holdingConsumedKey: holding)
+            return (port, state.isEnabled)
+        }
+        guard let target else { return }
+        if target.on {                            // turned off on purpose: it stays off
+            CGEvent.tapEnable(tap: target.port, enable: true)
+            log.info("event tap re-enabled after macOS disabled it")
+        }
         handler.tapWasDisabled()                  // the main actor re-checks the grant (revoked → tap removed)
     }
 
@@ -121,6 +183,7 @@ nonisolated final class MediaKeyInterceptor: KeyInterceptor {
         case .other:
             return Unmanaged.passUnretained(event)
         case .systemDefined:
+            defer { interceptor.eventHandled() }
             guard let nsEvent = NSEvent(cgEvent: event),
                   let key = MediaKeyEvent.decode(subtype: Int(nsEvent.subtype.rawValue), data1: nsEvent.data1,
                                                  flags: event.flags.rawValue) else { return Unmanaged.passUnretained(event) }

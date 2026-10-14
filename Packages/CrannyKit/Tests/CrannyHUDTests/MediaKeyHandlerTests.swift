@@ -157,6 +157,26 @@ import Testing
         #expect(!handler.handle(up(.soundUp)))                     // macOS saw the down, so it gets the up
     }
 
+    @Test func aConsumedKeyIsHeldUntilItsKeyUp() {
+        let handler = handler
+        #expect(!handler.isHoldingConsumedKey)
+        #expect(handler.handle(down(.soundUp)))
+        #expect(handler.isHoldingConsumedKey)                      // a tap turned off now must wait for the key-up
+        #expect(handler.handle(up(.soundUp)))
+        #expect(!handler.isHoldingConsumedKey)
+        #expect(handler.handle(down(.mute)))
+        config.update(.off)
+        #expect(!handler.handle(down(.mute, repeat: true)))        // passed through: macOS has a key-down now
+        #expect(!handler.isHoldingConsumedKey)
+    }
+
+    @Test func theTapStaysOnOnlyWhileWantedOrForAKeyUp() {
+        #expect(MediaKeyInterceptor.receivesEvents(wanted: true, holdingConsumedKey: false))
+        #expect(MediaKeyInterceptor.receivesEvents(wanted: true, holdingConsumedKey: true))
+        #expect(MediaKeyInterceptor.receivesEvents(wanted: false, holdingConsumedKey: true))
+        #expect(!MediaKeyInterceptor.receivesEvents(wanted: false, holdingConsumedKey: false))
+    }
+
     @Test func transportKeysAreNeverTouched() {
         let handler = handler
         for key in [MediaKey.play, .next, .previous, .fast, .rewind] {

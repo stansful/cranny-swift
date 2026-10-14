@@ -20,7 +20,8 @@ nonisolated struct HUDTapConfig: Sendable, Equatable {
     static let off = HUDTapConfig(isReplacing: false, handlesVolume: false, handlesBrightness: false,
                                   handlesKeyboardBacklight: false, isPresentable: false)
 
-    /// Whether the event tap should exist at all (turning the setting off removes it).
+    /// Whether the event tap should exist at all (turning the setting off removes it). An existing tap receives
+    /// events only while `isPresentable` (`KeyInterceptor.setEnabled`).
     var wantsTap: Bool { isReplacing && (handlesVolume || handlesBrightness || handlesKeyboardBacklight) }
 
     func handles(_ kind: HUDKind) -> Bool {

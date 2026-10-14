@@ -91,12 +91,14 @@ nonisolated final class SignalRecorder: Sendable {
     var sink: MediaKeyHandler.Sink { { [store] signal in store.withLock { $0.append(signal) } } }
 }
 
-/// An event tap that never touches the window server: it records start/stop and hands out its handler.
+/// An event tap that never touches the window server: it records start/stop/enable and hands out its handler.
 nonisolated final class FakeInterceptor: KeyInterceptor {
     struct Store {
         var started = 0
         var stopped = 0
         var startSucceeds = true
+        /// Every `setEnabled` call, in order.
+        var enabledCalls: [Bool] = []
     }
     let handler: MediaKeyHandler
     let store: OSAllocatedUnfairLock<Store>
@@ -107,7 +109,11 @@ nonisolated final class FakeInterceptor: KeyInterceptor {
     }
     var startCount: Int { store.withLock { $0.started } }
     var stopCount: Int { store.withLock { $0.stopped } }
+    var enabledCalls: [Bool] { store.withLock { $0.enabledCalls } }
+    /// Receives events (a new tap does, like `MediaKeyInterceptor`).
+    var isEnabled: Bool { store.withLock { $0.enabledCalls.last ?? true } }
     func start() -> Bool { store.withLock { $0.started += 1; return $0.startSucceeds } }
+    func setEnabled(_ on: Bool) { store.withLock { $0.enabledCalls.append(on) } }
     func stop() { store.withLock { $0.stopped += 1 } }
 }
 

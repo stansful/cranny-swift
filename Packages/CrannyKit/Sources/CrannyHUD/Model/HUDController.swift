@@ -3,8 +3,9 @@
 // runs `HUDPresentation` on what the tap reports and executes the effects: the activity, one hide sleep per
 // session, the `.levelChange` haptic, the feedback sound and the settled VoiceOver announcement.
 //
-// Energy (§9.2): with "Replace the system HUD" off nothing runs. On, the tap thread sleeps in its run loop and
-// the CoreAudio listener is event-driven (the level listeners only while a volume HUD is visible); the only
+// Energy (§9.2): with "Replace the system HUD" off nothing runs. On, the tap thread sleeps in its run loop (the tap
+// is off while the HUD cannot be shown, so no event goes through Cranny then) and the CoreAudio listener is
+// event-driven (the level listeners only while a volume HUD is visible); the only
 // timer-like work is the hide sleep, the 0.5-s announcement settle and the 2-Hz brightness poll, all only while a
 // HUD is visible. The hide sleep is the HUD's only deadline: the activity publishes no `expiresAt`, so a press
 // (up to 30 per second while a key is held) never makes the shell re-arm an expiry wake-up of its own.
@@ -33,6 +34,8 @@ private let log = Log.logger(.hud)
         config: configBox, volume: hardware.volume, brightness: hardware.brightness, keyboard: hardware.keyboard,
         sink: { [weak self] signal in Task { @MainActor in self?.receive(signal) } })
     @ObservationIgnored private var interceptor: (any KeyInterceptor)?
+    /// What the tap was last told (`KeyInterceptor.setEnabled`); a new tap receives events.
+    @ObservationIgnored private var tapReceivesEvents = true
     @ObservationIgnored private var volumeObserver: (any VolumeObserving)?
     @ObservationIgnored private var tokens: [ObservationToken] = []
     @ObservationIgnored private var activationObserver: (any NSObjectProtocol)?
@@ -129,6 +132,7 @@ private let log = Log.logger(.hud)
         let config = HUDTapConfig(inputs)
         configBox.update(config)
         if config.wantsTap { startTap() } else { stopTap() }
+        setTapReceivesEvents(config.isPresentable)
         if config.handlesVolume { startVolumeObserver() } else { stopVolumeObserver() }
         if !config.isReplacing || !config.isPresentable { endSession() }
     }
@@ -151,8 +155,19 @@ private let log = Log.logger(.hud)
     private func stopTap() {
         interceptor?.stop()
         interceptor = nil
+        tapReceivesEvents = true
         if isTapRunning { isTapRunning = false }
         if tapFailed { tapFailed = false }
+    }
+
+    /// While the HUD cannot be shown the tap would hand every key (and every mouse-button event, which shares
+    /// the event type) straight back to macOS, so it receives none; it stays installed for the way back.
+    private func setTapReceivesEvents(_ on: Bool) {
+        guard let interceptor, on != tapReceivesEvents else { return }
+        tapReceivesEvents = on
+        interceptor.setEnabled(on)
+        // An off tap cannot be disabled by macOS, the usual sign of a revoked grant: check it on the way back.
+        if on { checkAccessibility() }
     }
 
     private func startVolumeObserver() {

@@ -225,6 +225,44 @@ import Testing
         #expect(fake.taps.count == 1)                                // the tap stays for after unlocking
     }
 
+    @Test func theTapReceivesNothingWhileTheHUDCannotShow() async throws {
+        settings[HUDSettings.replaceSystemHUD] = true
+        controller.start()
+        defer { controller.stop() }
+        let tap = try #require(fake.taps.first)
+        #expect(tap.isEnabled && tap.enabledCalls.isEmpty)
+        environment.isScreenLocked = true                           // every key would go back to macOS
+        #expect(await eventually { !tap.isEnabled })
+        #expect(fake.taps.count == 1 && tap.stopCount == 0)          // installed for after unlocking
+        environment.isScreenLocked = false
+        #expect(await eventually { tap.isEnabled })
+        environment.canPresentHUD = false                           // General ▸ Displays ▸ HUD off on the pointer's display
+        #expect(await eventually { !tap.isEnabled })
+        #expect(tap.enabledCalls == [false, true, false])           // one call per change
+    }
+
+    @Test func aTapCreatedWhileTheHUDCannotShowStartsOff() throws {
+        environment.isScreenLocked = true
+        settings[HUDSettings.replaceSystemHUD] = true
+        controller.start()
+        defer { controller.stop() }
+        let tap = try #require(fake.taps.first)
+        #expect(tap.enabledCalls == [false])
+    }
+
+    @Test func aGrantRevokedWhileTheTapWasOffIsNoticedOnTheWayBack() async throws {
+        settings[HUDSettings.replaceSystemHUD] = true
+        controller.start()
+        defer { controller.stop() }
+        let tap = try #require(fake.taps.first)
+        environment.canPresentHUD = false
+        #expect(await eventually { !tap.isEnabled })
+        grant.changeInSystemSettings(false)                         // revoked meanwhile: no tap event can say so
+        environment.canPresentHUD = true
+        #expect(await eventually { tap.stopCount == 1 && !controller.isTapRunning })
+        #expect(grant.refreshes == 1)
+    }
+
     @Test func theConfigReadsWhetherTheShellWouldDrawTheHUD() {
         #expect(controller.configInputs().shellCanPresentHUD)
         environment.canPresentHUD = false                           // General ▸ Displays ▸ HUD off on the pointer's display
