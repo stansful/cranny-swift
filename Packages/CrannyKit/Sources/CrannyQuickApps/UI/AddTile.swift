@@ -1,5 +1,5 @@
 // CrannyQuickApps/UI/AddTile.swift — the trailing "+" tile in edit mode (and the only tile of an empty one-column
-// launcher): a dashed squircle that drops down "Add App…" and the user's Shortcuts.app shortcuts (DESIGN.md §7.3).
+// launcher): a dashed squircle that drops down "Add app…" and the user's Shortcuts.app shortcuts (DESIGN.md §7.3).
 //
 // Energy: the Shortcuts list is read only when the menu is about to be used — the pointer over "+", keyboard focus
 // on it, or the menu opening (`QuickAppsModel.prepareShortcutList`, at most once a minute) — never because the
@@ -46,17 +46,17 @@ struct AddTile: View {
     }
 }
 
-/// The add menu: "Add App…", a submenu of shortcuts not on the launcher yet, then edit and Settings items.
+/// The add menu: "Add app…", a submenu of shortcuts not on the launcher yet, then edit and Settings items.
 @MainActor enum AddMenu {
     static func entries(model: QuickAppsModel) -> [MenuEntry] {
         var entries = [
-            MenuEntry(String(localized: "Add App…", bundle: .module, comment: "Quick Apps: add an app with the open panel")) { model.chooseApps() },
-            MenuEntry(String(localized: "Add Shortcut", bundle: .module, comment: "Quick Apps: submenu listing Shortcuts.app shortcuts"),
+            MenuEntry(String(localized: "Add app…", bundle: .module, comment: "Quick Apps: add an app with the open panel")) { model.chooseApps() },
+            MenuEntry(String(localized: "Add shortcut", bundle: .module, comment: "Quick Apps: submenu listing Shortcuts.app shortcuts"),
                       liveSubmenu: { shortcutEntries(model: model) }),
             .separator,
         ]
         if model.isEditing {
-            entries.append(MenuEntry(String(localized: "Done Editing", bundle: .module, comment: "Quick Apps: menu item, leave edit mode")) {
+            entries.append(MenuEntry(String(localized: "Done editing", bundle: .module, comment: "Quick Apps: menu item, leave edit mode")) {
                 model.isEditing = false
             })
         }

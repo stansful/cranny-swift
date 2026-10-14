@@ -1,5 +1,5 @@
 // CrannyQuickApps/UI/TileSettingsRow.swift — one row of Settings ▸ Shortcuts' tile list: icon or squircle, name,
-// what it is (or that it is missing), "Customise…" for shortcuts, remove; Move Up/Down in its menu and for VoiceOver.
+// what it is (or that it is missing), "Customize…" for shortcuts, remove; Move Up/Down in its menu and for VoiceOver.
 import CrannyCore
 import SwiftUI
 
@@ -35,7 +35,7 @@ struct TileSettingsRow: View {
             Spacer(minLength: 8)
             if case .shortcut = row {
                 Button { isCustomizing = true } label: {
-                    Text("Customise…", bundle: .module, comment: "Settings ▸ Shortcuts: opens a shortcut's symbol and colour")
+                    Text("Customize…", bundle: .module, comment: "Settings ▸ Shortcuts: opens a shortcut's symbol and colour")
                 }
                 .buttonStyle(.link)
                 .popover(isPresented: $isCustomizing, arrowEdge: .trailing) { appearanceEditor }
@@ -69,7 +69,7 @@ struct TileSettingsRow: View {
         case .shortcut(let entry, _):
             Button { isCustomizing = true } label: { ShortcutGlyph(entry: entry, size: 24) }
                 .buttonStyle(.plain)
-                .help(String(localized: "Symbol and colour", bundle: .module, comment: "Settings ▸ Shortcuts: tooltip of a shortcut's squircle"))
+                .help(String(localized: "Symbol and color", bundle: .module, comment: "Settings ▸ Shortcuts: tooltip of a shortcut's squircle"))
         }
     }
 
@@ -84,7 +84,7 @@ struct TileSettingsRow: View {
     @ViewBuilder private var menu: some View {
         if case .shortcut = row {
             Button { isCustomizing = true } label: {
-                Text("Customise…", bundle: .module, comment: "Settings ▸ Shortcuts: opens a shortcut's symbol and colour")
+                Text("Customize…", bundle: .module, comment: "Settings ▸ Shortcuts: opens a shortcut's symbol and colour")
             }
         }
         Button { model.move(row.id, by: -1) } label: { Text("Move Up", bundle: .module, comment: "Settings ▸ Shortcuts: reorder a tile") }

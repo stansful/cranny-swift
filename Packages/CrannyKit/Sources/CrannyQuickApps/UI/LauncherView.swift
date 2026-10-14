@@ -2,7 +2,7 @@
 //
 // Tiles are grid cells, so the grid is laid out on the WHOLE card and pulled back over the card padding the
 // shell applies (`.padding(-cardPadding)`); the card still clips and fills. States: content · empty (one line +
-// "Add App…") · loading (nothing for the first lookup, ≤ 300 ms) · drop target armed (apps, and only apps, dragged
+// "Add app…") · loading (nothing for the first lookup, ≤ 300 ms) · drop target armed (apps, and only apps, dragged
 // over it: a drag that also holds other files goes to the Tray, see `QuickAppsModel.acceptDrop`).
 import CrannyCore
 import SwiftUI
@@ -29,7 +29,7 @@ struct LauncherView: View {
             } else if tiles.isEmpty && !model.isEditing && context.cells > 1 {
                 WidgetStateView(.empty, symbol: "app.dashed",
                                 message: String(localized: "Drag apps here", bundle: .module, comment: "Quick Apps widget: empty state"),
-                                actionTitle: interactive ? String(localized: "quickapps.empty.add", defaultValue: "Add App…", bundle: .module,
+                                actionTitle: interactive ? String(localized: "quickapps.empty.add", defaultValue: "Add app…", bundle: .module,
                                                                   comment: "Quick Apps widget: empty-state chip (opens the open panel); ≤ 10 characters, the card is narrow") : nil,
                                 action: interactive ? chooseApps : nil)
             } else {

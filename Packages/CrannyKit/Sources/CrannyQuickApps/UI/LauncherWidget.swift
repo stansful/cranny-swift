@@ -35,7 +35,7 @@ struct LauncherOptions: View {
             .controlSize(.small)
             Divider()
             Button { model.isEditing = true } label: {
-                Text("Edit Tiles", bundle: .module, comment: "Quick Apps: menu item, enter edit mode (remove, reorder, add)")
+                Text("Edit tiles", bundle: .module, comment: "Quick Apps: menu item, enter edit mode (remove, reorder, add)")
             }
             Button { model.openSettings() } label: {
                 Text("Quick Apps Settings…", bundle: .module, comment: "Quick Apps: opens Settings ▸ Shortcuts")
