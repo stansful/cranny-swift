@@ -2,9 +2,9 @@
 //   5 cells: [artwork 96 r 8 + album glow] [title ⌁ · artist ▮▮▮ · scrubber · 1:24 … −2:11 · ⏮ (⏸) ⏭]
 //   4 cells: [artwork 72] [title · artist · ⏮ (⏸) ⏭] over an inline "1:24 ━━━ −2:11" row
 //   6 cells: 5 + shuffle and repeat around the transport.
-// Click the artwork to open the player; a two-finger swipe over the artwork or title changes the track; the
-// title marquees after a 1.5-s hover (never under Reduce Motion). Transport and VoiceOver transport actions only
-// when the source can control the player.
+// Click the artwork to open the player; a two-finger swipe over the artwork or title changes the track (`TrackSwipe`:
+// Settings ▸ Gestures ▸ Swipe sideways and Invert); the title marquees after a 1.5-s hover (never under Reduce
+// Motion). Transport, swipes and VoiceOver transport actions only when the source can control the player.
 import CrannyCore
 import SwiftUI
 
@@ -140,17 +140,26 @@ struct MediaPlayingView: View {
     }
 
     /// Two-finger horizontal swipe (DESIGN.md §4.4): rubber-band, then next/previous with an `.alignment` haptic.
+    /// With Swipe sideways to change track off (or a read-only source) the content does not move at all.
     private func trackSwipe(_ update: SwipeUpdate) {
+        guard TrackSwipe.isEnabled(settings: settings, service: service) else {
+            if swipe != 0 { withAnimation(theme.animation(.snapBack)) { swipe = 0 } }
+            return
+        }
         switch update {
         case .tracking(_, let translation):
             swipe = CrannyMotion.rubberBand(translation, limit: GestureSpec.horizontalTravel)
         case .committed(let direction, _):
+            guard let command = TrackSwipe.command(for: direction, settings: settings, service: service) else {
+                withAnimation(theme.animation(.snapBack)) { swipe = 0 }
+                return
+            }
             haptics?.play(.alignment)
-            let invert = settings[CoreSettings.invertTrackSwipe]
-            let next = (direction == .left) != invert
-            withAnimation(theme.animation(.contentOut)) { swipe = next ? -GestureSpec.horizontalTravel : GestureSpec.horizontalTravel }
+            withAnimation(theme.animation(.contentOut)) {
+                swipe = command == .nextTrack ? -GestureSpec.horizontalTravel : GestureSpec.horizontalTravel
+            }
             Task {
-                await service.send(next ? .nextTrack : .previousTrack)
+                await service.send(command)
                 withAnimation(theme.animation(.snapBack)) { swipe = 0 }
             }
         case .cancelled:

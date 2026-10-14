@@ -71,13 +71,12 @@ import SwiftUI
         return actions
     }
 
-    /// Two-finger swipe over compact or peek (the shell checks Settings ▸ Gestures ▸ Swipe sideways).
-    /// The gesture is the physical direction; Media applies Gestures ▸ Invert.
+    /// Two-finger swipe over compact or peek. The gesture is the physical direction; `TrackSwipe` applies
+    /// Gestures ▸ Swipe sideways and Invert (the same rule as the widget).
     func handle(_ gesture: ActivityGesture) -> Bool {
-        guard service.nowPlaying != nil, service.supportsCommands, settings[CoreSettings.trackSwipe] else { return false }
-        let next = (gesture == .swipeLeft) != settings[CoreSettings.invertTrackSwipe]
+        guard let command = TrackSwipe.command(for: gesture, settings: settings, service: service) else { return false }
         let service = service
-        Task { await service.send(next ? .nextTrack : .previousTrack) }
+        Task { await service.send(command) }
         return true
     }
 

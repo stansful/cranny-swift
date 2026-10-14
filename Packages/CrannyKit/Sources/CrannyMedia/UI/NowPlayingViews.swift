@@ -50,8 +50,9 @@ struct NowPlayingMinimal: View {
     }
 }
 
-/// `[12] [artwork 40, r 10] [12] [title / artist + 2-pt progress] [8] [⏮ ⏯ ⏭, 28 pt] [12]` — the shell adds
-/// the outer 12-pt margins and the 52-pt height.
+/// `[12] [artwork 40, r 10] [12] [title / artist + 2-pt progress, flexible] [8] [⏮ ⏯ ⏭, 28 pt] [12]` (DESIGN.md
+/// §9.3) — the shell adds the outer 12-pt margins and the 52-pt height. Spacing 0 with explicit gaps: an HStack's
+/// spacing would also surround a Spacer and widen the 8-pt gap to 32.
 struct NowPlayingPeekRow: View {
     @Environment(\.cranny) private var theme
     let activity: NowPlayingActivity
@@ -59,10 +60,11 @@ struct NowPlayingPeekRow: View {
     var body: some View {
         let service = activity.service
         if let np = service.nowPlaying {
-            HStack(spacing: Space.l) {
+            HStack(spacing: 0) {
                 ArtworkView(image: service.artwork, identity: service.artworkKey,
                             size: 40, radius: Radius.artPeek,
                             glows: service.settings[CoreSettings.albumGlow], accent: service.palette?.accent)
+                    .padding(.trailing, Space.l)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(verbatim: np.title).crannyFont(.headline).foregroundStyle(theme.palette.label)
                         .lineLimit(1).truncationMode(.tail)
@@ -74,12 +76,13 @@ struct NowPlayingPeekRow: View {
                         .frame(height: 2)
                         .padding(.top, Space.xs)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(Text(verbatim: activity.accessibilityLabel))
                 .accessibilityValue(Text(verbatim: activity.accessibilityValue ?? ""))
-                Spacer(minLength: Space.m)
                 if service.supportsCommands {
                     TransportControls(service: service, prominentPlayPause: false, spacing: 0)
+                        .padding(.leading, Space.m)
                 }
             }
         }

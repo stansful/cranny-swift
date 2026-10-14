@@ -1,6 +1,6 @@
 // The Now Playing activity: activity rules of DESIGN.md §9.2 (P2/P3, hidden after N s paused, auto-unhide,
-// revision = new tracks, swipes → previous/next with Invert), read-only sources and an ignored pause, with
-// scripted providers and a manual clock.
+// revision = new tracks, swipes → previous/next with Invert), the shared track-swipe rule of the widget, read-only
+// sources, with scripted providers and a manual clock.
 import CrannyCore
 import Foundation
 import Testing
@@ -145,6 +145,26 @@ import Testing
         #expect(activity.handle(.swipeLeft) == false)
         await settle()
         #expect(script.commands.isEmpty)
+    }
+
+    @Test func trackSwipeIsOneRuleForCompactPeekAndWidget() async {
+        let services = CrannyServices.preview()
+        let (service, perl, _, _) = await running(services)
+        let settings = services.settings
+        #expect(TrackSwipe.command(for: .left, settings: settings, service: service) == nil)        // nothing playing
+        perl.emit(.nowPlaying(Fixtures.track("A")))
+        await settle()
+        #expect(TrackSwipe.isEnabled(settings: settings, service: service))
+        #expect(TrackSwipe.command(for: .left, settings: settings, service: service) == .nextTrack)
+        #expect(TrackSwipe.command(for: .right, settings: settings, service: service) == .previousTrack)
+        #expect(TrackSwipe.command(for: .up, settings: settings, service: service) == nil)
+        #expect(TrackSwipe.command(for: ActivityGesture.swipeLeft, settings: settings, service: service) == .nextTrack)
+        settings[CoreSettings.invertTrackSwipe] = true
+        #expect(TrackSwipe.command(for: .left, settings: settings, service: service) == .previousTrack)
+        settings[CoreSettings.trackSwipe] = false                         // Gestures ▸ Swipe sideways off
+        #expect(!TrackSwipe.isEnabled(settings: settings, service: service))   // the widget does not even rubber-band
+        #expect(TrackSwipe.command(for: .left, settings: settings, service: service) == nil)
+        #expect(TrackSwipe.command(for: .right, settings: settings, service: service) == nil)
     }
 
     @Test func sampleInstanceIsSelfContained() async {

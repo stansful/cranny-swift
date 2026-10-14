@@ -1,5 +1,6 @@
 // CrannyMedia/UI/MediaProgress.swift — the scrubber and its time labels (DESIGN.md §7.1): drag or scroll
-// horizontally to seek (`.levelChange` haptic at every 10 %), ← / → ±10 s while focused, VoiceOver adjustable.
+// horizontally to seek (`.levelChange` haptic at every 10 %), ← / → ±10 s while focused (⌘← / ⌘→ pass through to
+// the widget: previous / next), VoiceOver adjustable.
 // Energy (open issue 2, ARCHITECTURE.md §10.1): the position is interpolated from the provider's anchor
 // (`NowPlaying.position(at:)`) once per second by `EffectClock(minimumInterval: 1)`, only while playing and on
 // screen — never a display-rate TimelineView, never polling MediaRemote.
@@ -92,8 +93,13 @@ struct MediaProgress: View {
         .focused($focused)
         .focusEffectDisabled()
         .crannyFocusRing(focused && notch.keyboardNavigation, radius: Radius.chip)
-        .onKeyPress(.leftArrow) { seek(to: position - 10); return .handled }
-        .onKeyPress(.rightArrow) { seek(to: position + 10); return .handled }
+        // `onKeyPress(.leftArrow)` would also take ⌘←; with ⌘ / ⌥ / ⌃ held the press goes on to the widget
+        // (⌘← / ⌘→ previous / next). Arrow keys carry the function / numeric-pad flags, so those are allowed.
+        .onKeyPress(keys: [.leftArrow, .rightArrow]) { press in
+            guard press.modifiers.isDisjoint(with: [.command, .option, .control]) else { return .ignored }
+            seek(to: position + (press.key == .leftArrow ? -10 : 10))
+            return .handled
+        }
     }
 
     // MARK: Seeking
