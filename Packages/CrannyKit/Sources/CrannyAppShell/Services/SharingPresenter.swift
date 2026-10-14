@@ -3,6 +3,9 @@
 // normal-level anchor window on screen just below the notch (a 400 × 300 area, so the sheet is fully visible and
 // clear of the open panel). `perform` activates Cranny by itself; the share picker needs `NSApp.activate()` first.
 // Either way the app that was frontmost gets activation back afterwards, and the panel is held open meanwhile.
+// A session always ends: the service and picker are kept alive until it does (AppKit holds its delegate weakly
+// and the service not at all), and if no callback ever comes, Cranny losing activation with no sheet left on the
+// anchor, or a generous timeout, ends it, so the `share` hold and the next request can never get stuck.
 import AppKit
 import CrannyCore
 import Foundation
@@ -17,11 +20,18 @@ private let log = Log.logger(.overlay)
     var setHold: (Bool) -> Void = { _ in }
 
     nonisolated static let anchorSize = CGSize(width: 400, height: 300)
+    /// The longest a sheet may stay up without telling us how it ended.
+    static let sessionTimeout: Duration = .seconds(600)
 
     private var anchor: NSWindow?
     private var previousApp: NSRunningApplication?
     private var airDrop: CheckedContinuation<Bool, Never>?
-    private var isPresenting = false
+    private(set) var isPresenting = false
+    /// Kept until the session ends: nothing else retains them.
+    private var service: NSSharingService?
+    private var picker: NSSharingServicePicker?
+    private var timeoutTask: Task<Void, Never>?
+    private var resignObserver: (any NSObjectProtocol)?
 
     // MARK: NotchControl
 
@@ -30,6 +40,7 @@ private let log = Log.logger(.overlay)
         guard !isPresenting, !urls.isEmpty, let service = NSSharingService(named: .sendViaAirDrop),
               service.canPerform(withItems: urls) else { return false }
         begin()
+        self.service = service
         service.delegate = self
         return await withCheckedContinuation { continuation in
             airDrop = continuation
@@ -44,6 +55,7 @@ private let log = Log.logger(.overlay)
         guard let view = anchor?.contentView else { finish(sent: false); return }
         NSApp.activate()
         let picker = NSSharingServicePicker(items: urls)
+        self.picker = picker
         picker.delegate = self
         picker.show(relativeTo: view.bounds, of: view, preferredEdge: .minY)
     }
@@ -65,10 +77,11 @@ private let log = Log.logger(.overlay)
     func sharingServicePicker(_ sharingServicePicker: NSSharingServicePicker,
                               delegateFor sharingService: NSSharingService) -> (any NSSharingServiceDelegate)? { self }
     func sharingServicePicker(_ sharingServicePicker: NSSharingServicePicker, didChoose service: NSSharingService?) {
-        if service == nil { finish(sent: false) }                                // dismissed without a choice
+        guard let service else { finish(sent: false); return }                  // dismissed without a choice
+        self.service = service                                                   // its callbacks end the session
     }
 
-    // MARK: Private
+    // MARK: Session
 
     private func begin() {
         isPresenting = true
@@ -76,11 +89,43 @@ private let log = Log.logger(.overlay)
         previousApp = front?.processIdentifier == ProcessInfo.processInfo.processIdentifier ? nil : front
         setHold(true)
         anchor = makeAnchor()
+        timeoutTask = Task { [weak self] in
+            try? await Task.sleep(for: Self.sessionTimeout)
+            guard !Task.isCancelled, let self, self.isPresenting else { return }
+            log.info("sharing session timed out")
+            self.finish(sent: false)
+        }
+        // A service that never reports back (or a picker choice handled in another app): once Cranny is no longer
+        // active and no sheet hangs on the anchor, the user has moved on.
+        resignObserver = NotificationCenter.default.addObserver(forName: NSApplication.didResignActiveNotification,
+                                                                object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.appResignedActive() }               // queue: .main
+        }
+    }
+
+    private func appResignedActive() {
+        guard isPresenting, Self.sessionLooksOver(anchorHasSheet: anchor?.attachedSheet != nil,
+                                                  anchorHasChildren: !(anchor?.childWindows ?? []).isEmpty) else { return }
+        log.info("sharing ended without a callback")
+        finish(sent: false)
+    }
+
+    /// Nothing of the share UI is left on the anchor (pure; unit-tested).
+    nonisolated static func sessionLooksOver(anchorHasSheet: Bool, anchorHasChildren: Bool) -> Bool {
+        !anchorHasSheet && !anchorHasChildren
     }
 
     private func finish(sent: Bool) {
         guard isPresenting else { return }
         isPresenting = false
+        timeoutTask?.cancel()
+        timeoutTask = nil
+        if let resignObserver { NotificationCenter.default.removeObserver(resignObserver) }
+        resignObserver = nil
+        service?.delegate = nil
+        service = nil
+        picker?.delegate = nil
+        picker = nil
         anchor?.orderOut(nil)
         anchor = nil
         setHold(false)

@@ -63,6 +63,49 @@ private struct EmptyViewForTest: View { var body: some View { Color.clear } }
     #expect(DropRouter.canvasPoint(CGPoint(x: 10, y: 150), in: root) == CGPoint(x: 10, y: 50))   // top-left canvas
 }
 
+// MARK: - Esc ownership (§4.10)
+
+/// A view that binds Esc the way NotchUI's keyboard map does (`.keyboardShortcut(.cancelAction)`).
+private struct CancelButtonForTest: View {
+    let onEscape: () -> Void
+    var body: some View { Button("Back", action: onEscape).keyboardShortcut(.cancelAction) }
+}
+
+private func escapeEvent(in window: NSWindow) -> NSEvent? {
+    NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: window.windowNumber,
+                     context: nil, characters: "\u{1b}", charactersIgnoringModifiers: "\u{1b}", isARepeat: false, keyCode: 53)
+}
+
+/// NotchUI owns the Esc chain; the shell's monitor offers each press to the panel's views first and runs the
+/// machine's chain only when nothing took it: one press, one handler, whichever side binds Esc. Nothing is posted
+/// to the system: the event object goes straight to the router, on a panel that is never ordered in.
+@Test func escapeIsHandledOnceWhoeverOwnsIt() throws {
+    _ = NSApplication.shared
+    let registry = ModuleRegistry(services: .preview())
+    let scene = NotchSceneModel(layout: NotchLayout(metrics: .reference), theme: CrannyTheme())
+    let viewModel = NotchViewModel(scene: scene, registry: registry)
+    let panel = NotchPanel(frame: CGRect(x: 0, y: 0, width: 400, height: 200))
+    defer { panel.close() }
+    let router = KeyboardRouter(panel: panel, viewModel: viewModel, registry: registry)
+
+    // Nothing in the panel binds Esc: the shell's chain closes, and the press is consumed.
+    panel.contentView = NSView(frame: panel.frame)
+    viewModel.send(.open(page: nil, focus: nil, reason: .programmatic))
+    let bare = try #require(escapeEvent(in: panel))
+    #expect(router.handleKeyDown(bare) == nil && viewModel.state.isClosed)
+
+    // NotchUI binds Esc: its binding takes the press (as a key equivalent), and the shell's chain does not run.
+    var notchUIHandled = 0
+    let host = NSHostingView(rootView: CancelButtonForTest { notchUIHandled += 1 })
+    host.frame = CGRect(x: 0, y: 0, width: 400, height: 200)
+    panel.contentView = host
+    host.layoutSubtreeIfNeeded()
+    viewModel.send(.open(page: nil, focus: nil, reason: .programmatic))
+    let bound = try #require(escapeEvent(in: panel))
+    #expect(router.handleKeyDown(bound) == nil)
+    #expect(notchUIHandled == 1 && viewModel.state.isOpen, "NotchUI: \(notchUIHandled), shell closed: \(viewModel.state.isClosed)")
+}
+
 // MARK: - On screen (opt-in)
 
 nonisolated private let integration = ProcessInfo.processInfo.environment["CRANNY_INTEGRATION"] == "1"

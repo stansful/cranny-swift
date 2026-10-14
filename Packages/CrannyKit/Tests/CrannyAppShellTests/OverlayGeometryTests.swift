@@ -186,6 +186,12 @@ private func front(_ windows: [FullScreenDetector.Window], frontmost: pid_t? = 5
     #expect(visible.contains(corner))
 }
 
+@Test func aSharingSessionEndsOnlyWithNothingLeftOnTheAnchor() {
+    #expect(SharingPresenter.sessionLooksOver(anchorHasSheet: false, anchorHasChildren: false))
+    #expect(!SharingPresenter.sessionLooksOver(anchorHasSheet: true, anchorHasChildren: false))
+    #expect(!SharingPresenter.sessionLooksOver(anchorHasSheet: false, anchorHasChildren: true))
+}
+
 // MARK: - Panel frame (§4.9 reconfiguration, §5.1)
 
 private let housing = (left: CGRect(x: 0, y: 950, width: 650, height: 32), right: CGRect(x: 862, y: 950, width: 650, height: 32))

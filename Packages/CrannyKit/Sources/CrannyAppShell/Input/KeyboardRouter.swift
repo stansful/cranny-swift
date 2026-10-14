@@ -1,9 +1,11 @@
 // CrannyAppShell/Input/KeyboardRouter.swift — keys while one panel is key (ARCHITECTURE.md §4.10, DESIGN.md §6.5,
 // §7.5, §16). Local NSEvent monitors only (the panel receives keys only while it is key, so no Accessibility
-// permission is involved): Esc runs the machine's Esc chain (palette / edit / focus → grid, else close), unless
-// an input method is composing; type-to-capture sends the first printable keys of a keyboard-opened, unfocused
-// panel to the chosen `CaptureTarget`; holding ⌘ for 0.5 s shows the key-cap hints; keys and clicks switch the
-// focus rings on and off. The rest of the keyboard map is NotchUI's (`.onKeyPress`, `.keyboardShortcut`).
+// permission is involved). Esc: an input method composing keeps it; NotchUI, which owns the Esc chain (§4.10:
+// `.keyboardShortcut(.cancelAction)`), gets it next as a key equivalent; only when nothing in the panel takes it
+// does the shell run the machine's chain (palette / edit / focus → grid, else close), so exactly one of them
+// handles each press and Esc works whatever NotchUI binds. Type-to-capture sends the first printable keys of a
+// keyboard-opened, unfocused panel to the chosen `CaptureTarget`; holding ⌘ for 0.5 s shows the key-cap hints;
+// keys and clicks switch the focus rings on and off. The rest of the keyboard map is NotchUI's.
 import AppKit
 import CrannyCore
 import CrannyNotchUI
@@ -30,7 +32,7 @@ import Foundation
         // Local monitors run on the main thread for events this app receives.
         let keys = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
-            return self.keyDown(event)
+            return self.handleKeyDown(event)
         }
         let flags = NSEvent.addLocalMonitorForEvents(matching: .flagsChanged) { [weak self] event in
             self?.flagsChanged(event)
@@ -59,10 +61,12 @@ import Foundation
 
     // MARK: Keys
 
-    private func keyDown(_ event: NSEvent) -> NSEvent? {
+    /// A key-down this app received (the local monitor): nil = consumed.
+    func handleKeyDown(_ event: NSEvent) -> NSEvent? {
         guard let panel, event.window === panel else { return event }
         if event.keyCode == 53 {                                                 // kVK_Escape
             if Self.isComposing(panel.firstResponder) { return event }           // Esc cancels the marked text first
+            if panel.contentView?.performKeyEquivalent(with: event) == true { return nil }   // NotchUI's chain took it
             viewModel.send(.escape)
             return nil
         }
