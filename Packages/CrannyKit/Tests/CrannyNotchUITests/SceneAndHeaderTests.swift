@@ -136,7 +136,7 @@ private let notch = NotchLayout(metrics: .reference)
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = utc
         let date = try #require(calendar.date(from: DateComponents(year: 2026, month: 10, day: 14, hour: 10, minute: 29, second: 41)))
-        let next = MinuteClock.nextMinute(after: date, calendar: calendar)
+        let next = AlignedClock<EmptyView>.nextTick(after: date, anchor: Date(timeIntervalSinceReferenceDate: 0))
         #expect(calendar.dateComponents([.hour, .minute, .second], from: next) == DateComponents(hour: 10, minute: 30, second: 0))
     }
 }

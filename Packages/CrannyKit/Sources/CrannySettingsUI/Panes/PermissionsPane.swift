@@ -53,7 +53,7 @@ enum PermissionsRows {
 
     static func title(_ kind: PermissionKind) -> String {
         if case .automation(let bundleID) = kind {
-            return String(localized: "Automation: \(AppIdentities.shared.identity(of: bundleID).name)", bundle: .module,
+            return String(localized: "Automation: \(AppIdentityResolver.shared.identity(of: bundleID).name)", bundle: .module,
                           comment: "Settings ▸ Permissions: Apple Events permission for one app; the argument is the app's name")
         }
         return kind.title
@@ -102,7 +102,7 @@ private struct PermissionRow: View {
         let status = permissions.status(entry.kind)
         LabeledContent {
             HStack(spacing: 10) {
-                StatusPill(status: status)
+                PermissionStatusPill(status: status)
                 if isRequesting {
                     ProgressView().controlSize(.small)
                 } else if let action = PermissionAction(kind: entry.kind, status: status) {
@@ -151,40 +151,6 @@ enum PermissionAction: Equatable {
         switch self {
         case .grant: String(localized: "Grant…", bundle: .module, comment: "Settings ▸ Permissions: button that shows the system prompt")
         case .openSettings: String(localized: "Open System Settings", bundle: .module, comment: "Settings ▸ Permissions: button that opens Privacy & Security")
-        }
-    }
-}
-
-/// Granted (green) / Not yet / Denied (red): the text carries the meaning, the colour repeats it.
-private struct StatusPill: View {
-    let status: PermissionStatus
-
-    var body: some View {
-        Text(verbatim: title)
-            .font(.caption.weight(.medium))
-            .foregroundStyle(color)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 2)
-            .background(color.opacity(0.14), in: Capsule(style: .continuous))
-            .accessibilityLabel(Text("Status: \(title)", bundle: .module,
-                                     comment: "Settings ▸ Permissions: VoiceOver label of the status pill; the argument is the status"))
-    }
-
-    private var title: String {
-        switch status {
-        case .granted: String(localized: "Granted", bundle: .module, comment: "Settings ▸ Permissions: status pill")
-        case .notDetermined: String(localized: "Not yet", bundle: .module, comment: "Settings ▸ Permissions: status pill (never asked)")
-        case .denied: String(localized: "Denied", bundle: .module, comment: "Settings ▸ Permissions: status pill")
-        case .restricted: String(localized: "Restricted", bundle: .module, comment: "Settings ▸ Permissions: status pill (blocked by a profile)")
-        case .unknown: String(localized: "Unknown", bundle: .module, comment: "Settings ▸ Permissions: status pill (macOS cannot tell yet)")
-        }
-    }
-
-    private var color: Color {
-        switch status {
-        case .granted: .green
-        case .denied, .restricted: .red
-        case .notDetermined, .unknown: .secondary
         }
     }
 }

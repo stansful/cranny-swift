@@ -7,13 +7,14 @@
 //
 // Combine with the shell's `--qa-exit-after <s>` and `--qa-settings hud`. Compiled out of Release builds.
 #if DEBUG
+import CrannyCore
 import Foundation
 
 nonisolated enum HUDQAHook {
     /// The display to show, or nil when `--qa-hud` is absent or malformed.
     static func display(arguments: [String]) -> HUDDisplay? {
-        guard let index = arguments.firstIndex(of: "--qa-hud"), index + 1 < arguments.count else { return nil }
-        let parts = arguments[index + 1].split(separator: ":", maxSplits: 1).map(String.init)
+        guard let value = LaunchArguments(arguments).value(after: "--qa-hud") else { return nil }
+        let parts = value.split(separator: ":", maxSplits: 1).map(String.init)
         let level = parts.count > 1 ? Double(parts[1]).map(LevelStepper.clamp) : nil
         var display: HUDDisplay
         switch parts.first {

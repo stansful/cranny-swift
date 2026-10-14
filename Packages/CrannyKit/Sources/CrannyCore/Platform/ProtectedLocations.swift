@@ -1,7 +1,8 @@
-// CrannySettingsUI/Components/ProtectedLocations.swift — Settings never reads a file that macOS guards with a privacy
-// prompt: Files & Folders (Desktop, Documents, Downloads, iCloud Drive, File Provider storage, removable and network
-// volumes) and "data from other apps" (other apps' containers and group containers). No permission is requested
-// except from an explicit button (ARCHITECTURE §10.15). Used for the wallpaper miniature and for app icons and names.
+// CrannyCore/Platform/ProtectedLocations.swift — Cranny never reads, on its own initiative, a file that macOS guards
+// with a privacy prompt: Files & Folders (Desktop, Documents, Downloads, iCloud Drive, File Provider storage, removable
+// and network volumes) and "data from other apps" (other apps' containers and group containers). No permission is
+// requested except from an explicit button (ARCHITECTURE §10.15). Used for the Settings wallpaper miniature and for app
+// names and icons (`AppIdentityResolver`: Settings, Media's player rows).
 //
 // Symbolic links are followed one component at a time, and only where reading a link cannot prompt: a link is read
 // only after the path up to it has been found outside every protected place, and a link whose target lies inside one
@@ -9,13 +10,14 @@
 // is never read (tested). Paths are normalized as strings (".", ".."), never through APIs that consult the disk.
 import Foundation
 
-nonisolated enum ProtectedLocations {
+/// Whether reading a file could raise a privacy prompt. Pure string work plus symbolic-link reads that cannot prompt.
+public nonisolated enum ProtectedLocations {
     /// The most links followed before giving up (a loop, or a chain nobody needs).
     private static let maximumLinks = 16
 
     /// True when reading `url` cannot raise a privacy prompt: a local file outside the protected places, also after
     /// following its symbolic links. `ownBundleID`'s own container is not protected.
-    static func isSafeToRead(_ url: URL, home: URL = FileManager.default.homeDirectoryForCurrentUser,
+    public static func isSafeToRead(_ url: URL, home: URL = FileManager.default.homeDirectoryForCurrentUser,
                              ownBundleID: String? = Bundle.main.bundleIdentifier,
                              fileManager: FileManager = .default) -> Bool {
         guard url.isFileURL else { return false }
@@ -53,7 +55,7 @@ nonisolated enum ProtectedLocations {
     }
 
     /// An absolute path without empty, "." and ".." components (string work only).
-    static func normalized(_ path: String) -> String {
+    public static func normalized(_ path: String) -> String {
         var parts: [Substring] = []
         for part in path.split(separator: "/", omittingEmptySubsequences: true) {
             switch part {

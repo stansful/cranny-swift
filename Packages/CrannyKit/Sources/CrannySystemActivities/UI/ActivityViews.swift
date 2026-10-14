@@ -13,9 +13,9 @@ struct BandSymbol: View {
 
     var body: some View {
         Image(systemName: name)
-            .font(.system(size: 13 * theme.notchUnit, weight: .semibold))
+            .crannySymbol(.band)
             .foregroundStyle(color ?? theme.palette.label)
-            .contentTransition(theme.reduceMotion ? .identity : .symbolEffect(.replace))
+            .contentTransition(theme.symbolReplace)
             .accessibilityHidden(true)
     }
 }

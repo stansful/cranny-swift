@@ -149,13 +149,14 @@ struct TimerEndLabel: View {
 // MARK: - Controls shared by the peek row and the widget
 
 struct TimerPauseButton: View {
+    @Environment(\.cranny) private var theme
     let model: TimerModel
     let size: CGFloat
     var body: some View {
         let paused = model.state.isPaused
         Button(action: model.togglePause) {
             Image(systemName: paused ? "play.fill" : "pause.fill")
-                .contentTransition(.symbolEffect(.replace))
+                .contentTransition(theme.symbolReplace)
         }
         .buttonStyle(CrannyIconButtonStyle(.plain, size: size))
         .timerHitTarget()

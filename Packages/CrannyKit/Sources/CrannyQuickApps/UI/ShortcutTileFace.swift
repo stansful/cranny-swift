@@ -117,7 +117,7 @@ struct RunningRing: View {
     }
 }
 
-/// The success check: bounces once when it appears (never under Reduce Motion).
+/// The success check: bounces once when it appears (never under Reduce Motion or Motion ▸ Instant).
 struct SuccessCheck: View {
     @Environment(\.cranny) private var theme
     let size: CGFloat
@@ -127,8 +127,8 @@ struct SuccessCheck: View {
         Image(systemName: "checkmark.circle.fill")
             .font(.system(size: size, weight: .semibold))
             .foregroundStyle(Color.white)
-            .symbolEffect(.bounce, value: bounce)
-            .onAppear { if !theme.reduceMotion { bounce.toggle() } }
+            .crannySymbolBounce(value: bounce)
+            .onAppear { if theme.animatesSymbols { bounce.toggle() } }
     }
 }
 

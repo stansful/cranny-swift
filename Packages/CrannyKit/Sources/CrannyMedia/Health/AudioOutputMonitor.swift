@@ -21,8 +21,8 @@ nonisolated final class AudioOutputMonitor: @unchecked Sendable {   // `listener
         queue.async { [self] in
             guard listListener == nil else { return }
             let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in self?.processesChanged() }
-            var address = Self.propertyAddress(kAudioHardwarePropertyProcessObjectList)
-            if AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, queue, block) == noErr {
+            var address = AudioHAL.address(kAudioHardwarePropertyProcessObjectList)
+            if AudioObjectAddPropertyListenerBlock(AudioHAL.system, &address, queue, block) == noErr {
                 listListener = block
             }
             processesChanged()
@@ -32,12 +32,12 @@ nonisolated final class AudioOutputMonitor: @unchecked Sendable {   // `listener
     func stop() {
         queue.async { [self] in
             if let block = listListener {
-                var address = Self.propertyAddress(kAudioHardwarePropertyProcessObjectList)
-                AudioObjectRemovePropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, queue, block)
+                var address = AudioHAL.address(kAudioHardwarePropertyProcessObjectList)
+                AudioObjectRemovePropertyListenerBlock(AudioHAL.system, &address, queue, block)
             }
             listListener = nil
             for (process, block) in listeners {
-                var address = Self.propertyAddress(kAudioProcessPropertyIsRunningOutput)
+                var address = AudioHAL.address(kAudioProcessPropertyIsRunningOutput)
                 AudioObjectRemovePropertyListenerBlock(process, &address, queue, block)
             }
             listeners.removeAll()
@@ -55,13 +55,13 @@ nonisolated final class AudioOutputMonitor: @unchecked Sendable {   // `listener
     private func processesChanged() {
         let current = Set(Self.processObjects())
         for (process, block) in listeners where !current.contains(process) {
-            var address = Self.propertyAddress(kAudioProcessPropertyIsRunningOutput)
+            var address = AudioHAL.address(kAudioProcessPropertyIsRunningOutput)
             AudioObjectRemovePropertyListenerBlock(process, &address, queue, block)
             listeners[process] = nil
         }
         for process in current where listeners[process] == nil {
             let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in self?.publish() }
-            var address = Self.propertyAddress(kAudioProcessPropertyIsRunningOutput)
+            var address = AudioHAL.address(kAudioProcessPropertyIsRunningOutput)
             if AudioObjectAddPropertyListenerBlock(process, &address, queue, block) == noErr { listeners[process] = block }
         }
         publish()
@@ -74,33 +74,17 @@ nonisolated final class AudioOutputMonitor: @unchecked Sendable {   // `listener
         onChange(value)
     }
 
-    // MARK: Core Audio reads
-
-    private static func propertyAddress(_ selector: AudioObjectPropertySelector) -> AudioObjectPropertyAddress {
-        AudioObjectPropertyAddress(mSelector: selector, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
-    }
+    // MARK: Core Audio reads (Core's `AudioHAL`)
 
     private static func processObjects() -> [AudioObjectID] {
-        var address = propertyAddress(kAudioHardwarePropertyProcessObjectList)
-        let system = AudioObjectID(kAudioObjectSystemObject)
-        var size: UInt32 = 0
-        guard AudioObjectGetPropertyDataSize(system, &address, 0, nil, &size) == noErr, size > 0 else { return [] }
-        var objects = [AudioObjectID](repeating: 0, count: Int(size) / MemoryLayout<AudioObjectID>.size)
-        guard AudioObjectGetPropertyData(system, &address, 0, nil, &size, &objects) == noErr else { return [] }
-        return objects
+        AudioHAL.objectIDs(kAudioHardwarePropertyProcessObjectList)
     }
 
     private static func isRunningOutput(_ process: AudioObjectID) -> Bool {
-        var address = propertyAddress(kAudioProcessPropertyIsRunningOutput)
-        var value: UInt32 = 0
-        var size = UInt32(MemoryLayout<UInt32>.size)
-        return AudioObjectGetPropertyData(process, &address, 0, nil, &size, &value) == noErr && value != 0
+        (AudioHAL.uint32(process, AudioHAL.address(kAudioProcessPropertyIsRunningOutput)) ?? 0) != 0
     }
 
     private static func pid(of process: AudioObjectID) -> pid_t {
-        var address = propertyAddress(kAudioProcessPropertyPID)
-        var value: pid_t = -1
-        var size = UInt32(MemoryLayout<pid_t>.size)
-        return AudioObjectGetPropertyData(process, &address, 0, nil, &size, &value) == noErr ? value : -1
+        AudioHAL.int32(process, AudioHAL.address(kAudioProcessPropertyPID)) ?? -1
     }
 }

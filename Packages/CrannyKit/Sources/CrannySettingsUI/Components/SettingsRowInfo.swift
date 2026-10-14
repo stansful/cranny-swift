@@ -39,8 +39,6 @@ enum SettingsMetrics {
     static let stageHeight: CGFloat = 176
     /// The open Nook is scaled to fit the stage, never below this (§11.2).
     static let stageMinimumScale: CGFloat = 0.75
-    /// The changed-value dot before a label (§11.3).
-    static let changedDot: CGFloat = 6
     /// Search highlight: the accent wash fades over 1 s (§11.3).
     static let highlightFade: Double = 1
     static let highlightOpacity: Double = 0.22

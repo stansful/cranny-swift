@@ -222,6 +222,7 @@ enum PreviewVariant: String, CaseIterable {
                              palette: Bool = false, mode: NookMode = .grid) -> (NotchSceneModel, ModuleRegistry) {
     let registry = ModuleRegistry(services: .preview())
     registry.add(commands: PreviewCommands())
+    registry.addPreviewStandIns()                                    // named cards without the feature modules
     var theme = CrannyTheme()
     theme.notchUnit = metrics.unit
     theme.glassIsland = false

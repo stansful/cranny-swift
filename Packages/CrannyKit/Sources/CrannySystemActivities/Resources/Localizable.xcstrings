@@ -381,17 +381,6 @@
         }
       }
     },
-    "Reset to Default" : {
-      "comment" : "Settings ▸ Live Activities: context menu item of a system activity option",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Вернуть значение по умолчанию"
-          }
-        }
-      }
-    },
     "Right" : {
       "comment" : "Bluetooth activity: label of the right earbud's battery gauge",
       "localizations" : {

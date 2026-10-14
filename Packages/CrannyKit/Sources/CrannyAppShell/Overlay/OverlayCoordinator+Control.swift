@@ -72,7 +72,7 @@ extension OverlayCoordinator {
                 preview = (controller.key, id)
                 if state == .peek { viewModel.send(.autoPeek(id, until: .infinity)) }
             } else {
-                showFlash(symbol: "sparkles", label: "Cranny", duration: duration.seconds, on: controller.key)
+                showFlash(symbol: "sparkles", label: "Cranny", duration: duration.timeInterval, on: controller.key)
             }
         }
         viewModel.send(.hold(Self.previewHold, true))
@@ -148,6 +148,3 @@ extension OverlayCoordinator {
     #endif
 }
 
-private extension Duration {
-    var seconds: TimeInterval { Double(components.seconds) + Double(components.attoseconds) / 1e18 }
-}

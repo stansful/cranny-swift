@@ -77,7 +77,7 @@ private struct CompactStateTile: View {
             }
             Text(message)
                 .crannyFont(.caption).fontWeight(isAction ? .semibold : .medium)
-                .foregroundStyle(isAction ? theme.accentColor : p.secondaryLabel)
+                .foregroundStyle(isAction ? p.info : p.secondaryLabel)              // links are `info` (DESIGN.md §2.1)
                 .multilineTextAlignment(.center)
                 .lineLimit(3)
         }

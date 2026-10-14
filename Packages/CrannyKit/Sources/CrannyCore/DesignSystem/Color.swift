@@ -147,6 +147,9 @@ public nonisolated struct CrannyPalette: Equatable, Sendable {
     public var danger: Color { SemanticColor.danger.rgb(variant == .highContrast).color }
     public var info: Color { SemanticColor.info.rgb(variant == .highContrast).color }
     public var caution: Color { SemanticColor.caution.rgb(variant == .highContrast).color }
+    // Prominent controls: the ONE primary action of a card is filled white with black content (icon buttons, chips)
+    public var prominentFill: Color { .white }
+    public var onProminent: Color { .black }
 
     private func white(_ a: Double) -> Color { Color(.sRGB, white: 1, opacity: a) }
 

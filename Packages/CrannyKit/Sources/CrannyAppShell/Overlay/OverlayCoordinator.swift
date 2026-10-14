@@ -40,7 +40,6 @@ private let log = Log.logger(.overlay)
     @ObservationIgnored var ranked: [ActivitySnapshot] = []
     @ObservationIgnored var expiryTask: Task<Void, Never>?
     @ObservationIgnored var delights = DelightScheduler()
-    @ObservationIgnored var announcements = AnnouncementLimiter()
     // Control (+Control)
     @ObservationIgnored var playTask: Task<Void, Never>?
     @ObservationIgnored var preview: (key: DisplayKey, id: ActivityID)?

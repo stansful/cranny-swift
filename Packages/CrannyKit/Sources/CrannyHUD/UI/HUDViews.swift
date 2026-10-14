@@ -57,7 +57,7 @@ struct HUDGlyph: View {
                 .symbolRenderingMode(variable == nil ? .monochrome : .hierarchical)   // unfilled waves dim; the rest white
                 .crannyFont(style)
                 .foregroundStyle(theme.palette.label)
-                .contentTransition(.symbolEffect(.replace))
+                .contentTransition(theme.symbolReplace)
                 .modifier(GlyphBounce(value: display.glyphBounce))
                 .animation(theme.animation(.contentSwap), value: symbol)
                 .accessibilityHidden(true)

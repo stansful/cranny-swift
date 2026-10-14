@@ -109,8 +109,8 @@ struct GulpModifier: ViewModifier {
 
 nonisolated enum Gulp {
     /// How far the shape's bottom edge rises.
-    static let depth: CGFloat = 3
+    static let depth = CrannyMotion.Delight.gulpDepth
     /// Down in 0.07 s, back over the rest of the 0.25-s moment.
-    static let swallow: Double = 0.07
-    static let recover: Double = 0.18
+    static let swallow = CrannyMotion.Delight.gulpSwallowDuration
+    static let recover = CrannyMotion.Delight.gulpRecoverDuration
 }

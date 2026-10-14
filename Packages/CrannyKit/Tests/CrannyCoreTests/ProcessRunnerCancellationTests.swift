@@ -1,4 +1,4 @@
-// Core change request from WP3 (Quick Apps): `ProcessRunner` cancellation. A cancellation that arrives before the
+// `ProcessRunner` cancellation (Quick Apps stops a running shortcut through it). A cancellation that arrives before the
 // launch is kept (the tool never starts), and `run(…, interruptGrace:)` stops a tool through SIGINT first, its own
 // Ctrl-C path, escalating to SIGTERM. Temporary shell scripts stand in for the tools.
 import Foundation

@@ -50,11 +50,9 @@ import Testing
 }
 
 /// The QA launch arguments: `-CrannyDisableShaders YES` forces every fallback, `-CrannyDisableEffectLayer YES`
-/// keeps the light in SwiftUI. Tested with a private defaults suite, never the app's.
-@Test func qaSwitches() throws {
-    let suite = "CrannyEffectsTests.\(UUID().uuidString)"
-    let defaults = try #require(UserDefaults(suiteName: suite))
-    defer { defaults.removePersistentDomain(forName: suite) }
+/// keeps the light in SwiftUI. Tested with in-memory defaults, never the app's (and no plist in ~/Library/Preferences).
+@Test func qaSwitches() {
+    let defaults = InMemoryDefaults()
     #expect(ShaderEffects.allowsLayer(defaults: defaults))
     defaults.set(true, forKey: ShaderEffects.disableLayerKey)
     #expect(!ShaderEffects.allowsLayer(defaults: defaults))

@@ -6,6 +6,7 @@
 // Output scope, main element. Changing the volume through CoreAudio never shows the system HUD.
 import AudioToolbox
 import CoreAudio
+import CrannyCore
 import Foundation
 
 /// The default output device as the HUD sees it.
@@ -32,85 +33,30 @@ nonisolated struct CoreAudioVolume: SystemVolume {
     init() {}
 
     func readState() -> VolumeState? {
-        guard let device = AudioOutput.defaultDevice(), AudioOutput.isSettable(device, volumeAddress),
-              let level = AudioOutput.float(device, volumeAddress) else { return nil }
-        let muted = AudioOutput.uint32(device, muteAddress).map { $0 != 0 } ?? false
-        return VolumeState(level: Double(level), isMuted: muted, canMute: AudioOutput.isSettable(device, muteAddress),
+        guard let device = AudioHAL.defaultOutputDevice(), AudioHAL.isSettable(device, volumeAddress),
+              let level = AudioHAL.float32(device, volumeAddress) else { return nil }
+        let muted = AudioHAL.uint32(device, muteAddress).map { $0 != 0 } ?? false
+        return VolumeState(level: Double(level), isMuted: muted, canMute: AudioHAL.isSettable(device, muteAddress),
                            deviceID: device)
     }
 
     func setLevel(_ level: Double) -> Bool {
-        guard let device = AudioOutput.defaultDevice() else { return false }
-        var value = Float32(min(max(level, 0), 1))
-        var address = volumeAddress
-        return AudioObjectSetPropertyData(device, &address, 0, nil, UInt32(MemoryLayout<Float32>.size), &value) == noErr
+        guard let device = AudioHAL.defaultOutputDevice() else { return false }
+        return AudioHAL.setFloat32(Float32(min(max(level, 0), 1)), on: device, volumeAddress)
     }
 
     func setMuted(_ muted: Bool) -> Bool {
-        guard let device = AudioOutput.defaultDevice() else { return false }
-        var value: UInt32 = muted ? 1 : 0
-        var address = muteAddress
-        return AudioObjectSetPropertyData(device, &address, 0, nil, UInt32(MemoryLayout<UInt32>.size), &value) == noErr
+        guard let device = AudioHAL.defaultOutputDevice() else { return false }
+        return AudioHAL.setUInt32(muted ? 1 : 0, on: device, muteAddress)
     }
 
-    private var volumeAddress: AudioObjectPropertyAddress { AudioOutput.address(kAudioHardwareServiceDeviceProperty_VirtualMainVolume) }
-    private var muteAddress: AudioObjectPropertyAddress { AudioOutput.address(kAudioDevicePropertyMute) }
+    private var volumeAddress: AudioObjectPropertyAddress { OutputLevelAddress.volume }
+    private var muteAddress: AudioObjectPropertyAddress { OutputLevelAddress.mute }
 }
 
-/// Thin, typed wrappers over the CoreAudio property calls the HUD uses.
-nonisolated enum AudioOutput {
-    static func address(_ selector: AudioObjectPropertySelector,
-                        scope: AudioObjectPropertyScope = kAudioDevicePropertyScopeOutput) -> AudioObjectPropertyAddress {
-        AudioObjectPropertyAddress(mSelector: selector, mScope: scope, mElement: kAudioObjectPropertyElementMain)
-    }
-
-    static var defaultDeviceAddress: AudioObjectPropertyAddress {
-        address(kAudioHardwarePropertyDefaultOutputDevice, scope: kAudioObjectPropertyScopeGlobal)
-    }
-
-    static func defaultDevice() -> AudioObjectID? {
-        var address = defaultDeviceAddress
-        var device = AudioObjectID(kAudioObjectUnknown)
-        var size = UInt32(MemoryLayout<AudioObjectID>.size)
-        let status = AudioObjectGetPropertyData(AudioObjectID(kAudioObjectSystemObject), &address, 0, nil, &size, &device)
-        return status == noErr && device != kAudioObjectUnknown ? device : nil
-    }
-
-    static func isSettable(_ device: AudioObjectID, _ address: AudioObjectPropertyAddress) -> Bool {
-        var address = address
-        var settable: DarwinBoolean = false
-        return AudioObjectHasProperty(device, &address)
-            && AudioObjectIsPropertySettable(device, &address, &settable) == noErr && settable.boolValue
-    }
-
-    static func float(_ device: AudioObjectID, _ address: AudioObjectPropertyAddress) -> Float32? {
-        var address = address
-        var value: Float32 = 0
-        var size = UInt32(MemoryLayout<Float32>.size)
-        guard AudioObjectHasProperty(device, &address) else { return nil }
-        return AudioObjectGetPropertyData(device, &address, 0, nil, &size, &value) == noErr ? value : nil
-    }
-
-    static func uint32(_ device: AudioObjectID, _ address: AudioObjectPropertyAddress) -> UInt32? {
-        var address = address
-        var value: UInt32 = 0
-        var size = UInt32(MemoryLayout<UInt32>.size)
-        guard AudioObjectHasProperty(device, &address) else { return nil }
-        return AudioObjectGetPropertyData(device, &address, 0, nil, &size, &value) == noErr ? value : nil
-    }
-
-    /// `kAudioObjectPropertyName` of a device (for the output-device glyph), nil if it has none.
-    static func name(_ device: AudioObjectID) -> String? {
-        var address = address(kAudioObjectPropertyName, scope: kAudioObjectPropertyScopeGlobal)
-        var name: Unmanaged<CFString>?
-        var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
-        let status = withUnsafeMutablePointer(to: &name) { AudioObjectGetPropertyData(device, &address, 0, nil, &size, $0) }
-        guard status == noErr, let value = name?.takeRetainedValue() else { return nil }
-        return value as String
-    }
-
-    /// `kAudioDevicePropertyTransportType` ('blue', 'hdmi', 'bltn', …), nil if unknown.
-    static func transportType(_ device: AudioObjectID) -> UInt32? {
-        uint32(device, address(kAudioDevicePropertyTransportType, scope: kAudioObjectPropertyScopeGlobal))
-    }
+/// The default output's level properties (output scope, main element). Core's `AudioHAL` reads and writes them.
+nonisolated enum OutputLevelAddress {
+    static let volume = AudioHAL.address(kAudioHardwareServiceDeviceProperty_VirtualMainVolume,
+                                         scope: kAudioDevicePropertyScopeOutput)
+    static let mute = AudioHAL.address(kAudioDevicePropertyMute, scope: kAudioDevicePropertyScopeOutput)
 }

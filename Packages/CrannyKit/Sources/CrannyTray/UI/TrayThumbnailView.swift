@@ -51,9 +51,9 @@ struct TrayThumbnailView: View {
 /// Fixed sizes of the Tray's pieces (DESIGN.md §8.1). Everything else comes from the theme; the captioned tile grows
 /// with Cranny's Text size (`TrayTileLayout`).
 nonisolated enum TrayMetrics {
-    /// Tile at Standard text size: 64 × 66 (44-pt thumbnail + caption).
+    /// Tile width at Standard text size: 64 (a 64 × 66 tile: 44-pt thumbnail + caption; the height follows Text size,
+    /// `TrayTileLayout`).
     static let tileWidth: CGFloat = 64
-    static let tileHeight: CGFloat = 66
     static let thumbnail: CGFloat = 44
     /// Chips row (22-pt capsules).
     static let chipHeight: CGFloat = 22

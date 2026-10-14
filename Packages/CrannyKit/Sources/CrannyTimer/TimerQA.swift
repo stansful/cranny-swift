@@ -27,11 +27,7 @@ enum TimerQA {
 
     private static var spec: String? { value(after: argument) }
 
-    private static func value(after name: String) -> String? {
-        let arguments = ProcessInfo.processInfo.arguments
-        guard let i = arguments.firstIndex(of: name), i + 1 < arguments.count else { return nil }
-        return arguments[i + 1]
-    }
+    private static func value(after name: String) -> String? { LaunchArguments.current.value(after: name) }
 
     static func dependencies(services: CrannyServices) -> TimerDependencies {
         var dependencies = TimerDependencies.live(services: services)

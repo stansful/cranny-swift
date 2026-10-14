@@ -341,6 +341,9 @@ public nonisolated struct CrannyPalette: Equatable, Sendable {
     public var danger: Color { SemanticColor.danger.rgb(variant == .highContrast).color }
     public var info: Color { SemanticColor.info.rgb(variant == .highContrast).color }
     public var caution: Color { SemanticColor.caution.rgb(variant == .highContrast).color }
+    // Prominent controls: the ONE primary action of a card is filled white with black content (icon buttons, chips)
+    public var prominentFill: Color { .white }
+    public var onProminent: Color { .black }
 
     private func white(_ a: Double) -> Color { Color(.sRGB, white: 1, opacity: a) }
 
@@ -495,7 +498,7 @@ SF Pro is used for words. **SF Pro Rounded with monospaced digits** is used for 
 Rules:
 - Changing numbers use `.contentTransition(.numericText(countsDown:))` (or `(value:)`).
 - Titles are a single line with tail truncation; file names truncate in the middle.
-- In the Nook, an overflowing track title marquees after a 1.5 s hover. That is the only marquee anywhere, and it never runs under Reduce Motion (a `.help` tooltip shows the full title instead).
+- In the Nook, an overflowing track title marquees after a 1.5 s hover: **one pass** to its end and back (30 pt/s, a 1-s pause at the end), then it rests until the next hover or a new title. That is the only marquee anywhere; nothing loops, and it never runs under Reduce Motion or Motion ▸ Instant (it truncates, and a `.help` tooltip shows the full title).
 - Settings and onboarding use system text styles (`.body`, `.title2`, …), not these tokens.
 
 ```swift
@@ -597,6 +600,58 @@ public extension View {
     /// `Text(track.title).crannyFont(.title)` — font, tracking, line height and case in one call.
     func crannyFont(_ style: CrannyTextStyle) -> some View { modifier(CrannyFontModifier(style)) }
 }
+
+// MARK: - SF Symbol glyph styles (DESIGN.md §14.1 "Rendering")
+
+/// How an SF Symbol is drawn where it is not inside a button style (which sizes its own glyph) or next to text
+/// (which takes the text's `crannyFont`). Band glyphs scale with the notch unit, like the band text styles; Nook
+/// glyphs follow Text Size.
+public nonisolated enum CrannySymbolStyle: String, CaseIterable, Sendable {
+    case band          // 13 semibold × notch unit — one glyph in a compact wing (now playing, charging, flash)
+    case nook          // 13 medium × text size — a glyph inside the open Nook
+    case peekVisual    // 18 semibold × text size — a glyph filling the 40-pt visual of a peek row
+    case widgetState   // 20 medium × text size — the glyph of an empty / permission / error state (§6.8)
+    case dropZone      // 22 medium × text size — the glyph of a drop zone (Tray, AirDrop, pipelines)
+
+    /// Point size before scaling, and weight.
+    public var spec: (size: CGFloat, weight: Font.Weight) {
+        switch self {
+        case .band: (13, .semibold)
+        case .nook: (13, .medium)
+        case .peekVisual: (18, .semibold)
+        case .widgetState: (20, .medium)
+        case .dropZone: (22, .medium)
+        }
+    }
+
+    /// `.band` scales with the notch unit (the band is hardware height); everything else with Text Size.
+    public var scaling: CrannyTextStyle.Scaling { self == .band ? .notchUnit : .textSize }
+
+    /// The scaled point size (never below 10 pt).
+    public func pointSize(textSize: CrannyTextSize, notchUnit: CGFloat) -> CGFloat {
+        let k = scaling == .notchUnit ? notchUnit : textSize.scale
+        return max((spec.size * k).rounded(), 10)
+    }
+
+    /// The symbol font at that size.
+    public func font(textSize: CrannyTextSize = .standard, notchUnit: CGFloat = 1) -> Font {
+        .system(size: pointSize(textSize: textSize, notchUnit: notchUnit), weight: spec.weight)
+    }
+}
+
+public struct CrannySymbolModifier: ViewModifier {
+    @Environment(\.cranny) private var theme
+    public let style: CrannySymbolStyle
+    public init(_ style: CrannySymbolStyle) { self.style = style }
+    public func body(content: Content) -> some View {
+        content.font(style.font(textSize: theme.textSize, notchUnit: theme.notchUnit))
+    }
+}
+
+public extension View {
+    /// `Image(systemName: "bolt.fill").crannySymbol(.band)` — the glyph's size and weight from the theme.
+    func crannySymbol(_ style: CrannySymbolStyle) -> some View { modifier(CrannySymbolModifier(style)) }
+}
 ```
 
 ### 2.3 Spacing, radii, strokes, hit targets, elevation, glow, grid
@@ -613,7 +668,7 @@ public extension View {
   - dashed drop zone 1.5 with dash [5, 4]; focus ring 2;
   - scrubber 4 (6 while hovered or dragged), HUD bar 6;
   - rings: 2.5 in the band, 5 in widgets.
-- **Hit targets:** at least 28 × 24 inside the Nook and 32 × 24 for embedded controls in the band. The macOS minimum is 20.
+- **Hit targets:** at least 28 × 24 inside the Nook and 32 × 24 for embedded controls in the band. The macOS minimum is 20. A button's hit area is its own frame, so a smaller visual (the 22-pt chip, a text link) gets its room inside the button style (`CrannyChipButtonStyle`, `CrannyLinkButtonStyle`) or its label; a frame or content shape added outside a `Button` or `Menu` does not widen it.
 - **Elevation:**
   - none for closed and compact (a shadow would reveal the seam);
   - peek: two layers (22 % r 1.5 y 1, and 28 % r 14 y 6);
@@ -861,12 +916,16 @@ public nonisolated struct CrannyTheme: Equatable, Sendable {
     public var accentColor: Color { accent.color }
     public var accentContrast: Double { increaseContrast ? 7 : 4.5 }
     public var allowsUnderglow: Bool { effectiveAmbience == .vivid }
-    /// VoiceOver users get click-to-open automatically (hover is never the only way in).
-    public var opensOnHover: Bool { !voiceOverRunning }
 
     public func animation(_ k: CrannyMotion.Kind) -> Animation? {
         CrannyMotion.animation(k, personality: motion, reduceMotion: reduceMotion)
     }
+
+    /// Symbols may animate (DESIGN.md §14.1: no symbol effects under Reduce Motion; §4.2: none under Instant).
+    public var animatesSymbols: Bool { !reduceMotion && motion != .instant }
+    /// The content transition of a glyph that toggles (pin, play/pause, the HUD glyph):
+    /// `.contentTransition(theme.symbolReplace)` — `.symbolEffect(.replace)`, or `.identity` when symbols must not move.
+    public var symbolReplace: ContentTransition { animatesSymbols ? .symbolEffect(.replace) : .identity }
 }
 
 public extension EnvironmentValues {
@@ -1100,6 +1159,8 @@ public nonisolated struct NotchLayout: Equatable, Sendable {
     public var grid: NookGrid
 
     public static let peekRow: CGFloat = 52
+    /// The visual at the start of a peek row: artwork, ring or glyph well (DESIGN.md §9.3).
+    public static let peekVisual: CGFloat = 40
     public static let satelliteDiameter: CGFloat = 24
 
     public init(metrics: NotchMetrics, noNotchStyle: NoNotchStyle = .floatingIsland,
@@ -1478,6 +1539,27 @@ public nonisolated enum CrannyMotion {
     public static func release(velocity: CGFloat, remaining distance: CGFloat) -> Animation {
         let v = abs(distance) < 0.5 ? 0 : Double(velocity / distance)
         return .interpolatingSpring(duration: 0.40, bounce: 0.14, initialVelocity: v)
+    }
+
+    /// Curves of the one-shot delights (DESIGN.md §5.5–§5.6). They play only when the owner allows a delight
+    /// (never under Instant); the Reduce Motion variants use `fade`.
+    public nonisolated enum Delight {
+        /// The song-change energy ripple: energy + 0.5 · (1 − t/lifetime)², decaying fast then slow.
+        public static func ripple(lifetime: Double) -> Animation { .timingCurve(0.33, 0.67, 0.67, 1, duration: lifetime) }
+        /// First light: the light fills outward from the camera over the moment's lifetime.
+        public static func firstLight(lifetime: Double) -> Animation { .easeOut(duration: lifetime) }
+        /// The gulp (a file caught): the bottom edge rises `gulpDepth` in `gulpSwallowDuration` …
+        public static let gulpSwallow = Animation.easeIn(duration: gulpSwallowDuration)
+        /// … and lands back over the rest of the 0.25-s moment, without bounce (it shrinks toward the hardware).
+        public static let gulpRecover = Animation.spring(duration: gulpRecoverDuration, bounce: 0)
+        /// Reduce Motion variants (static ember glow, instant rim): colour only, fading out over the lifetime.
+        public static func fade(lifetime: Double) -> Animation { .easeIn(duration: lifetime) }
+
+        /// How far the gulp lifts the shape's bottom edge (pt).
+        public static let gulpDepth: CGFloat = 3
+        /// Down in 0.07 s, back over the rest of the 0.25-s moment.
+        public static let gulpSwallowDuration: Double = 0.07
+        public static let gulpRecoverDuration: Double = 0.18
     }
 }
 
@@ -2255,28 +2337,29 @@ Peek is 380–460 pt wide (425 on a 14″) and always has the keyline and `Eleva
 
 ### 14.1 SF Symbols
 
-Every symbol below was verified on this machine against `name_availability.plist` (minimum macOS shown) and `symbol_restrictions.strings`. Keep them in one `enum CrannySymbol` with a unit test asserting each name resolves on macOS 14.
+Every symbol below was verified on this machine against `name_availability.plist` (minimum macOS shown) and `symbol_restrictions.strings`. They are listed by role in `CrannySymbol` (`CrannyCore/DesignSystem/Symbols.swift`); a Core unit test checks that the list matches this table, that every name exists on macOS 14 and that none is restricted except the ⚑ product glyphs. Add a symbol to both before using it.
 
 | Role | Symbols (minimum macOS) |
 |---|---|
-| Header, pages | `square.grid.2x2.fill` · `tray.full.fill` · `note.text` (11) · `magnifyingglass` · `pin` / `pin.fill` · `gearshape.fill` (11) · `ellipsis` · `plus` · `xmark` · `chevron.down` |
+| Header, pages | `square.grid.2x2.fill` · `tray.full.fill` · `note.text` (11) · `magnifyingglass` · `pin` / `pin.fill` · `gearshape.fill` (11) · `ellipsis` · `plus` · `minus` (edit layout) · `xmark` · `chevron.down` · `checkmark` · `square.resize` (14, card size menu) |
 | Media | `play.fill` · `pause.fill` · `backward.fill` · `forward.fill` · `shuffle` · `repeat` · `airplayaudio` · `music.note` · `music.note.list` · `waveform` |
-| Calendar, meetings | `calendar` · `person.2.wave.2.fill` (12, Join) · `clock` · `mappin.and.ellipse` |
+| Calendar, meetings | `calendar` · `person.2.wave.2.fill` (12, Join) · `clock` · `mappin.and.ellipse` · `chevron.left` / `chevron.right` (day paging) |
 | Launcher | app icons via `NSWorkspace` · `app.dashed` (12, placeholder) · `square.2.layers.3d.fill` (14, Shortcuts pane) |
 | Mirror | `web.camera` (13) · `camera.fill` · `flip.horizontal` |
 | Notes, to-dos | `chevron.left.forwardslash.chevron.right` (12) · `arrow.up.left.and.arrow.down.right` / `arrow.down.right.and.arrow.up.left` (focus) · `checklist` (12) · `circle` · `checkmark.circle.fill` |
 | Timer | `timer` · `pause.fill` · `stop.fill` · `arrow.counterclockwise` |
-| AirDrop, Tray | `dot.radiowaves.up.forward` (12; there is no public `airdrop` symbol) · `tray.and.arrow.down.fill` · `doc.zipper` (11) · `photo.badge.arrow.down` (14, compress) · `arrow.triangle.2.circlepath` (convert) · `square.resize` (14, resize) · `link` · `doc.on.doc` · `square.and.arrow.up` · `folder` · `eye` · `trash` · `archivebox` · `wand.and.stars` · `arrow.uturn.backward` (undo) |
-| HUD, power | `speaker.wave.3.fill` (variable value) · `speaker.slash.fill` · `sun.max.fill` · `sun.min.fill` · `light.max` · `light.min` · `bolt.fill` · `battery.100percent.bolt` · `battery.25percent` · `battery.0percent` (14) · `exclamationmark` |
-| Devices | `airpodspro` (11) · `airpodsmax` (11.3) · `airpods` ⚑ · `airpods.gen3` ⚑ · `beats.headphones` ⚑ · `earbuds` (12) · `headphones` |
-| Settings, onboarding | `gearshape.fill` · `paintbrush.fill` · `keyboard` · `capsule.tophalf.filled` (12) · `speaker.wave.2.fill` · `hand.draw.fill` · `hand.raised.fill` · `info.circle.fill` · `hand.wave.fill` · `cursorarrow.motionlines` · `sparkles` · `accessibility` ⚑ (14) · `laptopcomputer` · `display` |
+| AirDrop, Tray | `dot.radiowaves.up.forward` (12; there is no public `airdrop` symbol) · `tray.and.arrow.down.fill` · `doc.zipper` (11) · `photo.badge.arrow.down` (14, compress) · `arrow.triangle.2.circlepath` (convert) · `square.resize` (14, resize) · `link` · `doc.on.doc` · `square.and.arrow.up` · `folder` · `eye` · `trash` · `archivebox` · `wand.and.stars` · `arrow.uturn.backward` (undo) · `arrow.up.forward.app` (11, open) · `checkmark` · `doc` · `doc.richtext` · `eye.slash` · `film` · `scissors` · `text.viewfinder` (12) · `xmark` · `exclamationmark` (pipeline steps and states) |
+| HUD, power | `speaker.wave.3.fill` (variable value) · `speaker.slash.fill` · `sun.max.fill` · `sun.min.fill` · `light.max` · `light.min` · `bolt.fill` · `battery.100percent.bolt` · `battery.25percent` · `battery.0percent` (14) · `exclamationmark` · `powerplug.fill` (12, plugged in, not charging) |
+| Devices | `airpodspro` (11) · `airpodsmax` (11.3) · `airpods` ⚑ · `airpods.gen3` ⚑ · `beats.headphones` ⚑ · `earbuds` (12) · `headphones` · `computermouse` (12) · `magicmouse` ⚑ (12) · `keyboard` · `rectangle.and.hand.point.up.left.filled` (12, trackpad) · `hifispeaker` · `gamecontroller` · `display` · `dot.radiowaves.left.and.right` (any other Bluetooth device) |
+| Settings, onboarding | `gearshape.fill` · `paintbrush.fill` · `keyboard` · `capsule.tophalf.filled` (12) · `speaker.wave.2.fill` · `hand.draw.fill` · `hand.raised.fill` · `info.circle.fill` · `hand.wave.fill` · `cursorarrow.motionlines` · `cursorarrow.click` (11) · `sparkles` · `accessibility` ⚑ (14) · `laptopcomputer` · `display` · `exclamationmark.triangle.fill` (a warning row) · `minus.circle.fill` (remove a list entry) |
 | Menu bar fallback | `rectangle.topthird.inset.filled` (12) |
 
-- ⚑ **Restricted:** these may only refer to that product or feature: AirPods, Beats headphones, Apple's Accessibility features. Use them only for exactly that.
+- ⚑ **Restricted:** these may only refer to that product or feature: AirPods, Beats headphones, a Magic Mouse, Apple's Accessibility features. Use them only for exactly that.
 - **Never use** `video`, `video.fill` or any `video.*` symbol (FaceTime only), `airplay.audio` (AirPlay only; use `airplayaudio`), `macbook*` (MacBook only; use `laptopcomputer`), `safari` or `message`.
 - **Rendering:**
   - Hierarchical, white. Semibold at 13 pt in the band; medium in the Nook; transport glyphs at 48 % of the button size.
-  - Symbols animate only on a state change: `.contentTransition(.symbolEffect(.replace))` for toggles, `.symbolEffect(.bounce)` for an armed drop target, a device change or a completed step. There are no looping symbol effects, and none under Reduce Motion.
+  - Symbols animate only on a state change: `.contentTransition(theme.symbolReplace)` for toggles, `.crannySymbolBounce(value:)` for an armed drop target, a device change or a completed step. There are no looping symbol effects, and none under Reduce Motion or Motion ▸ Instant (both helpers check `theme.animatesSymbols`).
+  - Sizes come from `CrannySymbolStyle` (`.crannySymbol(_:)`): `band` 13 semibold × notch unit · `nook` 13 medium · `peekVisual` 18 semibold · `widgetState` 20 medium · `dropZone` 22 medium (Nook styles follow Text Size).
 
 ### 14.2 Haptics
 
@@ -2494,14 +2577,13 @@ public struct NotchSurface<Content: View>: View {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .clipShape(shape)
-            if openness > 0 || theme.increaseContrast {
-                // HIG key line: separates the shape from dark windows. Never along the screen
-                // edge or beside the menu bar: masked to start below the band.
-                shape.stroke((keylineTint ?? .white).opacity(theme.increaseContrast ? p.spec.keyline : p.spec.keyline * openness),
-                             lineWidth: StrokeWidth.keyline)
-                    .mask(bandMask(fadeTo: 1))
-                    .allowsHitTesting(false)
-            }
+            // HIG key line: separates the shape from dark windows. Never along the screen
+            // edge or beside the menu bar: masked to start below the band. Always present (alpha 0
+            // while closed), so it morphs with the shape instead of appearing at the final size.
+            shape.stroke((keylineTint ?? .white).opacity(theme.increaseContrast ? p.spec.keyline : p.spec.keyline * openness),
+                         lineWidth: StrokeWidth.keyline)
+                .mask(bandMask(fadeTo: 1))
+                .allowsHitTesting(false)
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text(verbatim: "Cranny"))   // a name, not a key (a key would be looked up in Bundle.main)
@@ -2658,13 +2740,13 @@ public struct CrannyIconButtonStyle: ButtonStyle {
         var body: some View {
             let p = theme.palette
             let fill: Color = switch role {
-            case .prominent: .white
+            case .prominent: p.prominentFill
             case .filled: configuration.isPressed ? p.controlPressed : hovered ? p.controlHover : p.control
             case .plain: configuration.isPressed ? p.controlPressed : hovered ? p.control : .clear
             }
             configuration.label
                 .font(.system(size: (size * 0.48).rounded(), weight: .semibold))
-                .foregroundStyle(role == .prominent ? Color.black : p.label)
+                .foregroundStyle(role == .prominent ? p.onProminent : p.label)
                 .frame(width: size, height: size)
                 .background(CrannyButtonShape(theme.buttonShape).fill(fill))
                 .contentShape(CrannyButtonShape(theme.buttonShape))
@@ -2766,8 +2848,8 @@ public struct DropZone: View {
         let p = theme.palette, r = theme.grid.innerRadius
         let armed = tint ?? theme.accentColor
         VStack(spacing: Space.s) {
-            Image(systemName: symbol).font(.system(size: 22, weight: .medium))
-                .symbolEffect(.bounce, value: targeted)
+            Image(systemName: symbol).crannySymbol(.dropZone)
+                .crannySymbolBounce(value: targeted)        // armed: one bounce; none under Reduce Motion / Instant
             Text(title).crannyFont(.caption).multilineTextAlignment(.center)
         }
         .foregroundStyle(targeted ? p.label : p.secondaryLabel)
@@ -2780,6 +2862,31 @@ public struct DropZone: View {
         .scaleEffect(targeted && !theme.reduceMotion ? 1.03 : 1)
         .animation(theme.animation(.commit), value: targeted)
         .accessibilityElement(children: .combine)
+    }
+}
+
+// MARK: - Symbol effects (DESIGN.md §14.1: only on a state change; none under Reduce Motion or Instant)
+
+public extension View {
+    /// `.symbolEffect(.bounce, options:, value:)` that plays only while `theme.animatesSymbols`. Under Reduce Motion
+    /// or Motion ▸ Instant the effect is left out (not fed a constant), so switching either setting later does not
+    /// look like a change and bounce a glyph that did not change.
+    func crannySymbolBounce<V: Equatable>(value: V, options: SymbolEffectOptions = .default) -> some View {
+        modifier(SymbolBounceModifier(value: value, options: options))
+    }
+}
+
+struct SymbolBounceModifier<V: Equatable>: ViewModifier {
+    @Environment(\.cranny) private var theme
+    let value: V
+    let options: SymbolEffectOptions
+
+    func body(content: Content) -> some View {
+        if theme.animatesSymbols {
+            content.symbolEffect(.bounce, options: options, value: value)
+        } else {
+            content
+        }
     }
 }
 ```
@@ -2917,7 +3024,7 @@ public nonisolated struct EffectBudget: Equatable, Sendable {
         self.isOpen = isOpen; self.onScreen = onScreen; self.lowPower = lowPower
         self.fullScreenFront = fullScreenFront; self.reduceMotion = reduceMotion; self.onBattery = onBattery
     }
-    /// nil = paused → TimelineView stops ticking (zero cost). Reduce Motion FREEZES a resting frame.
+    /// nil = paused: the effect's clock (`EffectClock`) stops (zero cost). Reduce Motion FREEZES a resting frame.
     public var minimumInterval: Double? {
         guard isOpen, onScreen, !fullScreenFront, !reduceMotion, !lowPower else { return nil }
         return onBattery ? 1.0 / 20 : 1.0 / 30

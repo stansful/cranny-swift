@@ -15,9 +15,4 @@ import Foundation
     func sleep(for duration: Duration) async throws { try await Task.sleep(for: duration) }
 }
 
-nonisolated extension Duration {
-    /// Seconds as a `TimeInterval` (for `Date` arithmetic).
-    var timeInterval: TimeInterval {
-        Double(components.seconds) + Double(components.attoseconds) / 1e18
-    }
-}
+// `Duration.timeInterval` (seconds for `Date` arithmetic) is CrannyCore's.

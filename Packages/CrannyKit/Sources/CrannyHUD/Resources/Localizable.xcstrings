@@ -100,17 +100,6 @@
         }
       }
     },
-    "Changed from the default" : {
-      "comment" : "Settings ▸ HUD: tooltip of the dot before a changed row",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Отличается от стандартного"
-          }
-        }
-      }
-    },
     "Colors" : {
       "comment" : "Settings ▸ HUD: picker for the level bar's colour",
       "localizations" : {
@@ -155,17 +144,6 @@
         }
       }
     },
-    "Denied" : {
-      "comment" : "Settings ▸ HUD: Accessibility status pill",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Запрещено"
-          }
-        }
-      }
-    },
     "Duration" : {
       "comment" : "Settings ▸ HUD: how long the HUD stays",
       "localizations" : {
@@ -184,17 +162,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Для клавиатур с клавишами подсветки."
-          }
-        }
-      }
-    },
-    "Granted" : {
-      "comment" : "Settings ▸ HUD: Accessibility status pill",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Разрешено"
           }
         }
       }
@@ -320,17 +287,6 @@
         }
       }
     },
-    "Not yet" : {
-      "comment" : "Settings ▸ HUD: Accessibility status pill (not granted yet)",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ещё нет"
-          }
-        }
-      }
-    },
     "Open System Settings" : {
       "comment" : "Settings ▸ HUD: button that opens Privacy & Security ▸ Accessibility",
       "localizations" : {
@@ -360,17 +316,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Заменять системный индикатор громкости и яркости. Cranny использует доступ только для этих клавиш."
-          }
-        }
-      }
-    },
-    "Reset to Default" : {
-      "comment" : "Settings ▸ HUD: row context menu item",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Сбросить до стандартного"
           }
         }
       }

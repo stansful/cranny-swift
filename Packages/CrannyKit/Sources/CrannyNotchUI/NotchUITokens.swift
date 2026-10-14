@@ -1,8 +1,7 @@
 // CrannyNotchUI/NotchUITokens.swift — the few values NotchUI's own chrome needs that Core's token tables do not
 // carry, named in one place instead of literals in the views (ARCHITECTURE.md §9.4): SF Symbol glyph styles
-// (DESIGN.md §14.1 "semibold at 13 pt in the band; medium in the Nook") and the delight curves of DESIGN.md
-// §5.5–§5.6. Core change request: move `DelightMotion` into `CrannyMotion` (and a glyph table into Typography)
-// when Core next changes; until then this file is the single source for NotchUI.
+// (DESIGN.md §14.1 "semibold at 13 pt in the band; medium in the Nook") of the header, palette and card chrome.
+// Shared glyph styles are Core's `CrannySymbolStyle`; the delight curves are Core's `CrannyMotion.Delight`.
 import CrannyCore
 import SwiftUI
 
@@ -28,7 +27,7 @@ enum NotchGlyph {
         case .paletteRow: .system(size: 12, weight: .medium)
         case .overflow: .system(size: 11, weight: .medium)
         case .removeBadge: .system(size: 10, weight: .medium)
-        case .placeholder: .system(size: 20, weight: .medium)
+        case .placeholder: CrannySymbolStyle.widgetState.font()
         }
     }
 }
@@ -38,17 +37,5 @@ extension View {
     func notchGlyph(_ glyph: NotchGlyph) -> some View { font(glyph.font) }
 }
 
-/// Curves of the one-shot delights (DESIGN.md §5.5–§5.6). They play only when the owner allows a delight (never
-/// under Instant), and the Reduce Motion variants use `fade`.
-nonisolated enum DelightMotion {
-    /// The song-change energy ripple: energy + 0.5 · (1 − t/lifetime)², decaying fast then slow.
-    static func ripple(lifetime: Double) -> Animation { .timingCurve(0.33, 0.67, 0.67, 1, duration: lifetime) }
-    /// First light: the light fills outward from the camera over the moment's lifetime.
-    static func firstLight(lifetime: Double) -> Animation { .easeOut(duration: lifetime) }
-    /// The gulp: the bottom edge rises 3 pt in 0.07 s …
-    static let gulpSwallow = Animation.easeIn(duration: Gulp.swallow)
-    /// … and lands back over the rest of the 0.25-s moment, without bounce (it shrinks toward the hardware).
-    static let gulpRecover = Animation.spring(duration: Gulp.recover, bounce: 0)
-    /// Reduce Motion variants (static ember glow, instant rim): colour only, fading out over the lifetime.
-    static func fade(lifetime: Double) -> Animation { .easeIn(duration: lifetime) }
-}
+/// The delight curves of DESIGN.md §5.5–§5.6 are Core's (`CrannyMotion.Delight`).
+typealias DelightMotion = CrannyMotion.Delight

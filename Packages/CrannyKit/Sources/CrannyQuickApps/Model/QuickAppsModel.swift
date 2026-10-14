@@ -30,9 +30,8 @@ nonisolated private let log = Log.logger(.quickApps)
     /// Whether the open panel is pinned (from `NotchEvent.pinned`): opening an app then leaves it open.
     private(set) var isPinned = false
 
-    /// Posts a VoiceOver announcement (tests record them instead).
-    @ObservationIgnored var announce: @MainActor (String) -> Void = { AccessibilityNotification.Announcement($0).post() }
-    @ObservationIgnored private var announcements = AnnouncementLimiter()
+    /// VoiceOver announcements, with the app-wide limit of one alert or result per 10 s (`services.announcer`).
+    @ObservationIgnored private let announcer: Announcer
     /// The tiles each launcher on screen shows as tiles (not in "+N"), per launcher view (`present(_:by:)`).
     @ObservationIgnored private var presentedTiles: [UUID: Set<TileID>] = [:]
     @ObservationIgnored private var observations: [ObservationToken] = []
@@ -47,6 +46,7 @@ nonisolated private let log = Log.logger(.quickApps)
         appControl = services.app
         environment = services.environment
         haptics = services.haptics
+        announcer = services.announcer
         self.launcher = launcher
         catalog = AppCatalog(resolver: resolver)
         self.running = running
@@ -211,7 +211,7 @@ nonisolated private let log = Log.logger(.quickApps)
     private func reportInNotch(_ entry: ShortcutEntry, symbol: String, label: String, announcement: String) {
         guard !isOnScreenAsTile(.shortcut(entry.id)) else { return }
         notch.flash(symbol: symbol, label: label)
-        if announcements.allows(at: Date()) { announce(announcement) }
+        announcer.announce(announcement, kind: .result)
     }
 
     // MARK: - Tiles on screen

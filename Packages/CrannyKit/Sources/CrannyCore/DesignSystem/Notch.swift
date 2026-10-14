@@ -165,6 +165,8 @@ public nonisolated struct NotchLayout: Equatable, Sendable {
     public var grid: NookGrid
 
     public static let peekRow: CGFloat = 52
+    /// The visual at the start of a peek row: artwork, ring or glyph well (DESIGN.md §9.3).
+    public static let peekVisual: CGFloat = 40
     public static let satelliteDiameter: CGFloat = 24
 
     public init(metrics: NotchMetrics, noNotchStyle: NoNotchStyle = .floatingIsland,

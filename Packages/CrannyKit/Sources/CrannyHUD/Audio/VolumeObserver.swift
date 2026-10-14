@@ -7,6 +7,7 @@
 // when the default output device changes. It runs only while Cranny replaces the system HUD.
 import AudioToolbox
 import CoreAudio
+import CrannyCore
 import Foundation
 
 /// What the observer reports. `deviceChanged` is set when the default output switched to another device.
@@ -42,8 +43,8 @@ nonisolated final class VolumeObserver: VolumeObserving, @unchecked Sendable {
             self.onChange = onChange
             let listener: AudioObjectPropertyListenerBlock = { [weak self] _, _ in self?.attachToDefaultDevice(changed: true) }
             defaultDeviceListener = listener
-            var address = AudioOutput.defaultDeviceAddress
-            AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, queue, listener)
+            var address = AudioHAL.defaultOutputDeviceAddress
+            AudioObjectAddPropertyListenerBlock(AudioHAL.system, &address, queue, listener)
             attachToDefaultDevice(changed: false)
         }
     }
@@ -53,8 +54,8 @@ nonisolated final class VolumeObserver: VolumeObserving, @unchecked Sendable {
             guard onChange != nil else { return }
             detachLevelListeners()
             if let listener = defaultDeviceListener {
-                var address = AudioOutput.defaultDeviceAddress
-                AudioObjectRemovePropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, queue, listener)
+                var address = AudioHAL.defaultOutputDeviceAddress
+                AudioObjectRemovePropertyListenerBlock(AudioHAL.system, &address, queue, listener)
             }
             defaultDeviceListener = nil
             onChange = nil
@@ -69,13 +70,13 @@ nonisolated final class VolumeObserver: VolumeObserving, @unchecked Sendable {
     private func attachToDefaultDevice(changed: Bool) {
         guard onChange != nil else { return }
         detachLevelListeners()
-        guard let next = AudioOutput.defaultDevice() else { return }
+        guard let next = AudioHAL.defaultOutputDevice() else { return }
         if changed && next != device { deviceChanged = true }
         device = next
         let listener: AudioObjectPropertyListenerBlock = { [weak self] _, _ in self?.coalesce() }
         levelListener = listener
         for selector in Self.levelSelectors {
-            var address = AudioOutput.address(selector)
+            var address = AudioHAL.address(selector, scope: kAudioDevicePropertyScopeOutput)
             AudioObjectAddPropertyListenerBlock(next, &address, queue, listener)
         }
         if changed { coalesce() }
@@ -84,7 +85,7 @@ nonisolated final class VolumeObserver: VolumeObserving, @unchecked Sendable {
     private func detachLevelListeners() {
         guard device != kAudioObjectUnknown, let listener = levelListener else { return }
         for selector in Self.levelSelectors {
-            var address = AudioOutput.address(selector)
+            var address = AudioHAL.address(selector, scope: kAudioDevicePropertyScopeOutput)
             AudioObjectRemovePropertyListenerBlock(device, &address, queue, listener)
         }
         levelListener = nil
@@ -101,9 +102,9 @@ nonisolated final class VolumeObserver: VolumeObserving, @unchecked Sendable {
 
     private func report() {
         guard let onChange, device != kAudioObjectUnknown else { return }
-        let volume = AudioOutput.float(device, AudioOutput.address(kAudioHardwareServiceDeviceProperty_VirtualMainVolume))
-        let muted = AudioOutput.uint32(device, AudioOutput.address(kAudioDevicePropertyMute)).map { $0 != 0 } ?? false
-        let info = OutputDevice(id: device, name: AudioOutput.name(device) ?? "", transport: AudioOutput.transportType(device))
+        let volume = AudioHAL.float32(device, OutputLevelAddress.volume)
+        let muted = AudioHAL.uint32(device, OutputLevelAddress.mute).map { $0 != 0 } ?? false
+        let info = OutputDevice(id: device, name: AudioHAL.name(device) ?? "", transport: AudioHAL.transportType(device))
         let changed = deviceChanged
         deviceChanged = false
         onChange(VolumeObservation(level: volume.map(Double.init), isMuted: muted, device: info, deviceChanged: changed))

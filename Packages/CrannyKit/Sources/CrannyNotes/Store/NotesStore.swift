@@ -58,15 +58,12 @@ nonisolated final class NotesStore: Sendable {
         let indexURL = dir.appending(path: Self.indexName)
         var corrupt = false
         var index = NotesIndex(notes: [])
-        if let data = try Self.contentsIfPresent(indexURL) {
-            do {
-                index = try Self.decoder.decode(NotesIndex.self, from: data)
-            } catch {
-                corrupt = true
-                let aside = indexURL.appendingPathExtension("corrupt-\(Int(Date().timeIntervalSince1970))")
-                try? fm.moveItem(at: indexURL, to: aside)
-                log.error("index.json is corrupt, moved aside: \(error.localizedDescription, privacy: .public)")
-            }
+        // Core's document file: an unreadable index throws (never "absent"), a corrupt one is moved aside under a
+        // unique name, and a failed move throws instead of leaving it where the next save would replace it.
+        switch try JSONDocumentFile<NotesIndex>(url: indexURL, dateCoding: .iso8601).load() {
+        case .loaded(let saved): index = saved
+        case .missing: break
+        case .corrupt: corrupt = true
         }
         let files = try fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey, .creationDateKey])
         var bodies: [UUID: URL] = [:]
@@ -157,10 +154,5 @@ nonisolated final class NotesStore: Sendable {
         e.outputFormatting = [.prettyPrinted, .sortedKeys]
         e.dateEncodingStrategy = .iso8601
         return e
-    }
-    private static var decoder: JSONDecoder {
-        let d = JSONDecoder()
-        d.dateDecodingStrategy = .iso8601
-        return d
     }
 }

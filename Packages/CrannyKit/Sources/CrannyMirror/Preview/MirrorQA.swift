@@ -17,8 +17,7 @@ enum MirrorQA {
 
     /// The scenario requested on the command line, if any.
     static func scenario(arguments: [String] = ProcessInfo.processInfo.arguments) -> Scenario? {
-        guard let i = arguments.firstIndex(of: "--qa-mirror"), i + 1 < arguments.count else { return nil }
-        return Scenario(rawValue: arguments[i + 1])
+        LaunchArguments(arguments).value(after: "--qa-mirror").flatMap(Scenario.init(rawValue:))
     }
 
     /// A model wired to sample parts for `scenario`. Running scenarios start as soon as the widget is visible.

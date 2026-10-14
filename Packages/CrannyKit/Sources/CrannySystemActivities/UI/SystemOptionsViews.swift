@@ -27,11 +27,11 @@ struct LowBatteryOptionsView: View {
                     Text(verbatim: SystemCopy.percent(value)).tag(value)
                 }
             } label: {
-                OptionLabel(title: SystemCopy.firstWarning, isDefault: thresholds.firstWarning == defaults.firstWarning)
+                OptionLabel(title: SystemCopy.firstWarning)
             }
             .pickerStyle(.menu)
-            .contextMenu {
-                ResetButton { settings[key] = thresholds.resettingFirstWarning().values }
+            .crannySettingRow(isDefault: thresholds.firstWarning == defaults.firstWarning) {
+                settings[key] = thresholds.resettingFirstWarning().values
             }
             Picker(selection: Binding(get: { thresholds.final ?? 10 },
                                       set: { settings[key] = thresholds.replacingFinal($0).values })) {
@@ -39,12 +39,11 @@ struct LowBatteryOptionsView: View {
                     Text(verbatim: SystemCopy.percent(value)).tag(value)
                 }
             } label: {
-                OptionLabel(title: SystemCopy.finalWarning, footnote: SystemCopy.finalWarningFootnote,
-                            isDefault: thresholds.final == defaults.final)
+                OptionLabel(title: SystemCopy.finalWarning, footnote: SystemCopy.finalWarningFootnote)
             }
             .pickerStyle(.segmented)
-            .contextMenu {
-                ResetButton { settings[key] = thresholds.resettingFinal().values }
+            .crannySettingRow(isDefault: thresholds.final == defaults.final) {
+                settings[key] = thresholds.resettingFinal().values
             }
         }
     }
@@ -66,13 +65,11 @@ struct BluetoothOptionsView: View {
                     Task { await permissions.request(.bluetooth) }
                 }
             })) {
-                OptionLabel(title: SystemCopy.showAllDevices, footnote: SystemCopy.showAllDevicesFootnote, isDefault: settings.isDefault(key))
+                OptionLabel(title: SystemCopy.showAllDevices, footnote: SystemCopy.showAllDevicesFootnote)
             }
             .toggleStyle(.switch)
             .controlSize(.small)
-            .contextMenu {
-                ResetButton { settings.reset(key) }
-            }
+            .crannySettingRow(settings, key)
             if settings[key] && (status == .denied || status == .restricted) {
                 LabeledContent {
                     Button { permissions.openSystemSettings(.bluetooth) } label: { Text(verbatim: SystemCopy.openSystemSettings) }
@@ -90,33 +87,19 @@ struct BluetoothOptionsView: View {
     }
 }
 
-/// A row's context menu: Reset to Default (DESIGN.md §11.3).
-private struct ResetButton: View {
-    let reset: () -> Void
-    var body: some View {
-        Button(action: reset) { Text(verbatim: SystemCopy.resetToDefault) }
-    }
-}
-
-/// A row label: the changed-value dot (6 pt, accent) before the title, and an optional `.secondary` footnote.
+/// A row label: the title and an optional `.secondary` footnote. The changed-value dot and Reset to Default are
+/// Core's row conventions (`crannySettingRow`, DESIGN.md §11.3), applied to the whole row.
 private struct OptionLabel: View {
     let title: String
     var footnote: String?
-    let isDefault: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 6) {
-                Circle().fill(.tint).frame(width: 6, height: 6)
-                    .opacity(isDefault ? 0 : 1)
-                    .accessibilityHidden(true)
-                Text(verbatim: title)
-            }
+            Text(verbatim: title)
             if let footnote {
                 Text(verbatim: footnote)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
-                    .padding(.leading, 12)
             }
         }
     }

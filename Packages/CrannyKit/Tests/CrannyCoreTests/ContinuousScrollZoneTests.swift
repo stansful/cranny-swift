@@ -3,7 +3,7 @@ import Foundation
 import Testing
 @testable import CrannyCore
 
-// Additive Core change of WP7: continuous (value) scroll zones never commit (Additions/WP07-ContinuousScrollZone.swift).
+// Continuous (value) scroll zones never commit (`crannyContinuousScrollZone`, `SwipeTracker.continuous`).
 
 private func scrollSample(_ phase: SwipePhase, dy: CGFloat = 0, at t: TimeInterval) -> ScrollSample {
     ScrollSample(phase: phase, isMomentum: false, deltaX: 0, deltaY: dy, isPrecise: true,

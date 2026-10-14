@@ -8,15 +8,21 @@ import SwiftUI
 /// A typed settings key. Declare keys as `static let` in the owning module's `<Module>Settings` enum.
 /// Stored under "cranny.<module>.<name>" as JSON data. Never rename a key; add a new one and migrate.
 public nonisolated struct SettingKey<Value: Codable & Sendable & Equatable>: Sendable, Hashable {
+    /// The owning namespace.
     public let module: ModuleID
+    /// The key's name within the namespace.
     public let name: String
+    /// The value until the user changes it.
     public let defaultValue: Value
+    /// A key `"<module>.<name>"` with its default.
     public init(_ module: ModuleID, _ name: String, default defaultValue: Value) {
         self.module = module; self.name = name; self.defaultValue = defaultValue
     }
     /// "timer.presets"
     public var id: String { "\(module.rawValue).\(name)" }
+    /// Keys are equal when their ids are.
     public static func == (a: Self, b: Self) -> Bool { a.id == b.id }
+    /// Hashes the id.
     public func hash(into h: inout Hasher) { h.combine(id) }
 }
 
@@ -27,7 +33,10 @@ public nonisolated struct SettingKey<Value: Codable & Sendable & Equatable>: Sen
     init(_ value: Value) { self.value = value }
 }
 
+/// Typed, namespaced, observable settings (`services.settings`): reading a key inside a SwiftUI body or `observe`
+/// tracks that key only.
 @MainActor public final class SettingsStore {
+    /// Prefix of every stored key ("cranny.timer.presets").
     public static let keyPrefix = "cranny."
     private let defaults: UserDefaults
     private var boxes: [String: AnyObject] = [:]
@@ -35,9 +44,11 @@ public nonisolated struct SettingKey<Value: Codable & Sendable & Equatable>: Sen
     private let encoder = JSONEncoder()
     private let decoder = JSONDecoder()
 
-    /// The app uses `.standard` (domain = bundle id). Tests and previews pass `UserDefaults(suiteName:)`.
+    /// The app uses `.standard` (domain = bundle id). Tests and previews pass `InMemoryDefaults()`, never a
+    /// `UserDefaults(suiteName:)`, which would leave a plist in ~/Library/Preferences.
     public init(defaults: UserDefaults = .standard) { self.defaults = defaults }
 
+    /// The value of `key`; setting the default removes it from disk.
     public subscript<V>(key: SettingKey<V>) -> V {
         get { box(key).value }
         set {
@@ -59,6 +70,7 @@ public nonisolated struct SettingKey<Value: Codable & Sendable & Equatable>: Sen
 
     /// Drives the "changed from default" dot and per-row "Reset to Default" (DESIGN.md §11.3).
     public func isDefault<V>(_ key: SettingKey<V>) -> Bool { self[key] == key.defaultValue }
+    /// Restores the default of one key.
     public func reset<V>(_ key: SettingKey<V>) { self[key] = key.defaultValue }
 
     /// "Reset ‹Pane›…": every key of a namespace (only keys already read in this session are live-updated;
@@ -69,6 +81,7 @@ public nonisolated struct SettingKey<Value: Codable & Sendable & Equatable>: Sen
 
     /// Opaque copy of every persisted Cranny key: take one before "Reset All" so the 10-s Undo can restore it.
     public nonisolated struct Snapshot: Sendable { fileprivate let values: [String: Data] }
+    /// Copies every stored Cranny key.
     public func snapshot() -> Snapshot {
         var values: [String: Data] = [:]
         for (key, value) in defaults.dictionaryRepresentation() where key.hasPrefix(Self.keyPrefix) {

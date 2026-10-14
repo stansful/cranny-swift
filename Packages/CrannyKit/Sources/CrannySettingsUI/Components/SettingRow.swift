@@ -1,7 +1,7 @@
 // CrannySettingsUI/Components/SettingRow.swift — the conventions every Settings row shares (DESIGN.md §11.3):
 // a 6-pt accent dot before the label marks a changed value, the row's context menu (and a VoiceOver action)
-// has "Reset to Default", a one-line footnote in `.secondary` explains non-obvious rows, and a search result
-// or deep link washes the row with the accent for 1 s.
+// has "Reset to Default" (both from CrannyCore, shared with the module panes), a one-line footnote in `.secondary`
+// explains non-obvious rows, and a search result or deep link washes the row with the accent for 1 s.
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -15,11 +15,7 @@ struct RowLabel: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(verbatim: title)
-                .overlay(alignment: .leading) {
-                    ChangedDot()
-                        .opacity(isChanged ? 1 : 0)
-                        .offset(x: -(SettingsMetrics.changedDot + 4))
-                }
+                .crannyChangedDot(isChanged)                    // Core's dot (DESIGN.md §11.3)
             if let footnote {
                 Text(verbatim: footnote)
                     .font(.footnote)
@@ -27,16 +23,6 @@ struct RowLabel: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-    }
-}
-
-/// The 6-pt accent dot of a changed value. Decorative: the row says "Changed" to VoiceOver instead.
-struct ChangedDot: View {
-    var body: some View {
-        Circle()
-            .fill(.tint)
-            .frame(width: SettingsMetrics.changedDot, height: SettingsMetrics.changedDot)
-            .accessibilityHidden(true)
     }
 }
 
@@ -59,8 +45,8 @@ extension View {
     }
 }
 
-/// Context menu "Reset to Default" (disabled at the default) and the same VoiceOver action (offered only when there is
-/// something to reset), plus the search target.
+/// Core's "Reset to Default" (context menu, disabled at the default; VoiceOver action and hint), plus the search
+/// target.
 struct SettingRowModifier<Menu: View>: ViewModifier {
     let info: SettingsRowInfo
     let isDefault: Bool
@@ -70,25 +56,7 @@ struct SettingRowModifier<Menu: View>: ViewModifier {
     func body(content: Content) -> some View {
         content
             .searchTarget(info)
-            .contextMenu {
-                if Menu.self != EmptyView.self {
-                    menu
-                    Divider()
-                }
-                Button(action: reset) { Self.resetTitle }
-                    .disabled(isDefault)
-            }
-            .accessibilityActions {
-                if !isDefault {
-                    Button(action: reset) { Self.resetTitle }
-                }
-            }
-            .accessibilityHint(isDefault ? Text(verbatim: "")
-                               : Text("Changed from the default.", bundle: .module, comment: "Settings: VoiceOver hint of a row whose value differs from its default"))
-    }
-
-    private static var resetTitle: Text {
-        Text("Reset to Default", bundle: .module, comment: "Settings: row context menu and VoiceOver action")
+            .crannyResetToDefault(isDefault: isDefault, reset: reset) { menu }
     }
 }
 

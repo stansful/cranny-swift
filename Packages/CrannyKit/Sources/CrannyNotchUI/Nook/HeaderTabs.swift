@@ -168,7 +168,7 @@ private struct TabSegmentStyle: ButtonStyle {
             let p = theme.palette
             configuration.label
                 .foregroundStyle(isSelected ? p.label : p.secondaryLabel)
-                .padding(.horizontal, Space.m + 2)
+                .padding(.horizontal, Space.m)
                 .frame(minWidth: HitTarget.band.width)
                 .frame(height: TabSegmentStyle.height)
                 .background {

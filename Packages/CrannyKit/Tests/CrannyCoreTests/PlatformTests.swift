@@ -77,10 +77,44 @@ private struct Document: Codable, Equatable, Sendable {
     #expect(ProbeModule.launched == ["probe"])
 }
 
+@MainActor private enum SlowModule: FeatureModule {
+    static var id: ModuleID { "slow" }
+    static func register(in registry: ModuleRegistry) {
+        registry.onLaunch {
+            log.append("slow.start")
+            try? await Task.sleep(for: .milliseconds(300))            // file I/O on a slow volume
+            log.append("slow.end")
+        }
+        registry.onLaunch { log.append("slow.second") }
+    }
+    static var log: [String] = []
+}
+
+@MainActor private enum QuickModule: FeatureModule {
+    static var id: ModuleID { "quick" }
+    static func register(in registry: ModuleRegistry) {
+        registry.onLaunch { SlowModule.log.append("quick") }          // the HUD's event tap: synchronous
+    }
+}
+
+@MainActor @Test func launchHooksRunConcurrentlyAndRecordWhoFinished() async throws {
+    let registry = ModuleRegistry(services: .preview())
+    registry.register(SlowModule.self)
+    registry.register(QuickModule.self)
+    #expect(registry.launchedModules.isEmpty)
+    await registry.runLaunchHooks()
+    // A later module's synchronous start does not wait for an earlier module's I/O.
+    let quick = try #require(SlowModule.log.firstIndex(of: "quick"))
+    let slowEnd = try #require(SlowModule.log.firstIndex(of: "slow.end"))
+    #expect(quick < slowEnd)
+    #expect(SlowModule.log.first == "slow.start")                      // still started in registration order
+    #expect(registry.launchedModules == ["slow", "quick"])             // every hook finished (both of "slow")
+}
+
 // MARK: - Settings value types
 
 @MainActor @Test func settingsRoundTripNestedKeyedValues() throws {
-    let defaults = try #require(UserDefaults(suiteName: "cranny.test.\(UUID().uuidString)"))
+    let defaults = InMemoryDefaults()
     let a = SettingsStore(defaults: defaults)
     a[CoreSettings.shortcuts] = [.openNook: KeyCombo.openNookDefault, .togglePin: nil]   // nil = explicitly off
     a[CoreSettings.displaySelection] = .custom(["37D8832A-2D66-02CA-B9F7-8F30A301B230"])
@@ -109,8 +143,62 @@ private struct Document: Codable, Equatable, Sendable {
 @Test func effectClockKeepsItsCadenceAndNeverBursts() {
     let clock = ContinuousClock()
     let start = clock.now
-    let next = EffectClock<EmptyView>.nextDeadline(after: start, now: start.advanced(by: .milliseconds(5)), interval: 1.0 / 30)
+    let next = FramePacing.nextDeadline(after: start, now: start.advanced(by: .milliseconds(5)), interval: 1.0 / 30)
     #expect(next == start.advanced(by: .seconds(1.0 / 30)))                          // on time: one interval later
     let late = start.advanced(by: .seconds(2))                                         // woke from sleep 2 s late
-    #expect(EffectClock<EmptyView>.nextDeadline(after: start, now: late, interval: 0.05) == late.advanced(by: .seconds(0.05)))
+    #expect(FramePacing.nextDeadline(after: start, now: late, interval: 0.05) == late.advanced(by: .seconds(0.05)))
+}
+
+@Test func alignedClockWakesWhenTheShownValueChanges() {
+    let anchor = Date(timeIntervalSinceReferenceDate: 800_000_000)                    // an event's start
+    // 4 min 30 s before the start ("in 5m"): next change at 4 min before, plus 20 ms.
+    #expect(AlignedClock<EmptyView>.nextTick(after: anchor.addingTimeInterval(-270), anchor: anchor)
+            == anchor.addingTimeInterval(-240 + 0.02))
+    #expect(AlignedClock<EmptyView>.nextTick(after: anchor.addingTimeInterval(190), anchor: anchor)
+            == anchor.addingTimeInterval(240 + 0.02))
+    // Default anchor: wall-clock minutes (the reference date is on a minute boundary in every time zone).
+    let date = Date(timeIntervalSinceReferenceDate: 60 * 1000 + 41)
+    #expect(AlignedClock<EmptyView>.nextTick(after: date, anchor: Date(timeIntervalSinceReferenceDate: 0))
+            == Date(timeIntervalSinceReferenceDate: 60 * 1001 + 0.02))
+    #expect(AlignedClock<EmptyView>.nextTick(after: anchor, anchor: anchor, period: 1) == anchor.addingTimeInterval(1.02))
+}
+
+@Test func durationsConvertToSeconds() {
+    #expect(Duration.milliseconds(1500).timeInterval == 1.5)
+    #expect(Duration.seconds(-2).timeInterval == -2)
+    #expect(Duration.zero.timeInterval == 0)
+}
+
+// MARK: - Launch arguments
+
+@Test func launchArgumentsParseValuesFlagsAndTheSnapshotRule() {
+    let a = LaunchArguments(["Cranny", "--qa-state", "open", "--qa-hints", "--qa-exit-after", "8", "--qa-tutorial", "2",
+                             "--qa-snapshot", "/tmp/Panel.PNG", "--qa-last"])
+    #expect(a.value(after: "--qa-state") == "open" && a.contains("--qa-hints") && !a.contains("--qa-other"))
+    #expect(a.double(after: "--qa-exit-after") == 8 && a.int(after: "--qa-tutorial") == 2)
+    #expect(a.int(after: "--qa-state") == nil && a.value(after: "--qa-last") == nil && a.value(after: "--nope") == nil)
+    #expect(a.qaPanelSnapshot == "/tmp/Panel.PNG" && a.qaSnapshotDirectory == nil)     // `.png` (any case): the canvas
+    let folder = LaunchArguments(["--qa-snapshot", "/tmp/shots"])
+    #expect(folder.qaPanelSnapshot == nil && folder.qaSnapshotDirectory == "/tmp/shots") // anything else: a folder
+    #expect(LaunchArguments([]).qaSnapshotDirectory == nil)
+}
+
+// MARK: - Preview stand-ins
+
+@MainActor private final class RealMedia: NookWidget {
+    let id: WidgetID = .media
+    let title = "Real media", symbol = "music.note", summary = ""
+    let sizes = WidgetSizes(minimum: 4, preferred: 5, maximum: 6)
+    func makeBody(context: WidgetContext) -> some View { EmptyView() }
+}
+
+@MainActor @Test func standInsNameTheWellKnownWidgetsAndGiveWayToRealOnes() {
+    let registry = ModuleRegistry(services: .preview())
+    registry.addPreviewStandIns()
+    #expect(registry.widgets.count == 9 && registry.widget(.todos)?.title == "To-dos")
+    #expect(registry.widget(.files)?.sizes == WidgetSizes(minimum: 3, preferred: 4, maximum: 8))
+    registry.add(widget: RealMedia())                                                   // replaces its stand-in
+    #expect(registry.widget(.media)?.title == "Real media" && registry.widgets.count == 9)
+    registry.addPreviewStandIns()                                                       // never over a real widget
+    #expect(registry.widget(.media)?.title == "Real media")
 }

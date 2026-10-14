@@ -202,13 +202,13 @@ public struct CrannyIconButtonStyle: ButtonStyle {
         var body: some View {
             let p = theme.palette
             let fill: Color = switch role {
-            case .prominent: .white
+            case .prominent: p.prominentFill
             case .filled: configuration.isPressed ? p.controlPressed : hovered ? p.controlHover : p.control
             case .plain: configuration.isPressed ? p.controlPressed : hovered ? p.control : .clear
             }
             configuration.label
                 .font(.system(size: (size * 0.48).rounded(), weight: .semibold))
-                .foregroundStyle(role == .prominent ? Color.black : p.label)
+                .foregroundStyle(role == .prominent ? p.onProminent : p.label)
                 .frame(width: size, height: size)
                 .background(CrannyButtonShape(theme.buttonShape).fill(fill))
                 .contentShape(CrannyButtonShape(theme.buttonShape))
@@ -310,8 +310,8 @@ public struct DropZone: View {
         let p = theme.palette, r = theme.grid.innerRadius
         let armed = tint ?? theme.accentColor
         VStack(spacing: Space.s) {
-            Image(systemName: symbol).font(.system(size: 22, weight: .medium))
-                .symbolEffect(.bounce, value: targeted)
+            Image(systemName: symbol).crannySymbol(.dropZone)
+                .crannySymbolBounce(value: targeted)        // armed: one bounce; none under Reduce Motion / Instant
             Text(title).crannyFont(.caption).multilineTextAlignment(.center)
         }
         .foregroundStyle(targeted ? p.label : p.secondaryLabel)
@@ -324,5 +324,30 @@ public struct DropZone: View {
         .scaleEffect(targeted && !theme.reduceMotion ? 1.03 : 1)
         .animation(theme.animation(.commit), value: targeted)
         .accessibilityElement(children: .combine)
+    }
+}
+
+// MARK: - Symbol effects (DESIGN.md §14.1: only on a state change; none under Reduce Motion or Instant)
+
+public extension View {
+    /// `.symbolEffect(.bounce, options:, value:)` that plays only while `theme.animatesSymbols`. Under Reduce Motion
+    /// or Motion ▸ Instant the effect is left out (not fed a constant), so switching either setting later does not
+    /// look like a change and bounce a glyph that did not change.
+    func crannySymbolBounce<V: Equatable>(value: V, options: SymbolEffectOptions = .default) -> some View {
+        modifier(SymbolBounceModifier(value: value, options: options))
+    }
+}
+
+struct SymbolBounceModifier<V: Equatable>: ViewModifier {
+    @Environment(\.cranny) private var theme
+    let value: V
+    let options: SymbolEffectOptions
+
+    func body(content: Content) -> some View {
+        if theme.animatesSymbols {
+            content.symbolEffect(.bounce, options: options, value: value)
+        } else {
+            content
+        }
     }
 }

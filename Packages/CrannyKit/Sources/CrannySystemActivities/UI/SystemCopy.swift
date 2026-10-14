@@ -187,9 +187,6 @@ enum SystemCopy {
         String(localized: "Open System Settings", bundle: bundle,
                comment: "Settings ▸ Live Activities ▸ Bluetooth devices: button to the Bluetooth privacy settings")
     }
-    static var resetToDefault: String {
-        String(localized: "Reset to Default", bundle: bundle, comment: "Settings ▸ Live Activities: context menu item of a system activity option")
-    }
     static var bluetoothPermissionReason: String {
         String(localized: "Shows every Bluetooth device that connects. Headphones and Magic accessories work without it.", bundle: bundle,
                comment: "Permissions pane and onboarding: why Cranny may ask for Bluetooth access")

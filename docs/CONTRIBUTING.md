@@ -132,6 +132,18 @@ need hardware or prompts are opt-in (`CRANNY_INTEGRATION=1`) and never run in CI
 shows a panel for a few seconds and re-checks R1's facts (layer 26, per-pixel pass-through, no activation)
 through window-server queries, without posting input.
 
+**Settings in tests and previews.** `CrannyServices.preview()` keeps its settings in memory; anything else that
+needs a `UserDefaults` takes `InMemoryDefaults()` (CrannyCore). Never create a `UserDefaults(suiteName:)` in a test,
+preview or sample: each suite becomes a plist in `~/Library/Preferences` as soon as one value is written, and
+`removePersistentDomain(forName:)` still leaves an empty file (a Core test fails on new uses). Earlier builds left
+thousands of such files behind; remove them once (works in zsh and bash):
+
+```sh
+find ~/Library/Preferences -maxdepth 1 -type f \( -name 'cranny.preview.*.plist' -o -name 'cranny.test.*.plist' \
+  -o -name 'cranny.hud.tests.*.plist' -o -name 'cranny.tray.tests.*.plist' -o -name 'cranny.timer.sample.*.plist' \
+  -o -name 'CrannyEffectsTests.*.plist' \) -delete
+```
+
 **Definition of done.** `scripts/check-modules.sh <YourTarget>` with zero warnings; your tests pass;
 `make strings-check` with Russian for every new key; `make build && make smoke`; previews, accessibility
 labels and Reduce Motion behaviour for every view; energy rules respected; settings keys documented in

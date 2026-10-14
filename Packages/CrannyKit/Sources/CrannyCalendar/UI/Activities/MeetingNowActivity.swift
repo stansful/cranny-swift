@@ -145,7 +145,7 @@ private struct RingTile: View {
         RoundedRectangle(cornerRadius: Radius.artPeek, style: .continuous)
             .fill(tint.opacity(0.18))
             .overlay {
-                ProgressRing(progress: progress, color: tint, lineWidth: 3).padding(Space.s + 1)
+                ProgressRing(progress: progress, color: tint, lineWidth: StrokeWidth.ringCompact).padding(Space.s)
             }
             .accessibilityHidden(true)
     }

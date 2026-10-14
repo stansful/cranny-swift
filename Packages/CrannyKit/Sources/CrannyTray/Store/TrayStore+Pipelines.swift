@@ -40,9 +40,6 @@ extension TrayStore {
                         zipNaming: settings[TraySettings.zipNaming], naming: .localized, date: now())
     }
 
-    /// All pipelines the user can run: built-ins, then their own.
-    var allPipelines: [PipelineDefinition] { BuiltinPipelines.all(userPipelines: settings[TraySettings.userPipelines]) }
-
     func title(of pipeline: PipelineDefinition) -> String {
         PipelineTitles.title(pipeline, maxDimension: settings[TraySettings.maxDimension])
     }
@@ -198,11 +195,8 @@ extension TrayStore {
 
     // MARK: VoiceOver
 
-    /// At most one announcement per 10 s (DESIGN.md §16).
+    /// A VoiceOver announcement; the live system sends it through the app-wide limit (one per 10 s, DESIGN.md §16).
     func announce(_ message: String) {
-        let time = now()
-        if let last = lastAnnouncement, time.timeIntervalSince(last) < 10 { return }
-        lastAnnouncement = time
         system.announce(message)
     }
 

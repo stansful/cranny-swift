@@ -1,13 +1,11 @@
 // CrannyTimer/Model/TimerStateFile.swift — `AppPaths/timer/state.json` (ARCHITECTURE.md §3.11: timer state is content,
 // not settings, so "Reset All Settings" keeps a running timer).
 //
-// Writes happen off the main actor (`@concurrent`) in the order the model made them: each write carries a sequence
-// number and a write older than the newest one on disk is dropped. The terminate hook writes synchronously (it must
-// finish before the process exits). Each write stages its bytes in a temporary file with no lock held; only the
-// compare-and-rename that publishes it runs under the lock, so a background write in flight delays the quit write
-// by one rename(2), never by disk I/O.
+// Built on Core's `JSONDocumentFile`: writes happen off the main actor (`@concurrent`) in the order the model made them
+// (each carries a sequence number; a write older than the newest one on disk is dropped), the terminate hook writes
+// synchronously, and only the compare-and-rename that publishes a staged file runs under the lock, so a background
+// write in flight delays the quit write by one rename(2), never by disk I/O.
 import CrannyCore
-import Darwin
 import Foundation
 import os
 
@@ -28,11 +26,10 @@ nonisolated struct TimerSnapshot: Codable, Equatable, Sendable {
 }
 
 nonisolated final class TimerStateFile: Sendable {
-    let url: URL
-    /// The sequence number of the newest snapshot on disk. Held while writing, so writes never interleave.
-    private let newestWritten = OSAllocatedUnfairLock(initialState: 0)
+    private let file: JSONDocumentFile<TimerSnapshot>
+    var url: URL { file.url }
 
-    init(url: URL) { self.url = url }
+    init(url: URL) { file = JSONDocumentFile(url: url) }
 
     /// `<directory>/state.json`.
     convenience init(directory: URL) {
@@ -40,48 +37,25 @@ nonisolated final class TimerStateFile: Sendable {
     }
 
     /// The saved snapshot, or nil if there is none. A file that cannot be decoded is moved aside
-    /// (`state.json.corrupt-<time>`) and logged, so a bad write never blocks the timer.
+    /// (`state.json.corrupt-<time>-<id>`) and logged, so a bad write never blocks the timer; a file from a newer
+    /// version is ignored but kept.
     func load() -> TimerSnapshot? {
-        guard let data = try? Data(contentsOf: url) else { return nil }
         do {
-            let snapshot = try JSONDecoder().decode(TimerSnapshot.self, from: data)
+            guard case .loaded(let snapshot) = try file.load() else { return nil }
             guard snapshot.version <= TimerSnapshot.currentVersion else {
                 log.error("state.json has newer version \(snapshot.version, privacy: .public); ignoring it")
                 return nil
             }
             return snapshot
         } catch {
-            let aside = url.appendingPathExtension("corrupt-\(Int(Date().timeIntervalSince1970))")
-            try? FileManager.default.moveItem(at: url, to: aside)
-            log.error("corrupt state.json moved aside: \(error.localizedDescription, privacy: .public)")
+            log.error("cannot read state.json: \(error.localizedDescription, privacy: .public)")
             return nil
         }
     }
 
     /// Writes `snapshot` atomically unless a newer sequence number is already on disk. Returns whether it wrote.
     @discardableResult func write(_ snapshot: TimerSnapshot, sequence: Int) throws -> Bool {
-        guard newestWritten.withLock({ sequence > $0 }) else { return false }   // already superseded: no I/O
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        let data = try encoder.encode(snapshot)
-        let directory = url.deletingLastPathComponent()
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        // Same directory as the target, so the rename below stays on one volume and is atomic.
-        let staged = directory.appending(path: ".\(url.lastPathComponent).\(UUID().uuidString).tmp",
-                                         directoryHint: .notDirectory)
-        try data.write(to: staged)
-        var published = false
-        defer { if !published { try? FileManager.default.removeItem(at: staged) } }
-        let url = self.url
-        published = try newestWritten.withLock { newest in
-            guard sequence > newest else { return false }                        // a newer write won meanwhile
-            guard rename(staged.path, url.path) == 0 else {
-                throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
-            }
-            newest = sequence
-            return true
-        }
-        return published
+        try file.write(snapshot, revision: sequence)
     }
 
     /// `write` on the global executor (never on the main actor). Failures are logged: the timer keeps working.

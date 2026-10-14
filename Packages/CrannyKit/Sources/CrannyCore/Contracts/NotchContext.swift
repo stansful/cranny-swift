@@ -12,16 +12,24 @@ public nonisolated enum NotchPhase: String, Sendable, Codable {
     case open       // the Nook
 }
 
+/// Why the Nook opened (`NotchEvent.opened`, focus and type-to-capture rules).
 public nonisolated enum OpenReason: String, Sendable, Codable {
     case hover, click, keyboard, swipe, drag, activity, programmatic, tutorial
 }
 
+/// The facts a notch view may depend on, in the environment (`@Environment(\.notchContext)`).
 public nonisolated struct NotchContext: Equatable, Sendable {
+    /// The visible presentation.
     public var phase: NotchPhase = .idle
+    /// Geometry of this display's notch and grid.
     public var layout: NotchLayout = NotchLayout(metrics: .reference)
+    /// The display the canvas is on (nil on stages and in previews).
     public var display: DisplayKey?
+    /// Why the Nook opened, while it is open.
     public var openReason: OpenReason?
+    /// The page shown while open.
     public var page: PageID?
+    /// The widget that has keyboard focus or is in a focus mode.
     public var focusedWidget: WidgetID?
     /// Settings preview stage, onboarding stage or `#Preview`: no side effects.
     public var isPreview = false
@@ -31,11 +39,13 @@ public nonisolated struct NotchContext: Equatable, Sendable {
     public var showsCommandHints = false
     /// The last interaction was the keyboard: draw `crannyFocusRing`s.
     public var keyboardNavigation = false
+    /// Closed, reference layout, no display.
     public init() {}
 }
 
 /// Named coordinate space of the fixed canvas (top-left origin). Zones report frames in it.
 public nonisolated enum NotchCoordinateSpace {
+    /// The coordinate space's name (`.named(NotchCoordinateSpace.name)`).
     public static let name = "cranny.canvas"
 }
 

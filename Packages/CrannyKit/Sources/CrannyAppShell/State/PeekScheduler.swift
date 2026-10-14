@@ -1,5 +1,6 @@
-// CrannyAppShell/State/PeekScheduler.swift — where an auto-peek may play and how VoiceOver hears about alerts
-// (ARCHITECTURE.md §4.6 step 4, §4.7, DESIGN.md §9.4, §16). Pure: the coordinator passes each display's facts.
+// CrannyAppShell/State/PeekScheduler.swift — where an auto-peek may play (ARCHITECTURE.md §4.6 step 4, §4.7,
+// DESIGN.md §9.4). Pure: the coordinator passes each display's facts. VoiceOver hears about alerts through Core's
+// `services.announcer` (one app-wide limit, DESIGN.md §16).
 import CrannyCore
 import Foundation
 
@@ -24,18 +25,5 @@ nonisolated enum PeekScheduler {
         guard !paused, let display = displays.first(where: \.isPointerDisplay) else { return nil }
         guard !display.isOpen, !display.isHidden, display.showsPeeks, display.lineup.contains(id) else { return nil }
         return display.key
-    }
-}
-
-/// VoiceOver announcements of P1 alerts: at most one per 10 s (DESIGN.md §16).
-nonisolated struct AnnouncementLimiter: Equatable, Sendable {
-    static let interval: TimeInterval = 10
-    private(set) var last: TimeInterval?
-
-    /// True (and remembers `now`) when an announcement may be posted now.
-    mutating func allow(now: TimeInterval) -> Bool {
-        if let last, now - last < Self.interval { return false }
-        last = now
-        return true
     }
 }

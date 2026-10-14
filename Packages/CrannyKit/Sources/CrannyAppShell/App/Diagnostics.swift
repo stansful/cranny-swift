@@ -6,11 +6,7 @@ import CrannyEffects
 import Foundation
 
 enum Diagnostics {
-    static func argument(_ name: String) -> String? {
-        let a = CommandLine.arguments
-        guard let i = a.firstIndex(of: name), i + 1 < a.count else { return nil }
-        return a[i + 1]
-    }
+    static func argument(_ name: String) -> String? { LaunchArguments(CommandLine.arguments).value(after: name) }
 
     static func write(to path: String, registry: ModuleRegistry) async {
         var r: [String: Any] = [:]

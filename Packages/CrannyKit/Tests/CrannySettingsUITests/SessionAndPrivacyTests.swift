@@ -107,7 +107,7 @@ import Testing
 
 /// App names and icons are looked up off the main actor, once per app; until then views show the identifier.
 @Test func appIdentitiesResolveOffTheMainActorOnce() async {
-    let identities = AppIdentities()
+    let identities = AppIdentityResolver()
     let placeholder = identities.identity(of: "com.apple.finder")
     #expect(placeholder.name == "com.apple.finder" && placeholder.icon == nil)
     for _ in 0..<200 where identities.resolvedCount == 0 { try? await Task.sleep(for: .milliseconds(10)) }

@@ -93,22 +93,10 @@ struct DefaultAwareToggle<Label: View>: View {
     @ViewBuilder let label: () -> Label
 
     var body: some View {
-        Toggle(isOn: settings.binding(key)) {
-            HStack(spacing: 6) {
-                if !settings.isDefault(key) {
-                    Circle().fill(Color.accentColor).frame(width: 6, height: 6).accessibilityHidden(true)
-                }
-                label()
-            }
-        }
-        .toggleStyle(.switch)
-        .controlSize(.small)
-        .contextMenu {
-            Button { settings.reset(key) } label: {
-                Text("Reset to Default", bundle: .module, comment: "Settings: row context menu item")
-            }
-            .disabled(settings.isDefault(key))
-        }
+        Toggle(isOn: settings.binding(key)) { label() }
+            .toggleStyle(.switch)
+            .controlSize(.small)
+            .crannySettingRow(settings, key)                  // Core's dot, "Reset to Default" and VoiceOver hint
     }
 }
 

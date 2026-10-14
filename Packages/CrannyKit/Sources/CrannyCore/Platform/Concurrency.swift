@@ -6,39 +6,55 @@ import os
 
 // MARK: - Observation outside SwiftUI (macOS 14-safe; `Observations` is macOS 26+)
 
-/// Calls `onChange` with the new value whenever something `value()` reads changes.
-/// Keep the returned token alive; `cancel()` (or releasing it) stops observing.
+/// Keeps an `observe(_:onChange:)` registration alive. Keep the token; `cancel()` (or releasing it) stops observing.
 @MainActor public final class ObservationToken {
     fileprivate var observer: AnyObject?
+    /// Stops observing; `onChange` is not called again.
     public func cancel() { observer = nil }
 }
 
+/// Calls `onChange` with the new value whenever something `value()` reads changes (Observation outside SwiftUI).
+/// `value()` runs once at registration and once per change: each run both reads the value and registers what it
+/// reads, so keep it cheap but never split it. `onChange` runs on the main actor, after the change, only when the
+/// value differs from the last one delivered. Keep the returned token alive.
 @MainActor @discardableResult
 public func observe<T: Equatable>(_ value: @escaping @MainActor () -> T,
                                   onChange: @escaping @MainActor (T) -> Void) -> ObservationToken {
     let token = ObservationToken()
     let observer = Observer(value: value, onChange: onChange)
     token.observer = observer
-    observer.arm()
+    observer.start()
     return token
 }
 
 @MainActor private final class Observer<T: Equatable> {
     let value: @MainActor () -> T
     let onChange: @MainActor (T) -> Void
-    var last: T
+    /// The value delivered last (set by `start()` before anything can fire).
+    private var last: T?
     init(value: @escaping @MainActor () -> T, onChange: @escaping @MainActor (T) -> Void) {
-        self.value = value; self.onChange = onChange; self.last = value()
+        self.value = value; self.onChange = onChange
     }
-    func arm() {
-        withObservationTracking { _ = value() } onChange: { [weak self] in
+    func start() { last = arm() }
+    /// Evaluates `value` ONCE: the same pass returns the value and registers what it read for the next change.
+    private func arm() -> T {
+        withObservationTracking { value() } onChange: { [weak self] in
             Task { @MainActor in self?.fire() }
         }
     }
     private func fire() {
-        let now = value()
+        let now = arm()
         if now != last { last = now; onChange(now) }
-        arm()
+    }
+}
+
+// MARK: - Durations
+
+public extension Duration {
+    /// Seconds as a `TimeInterval`, for `Date` and `DispatchTime` arithmetic and for logging.
+    var timeInterval: TimeInterval {
+        let (seconds, attoseconds) = components
+        return Double(seconds) + Double(attoseconds) / 1e18
     }
 }
 
@@ -48,7 +64,9 @@ public func observe<T: Equatable>(_ value: @escaping @MainActor () -> T,
 @MainActor public final class Debouncer {
     private let delay: Duration
     private var task: Task<Void, Never>?
+    /// A debouncer that waits `delay` after the last `schedule(_:)`.
     public init(delay: Duration) { self.delay = delay }
+    /// Runs `action` after the delay unless another `schedule` or `cancel` comes first.
     public func schedule(_ action: @escaping @MainActor () async -> Void) {
         task?.cancel()
         task = Task { [delay] in
@@ -57,24 +75,32 @@ public func observe<T: Equatable>(_ value: @escaping @MainActor () -> T,
             await action()
         }
     }
+    /// Drops the pending action.
     public func cancel() { task?.cancel(); task = nil }
 }
 
 // MARK: - Subprocesses
 
+/// What a finished command-line tool left: its exit status and both pipes.
 public nonisolated struct ProcessOutput: Sendable {
+    /// The exit status (or the signal that ended it).
     public let status: Int32
+    /// Everything written to standard output.
     public let stdout: Data
+    /// Everything written to standard error.
     public let stderr: Data
+    /// Exit status 0.
     public var succeeded: Bool { status == 0 }
 }
 
+/// The tool could not be started (the description says why).
 public nonisolated enum ProcessRunError: Error, Sendable { case launchFailed(String) }
 
 /// Runs a command-line tool off the main actor (`/usr/bin/shortcuts`, `/usr/bin/ditto`).
 /// Both pipes are drained while the process runs (no pipe-buffer deadlock). Cancelling the calling task
 /// terminates the process. Environment is minimal and explicit (never inherits PERL5LIB, DYLD_*).
 public nonisolated enum ProcessRunner {
+    /// Runs `executable` with `arguments` to completion; cancelling the task terminates it (SIGTERM).
     @concurrent
     public static func run(_ executable: String, _ arguments: [String],
                            environment: [String: String] = ["PATH": "/usr/bin:/bin", "LANG": "en_US.UTF-8"],
@@ -172,9 +198,7 @@ private nonisolated final class ProcessBox: @unchecked Sendable {   // `process`
             return true
         }
         guard interrupted else { return }
-        let (seconds, attoseconds) = grace.components
-        let delay = Double(seconds) + Double(attoseconds) / 1e18
-        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + delay) { [self] in terminate() }
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + grace.timeInterval) { [self] in terminate() }
     }
 }
 

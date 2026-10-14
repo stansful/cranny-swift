@@ -32,7 +32,7 @@ nonisolated final class AudioDeviceWatcher: @unchecked Sendable {   // confined 
             guard listener == nil else { return }
             var address = Self.devicesAddress
             let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in self?.report() }
-            let status = AudioObjectAddPropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, queue, block)
+            let status = AudioObjectAddPropertyListenerBlock(AudioHAL.system, &address, queue, block)
             if status == noErr { listener = block } else { log.error("Core Audio device listener failed: \(status, privacy: .public)") }
             report()
         }
@@ -42,7 +42,7 @@ nonisolated final class AudioDeviceWatcher: @unchecked Sendable {   // confined 
         queue.async { [self] in
             guard let listener else { return }
             var address = Self.devicesAddress
-            AudioObjectRemovePropertyListenerBlock(AudioObjectID(kAudioObjectSystemObject), &address, queue, listener)
+            AudioObjectRemovePropertyListenerBlock(AudioHAL.system, &address, queue, listener)
             self.listener = nil
         }
     }
@@ -52,56 +52,21 @@ nonisolated final class AudioDeviceWatcher: @unchecked Sendable {   // confined 
         onChange(sequence, Self.bluetoothOutputs())
     }
 
-    // MARK: HAL reads
+    // MARK: HAL reads (Core's `AudioHAL`)
 
-    private static var devicesAddress: AudioObjectPropertyAddress {
-        AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDevices, mScope: kAudioObjectPropertyScopeGlobal,
-                                   mElement: kAudioObjectPropertyElementMain)
-    }
+    private static var devicesAddress: AudioObjectPropertyAddress { AudioHAL.address(kAudioHardwarePropertyDevices) }
 
     /// Connected Bluetooth devices with at least one output stream (headphones, earbuds, speakers).
     static func bluetoothOutputs() -> [AudioOutputDevice] {
-        var address = devicesAddress
-        var size: UInt32 = 0
-        let system = AudioObjectID(kAudioObjectSystemObject)
-        guard AudioObjectGetPropertyDataSize(system, &address, 0, nil, &size) == noErr, size > 0 else { return [] }
-        var ids = [AudioObjectID](repeating: 0, count: Int(size) / MemoryLayout<AudioObjectID>.size)
-        guard AudioObjectGetPropertyData(system, &address, 0, nil, &size, &ids) == noErr else { return [] }
         var seenNames = Set<String>()
-        return ids.compactMap { id -> AudioOutputDevice? in
-            let transport = uint32(id, kAudioDevicePropertyTransportType)
+        return AudioHAL.devices().compactMap { id -> AudioOutputDevice? in
+            let transport = AudioHAL.transportType(id)
             guard transport == kAudioDeviceTransportTypeBluetooth || transport == kAudioDeviceTransportTypeBluetoothLE,
-                  hasOutput(id), let uid = string(id, kAudioDevicePropertyDeviceUID),
-                  let name = string(id, kAudioObjectPropertyName) else { return nil }
+                  AudioHAL.hasOutputStreams(id), let uid = AudioHAL.string(id, AudioHAL.address(kAudioDevicePropertyDeviceUID)),
+                  let name = AudioHAL.name(id) else { return nil }
             // A headset can publish two devices with one name (A2DP and hands-free): keep one.
             guard seenNames.insert(name).inserted else { return nil }
             return AudioOutputDevice(id: uid, name: name)
         }
-    }
-
-    private static func uint32(_ id: AudioObjectID, _ selector: AudioObjectPropertySelector) -> UInt32? {
-        var address = AudioObjectPropertyAddress(mSelector: selector, mScope: kAudioObjectPropertyScopeGlobal,
-                                                 mElement: kAudioObjectPropertyElementMain)
-        var value: UInt32 = 0
-        var size = UInt32(MemoryLayout<UInt32>.size)
-        guard AudioObjectGetPropertyData(id, &address, 0, nil, &size, &value) == noErr else { return nil }
-        return value
-    }
-
-    private static func string(_ id: AudioObjectID, _ selector: AudioObjectPropertySelector) -> String? {
-        var address = AudioObjectPropertyAddress(mSelector: selector, mScope: kAudioObjectPropertyScopeGlobal,
-                                                 mElement: kAudioObjectPropertyElementMain)
-        var value: Unmanaged<CFString>?
-        var size = UInt32(MemoryLayout<Unmanaged<CFString>?>.size)
-        let status = withUnsafeMutablePointer(to: &value) { AudioObjectGetPropertyData(id, &address, 0, nil, &size, $0) }
-        guard status == noErr else { return nil }
-        return value?.takeRetainedValue() as String?
-    }
-
-    private static func hasOutput(_ id: AudioObjectID) -> Bool {
-        var address = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyStreams, mScope: kAudioObjectPropertyScopeOutput,
-                                                 mElement: kAudioObjectPropertyElementMain)
-        var size: UInt32 = 0
-        return AudioObjectGetPropertyDataSize(id, &address, 0, nil, &size) == noErr && size > 0
     }
 }

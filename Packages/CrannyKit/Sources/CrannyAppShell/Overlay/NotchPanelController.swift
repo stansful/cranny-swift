@@ -171,8 +171,6 @@ import SwiftUI
                           expanded: scene.phase == .open || scene.phase == .peek)
     }
 
-    func zoneContains(_ point: CGPoint) -> Bool { hoverZones?.contains(point) ?? false }
-
     func pointerMoved(to point: CGPoint) {
         for input in hover.update(point, zones: hoverZones) { viewModel.send(input) }
     }
@@ -220,12 +218,12 @@ import SwiftUI
     }
 
     /// Settings whose change re-arms the idle timers (§4.3 timeouts, per-display toggles).
-    private struct TimerSettings: Equatable {
+    private struct IdleTimeoutSettings: Equatable {
         var openTimeout: Double, compactTimeout: Double, hidesHandle: Bool, handleDelay: Double
         var preferences: DisplayPreferences?
     }
-    private static func timerSettings(_ settings: SettingsStore, display: DisplayKey) -> TimerSettings {
-        TimerSettings(openTimeout: settings[CoreSettings.openInactivityTimeout],
+    private static func timerSettings(_ settings: SettingsStore, display: DisplayKey) -> IdleTimeoutSettings {
+        IdleTimeoutSettings(openTimeout: settings[CoreSettings.openInactivityTimeout],
                       compactTimeout: settings[CoreSettings.compactInactivityTimeout],
                       hidesHandle: settings[CoreSettings.hideHandleWhenIdle], handleDelay: settings[CoreSettings.handleIdleDelay],
                       preferences: settings[CoreSettings.perDisplay][display])
