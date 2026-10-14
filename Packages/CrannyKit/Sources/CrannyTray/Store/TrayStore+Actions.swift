@@ -66,8 +66,14 @@ extension TrayStore {
         let list = urls(of: targets(for: id))
         guard !list.isEmpty else { return }
         system.copy(text: list.map(\.path).joined(separator: "\n"))
+        confirmPathsCopied(count: list.count)
+    }
+
+    /// Copy paths' confirmation (also visual QA's `--qa-tray-copied`, which copies nothing): the copy glyph and
+    /// "Copied" in the band, and what was copied for VoiceOver.
+    func confirmPathsCopied(count: Int) {
         notch.flash(symbol: "doc.on.doc", label: Self.copiedLabel)
-        system.announceFeedback(Self.pathsCopiedAnnouncement(count: list.count))
+        system.announceFeedback(Self.pathsCopiedAnnouncement(count: count))
     }
 
     /// VoiceOver's confirmation of Copy paths: the flash's word alone («Готово») does not say what happened.

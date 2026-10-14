@@ -6,6 +6,7 @@
 //   --qa-tray-states            show a running pipeline, a failure, a fresh result and a file that could not be kept
 //   --qa-tray-catch <uti,…>     the Tray page shows the drag catch view for these types (e.g. public.png)
 //   --qa-tray-quicklook         open Quick Look on the first item after 2 s (Cranny's own non-activating preview panel)
+//   --qa-tray-copied            after 2 s, Copy paths' confirmation ("Copied" flash, VoiceOver line); copies nothing
 //   --qa-tray-settings-bottom   Settings ▸ Tray opens scrolled to its last section
 //
 // Nothing here is compiled into Release builds; no input is synthesized.
@@ -53,6 +54,11 @@ enum TrayQA {
             let unkept = "Scan 2026-10-14.pdf"
             store.jobs.append(TrayJob(id: UUID(), pipelineID: TrayStore.keepJobID, title: unkept, sourceIDs: [],
                                       placeholderName: unkept, failure: TrayError.cannotRead(unkept).errorDescription))
+        }
+        if arguments.contains("--qa-tray-copied") {
+            // The snapshot (`--qa-snapshot <file.png>`) renders 3 s after launch; the flash lasts the peek duration.
+            try? await Task.sleep(for: .seconds(2))
+            store.confirmPathsCopied(count: 1)
         }
         if arguments.contains("--qa-tray-quicklook") {
             try? await Task.sleep(for: .seconds(2))
