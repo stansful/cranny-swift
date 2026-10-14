@@ -11,6 +11,8 @@ enum MirrorMetrics {
     static let ring: CGFloat = 18
     /// Hover toolbar: 24-pt circles (DESIGN.md §7.4) inside a hit target of `HitTarget.preferred`.
     static let toolbarCircle: CGFloat = 24
+    /// Toolbar glyphs: 48 % of the circle, rounded (the icon-button proportion of DESIGN.md §14.1).
+    static let toolbarGlyph: CGFloat = 12
     /// Circle inset from the card edge: card radius 20 − circle radius 12 keeps the corner concentric.
     static let toolbarInset: CGFloat = Space.m
     /// Radius of the backdrop's soft light behind the glyph.

@@ -75,7 +75,9 @@ struct MirrorToolbarButtonStyle: ButtonStyle {
             let p = theme.palette
             let circle = MirrorMetrics.toolbarCircle
             configuration.label
-                .font(.system(size: (circle * 0.48).rounded(), weight: .semibold))
+                // DESIGN.md §14.1: hierarchical, white, medium weight in the Nook.
+                .font(.system(size: MirrorMetrics.toolbarGlyph, weight: .medium))
+                .symbolRenderingMode(.hierarchical)
                 .foregroundStyle(p.label)
                 .frame(width: circle, height: circle)
                 .background {
