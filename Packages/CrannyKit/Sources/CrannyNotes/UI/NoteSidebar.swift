@@ -4,19 +4,36 @@ import CrannyCore
 import SwiftUI
 
 struct NoteSidebar: View {
+    @Environment(\.cranny) private var theme
     let model: NotesModel
 
     var body: some View {
-        ScrollView(.vertical) {
-            VStack(alignment: .leading, spacing: Space.xxs) {
-                ForEach(model.entries) { entry in
-                    SidebarRow(title: entry.title, isSelected: entry.id == model.selectedID) { model.select(entry.id) }
+        ScrollViewReader { proxy in
+            ScrollView(.vertical) {
+                VStack(alignment: .leading, spacing: Space.xxs) {
+                    ForEach(model.entries) { entry in
+                        SidebarRow(title: entry.title, isSelected: entry.id == model.selectedID) { model.select(entry.id) }
+                            .id(entry.id)
+                    }
                 }
             }
+            .scrollIndicators(.never)
+            // The current note is always in view: on appear, and after ⌘[ / ⌘], the menu, a new note or a delete.
+            .onAppear { reveal(model.selectedID, in: proxy, animated: false) }
+            .onChange(of: model.selectedID) { _, id in reveal(id, in: proxy, animated: true) }
         }
-        .scrollIndicators(.never)
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text(NotesStrings.notesList))
+    }
+
+    /// Scrolls just enough to show the row (no anchor: a visible row does not move).
+    private func reveal(_ id: UUID?, in proxy: ScrollViewProxy, animated: Bool) {
+        guard let id else { return }
+        if animated, let animation = theme.animation(.listReorder) {
+            withAnimation(animation) { proxy.scrollTo(id) }
+        } else {
+            proxy.scrollTo(id)
+        }
     }
 }
 
