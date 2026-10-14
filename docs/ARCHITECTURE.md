@@ -4,8 +4,8 @@
 
 | | |
 |---|---|
-| Status | **v1.0, adopted** (2026-10-14), **reviewed** the same day (see "Changelog of review fixes" at the end). The definitive engineering reference. `docs/DESIGN.md` remains the single source of truth for pixels, colours, motion and copy; this document owns code structure, contracts, threading, build and the work plan. |
-| Toolchain | Xcode 27.0 (27A266a), Swift 6.4, MacOSX27 SDK. Minimum supported toolchain: **Xcode 26 / Swift 6.2** (`swift-tools-version: 6.2`, `.defaultIsolation`, `@concurrent`, `.icon`, `#bundle`). |
+| Status | **v1.0, adopted** (2026-10-14), **reviewed** the same day and **amended** for the project owner's Metal decision (D13); see "Changelog" at the end. The definitive engineering reference. `docs/DESIGN.md` remains the single source of truth for pixels, colours, motion and copy; this document owns code structure, contracts, threading, build and the work plan. |
+| Toolchain | Xcode 27.0 (27A266a), Swift 6.4, MacOSX27 SDK. Minimum supported toolchain: **Xcode 26 / Swift 6.2** (`swift-tools-version: 6.2`, `.defaultIsolation`, `@concurrent`, `.icon`, `#bundle`) **plus the Metal Toolchain component** (D13). |
 | Platform | macOS 14.0 deployment target, universal (arm64 + x86_64). Newer APIs only behind `#available`. Not sandboxed, hardened runtime, agent app (`LSUIElement`). |
 | Licence | MIT, clean room. No NotchNook code, assets, names or UI text; no GPL code (boring.notch); zero third-party dependencies. |
 | Evidence | Research R1 (overlay window), R2 (media), R3 (system services), R4 (build) and their PoCs live in the research session's scratchpad, **not in the repo**; everything a work package needs from them is restated here. DESIGN.md. Every contract in §2–§3 and every file in the appendices was **compiled and run** for this document (Appendix C). |
@@ -32,7 +32,7 @@ Status tags: **[VERIFIED]** built or run on macOS 27.0.1 (this document or R1–
 | D10 | **HUD: "never two HUDs".** Cranny draws a HUD only when its Accessibility event tap replaces the system OSD; there is no passive tier. | DESIGN.md §10 overrides R3's passive mode; R3 verified OSD suppression. |
 | D11 | **Settings and Welcome windows are AppKit-managed `NSWindow`s hosting SwiftUI**, not a SwiftUI `Settings` scene. The app's `App.body` contains only the `MenuBarExtra`. | We must open Settings at a specific pane from the Nook, Permissions flows and reopen events; programmatic opening of the `Settings` scene from an agent app is unreliable on macOS 14 [UNVERIFIED community reports] — AppKit windows avoid the question. |
 | D12 | **No hidden Edit menu needed.** With the SwiftUI `App` lifecycle, `NSApp.mainMenu` already contains Edit with ⌘Z/X/C/V/A. `scripts/smoke.sh` asserts it on every CI run. | Diagnostics of the built app listed the menu [VERIFIED]; R1's gotcha applied to a pure-AppKit app. |
-| D13 | **No `.metal` files in v1**, enforced: `scripts/check-modules.sh` fails on any `*.metal` under `Sources/` (B.12). Effects are SwiftUI (`MeshGradient` 15+, `Canvas`, `TimelineView`) exactly as DESIGN.md specifies; no `ShaderLibrary`/`.metallib`. Runtime `MTLDevice.makeLibrary(source:)` is reserved for a later version, behind a setting, always with the SwiftUI path as the fallback. | The Metal Toolchain is a separately downloaded Xcode component. The environment brief lists it as **not installed**; it was later installed on the research Mac (`xcrun metal` 32023.921, `research/X-metal-verified.md` — whose "Effects may ship Metal" conclusion is superseded by this decision). It is not guaranteed on CI runners or contributors' machines, and SwiftPM cannot build a target with `.metal` resources without it. R1 rejected Metal for the shape for the same reason. |
+| D13 | **Metal shaders are allowed in `CrannyEffects`, and only there**, as SwiftPM resources (`Sources/CrannyEffects/Shaders/*.metal` + the shared `CrannyShaders.h`), loaded via `ShaderLibrary.bundle(.module)` (wrapped as `ShaderEffects.library`). They are SwiftUI stitchable functions only (`.colorEffect`, `.layerEffect`, `.distortionEffect`; macOS 14+); there is no `MTKView`, no compute pipeline and no runtime `makeLibrary(source:)`. The **Metal Toolchain** component is a **build requirement**: `scripts/lib.sh` `ensure_metal_toolchain` stops early with the install command, and CI installs it with `xcodebuild -downloadComponent MetalToolchain`. **Every shader effect keeps a SwiftUI fallback** (DESIGN.md §5.3–§5.5 and App. B.1: MeshGradient, Canvas, gradients). The fallback is used under Reduce Motion, under Low Power / `thermalState ≥ .serious`, and on shader load failure (`ShaderEffects.isAvailable == false`); the switch is `ShaderEffects.usesShader(_:)` (DESIGN.md §5.6, App. B.2). | Decision of the project owner (2026-10-14), **reversing** the earlier "no `.metal` in v1" rule and its `check-modules.sh` guard. Verified in this layout (Appendix C): SwiftPM's built-in rule compiles the `.metal` files into `CrannyKit_CrannyEffects.bundle/…/default.metallib` with no `Package.swift` change; the universal Release app embeds it in `Contents/Resources` and `codesign --verify --deep --strict` passes; inside the built app `ShaderEffects.isAvailable` is true (the generated `Bundle.module` looks in `Bundle.main.resourceURL` first; `research/X-metal-verified.md`). `ImageRenderer` rasterizes all three effect kinds in `swift test`, so parity tests are possible. Why: dithered, banding-free light, real domain-warped aurora and metaball necks that the SwiftUI path can only approximate, at lower CPU cost. Cost: a ≈ 0.9 GB Xcode component on every build machine (risk 15). |
 | D14 | **Settings apply instantly** (macOS convention). The Settings preview stage renders the real notch views with the live values plus sample activities; there is no draft store. "Reset All" is undoable for 10 s through `SettingsStore.snapshot()/restore(_:)` (A.1). | Simplest consistent model; DESIGN.md §11.2 was aligned to it. |
 | D15 | **Launch at login = `SMAppService.mainApp` only** (no LaunchAgent fallback in v1). | R3 §9; fallback adds a second background item. Failure shows "Open Login Items…". |
 | D16 | **Bundle id `app.cranny.Cranny`, log subsystem identical.** Never change it after the first public release: TCC grants and defaults are keyed by it. Before that release WP-Final confirms the project controls the `cranny.app` domain; if not, switch once to `io.github.<owner>.Cranny` (a foreign reverse-DNS id risks TCC/defaults collisions with a real app). | R4 verified; `tccutil reset All app.cranny.Cranny` for testing. |
@@ -68,7 +68,7 @@ Cranny/                                   ← repo root
 ├─ .github/workflows/                     ← ci.yml, release.yml
 ├─ VERSION                                ← marketing version, e.g. 0.1.0 (scripts/build.sh reads it; release tag must match)
 ├─ LICENSE                                ← MIT
-├─ README.md                              ← install (Gatekeeper "Open Anyway" / xattr), build, permissions FAQ ("perl" helper)
+├─ README.md                              ← install (Gatekeeper "Open Anyway" / xattr), build (Xcode + Metal Toolchain, D13), permissions FAQ ("perl" helper)
 ├─ THIRD_PARTY_NOTICES.md                 ← "no third-party code included" + acknowledgements shown in About
 ├─ Makefile                               ← thin wrapper around scripts/
 └─ .gitignore
@@ -206,6 +206,8 @@ swift test --scratch-path .build-test --filter CrannyTimerTests             # bu
 ```
 
 **Toolchain selection.** `xcode-select` may point at `/Library/Developer/CommandLineTools`, and changing it needs `sudo`. Every manual `swift`/`xcodebuild`/`xcrun` command therefore starts with `export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`; the scripts do it themselves (`ensure_xcode`, B.7). The CLT ship Swift 6.4 too and can compile modules, but they lack `xcstringstool`, `actool`, `ictool` and the Xcode test frameworks, so mixing toolchains between scratch dirs is not allowed. Agents and anyone whose shell profile prints errors (for example `GVM_ROOT not set`) run important commands as separate invocations and check each exit status instead of chaining them with `&&`.
+
+**Metal Toolchain (D13).** `CrannyEffects`, and every target that depends on it (`CrannyNotchUI`, `CrannySettingsUI`, `CrannyOnboarding`, `CrannyAppShell`, the app), compiles `.metal` files and needs the Xcode component. `xcodebuild -showComponent MetalToolchain` must print `Status: installed`; if not, run `xcodebuild -downloadComponent MetalToolchain` once (≈ 0.9 GB installed). The scripts check this for you (`ensure_metal_toolchain`, §8.5).
 
 `swift build --target` on the Objective-C target only produces the object file; `swift build --product CrannyMediaBridge` produces `libCrannyMediaBridge.dylib` (arm64, ad-hoc signed by the linker) for CLI experiments (R4 §3.3). Everything also opens in Xcode (open `Packages/CrannyKit/Package.swift` for package-only work with `#Preview`, or `Cranny.xcodeproj` for the app).
 
@@ -2149,6 +2151,7 @@ All private symbols are resolved at runtime with `dlopen`/`dlsym` or `responds(t
 - Targets: **Cranny** (application; phases Sources, Frameworks, Resources, "Embed Media Bridge" Copy Files → Frameworks with `CodeSignOnCopy`; target dependency on the bridge) and **CrannyMediaBridge** (`library.dynamic`). Every product in `packageProductDependencies` is linked automatically; dynamic products are not embedded automatically — another reason to link only the static `CrannyAppShell`.
 - Schemes: shared `Cranny` (Appendix B.2) + auto-generated package schemes. `xcodebuild -list` shows targets Cranny and CrannyMediaBridge.
 - **Universal builds need `-destination 'generic/platform=macOS'`**; without it xcodebuild silently builds arm64 only [VERIFIED R4 §5]. `scripts/build.sh` passes it.
+- **Metal (D13):** the package build compiles `Packages/CrannyKit/Sources/CrannyEffects/Shaders/*.metal` (`CompileMetalFile`, then `MetalLink`, `-target air64-apple-macos14.0`, using the Metal Toolchain component) into `CrannyKit_CrannyEffects.bundle/Contents/Resources/default.metallib`. That bundle sits in `Contents/Resources` with the other package bundles. There is no project setting, no shader build phase and no app-level `default.metallib` [VERIFIED, Appendix C].
 - New Swift files, resources and catalogs never touch the project. Adding a *target* to the project (not expected) means editing it by hand or in Xcode (Xcode may reformat the file on first open — harmless).
 
 ### 8.2 Build settings (target "Cranny"; shared ones at project level)
@@ -2188,14 +2191,14 @@ All private symbols are resolved at runtime with `dlopen`/`dlsym` or `responds(t
 | `make build` | `scripts/build.sh` | Universal Release → `build/Cranny.app` + dSYM; version from `VERSION`; verifies the signature; ≈ 21 s clean on M4 Max |
 | `make debug` | `CONFIGURATION=Debug ARCHS=$(uname -m) scripts/build.sh` | Debug build |
 | `make run` | `scripts/run.sh` | Debug (hardened), quits the previous dev instance, launches with `open -n` so TCC attributes prompts to Cranny, not the terminal [VERIFIED R4 §8]; `DEV_SIGN_IDENTITY="Cranny Dev"` signs with a stable identity |
-| `make smoke` | `scripts/smoke.sh` | Runs `Cranny --diagnostics` (no UI), checks all 16 resource bundles, the bridge dylib and the Edit menu [VERIFIED] |
+| `make smoke` | `scripts/smoke.sh` | Runs `Cranny --diagnostics` (no UI), checks all 16 resource bundles, the bridge dylib and the Edit menu [VERIFIED]; also checks that `CrannyKit_CrannyEffects.bundle/Contents/Resources/default.metallib` exists (D13) |
 | `make check` | `scripts/check-modules.sh [Target…]` | `swift build --target` per target in its own scratch dir; `JOBS=N`, `TEST=1` |
 | `make test` | `swift test` | Swift Testing |
 | `make strings` / `make strings-check` | `scripts/sync-strings.sh` | Adds new keys from the compiler's `.stringsdata` to each catalog with `xcstringstool sync`; `CHECK=1` fails CI when stale (≈ 25 s for all targets) |
 | `make dist` | `scripts/dist.sh` | zip (`ditto --norsrc --keepParent`) + APFS DMG + sha256; notarizes and staples when `SIGN_IDENTITY`, `TEAM_ID`, `NOTARY_PROFILE` are set |
 | `make list`, `make clean`, `make distclean` | | |
 
-Scripts target `/bin/bash` 3.2, source `scripts/lib.sh`, find Xcode even when `xcode-select` points at the Command Line Tools (`DEVELOPER_DIR`), and require Xcode ≥ 26. **Exception:** `make strings`/`strings-check` read the swift-build backend's `out/Intermediates.noindex` layout; the script now passes `--build-system swiftbuild` explicitly (VERIFIED on Swift 6.4), which Xcode 26's SwiftPM 6.2 may not support [UNVERIFIED] — treat Xcode 27 as the minimum for the strings steps (CI pins it, §8.9). Bash scripts are not affected by zsh profile noise (`#!/usr/bin/env bash` is non-interactive).
+Scripts target `/bin/bash` 3.2, source `scripts/lib.sh`, find Xcode even when `xcode-select` points at the Command Line Tools (`DEVELOPER_DIR`), and require Xcode ≥ 26. They also require **the Metal Toolchain component** (D13). `lib.sh` `ensure_metal_toolchain` runs right after `ensure_xcode` in every script that compiles CrannyKit and in `make test`. It checks `xcodebuild -showComponent MetalToolchain` for `Status: installed` (≈ 0.7 s). If the component is missing, it stops with "Metal Toolchain missing — run: xcodebuild -downloadComponent MetalToolchain"; it never downloads anything itself. Without the check, Xcode's own error appears only deep inside the package build. Any target that holds Metal resources makes SwiftPM 6.4's CLI print one build-system line, `warning: missing creator for mutated node: (…/CrannyKit_CrannyEffects.bundle/Contents/MacOS)`. It is not a compiler warning, xcodebuild does not print it, and it does not count against the zero-warnings rule (§9.7) [VERIFIED]. **Exception:** `make strings`/`strings-check` read the swift-build backend's `out/Intermediates.noindex` layout; the script now passes `--build-system swiftbuild` explicitly (VERIFIED on Swift 6.4), which Xcode 26's SwiftPM 6.2 may not support [UNVERIFIED] — treat Xcode 27 as the minimum for the strings steps (CI pins it, §8.9). Bash scripts are not affected by zsh profile noise (`#!/usr/bin/env bash` is non-interactive).
 
 ### 8.6 Signing, distribution and TCC during development
 
@@ -2239,9 +2242,11 @@ Scripts target `/bin/bash` 3.2, source `scripts/lib.sh`, find Xcode even when `x
 
 Each target declares `resources: [.process("Resources")]` and must keep that folder (with at least the catalog). Access resources only through `Bundle.module` (the generated accessor is `nonisolated` and finds `CrannyKit_<Target>.bundle` in `Contents/Resources` [VERIFIED]). No `Bundle.main` lookups for package resources; no absolute paths. Sounds are system sounds only (DESIGN.md §14.3); Cranny ships no audio, video or Lottie files.
 
+**Shaders (D13).** `CrannyEffects` also keeps `Shaders/*.metal` and the shared header `Shaders/CrannyShaders.h`. SwiftPM's built-in rule compiles every `.metal` file of the target into one `default.metallib` inside `CrannyKit_CrannyEffects.bundle`, so `Package.swift` needs no entry: §2.2 stays as it is, and an explicit `.process("Shaders")` gives the same result. Quoted `#include`s resolve next to the `.metal` file, and the header is not copied into the bundle [VERIFIED]. Code reaches the library only through `ShaderEffects.library` (= `ShaderLibrary.bundle(.module)`), never `ShaderLibrary.default`, which is the app bundle's library and does not exist. No other target contains `.metal` files (§9.4).
+
 ### 8.9 CI (Appendix B.15–B.16)
 
-`ci.yml` (push to main, PRs, manual) on the GitHub `xcode-27` image (arm64, macOS 27.0.1, Xcode 27.0; public preview; fallback `macos-26` with Xcode 26.6): toolchain info → `JOBS=3 TEST=1 scripts/check-modules.sh` → `CHECK=1 scripts/sync-strings.sh` → universal `scripts/build.sh` → **`scripts/smoke.sh`** → `scripts/dist.sh` → upload zip/dmg/sha256 (logs on failure). `release.yml` (tags `v*`): checks the tag equals `VERSION`, optionally imports Developer ID + notary key, builds, smoke-tests, packages/notarizes and publishes a GitHub Release with generated notes. Both YAML files parse [VERIFIED]; neither has run on GitHub yet [UNVERIFIED], including the runner label and the `actions/*@v7` major versions — WP0 pins whatever exists on its first green run. The `macos-26` fallback job runs everything **except** `strings-check` (Xcode 27 only, §8.5). The Metal Toolchain is not required anywhere (D13). x86_64 slices are built but never executed (no Rosetta here): WP-Final adds an Intel smoke job (`--diagnostics`) if an Intel runner label is available [UNVERIFIED]. `hdiutil create` prints a deprecation warning on macOS 27 (still works); move `dist.sh` to `diskutil image create` when it breaks.
+`ci.yml` (push to main, PRs, manual) on the GitHub `xcode-27` image (arm64, macOS 27.0.1, Xcode 27.0; public preview; fallback `macos-26` with Xcode 26.6): toolchain info → `JOBS=3 TEST=1 scripts/check-modules.sh` → `CHECK=1 scripts/sync-strings.sh` → universal `scripts/build.sh` → **`scripts/smoke.sh`** → `scripts/dist.sh` → upload zip/dmg/sha256 (logs on failure). `release.yml` (tags `v*`): checks the tag equals `VERSION`, optionally imports Developer ID + notary key, builds, smoke-tests, packages/notarizes and publishes a GitHub Release with generated notes. Both YAML files parse [VERIFIED]; neither has run on GitHub yet [UNVERIFIED], including the runner label and the `actions/*@v7` major versions — WP0 pins whatever exists on its first green run. The `macos-26` fallback job runs everything **except** `strings-check` (Xcode 27 only, §8.5). Both workflows, and the fallback job, add a **Metal Toolchain** step right after "Toolchain" (D13): `xcodebuild -showComponent MetalToolchain | grep -q 'Status: installed' || xcodebuild -downloadComponent MetalToolchain`. It is a no-op when the image already has the component. Whether the runner images ship it, and how long the download takes (≈ 0.9 GB installed), are [UNVERIFIED]; WP0 records both on the first green run. Shader tests that need a GPU skip themselves when `MTLCreateSystemDefaultDevice()` is nil (VM runners [UNVERIFIED]). The bundled-metallib test and the smoke check never skip. x86_64 slices are built but never executed (no Rosetta here): WP-Final adds an Intel smoke job (`--diagnostics`) if an Intel runner label is available [UNVERIFIED]. `hdiutil create` prints a deprecation warning on macOS 27 (still works); move `dist.sh` to `diskutil image create` when it breaks.
 
 ---
 
@@ -2260,7 +2265,7 @@ Each target declares `resources: [.process("Resources")]` and must keep that fol
 ### 9.2 Performance and energy (release gate, DESIGN.md §4.7)
 
 - **Closed with nothing playing = zero work:** no timers, no `TimelineView`, no Canvas, no polling. Everything is event-driven (notifications, KVO, CoreAudio/IOKit callbacks, MR notifications through the bridge).
-- **Timers only while visible:** `TimelineView(.animation(minimumInterval:paused:))` with `paused` bound to visibility/need; compact visualizer on Core Animation; open-Nook effects ≤ 30 fps on AC, ≤ 20 fps on battery, static halo in Low Power Mode or `thermalState ≥ .serious`, paused when occluded (`NSWindow.occlusionState`) or a full-screen app is in front; Reduce Motion freezes a resting frame.
+- **Timers only while visible:** `TimelineView(.animation(minimumInterval:paused:))` with `paused` bound to visibility/need; compact visualizer on Core Animation; open-Nook effects ≤ 30 fps on AC, ≤ 20 fps on battery, static halo in Low Power Mode or `thermalState ≥ .serious`, paused when occluded (`NSWindow.occlusionState`) or a full-screen app is in front; Reduce Motion freezes a resting frame. **Metal shader effects (D13) obey the same budget.** Their `time` uniform comes from the effect's `TimelineView` (throttled or paused by `EffectBudget`), never from a clock inside the shader. GPU time is ≤ 1.5 ms per frame at the largest open size. The SwiftUI fallback renders under Reduce Motion, under Low Power / thermal, and when shaders are unavailable (DESIGN.md §5.6).
 - **Allowed polling (exhaustive):** Accessibility grant check every 1.5 s for ≤ 2 min after a request; accessory batteries every 60 s only while the Bluetooth activity is visible; passive brightness at 2 Hz only while a brightness HUD is visible.
 - **Hardware only while visible:** camera, audio tap; stop on close, lock, sleep, page change.
 - **No I/O on the main actor** except tiny settings reads (UserDefaults). Decode images off-main; cache thumbnails and artwork (LRU).
@@ -2284,7 +2289,12 @@ Each target declares `resources: [.process("Resources")]` and must keep that fol
 - Access control: module internals `internal`; only the `FeatureModule` type, settings enums and what tests need are `public` (tests use `@testable import`).
 - No third-party dependencies; no new targets; no edits outside your package (§10.0).
 - Never give a `public` type a name that an Apple framework also exports (Core's `ScrollPhase` collided with `SwiftUI.ScrollPhase` and broke every file importing both; it is `SwipePhase` now). A Core change request lists new public names; the reviewer compiles a probe file that imports `AppKit`, `SwiftUI`, `AVFoundation`, `EventKit`, `CoreAudio`, `IOKit` and `CrannyCore` and aliases each new name (the review's probe found no other collision).
-- No `.metal` files and no `ShaderLibrary` (D13); no bundled fonts, sounds, videos, GIFs or Lottie (§8.8).
+- **Metal only in `CrannyEffects`** (D13).
+  - **Where:** `Sources/CrannyEffects/Shaders/*.metal`. Shared helpers go in `CrannyShaders.h` (`namespace cranny`, `static inline`).
+  - **What:** SwiftUI stitchable functions only (`#include <SwiftUI/SwiftUI_Metal.h>`, `[[ stitchable ]]`), called through `ShaderEffects.library`, never `ShaderLibrary.default`. Every function is listed in `ShaderEffects.requiredFunctions` and has a render test: a missing function or an argument mismatch renders *transparent* without an error.
+  - **Rules:** every effect keeps its SwiftUI fallback, chosen by `ShaderEffects.usesShader(_:)`. Every light-emitting shader ends with `cranny::light(…, cap)`, so alpha ≤ `Glow.ambientAlphaCap`. Shaders get time only as a uniform.
+  - **Not allowed:** `MTKView`, compute pipelines, runtime `makeLibrary(source:)`, and `.metal` files in any other target.
+- No bundled fonts, sounds, videos, GIFs or Lottie (§8.8).
 
 ### 9.5 Accessibility (DESIGN.md §16 is normative)
 
@@ -2299,7 +2309,7 @@ Every control has an accessibility label (localized), every widget is a VoiceOve
 
 ### 9.7 Definition of done (every work package)
 
-1. `scripts/check-modules.sh <YourTarget>` passes with **zero warnings**; `swift test --filter <YourTarget>Tests` passes; `make strings-check` passes with Russian translations for every new key.
+1. `scripts/check-modules.sh <YourTarget>` passes with **zero warnings** (the SwiftPM build-system line about `CrannyKit_CrannyEffects.bundle/Contents/MacOS`, §8.5, is not a compiler warning and is ignored); `swift test --filter <YourTarget>Tests` passes; `make strings-check` passes with Russian translations for every new key.
 2. `make build && make smoke` pass; the feature works in `make run` on macOS 14 behaviour paths (`#available` fallbacks exercised by code review) and on 27.
 3. Every view has previews, accessibility labels, Reduce Motion/Transparency/Contrast behaviour; energy rules respected (no timers while hidden).
 4. Settings keys documented in the module's `<Module>Settings` enum with defaults matching §10; permissions declared; no edits outside the package's folders.
@@ -2334,12 +2344,18 @@ Every control has an accessibility label (localized), every widget is a VoiceOve
 
 - **Targets/folders:** everything listed as shared above; placeholders for all others.
 - **Create:** the repository of §1 with the verified files of Appendix B (project, scheme, `App/*`, scripts incl. `smoke.sh`, Makefile, workflows, `.gitignore`, `VERSION` = 0.1.0), `LICENSE` (MIT), `README.md` (build/run, Gatekeeper, permissions FAQ), `THIRD_PARTY_NOTICES.md`, `docs/CONTRIBUTING.md` (§10.0 + §9 summary).
+- **Metal changes to those files (D13):**
+  - `check-modules.sh` **without** B.12's `*.metal` guard.
+  - `lib.sh` gains `ensure_metal_toolchain`. It is called after `ensure_xcode` by `build.sh`, `run.sh`, `check-modules.sh`, `sync-strings.sh` and the Makefile's `test`, and gives a clear one-line error plus the `xcodebuild -downloadComponent MetalToolchain` fix (§8.5).
+  - `smoke.sh` also asserts the Effects `default.metallib`.
+  - `ci.yml`/`release.yml` (incl. the `macos-26` job) gain the "Metal Toolchain" step (§8.9).
+  - `README.md` lists the Metal Toolchain under "Build" with the one-line install, and `CONTRIBUTING.md` repeats it.
 - **CrannyKit:** `Package.swift` (§2.2); **CrannyCore complete**: DesignSystem from DESIGN.md (+ §3.2 amendments, `AmbientPalette.swift`, `SharedComponents.swift`), `Contracts/*`, `Services/*`, `Input/*`, `Settings/*`, `Permissions/*`, `Platform/*` exactly as §3 and Appendix A; Core catalog with Russian; Core tests (settings round-trip incl. dictionary keys, snapshot/restore, `SwipeTracker`, `SemanticVersion`, `HoverIntent.shouldOpen`, `NotchLayout` sizes against DESIGN.md §3.3 incl. panel padding tune, zone hit-testing, `JSONFileStore` corrupt-file handling, `ProcessRunner` with `/bin/echo` and cancellation, registry fills `SettingsPage.namespaces`); the SDK name-collision probe of §9.4.
-- **Placeholders:** every layer-1 target gets `<Name>Module.swift` (`FeatureModule` with empty `register`), an empty catalog and one registration test; `CrannyEffects` gets `AuroraField.swift` (DESIGN.md App. B, verbatim); `CrannyMediaBridge` gets R2's v3 bridge (Appendix C verified it).
+- **Placeholders:** every layer-1 target gets `<Name>Module.swift` (`FeatureModule` with empty `register`), an empty catalog and one registration test; `CrannyEffects` gets `AuroraField.swift` (DESIGN.md App. B.1, verbatim) and the shader plumbing of DESIGN.md App. B.2, verbatim: `ShaderEffects.swift`, `Shaders/CrannyShaders.h`, `Shaders/Dither.metal`. With these, the toolchain check, the metallib in the app and `ShaderLibrary.bundle(.module)` are exercised from the first build. `CrannyEffectsTests` gets App. B.2's two metallib tests instead of a registration test. `CrannyMediaBridge` gets R2's v3 bridge (Appendix C verified it).
 - **NotchUI skeleton:** `NotchScene.swift` and `ThemeResolver.swift` (§4.12, final API) + a minimal `NotchCanvasView` (idle, compact via `CompactSlots` + `view(for:)` resolving `sampleActivities[id] ?? registry.activity(id)`, open grid of cards from `CoreSettings.pages`) — the verified skeleton is the starting point.
 - **AppShell skeleton** (verified skeleton is the starting point): `App/AppDelegate.swift` as a thin orchestrator that owns and starts four components with **final initializers and stub bodies** — `OverlayCoordinator` (WP13), `SettingsWindowController` (WP14), `WelcomeWindowController` (WP15), `ShellAppServices` (WP16); `App/CrannyScenes.swift` (`MenuBarExtra` whose content is `MenuBarContent`, WP16); `App/CompositionRoot.swift` (all modules, §3.4 order); `App/ShellContributions.swift` (§10.0); `App/Diagnostics.swift` (Appendix B.18); `Overlay/NotchPanel.swift` (§5.2); minimal port implementations, **one file per type** so later owners never share a file: `Services/ShellNotchControl.swift` (open/close/hold/focus/flash), `Services/ShellEnvironment.swift` (lock/sleep/low power/AC/frontmost), `Services/ShellAppControl.swift` (open Settings/quit), plus stubs with the final signatures of §10.0 "Intra-shell interfaces": `Windows/SettingsWindowController.swift`, `Windows/WelcomeWindowController.swift`, `Services/ShellAppServices.swift`, `MenuBar/MenuBarContent.swift`, `Overlay/OverlayCoordinator.swift`, `Input/HotKeyCenter.swift`.
 - **Behaviour at the end of WP0:** a panel on the built-in (or primary) display shows the closed cutout (or island handle); hovering ≥ 120 ms opens the panel with the configured page (placeholder cards are fine); leaving + 300 ms closes; Esc closes and hands focus back; the menu bar extra opens Settings (sidebar skeleton) and quits.
-- **Acceptance:** `make check` (17 targets, zero warnings), `make test`, `make strings-check`, `make build` (universal), `make smoke`, `make dist` locally and on GitHub CI; Appendix C's verification steps reproduce; R1's key panel checks (click delivered without activating the app, per-pixel pass-through, level 26 over a full-screen Space) re-checked on the skeleton — manually or by porting R1's self-test into `CrannyAppShellTests`.
+- **Acceptance:** `make check` (17 targets, zero warnings), `make test`, `make strings-check`, `make build` (universal), `make smoke` (incl. the Effects `default.metallib`), `make dist` locally and on GitHub CI (with the Metal Toolchain step); without the component, `make build` must stop with the `ensure_metal_toolchain` message, not with a compiler error (checked on a machine without the component if one is available, otherwise by review); Appendix C's verification steps reproduce; R1's key panel checks (click delivered without activating the app, per-pixel pass-through, level 26 over a full-screen Space) re-checked on the skeleton — manually or by porting R1's self-test into `CrannyAppShellTests`.
 
 ### 10.2 WP1 — Media · `CrannyMedia` (+ `CrannyMediaBridge`)
 
@@ -2423,11 +2439,26 @@ Every control has an accessibility label (localized), every widget is a VoiceOve
 
 ### 10.12 WP11 — Effects · `CrannyEffects`
 
-- **Files:** `AuroraField.swift` (from WP0) · `MotesField.swift` · `TideField.swift` · `HaloField.swift` · `AmbientLayer.swift` · `EmberBurst.swift` · `ChargeSweep.swift` · `FirstLight.swift` · `LiquidNeck.swift` · `TypewriterText.swift` · `RippleModifier.swift`.
-- **Responsibilities:** DESIGN.md §5 and Appendix B: stateless effects (pure functions of time, palette, energy, intensity), `AmbientLayer(palette:level:effect:energy:budget:)` choosing the effect (Halo under Low Power), framed to the current shape, `ambientIn/Out` fill/drain; one view per `DelightMoment` (ember burst, charge sweep along a given outline path, song-change ripple, first light; the gulp is a geometry offset NotchUI applies) plus the satellite liquid neck; `TypewriterText` (`TextRenderer` on 15+, fade on 14) for NotchUI/Onboarding text only. No `.metal` (D13).
-- **Public types:** `AmbientLayer`, `AuroraField`, `MotesField`, `TideField`, `HaloField`, `EmberBurst`, `ChargeSweep`, `FirstLight`, `LiquidNeck`, `TypewriterText`, `View.songChangeRipple(_:)`.
-- **Settings:** none (reads values passed by the caller from `CoreSettings`).
-- **Acceptance:** alpha never exceeds `Glow.ambientAlphaCap` (test over sampled frames); `TimelineView` paused when `EffectBudget.minimumInterval == nil`; Reduce Motion shows a resting frame; macOS 14 Canvas path renders; open Nook + aurora ≤ 3 % CPU (Instruments, 120 Hz).
+- **Files:**
+  - **Swift:** `AuroraField.swift` and `ShaderEffects.swift` (both from WP0) · `MotesField.swift` · `TideField.swift` · `HaloField.swift` · `AmbientLayer.swift` · `EmberBurst.swift` · `ChargeSweep.swift` · `FirstLight.swift` · `LiquidNeck.swift` · `TypewriterText.swift` · `RippleModifier.swift`.
+  - **Metal:** `Shaders/CrannyShaders.h` and `Shaders/Dither.metal` (both from WP0) · `Shaders/{Aurora, Tide, Motes, Halo, Ripple, LiquidNeck, Ember, ChargeSweep}.metal`.
+  - Start `Aurora.metal` from DESIGN.md App. B.2, which is verified. First light reuses `haloGlow` and has no shader of its own.
+- **Responsibilities:** DESIGN.md §5 and Appendix B.
+  - **Effects:** stateless (pure functions of time, palette, energy, intensity). Each has **two paths**: the Metal shader of DESIGN.md §5.6 and its SwiftUI fallback (§5.3–§5.5, App. B.1), selected only by `ShaderEffects.usesShader(budget)`. The fallback runs under Reduce Motion, under Low Power / thermal ≥ serious, and when `ShaderEffects.isAvailable` is false. Pausing never flips the path.
+  - **`AmbientLayer(palette:level:effect:energy:budget:)`:** chooses the effect (Halo under Low Power), is framed to the current shape, and handles the `ambientIn/Out` fill and drain.
+  - **Delights:** one view per `DelightMoment` (ember burst, charge sweep along a given outline path, song-change ripple, first light; the gulp is a geometry offset that NotchUI applies), plus the satellite liquid neck.
+  - **`ShaderEffects.requiredFunctions`:** lists every function shipped.
+  - **`TypewriterText`:** `TextRenderer` on 15+, fade on 14; for NotchUI/Onboarding text only.
+  - **Metal:** allowed only in this target (D13).
+- **Public types:** `AmbientLayer`, `AuroraField`, `MotesField`, `TideField`, `HaloField`, `EmberBurst`, `ChargeSweep`, `FirstLight`, `LiquidNeck`, `TypewriterText`, `View.songChangeRipple(_:)` (`ShaderEffects` stays internal).
+- **Settings:** none. Reads values passed by the caller from `CoreSettings`. `-CrannyDisableShaders YES` is a QA launch argument, not a setting.
+- **Acceptance:**
+  - **Alpha cap:** alpha never exceeds `Glow.ambientAlphaCap` on either path. The test samples frames with `ImageRenderer`, which rasterizes stitchable shaders [VERIFIED].
+  - **Shader + fallback parity:** per effect, snapshot tests render both paths with the same palette, level, energy and time. They agree on the black top 40 % (aurora: alpha 0), on peak alpha (≈ 0.8·cap at energy 0, ±10 %), on mean alpha per horizontal third (±25 %) and on which stop dominates.
+  - **Render test per function:** non-empty output, which catches the silent-transparent failure of a signature mismatch.
+  - **Metallib present:** `Bundle.module` contains `default.metallib` (always runs), and `ShaderEffects.unavailabilityReason() == nil` (skipped without a Metal device). `make smoke` passes on the built app.
+  - **Path switching:** the fallback is chosen under Reduce Motion, Low Power and `-CrannyDisableShaders YES`. `TimelineView` is paused when `EffectBudget.minimumInterval == nil`, and Reduce Motion shows a resting frame. The macOS 14 Canvas fallbacks render.
+  - **Frame-time budget (Instruments, 120 Hz display, largest open size):** ambient ≤ 30 fps on AC and ≤ 20 on battery; GPU ≤ 1.5 ms per frame (Metal System Trace); open Nook + aurora ≤ 3 % CPU; Energy Impact no higher than the fallback's at the same frame rate.
 
 ### 10.13 WP12 — Notch UI · `CrannyNotchUI`
 
@@ -2508,7 +2539,8 @@ Icon (`App/AppIcon.icon` per DESIGN.md §15 in Icon Composer); `CrannyGitHubRepo
 | 12 | x86_64 slices never executed (no Rosetta on the research Mac) | Intel users crash at launch unnoticed | Intel smoke job if a runner exists; otherwise a manual run on an Intel Mac before release — WP-Final |
 | 13 | Strings tooling depends on the swift-build backend layout (SwiftPM 6.4) | `strings-check` breaks on Xcode 26 or a future layout change | Explicit `--build-system swiftbuild`; strings steps pinned to Xcode 27 (§8.5) — WP0 |
 | 14 | Competitor naming/UI text leaks into copy ("Nook" + "Tray" tab pair) | Clean-room/trademark complaint | D20, denylist grep before release (§8.7) — WP-Final |
-| 15 | Metal Toolchain present on some machines tempts `.metal` effects | Builds fail on CI/contributors without the component | D13 guard in `check-modules.sh` — all WPs |
+| 15 | Contributors (or CI images) without the Metal Toolchain cannot build: `CrannyEffects` and every target above it compile `.metal` files (D13) | `make build/check/test` fail for newcomers; CI breaks if an image drops the component | A clear early error from `ensure_metal_toolchain` with the one-line fix `xcodebuild -downloadComponent MetalToolchain` (≈ 0.9 GB); the README "Build" section and CONTRIBUTING; CI installs it in every job — WP0 |
+| 16 | A shader renders transparent with no error (missing function, argument mismatch, no GPU), or costs too much GPU on older Macs | Light silently disappears, or Energy Impact rises | `ShaderEffects.isAvailable` (metallib + function-name check, one `.info` log line); a render test per function; parity tests; `-CrannyDisableShaders YES` for A/B energy runs; per-release Instruments gate (§9.2) — WP11, WP-Final |
 
 ### 11.2 Hardware checklist (each release; R1 §10, R3 §12)
 
@@ -2528,7 +2560,7 @@ On a notched MacBook with the lid open, with a stable-identity or release build 
 
 ## Appendix A — CrannyCore implementation sources (verbatim, compiled)
 
-These complete §3. WP0 copies them unchanged; the DesignSystem files (`Color`, `Typography`, `Layout`, `Motion`, `Notch`, `Theme`, `Components`, `AmbientPalette`) are DESIGN.md's code with the §3.2 amendments and are not repeated here. `CrannyEffects/AuroraField.swift` is DESIGN.md Appendix B's `AuroraField` with `import SwiftUI` and `import CrannyCore`.
+These complete §3. WP0 copies them unchanged; the DesignSystem files (`Color`, `Typography`, `Layout`, `Motion`, `Notch`, `Theme`, `Components`, `AmbientPalette`) are DESIGN.md's code with the §3.2 amendments and are not repeated here. `CrannyEffects/AuroraField.swift` is DESIGN.md Appendix B.1's `AuroraField` with `import SwiftUI` and `import CrannyCore`; `CrannyEffects/ShaderEffects.swift` and `Shaders/{CrannyShaders.h, Dither.metal}` are DESIGN.md Appendix B.2 verbatim (D13).
 
 ### A.1 `Settings/SettingsStore.swift`
 
@@ -3784,6 +3816,15 @@ import Testing
 
 ## Appendix B — App target, project and tooling files (verbatim, built)
 
+> **Superseded listings (2026-10-14).** The Appendix B listings are superseded by the files in the repo. The Metal guard was removed when D13 was reversed. Where a listing below differs from the repo, the repo wins. The Metal-related differences are described in prose only; the listings are not edited:
+> - B.7 `lib.sh` gains `ensure_metal_toolchain` (§8.5).
+> - B.8–B.9, B.12–B.14 call it after `ensure_xcode`.
+> - B.10 `smoke.sh` also checks `CrannyKit_CrannyEffects.bundle/Contents/Resources/default.metallib`.
+> - B.12 `check-modules.sh` has **no** `*.metal` guard.
+> - B.15/B.16 add the "Metal Toolchain" step (§8.9).
+>
+> A later step replaces these appendices with pointers to the repo files.
+
 ### B.1 `Cranny.xcodeproj/project.pbxproj`
 
 ```text
@@ -4645,6 +4686,8 @@ struct CrannyApp: App {
 
 ### B.7 `scripts/lib.sh`
 
+*Superseded by the repo file:* it adds `ensure_metal_toolchain`, which checks `xcodebuild -showComponent MetalToolchain` for `Status: installed` and otherwise dies with the `xcodebuild -downloadComponent MetalToolchain` hint (D13, §8.5).
+
 ```bash
 #!/usr/bin/env bash
 # Shared helpers for Cranny scripts. Source it; do not execute it.
@@ -4827,6 +4870,8 @@ die "Cranny did not start; check ~/Library/Logs/DiagnosticReports/Cranny-*.ips"
 
 ### B.10 `scripts/smoke.sh`
 
+*Superseded by the repo file:* it also fails when `Contents/Resources/CrannyKit_CrannyEffects.bundle/Contents/Resources/default.metallib` is missing (D13).
+
 ```bash
 #!/usr/bin/env bash
 # Launch smoke test of build/Cranny.app without UI: `Cranny --diagnostics <json>` writes a report and quits.
@@ -4930,6 +4975,8 @@ ls -lh "$DIST" | sed 1d >&2
 ```
 
 ### B.12 `scripts/check-modules.sh`
+
+*Superseded by the repo file:* the "D13: no offline Metal compilation" guard below **was removed** (Metal is allowed in `CrannyEffects`, D13). The script calls `ensure_metal_toolchain` after `ensure_xcode`.
 
 ```bash
 #!/usr/bin/env bash
@@ -5048,6 +5095,8 @@ log "String Catalogs are in sync"
 
 ### B.14 `Makefile`
 
+*Superseded by the repo file:* `test` runs `ensure_metal_toolchain` after `ensure_xcode` (D13).
+
 ```make
 # Thin wrapper around scripts/. All targets work when xcode-select points at the
 # Command Line Tools: the scripts locate /Applications/Xcode*.app themselves.
@@ -5096,6 +5145,8 @@ distclean: clean ## Also remove SwiftPM scratch dirs
 ```
 
 ### B.15 `.github/workflows/ci.yml`
+
+*Superseded by the repo file:* a "Metal Toolchain" step follows "Toolchain" (`xcodebuild -downloadComponent MetalToolchain` unless already installed), here and in the `macos-26` fallback job (D13, §8.9).
 
 ```yaml
 name: CI
@@ -5161,6 +5212,8 @@ jobs:
 ```
 
 ### B.16 `.github/workflows/release.yml`
+
+*Superseded by the repo file:* the same "Metal Toolchain" step runs before "Build (universal)" (D13).
 
 ```yaml
 name: Release
@@ -5434,14 +5487,30 @@ A scratch repository with exactly the layout of §1 was built from R4's working 
 | SDK checks | `onGeometryChange(for:of:action:)` macOS 13+ (back-deployed); `CBManager.authorization` class property macOS 10.15; `AEDeterminePermissionToAutomateTarget` macOS 10.14; `NSTextLayoutManager.addRenderingAttribute`; `openSettings` environment macOS 14 |
 | **Review re-verification** (`scratchpad/poc/review`: the scratch package above + every review change to §3, §4.12, A.1–A.4, A.10, B.12–B.13 and DESIGN.md App. A/§2.3–2.4) | all 17 targets build clean with **0 warnings**; 16 test targets pass (Core: 5 tests incl. snapshot/restore and namespaces); every Core/NotchUI code block in this document is byte-identical to the compiled file |
 | SDK name-collision probe (all public Core types aliased in a file importing AppKit, AVFoundation, AudioToolbox, CoreAudio, CoreBluetooth, EventKit, IOKit, QuickLookThumbnailing, ServiceManagement, SwiftUI, UniformTypeIdentifiers) | `ScrollPhase` was **ambiguous** with `SwiftUI.ScrollPhase` (hard error); renamed `SwipePhase`; no other collision |
-| B.12 Metal guard; B.13 `--build-system swiftbuild` | guard fails on a planted `.metal` file and passes without it; sync + `CHECK=1` pass on SwiftPM 6.4 |
-| Toolchain state on this Mac (2026-10-14, later in the day) | `xcode-select -p` now returns Xcode.app (it pointed at the CLT earlier — scripts handle both); `xcodebuild -showComponent MetalToolchain` = installed (D13 still applies); CLT Swift is also 6.4 but lacks `xcstringstool`/`actool` |
+| B.12 Metal guard; B.13 `--build-system swiftbuild` | guard fails on a planted `.metal` file and passes without it (**guard since removed**: D13 reversed); sync + `CHECK=1` pass on SwiftPM 6.4 |
+| Toolchain state on this Mac (2026-10-14, later in the day) | `xcode-select -p` now returns Xcode.app (it pointed at the CLT earlier — scripts handle both); `xcodebuild -showComponent MetalToolchain` → `Status: installed`, toolchain `com.apple.dt.toolchain.Metal.32023.921.5`, asset ≈ 881 MB, check takes ≈ 0.7 s (now a build requirement, D13); CLT Swift is also 6.4 but lacks `xcstringstool`/`actool` |
+| **Metal pipeline (D13, 2026-10-14)** — scratch package `scratchpad/wp0/docs-metal/pkg` + a copy of the verified app layout with DESIGN.md App. B.2's files in `CrannyEffects` | **Library build:** several `.metal` files + a quoted `#include "…h"` + a cross-file `extern` call link into one `default.metallib`, with exactly the stitchable functions listed by `MTLLibrary.functionNames`. Built with **no** `resources:` entry (SwiftPM's built-in rule) and with `.process("Shaders")`: same result. The header is not copied into the bundle, and SwiftPM raises no "unhandled file" warning. `swift build --target CrannyEffects` (own scratch dir, 0 compiler warnings) and `swift test` compile it. SwiftPM's CLI prints one `missing creator for mutated node: (…bundle/Contents/MacOS)` planner line for Metal targets; xcodebuild does not. **App build:** universal Release `scripts/build.sh` shows `CompileMetalFile`/`MetalLink` (`-target air64-apple-macos14.0`, Metal toolchain from the cryptex mount) and produces `Cranny.app/Contents/Resources/CrannyKit_CrannyEffects.bundle/Contents/Resources/default.metallib`; `codesign --verify --deep --strict` OK; `scripts/smoke.sh` passes. A diagnostics probe inside the app reports `ShaderEffects.unavailabilityReason() == nil`, so `Bundle.module` resolves via `Bundle.main.resourceURL`. **Rendering in tests:** `ImageRenderer` rasterizes `.colorEffect`, `.layerEffect` and `.distortionEffect` in `swift test`. `.colorArray` arrives as `device const half4 *, int` and `.boundingRect` as `float4`. App. B.2's `auroraField` at 880 × 260 pt keeps the top 40 % at alpha 0, with peak alpha 0.36 (Subtle, cap 0.45) and 0.64 (Vivid, cap 0.80). All planned §5.6 signatures compile and render (stub bodies). **Failure mode:** a missing function **or** an argument-count mismatch renders fully transparent with no error or log. **SDK:** `Shader.compile(as:)` is macOS 15+ (not used; the 14 baseline relies on the function-name check) |
 | `com.apple.symbolichotkeys` `AppleSymbolicHotKeys` | readable by a non-sandboxed process (81 entries, `parameters = (ascii, keyCode, modifiers)`); used only for the best-effort conflict warning |
 | Not verified here | everything tagged [UNVERIFIED] in §4–§8; runtime behaviour of the full shell (WP13), notarization, the GitHub runner, x86_64 execution (no Rosetta) |
 
 ---
 
-## Changelog of review fixes (2026-10-14)
+## Changelog
+
+### 2026-10-14 — Metal decision (project owner): D13 reversed
+
+Cranny now uses Metal for its light effects. Every place that said otherwise was amended in place:
+- **ARCHITECTURE.md:**
+  - Status and Toolchain rows; **D13** rewritten: Metal only in `CrannyEffects`, SwiftPM resources, `ShaderLibrary.bundle(.module)`, Metal Toolchain required, a SwiftUI fallback for Reduce Motion / Low Power / thermal / load failure.
+  - §1 README line; §2.4 toolchain note; §8.1 Metal build facts; §8.5 `ensure_metal_toolchain`, smoke metallib check and the SwiftPM planner line; §8.8 shader resources; §8.9 CI "Metal Toolchain" step.
+  - §9.2 shader budget; §9.4 code-style rule (replaces "No `.metal` files and no `ShaderLibrary`"); §9.7 warning note.
+  - WP0: guard removed, toolchain check, CI/README, shader plumbing placeholders, smoke. WP11: shader files, two-path responsibility, parity / frame-time / metallib acceptance.
+  - Risk 15 rewritten (contributors without the component); risk 16 added (silent transparent shaders, GPU cost).
+  - Appendix A note; Appendix B marked superseded by the repo files (the Metal guard was removed; prose notes only, listings untouched); Appendix C Metal pipeline verification.
+- **DESIGN.md:** "Effects" status row; §4.3 satellite and song-change sentences; §5.3 table (shader + fallback columns); §5.5 note; new **§5.6 Metal shaders** (per-effect stitchable design, uniforms, alpha cap, fps, fallbacks); Appendix B split into **B.1** (SwiftUI path = the fallback specification, one comment line updated) and **B.2** (verified `CrannyShaders.h`, `Dither.metal`, `Aurora.metal`, `ShaderEffects.swift`, tests, signatures); Appendix C row.
+- `research/X-metal-verified.md`'s conclusion (Effects may ship Metal shaders with SwiftUI fallbacks) is **adopted**, with one extension: the fallback also covers shader load failure. The items below that mention the D13 guard (2 and 7) record the earlier state.
+
+### 2026-10-14 — Review fixes
 
 A hard review of this document and DESIGN.md against the feature inventory, R1–R4 and the build PoC. Every item below is fixed in place in both documents.
 

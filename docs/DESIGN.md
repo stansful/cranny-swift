@@ -4,11 +4,11 @@
 
 | | |
 |---|---|
-| Status | **v1.0, adopted** (2026-10-14); aligned with ARCHITECTURE.md by the review of the same day (its "Changelog of review fixes"). This file is the single source of truth for every pixel, colour and animation in Cranny. |
+| Status | **v1.0, adopted** (2026-10-14); aligned with ARCHITECTURE.md by the review of the same day, and amended for the Metal decision (ARCHITECTURE D13: §5.6, Appendix B.2). See ARCHITECTURE.md's "Changelog". This file is the single source of truth for every pixel, colour and animation in Cranny. |
 | Applies to | The notch surfaces (closed, compact, peek, HUD, open Nook, Tray), Settings, onboarding and the tutorial, the menu bar extra, the app icon. |
 | Platform | Deployment target macOS 14.0. Newer APIs (`MeshGradient`, `TextRenderer` 15+; Liquid Glass 26+) only behind `#available`, always with a designed fallback. |
 | Code | Every Swift block in this file is copied verbatim from a scratch package that builds with **zero errors and zero warnings** under Swift 6 / macOS 14 / the four CrannyKit upcoming features, with **both** default isolations (nonisolated and `MainActor`). See Appendix C. |
-| Effects | Pure SwiftUI (MeshGradient, Canvas, TimelineView, gradients, shadows). Nothing here needs offline Metal compilation, videos, GIFs or Lottie. |
+| Effects | **Metal shaders** for the light layer and its moments: SwiftUI stitchable `colorEffect` / `layerEffect` / `distortionEffect` compiled from `CrannyEffects/Shaders/*.metal` (ARCHITECTURE D13, §5.6). Each has a designed **pure-SwiftUI fallback** (MeshGradient, Canvas, TimelineView, gradients, shadows), used under Reduce Motion, Low Power / thermal and when shaders are unavailable. No videos, GIFs or Lottie. |
 | Clean room | Original work for Cranny (MIT). No NotchNook, boring.notch (GPL), Alcove or Atoll code, assets, names or UI text. Competitors were studied only through public reviews, product pages and issue-tracker titles. |
 
 **Contents.** 0 Decision record · 1 Principles · 2 Tokens · 3 Geometry & the NotchShape · 4 Motion · 5 The light layer · 6 The open Nook · 7 Widgets · 8 Tray & pipelines · 9 Live activities · 10 HUD · 11 Settings · 12 Onboarding & tutorial · 13 Menu bar extra · 14 Symbols, haptics, sound · 15 App icon · 16 Accessibility · 17 Copy & localisation · 18 What's better than NotchNook · Appendix A Components · Appendix B Ambient layer · Appendix C Verification.
@@ -1582,7 +1582,7 @@ public extension AnyTransition {
 
 **Peek:** `peekIn` grows 52-pt rows downward. Elements that also exist in the row (artwork, visualizer) **move** with matched geometry (20 → 40 pt artwork). Only new elements use `contentIn`. Peek rows stagger 30 ms top to bottom. An auto-peek retracts after 2.6 s unless hovered.
 
-**Satellite:** a second ongoing activity buds off the trailing edge with `satellite`. In Standard and Lively a liquid neck connects them for the first 0.38 s (Canvas blur + `alphaThreshold`, clipped to the strip between the shape and the bubble). In Calm and Reduce Motion it simply fades in.
+**Satellite:** a second ongoing activity buds off the trailing edge with `satellite`. In Standard and Lively a liquid neck connects them for the first 0.38 s. It is drawn by the `liquidNeck` layer shader of §5.6; the fallback is Canvas blur + `alphaThreshold`. Both are clipped to the strip between the shape and the bubble. In Calm and Reduce Motion it simply fades in.
 
 **HUD:** the first key press runs `hudIn`. Later presses animate **only** the bar (`hudLevel`) and the number (`.numericText`); the shape never moves. Pressing past 0 % or 100 % rubber-bands the bar by 2 pt and springs it back (`snapBack`). After 1.5 s idle, `hudOut` restores the previous presentation.
 
@@ -1590,7 +1590,7 @@ public extension AnyTransition {
 
 **Notes focus:** the other widgets `contentOut`, the shape `resize`s to all columns × 3 rows, and Notes expands with matched geometry. Esc or ⌘↩ reverses it.
 
-**Song change:** the artwork swaps with `.blurReplace` and `contentSwap`. The accent and light palette cross-fade (`colorShift`), and the tide or aurora gets a 0.6-s energy ripple. If the Nook is closed, it auto-peeks (option).
+**Song change:** the artwork swaps with `.blurReplace` and `contentSwap`. The accent and light palette cross-fade (`colorShift`), and the tide or aurora gets a 0.6-s energy ripple. With shaders, the radial `songRipple` distortion from the camera is added (§5.6). If the Nook is closed, it auto-peeks (option).
 
 ### 4.4 Gestures and rubber-banding
 
@@ -1670,14 +1670,14 @@ An optional layer, grafted from proposal B: **the Nook is a black crevice that l
 
 ### 5.3 Effects
 
-All effects are pure functions of time, palette, energy and intensity. They hold no per-particle state and no timers; `TimelineView(.animation(minimumInterval:paused:))` supplies time, and pausing it costs nothing. The backdrop is framed to the shape's **current** bounds, so the light rises with the bottom edge as the Nook opens.
+All effects are pure functions of time, palette, energy and intensity. They hold no per-particle state and no timers; `TimelineView(.animation(minimumInterval:paused:))` supplies time, and pausing it costs nothing. The backdrop is framed to the shape's **current** bounds, so the light rises with the bottom edge as the Nook opens. Each effect is drawn by a **Metal shader** (§5.6, primary). Each also has a **SwiftUI fallback** with the same look, palette mapping and alpha ceiling. The fallback is used under Reduce Motion (frozen resting frame), under Low Power / `thermalState ≥ .serious` (the static halo) and when shaders are unavailable.
 
-| Effect | Engine | Look | Parameters |
-|---|---|---|---|
-| **Aurora** | `MeshGradient` 4 × 4 (15+); macOS 14: Canvas with 3 blurred sine curtains, normal blending | Curtains of content colour rising from the bottom; the top 40 % stays black, so the band merges with the hardware | Interior points drift on incommensurate sines (0.21–0.71 rad/s, amplitude 3–8 %); louder audio lifts the light by up to 6 % |
-| **Motes** | Canvas, 36 stateless hash-seeded particles | Slow rising specks that twinkle | Speed 5–14 pt/s; radius 0.8–2.4; twinkle 1.2–3.2 Hz × 0.45 amplitude |
-| **Tide** | Canvas, 3 tapered sine strokes + 3-pt bloom | Luminous wave lines along the bottom edge | Amplitude 3–10 pt × energy; also used in the song-change peek |
-| **Halo** | `RadialGradient` | One static bloom | Low Power Mode and thermal fallback |
+| Effect | Metal shader (§5.6) | SwiftUI fallback | Look | Parameters |
+|---|---|---|---|---|
+| **Aurora** | `auroraField`: domain-warped fBm curtains coloured by the palette stops | `MeshGradient` 4 × 4 (15+); macOS 14: Canvas with 3 blurred sine curtains, normal blending | Curtains of content colour rising from the bottom; the top 40 % stays black, so the band merges with the hardware | Interior points drift on incommensurate sines (0.21–0.71 rad/s, amplitude 3–8 %); louder audio lifts the light by up to 6 % |
+| **Motes** | `motesField`: the same 36 hash-seeded specks, evaluated per pixel | Canvas, 36 stateless hash-seeded particles | Slow rising specks that twinkle | Speed 5–14 pt/s; radius 0.8–2.4; twinkle 1.2–3.2 Hz × 0.45 amplitude |
+| **Tide** | `tideField`: 3 layered sine lines with soft, tapered edges + bloom | Canvas, 3 tapered sine strokes + 3-pt bloom | Luminous wave lines along the bottom edge | Amplitude 3–10 pt × energy; also used in the song-change peek |
+| **Halo** | `haloGlow`: Gaussian radial falloff, dithered. Used by First light; the automatic Low Power halo is always the fallback | `RadialGradient` | One static bloom | Low Power Mode and thermal fallback |
 
 **Audio energy:** real RMS (60 ms attack, 300 ms release) only when the user enables **Live** visualizer mode, which asks for System Audio Recording permission on macOS 14.2+ via a Core Audio process tap. Otherwise energy is 0 and the visualizer runs in **Ambient** mode: an honest breathing pattern, labelled as such in Settings.
 
@@ -1697,6 +1697,8 @@ All are original and capped: at most one plays at a time, none play in full scre
 
 **Who triggers what** (ARCHITECTURE §3.6, §4.6 step 7): feature modules cannot import `CrannyEffects`, so an activity only *names* its moment (`LiveActivity.delight`: Timer done → `.emberBurst`, Charging → `.chargeSweep`); the shell adds `.songRipple`, `.firstLight` and `.gulp`, applies the caps above, and CrannyNotchUI draws the moment from `CrannyEffects`. The to-do check and its Lively motes are drawn inside the To-dos widget; the drop, satellite neck and HUD bump are motion owned by NotchUI and the HUD.
 
+**Engines.** First light, Song change, Timer done, Charger connected and Satellite split are drawn by Metal shaders (§5.6). The last column below is unchanged. Under Low Power / thermal, or when shaders are unavailable, the same moments use their SwiftUI fallback, which is the design as originally written: Canvas particles, `trim` sweep, Canvas blur neck, energy-only ripple, radial fade.
+
 | Moment | What happens | Calm / Reduce Motion |
 |---|---|---|
 | **The drop** | `activityIn`'s 2.5 % overshoot as an activity appears | Calm: no overshoot |
@@ -1708,6 +1710,95 @@ All are original and capped: at most one plays at a time, none play in full scre
 | **Satellite split** | The liquid neck, 0.38 s | Fade |
 | **To-do done** | The check draws itself (trim 0 → 1, 0.25 s); Lively adds six motes | Instant check |
 | **HUD at a limit** | A 2-pt rubber-band bump | Kept, with no overshoot |
+
+### 5.6 Metal shaders
+
+Since ARCHITECTURE D13, the light is drawn by SwiftUI **stitchable** Metal functions in `CrannyEffects/Shaders/*.metal`, loaded with `ShaderLibrary.bundle(.module)`. Each shader is a pure function of its uniforms and holds no state, timer or clock. The SwiftUI designs of §5.3–§5.5 and Appendix B.1 are the **fallback specification**: same palette mapping, black band, peak alpha and motion scale. The fallback is not a degraded mode. The plumbing is in Appendix B.2.
+
+**Rules for every shader**
+
+1. **Which path.** `ShaderEffects.usesShader(budget)`. The shader path runs only when the Metal library is available and neither Reduce Motion nor Low Power / `thermalState ≥ .serious` is on.
+   - Reduce Motion: the fallback freezes on its resting frame.
+   - Low Power / thermal: `budget.effective(_:)` turns the light into the static SwiftUI halo.
+   - Closing, occlusion and full screen only **pause** time on the current path. They never switch paths, so nothing jumps.
+2. **Failure is silent in SwiftUI.** A missing function, or a uniform list that does not match the signature, renders **transparent** with no error [VERIFIED].
+   - `ShaderEffects.isAvailable` checks once that `default.metallib` is bundled, loads on this Mac's GPU and lists every `requiredFunctions` name. If not, it logs one `.info` line and every effect uses its fallback.
+   - Each function has a render test.
+   - Launching with `-CrannyDisableShaders YES` forces the fallbacks (QA, energy A/B).
+3. **Uniforms come only from the caller.** The common set is:
+   - `.boundingRect`: the view's rect, so size = `bounds.zw`.
+   - `time`: seconds from the effect's `TimelineView`, `mod 3600`.
+   - Palette **stops**: `.colorArray(palette.glows)` → `device const half4 *stops, int count`. Shaders accept 1–5 stops; `AmbientPalette` supplies 3. `accent` is a foreground colour and never lights.
+   - `energy`: 0…1, §5.3.
+   - `intensity`: `AmbienceLevel.intensity`, Subtle 0.55 and Vivid 1. It scales structure and contrast, never the ceiling.
+   - `cap`.
+4. **Alpha cap.** Every light-emitting shader returns through `cranny::light(rgb, alpha, cap)`. The output is premultiplied, alpha is clamped to `cap`, and every channel is clamped to `Glow.maxBrightness` (0.95).
+   - Ambient effects pass `cap = Glow.ambientAlphaCap(level)`.
+   - One-shot moments pass `Glow.ambientAlphaCap(max(level, .subtle))`, so they still show at Subtle strength when Ambient light is Off.
+   - The contrast audit of §2.1 therefore holds on both paths. The liquid neck is surface, not light: opaque black, no cap.
+5. **No banding.** The aurora, tide, halo and first light end with `.crannyDithered(scale: displayScale)`. This adds ±0.5 LSB of interleaved-gradient noise per *pixel* (a texture-free stand-in for blue noise) to the premultiplied colour, so dim light over black shows no rings.
+6. **Frame rate.**
+   - **Ambient:** time comes from `TimelineView(.animation(minimumInterval: budget.minimumInterval, paused:))`, giving **≤ 30 fps on AC, ≤ 20 fps on battery**, and 0 when paused (§4.7).
+   - **Moments:** the same rates (1/30 s on AC, 1/20 s on battery), whether the Nook is open or not, only for their lifetime (≤ 1.0 s), after which the view is removed. The liquid neck follows the satellite spring for 0.38 s.
+   - **Budget:** GPU ≤ 1.5 ms per frame at the largest open size. The aurora returns early in the black top 40 %.
+7. **Never on content.** Shaders apply to light layers only, never to text, cards, artwork or controls. Light layers keep `.allowsHitTesting(false)` and `.accessibilityHidden(true)`.
+
+**The effects** (signatures in App. B.2; numbers are starting values that WP11 tunes against the fallback):
+
+- **Aurora: `auroraField`** (`Aurora.metal`). A `.colorEffect` on a `Rectangle` framed to the shape. Uniforms: bounds, time, stops, energy, intensity, cap. The reference implementation is in App. B.2.
+  - **Black band:** uv = position in bounds. The shader returns clear for uv.y ≤ 0.40, so the band stays black.
+  - **Domain:** p = (1.2 · uv.x · aspect, 0.5 · uv.y). It is anisotropic, which makes the curtains tall.
+  - **Domain warp:** two warp levels of 3-octave value-noise fBm, q then r = fbm(p + 1.5 · intensity · q + drift). Drifts are 0.04–0.07 units/s, periods of about 15–25 s, matching the mesh's 0.21–0.71 rad/s.
+  - **Folds:** f = smoothstep(0.25, 0.75, fbm(p + 2r, 4 octaves)).
+  - **Vertical rays:** 0.55 + 0.45 · smoothstep(0.3, 0.7, fbm(5 · p.x + 1.5 · r.y, 0.08 t)).
+  - **Rise:** smoothstep(0.40, 0.70 − 0.06 · energy, uv.y), so louder audio lifts the light by up to 6 %, as in §5.3.
+  - **Colour:** a ramp through the stops at 0.15 + 0.7 f + 0.3 (q.x − 0.5).
+  - **Alpha:** cap · (0.8 + 0.2 · energy) · rise · rays · mix(0.45, 1, f). That is ≈ 0.8 · cap at energy 0, the mesh's peak.
+  - **Then:** dithered.
+  - **Fallback:** `MeshGradient` (15+) / Canvas curtains (14), App. B.1.
+- **Tide: `tideField`** (`Tide.metal`). A `.colorEffect` over the shape bounds. Uniforms: bounds, time, stops, energy, intensity, cap.
+  - **Lines:** three lines, i = 0…2, line i in stop i. Baseline at 0.80 + 0.06·i of the height.
+  - **Amplitude:** A = (3 + 7 · energy) · (1 − 0.2 · i) pt.
+  - **Wave:** y(x) = base + A · [sin(kx + ωt + φ) + 0.45 · sin(1.9kx − 1.4ωt)], with k = 2π(0.75 + 0.35 i)/width and ω = 2π(0.09 + 0.035 i). These are the rates of the Canvas fallback.
+  - **Profile:** slope-corrected distance d; taper τ = sin(π · u)^0.6, so the lines thin and fade toward both ends. Core = 1 − smoothstep(0.5τ, 1.25τ, d), with d in pt: a soft edge with no hard stroke. Bloom = 0.35 · exp(−(d/3)²).
+  - **Alpha:** cap · (0.55 + 0.45 · intensity) · (core + bloom) · τ, summed additively and premultiplied, then clamped.
+  - **Then:** dithered.
+  - **Fallback:** Canvas strokes.
+- **Motes: `motesField`** (`Motes.metal`). A `.colorEffect`. Uniforms: bounds, time, stops, energy, intensity, cap.
+  - **Layout:** the same 36 stateless motes, as 12 columns × 3, each seeded by `cranny::hash(column · 3 + j)`.
+  - **Cost:** a pixel evaluates only the 9 motes of its own and the two neighbouring columns (sway ≤ 4 pt is less than a column).
+  - **Motion:** x = column centre ± 30 % + 4 pt · sin(0.6t + seed). Each mote rises at 5–14 pt/s · (1 + 0.3 · energy) and wraps below the bottom edge.
+  - **Look:** radius 0.8–2.4 pt; twinkle 1 − 0.45 · (½ + ½ sin(2πft + seed)) with f = 1.2–3.2 Hz; profile exp(−(d/r)²) + 0.25 · exp(−(d/3r)²).
+  - **Fade:** to 0 in the top 40 % (smoothstep 0.40 → 0.60).
+  - **Colour:** stop (index mod count).
+  - **Alpha:** cap · (0.6 + 0.4 · intensity) · profile · twinkle.
+  - **Fallback:** the Canvas particles.
+- **Halo: `haloGlow`** (`Halo.metal`). A `.colorEffect`. Uniforms: bounds, center, radius, glow, cap.
+  - **Alpha:** 0.6 · cap · exp(−2.8 · (d/R)²). This Gaussian falloff has no crease where a two-stop gradient ends. Then dithered.
+  - **Used by:** First light, and by any caller that asks for `.halo` while shaders are allowed. The **automatic** Low Power / thermal halo is always the fallback `RadialGradient` (glow1 at 0.6 · cap → clear, r 260, centred bottom), per rule 1.
+- **First light** (`FirstLight`, reuses `haloGlow`). The ambient layer is masked by `haloGlow` (white, cap 1), centred on the camera. Its radius eases out from 0 to the shape's diagonal over 1.0 s. A second `haloGlow` in glow1 at 0.5 · cap rides the front as a crest. Fallback: radial fade. Reduce Motion: static fade (§5.5).
+- **Song change: `songRipple`** (`Ripple.metal`). A `.distortionEffect` on the **ambient layer only**, for 0.6 s from the track change. `maxSampleOffset` = amplitude. Uniforms: center (the camera, top centre), time since trigger, amplitude 6 pt, wavelength λ 56 pt, speed 480 pt/s.
+  - **Wave:** radial from the camera. For r = |p − c| and front = speed · t, the shader returns p − dir · A · sin(2π(r − front)/λ) · exp(−((r − front)/λ)²) · (1 − t/0.6)².
+  - **Also:** the fallback's energy pulse (energy + 0.5 · (1 − t/0.6)²) still plays underneath.
+  - **Fallback:** that energy pulse alone. Reduce Motion: colour cross-fade only.
+- **Satellite split: `liquidNeck`** (`LiquidNeck.metal`). A `.layerEffect` on a layer holding the two black bodies (the trailing end of the shape and the satellite bubble), clipped to the strip between them. `maxSampleOffset` = 7 pt. Uniforms: reach, progress (0…1 over 0.38 s), fill (the surface black).
+  - **Field:** the Gaussian-weighted mean of `layer.sample(…).a` over 13 taps: the centre, 6 at reach/2 and 6 at reach.
+  - **Output:** alpha = smoothstep(0.42, 0.58, field), giving a metaball / smooth-min union. Bodies closer than ≈ 2 · reach merge with a concave neck that thins and snaps as the bubble moves away. Output = fill · alpha.
+  - **Reach:** 7 pt · (1 − smoothstep(0.7, 1, progress)), so the neck is gone at 0.38 s.
+  - **Fallback:** Canvas blur + `alphaThreshold`. Calm / Reduce Motion: fade.
+- **Timer done: `emberBurst`** (`Ember.metal`). A `.colorEffect` on a 280 × 140-pt rect centred under the shape's bottom edge, inside the panel canvas. Uniforms: bounds, origin (the shape's bottom edge, under the camera), time since trigger (0…0.9 s), stops (`.timer`: ember → amber → rose), cap.
+  - **Particles:** 18 stateless embers, seeded by `cranny::hash(i)`. Each travels in a direction within ±75° of straight down at 70–160 pt/s, with drag (distance = v · (1 − e^(−3t))/3) and gravity of 22 pt/s².
+  - **Shape:** radius 1.2–2.6 pt, drawn as a capsule along the velocity (0.05-s trail).
+  - **Life and colour:** life 0.55–0.9 s, fade (1 − t/life)², flicker 0.75 + 0.25 · sin(19t + seed). Profile core exp(−(d/r)²) + 0.4 · exp(−(d/3r)²); the stop is picked by seed.
+  - **Output:** summed and clamped.
+  - **Fallback:** the same 18 particles in a Canvas. Reduce Motion: static ember glow.
+- **Charger connected: `chargeSweep`** (`ChargeSweep.metal`). A `.colorEffect` on the lower-outline stroke (the progress-rim path: a 1.5-pt core over a 4-pt soft under-stroke for bloom). Uniforms: bounds, progress (0 → 1 over 0.8 s), glow (`AmbientPalette.charging.glow1`, `success` green), cap.
+  - **Arc length:** the lower outline is x-monotonic, so u = (x − minX)/width stands in for arc length.
+  - **Head:** s = easeInOut(progress) · 1.2 − 0.1, travelling from leading to trailing.
+  - **Light:** exp(−((u − s)/0.05)²) + 0.45 · smoothstep(s − 0.30, s, u) for u ≤ s (a head plus a fading tail).
+  - **Alpha:** `color.a` · light, so the stroke's own coverage masks it.
+  - **Fallback:** a green `trim` of the rim animated 0 → 1. Reduce Motion: instant rim.
+- **Dither: `crannyDither`** (`Dither.metal`). The shared last `.colorEffect` pass of rule 5. Uniforms: amount (1 = ±0.5 LSB), scale (display scale). Code in App. B.2.
 
 ---
 
@@ -2679,12 +2770,16 @@ public struct DropZone: View {
 
 ## Appendix B: The light layer
 
+### B.1 SwiftUI path: palette, budget, Aurora (the fallback specification)
+
 This code holds palette extraction, the energy budget and the signature Aurora field. In the package it is split in two files: everything down to and including `EffectBudget` is `CrannyCore/DesignSystem/AmbientPalette.swift` (shared by Media, the shell and Effects); `AuroraField` is `CrannyEffects/AuroraField.swift` (add `import CrannyCore`). Motes and Tide follow the same pattern, a pure function of time, palette, energy and intensity drawn in a Canvas, using the parameters in §5.3.
+
+Since ARCHITECTURE D13, this is the **SwiftUI path**: the fallback for Reduce Motion, Low Power / thermal and unavailable shaders (§5.6). WP11 puts the shader branch of B.2 in front of `AuroraField`'s SwiftUI branches and changes nothing below.
 
 ```swift
 // CrannyCore/DesignSystem/AmbientPalette.swift (AmbientPalette, EffectBudget) + CrannyEffects/AuroraField.swift
 // — the optional "Afterglow" light layer.
-// Pure SwiftUI: MeshGradient on macOS 15+, Canvas on macOS 14. No Metal, no video.
+// SwiftUI path, the fallback of the Metal shaders (§5.6): MeshGradient on macOS 15+, Canvas on macOS 14. No video.
 import SwiftUI
 import CoreGraphics
 import AppKit
@@ -2910,6 +3005,235 @@ public struct AuroraField: View, Animatable {
 }
 ```
 
+### B.2 Metal shaders: `CrannyEffects/Shaders/` and `ShaderEffects.swift`
+
+Verified in a copy of the CrannyKit layout (ARCHITECTURE Appendix C, "Metal pipeline"):
+- every block below compiles with the Metal Toolchain, with 0 compiler warnings;
+- the metallib is embedded in the universal Release app, and `ShaderEffects.isAvailable` is true inside it;
+- the tests pass.
+
+WP0 copies `CrannyShaders.h`, `Dither.metal`, `ShaderEffects.swift` and the tests verbatim. WP11 starts `Aurora.metal` and the aurora branch from the listings below, writes the other seven functions against the signatures at the end, and adds every function name to `requiredFunctions`.
+
+```metal
+// CrannyEffects/Shaders/CrannyShaders.h — helpers shared by the CrannyEffects shaders (DESIGN.md §5.6).
+// `#include "CrannyShaders.h"` resolves next to the .metal files; SwiftPM does not copy the header.
+#pragma once
+#include <metal_stdlib>
+using namespace metal;
+
+namespace cranny {
+
+/// Interleaved gradient noise (Jimenez 2014) in 0..<1: a cheap, texture-free stand-in for blue noise.
+static inline float ign(float2 pixel) {
+    return fract(52.9829189 * fract(dot(pixel, float2(0.06711056, 0.00583715))));
+}
+
+/// Stateless integer hash in 0...1 (seeds noise lattices and particles; nothing keeps per-particle state).
+static inline float hash(uint n) {
+    n = (n << 13U) ^ n;
+    n = n * (n * n * 15731U + 789221U) + 1376312589U;
+    return float(n & 0x7fffffffU) / float(0x7fffffffU);
+}
+static inline float hash21(float2 lattice) {
+    int2 i = int2(floor(lattice));
+    return hash(uint(i.x) * 1597334677U ^ uint(i.y) * 3812015801U);
+}
+
+/// Smooth value noise in 0...1.
+static inline float valueNoise(float2 p) {
+    float2 i = floor(p), f = fract(p);
+    float2 u = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash21(i), hash21(i + float2(1, 0)), u.x),
+               mix(hash21(i + float2(0, 1)), hash21(i + float2(1, 1)), u.x), u.y);
+}
+
+/// Fractal Brownian motion: `octaves` of value noise (lacunarity 2, gain 0.5), normalised to 0...1.
+static inline float fbm(float2 p, int octaves) {
+    float sum = 0.0, amplitude = 0.5, norm = 0.0;
+    for (int i = 0; i < octaves; i++) {
+        sum += amplitude * valueNoise(p);
+        norm += amplitude;
+        p = p * 2.0 + float2(17.0, 9.0);
+        amplitude *= 0.5;
+    }
+    return sum / max(norm, 1e-4);
+}
+
+/// Piecewise-linear ramp through the palette stops (`.colorArray`, 1–5 entries), t in 0...1.
+static inline half3 ramp(device const half4 *stops, int count, float t) {
+    if (count <= 1) { return count == 1 ? stops[0].rgb : half3(0.0h); }
+    float x = clamp(t, 0.0, 1.0) * float(count - 1);
+    int i = min(int(x), count - 2);
+    return mix(stops[i].rgb, stops[i + 1].rgb, half(x - float(i)));
+}
+
+/// The last line of every light-emitting shader: premultiplied output with alpha clamped to `cap`
+/// (`Glow.ambientAlphaCap`) and every channel to `Glow.maxBrightness` (0.95).
+static inline half4 light(half3 rgb, float alpha, float cap) {
+    float a = clamp(alpha, 0.0, cap);
+    return half4(half3(min(float3(rgb), 0.95) * a), half(a));
+}
+
+} // namespace cranny
+```
+
+```metal
+// CrannyEffects/Shaders/Dither.metal — the shared last pass of every gradient-producing effect (DESIGN.md §5.6).
+#include <metal_stdlib>
+#include <SwiftUI/SwiftUI_Metal.h>
+#include "CrannyShaders.h"
+using namespace metal;
+
+/// Adds ±amount/2 LSB of 8-bit interleaved-gradient noise to premultiplied colour so that dim gradients over
+/// black do not band. `scale` is the display scale (noise per pixel, not per point). Transparent stays transparent.
+[[ stitchable ]] half4 crannyDither(float2 position, half4 color, float amount, float scale) {
+    if (color.a <= 0.0h) { return color; }
+    float n = (cranny::ign(floor(position * scale)) - 0.5) * amount / 255.0;
+    float a = float(color.a);
+    return half4(half3(clamp(float3(color.rgb) + n, 0.0, a)), color.a);
+}
+```
+
+Reference implementation of the signature effect. At 880 × 260 pt it gives a peak alpha of 0.36 (Subtle, cap 0.45) and 0.64 (Vivid, cap 0.80), and alpha 0 in the top 40 %:
+
+```metal
+// CrannyEffects/Shaders/Aurora.metal — the signature effect (DESIGN.md §5.6). Fallback: AuroraField's SwiftUI path (App. B.1).
+#include <metal_stdlib>
+#include <SwiftUI/SwiftUI_Metal.h>
+#include "CrannyShaders.h"
+using namespace metal;
+
+/// Domain-warped fBm curtains rising from the bottom edge, coloured by the palette stops.
+/// Swift: `.boundingRect, .float(time), .colorArray(glows), .float(energy), .float(level.intensity), .float(cap)`.
+[[ stitchable ]] half4 auroraField(float2 position, half4 color, float4 bounds, float time,
+                                   device const half4 *stops, int stopCount,
+                                   float energy, float intensity, float cap) {
+    float2 uv = (position - bounds.xy) / max(bounds.zw, float2(1.0));
+    if (uv.y <= 0.40) { return half4(0.0h); }                       // the band stays black
+    float2 p = float2(uv.x * bounds.z / max(bounds.w, 1.0) * 1.2, uv.y * 0.5);   // anisotropic: tall curtains
+    float2 q = float2(cranny::fbm(p + float2(0.0, 0.05 * time), 3),
+                      cranny::fbm(p + float2(5.2, 1.3) - float2(0.04 * time, 0.0), 3));
+    float2 r = float2(cranny::fbm(p + 1.5 * intensity * q + float2(1.7, 9.2) + 0.07 * time, 3),
+                      cranny::fbm(p + 1.5 * intensity * q + float2(8.3, 2.8) - 0.06 * time, 3));
+    float f = smoothstep(0.25, 0.75, cranny::fbm(p + 2.0 * r, 4));
+    float rays = 0.55 + 0.45 * smoothstep(0.3, 0.7, cranny::fbm(float2(5.0 * p.x + 1.5 * r.y, 0.08 * time), 3));
+    float rise = smoothstep(0.40, 0.78 - (0.08 + 0.06 * energy), uv.y);  // louder audio lifts the light ≤ 6 %
+    half3 rgb = cranny::ramp(stops, stopCount, 0.15 + 0.7 * f + 0.3 * (q.x - 0.5));
+    return cranny::light(rgb, cap * (0.8 + 0.2 * energy) * rise * rays * mix(0.45, 1.0, f), cap);
+}
+```
+
+```swift
+// CrannyEffects/ShaderEffects.swift — the Metal library of CrannyEffects and the one switch between
+// the shader path and the SwiftUI fallback (ARCHITECTURE D13, DESIGN.md §5.6).
+import Foundation
+import Metal
+import SwiftUI
+import os
+import CrannyCore
+
+private nonisolated let log = Log.logger(.effects)
+
+enum ShaderEffects {
+    /// `default.metallib`, compiled by SwiftPM from `Shaders/*.metal` into `CrannyKit_CrannyEffects.bundle`.
+    static let library = ShaderLibrary.bundle(.module)
+
+    /// Every stitchable function the effects call. A missing function renders TRANSPARENT without any
+    /// error, so availability is checked once, up front. WP11 adds each function it ships.
+    nonisolated static let requiredFunctions: Set<String> = ["crannyDither"]
+
+    /// QA switch: launching with `-CrannyDisableShaders YES` forces every SwiftUI fallback.
+    nonisolated static let disableKey = "CrannyDisableShaders"
+
+    /// true when the metallib is bundled, loads on this Mac's GPU and contains every required function.
+    nonisolated static let isAvailable: Bool = {
+        guard let problem = unavailabilityReason() else { return true }
+        log.info("Metal effects off (\(problem, privacy: .public)); using the SwiftUI fallbacks")
+        return false
+    }()
+
+    nonisolated static func unavailabilityReason() -> String? {
+        if UserDefaults.standard.bool(forKey: disableKey) { return "\(disableKey) is set" }
+        guard let url = Bundle.module.url(forResource: "default", withExtension: "metallib") else {
+            return "default.metallib is not in the bundle"
+        }
+        guard let device = MTLCreateSystemDefaultDevice() else { return "no Metal device" }
+        guard let metalLibrary = try? device.makeLibrary(URL: url) else { return "default.metallib does not load" }
+        let missing = requiredFunctions.subtracting(metalLibrary.functionNames)
+        return missing.isEmpty ? nil : "missing " + missing.sorted().joined(separator: ", ")
+    }
+
+    /// The shader path runs only while animation is allowed: Reduce Motion, Low Power / thermal ≥ serious
+    /// and an unavailable library always use the SwiftUI fallback.
+    static func usesShader(_ budget: EffectBudget) -> Bool {
+        isAvailable && !budget.reduceMotion && !budget.lowPower
+    }
+}
+
+extension View {
+    /// Last pass of every gradient-producing effect (aurora, tide, halo): ±0.5 LSB of noise against banding.
+    func crannyDithered(scale: CGFloat) -> some View {
+        colorEffect(ShaderEffects.library.crannyDither(.float(1), .float(scale)))
+    }
+}
+```
+
+The shader branch of `AuroraField`. It sits inside the same `TimelineView`, used when `budget.effective(.aurora) != .halo && ShaderEffects.usesShader(budget)`:
+
+```swift
+// CrannyEffects/AuroraField.swift (WP11) — the shader branch, placed in front of the SwiftUI branches.
+import SwiftUI
+import CrannyCore
+
+/// The aurora through `auroraField` (Aurora.metal). Same inputs as the SwiftUI path; `time` comes from the
+/// effect's TimelineView, so `EffectBudget` still decides the frame rate.
+@MainActor func auroraShader(palette: AmbientPalette, level: AmbienceLevel, energy: Double, time: Double,
+                  displayScale: CGFloat) -> some View {
+    Rectangle()
+        .colorEffect(ShaderEffects.library.auroraField(
+            .boundingRect, .float(time), .colorArray(palette.glows.map { $0.color(1) }),
+            .float(energy), .float(level.intensity), .float(Glow.ambientAlphaCap(level))))
+        .crannyDithered(scale: displayScale)
+}
+```
+
+`Tests/CrannyEffectsTests/ShaderEffectsTests.swift`. The first test never needs a GPU. The second skips itself without a Metal device, as on VM runners:
+
+```swift
+import Foundation
+import Metal
+import Testing
+@testable import CrannyEffects
+
+@Test func metallibIsBundled() {
+    #expect(Bundle.module.url(forResource: "default", withExtension: "metallib") != nil)
+}
+
+@Test(.enabled(if: MTLCreateSystemDefaultDevice() != nil)) func everyRequiredShaderLoads() {
+    #expect(ShaderEffects.unavailabilityReason() == nil)
+    #expect(ShaderEffects.isAvailable)
+}
+```
+
+The remaining functions of §5.6. Each goes in its own file with the usual three includes; these signatures were compiled and rendered with stub bodies:
+
+```metal
+// Signatures of the remaining CrannyEffects shaders (DESIGN.md §5.6). Each lives in its own file; the bodies are WP11's.
+[[ stitchable ]] half4  tideField(float2 position, half4 color, float4 bounds, float time,
+                                  device const half4 *stops, int stopCount, float energy, float intensity, float cap);
+[[ stitchable ]] half4  motesField(float2 position, half4 color, float4 bounds, float time,
+                                   device const half4 *stops, int stopCount, float energy, float intensity, float cap);
+[[ stitchable ]] half4  haloGlow(float2 position, half4 color, float4 bounds, float2 center, float radius,
+                                 half4 glow, float cap);
+[[ stitchable ]] float2 songRipple(float2 position, float2 center, float time, float amplitude, float wavelength,
+                                   float speed);                                  // .distortionEffect
+[[ stitchable ]] half4  liquidNeck(float2 position, SwiftUI::Layer layer, float reach, float progress,
+                                   half4 fill);                                   // .layerEffect
+[[ stitchable ]] half4  emberBurst(float2 position, half4 color, float4 bounds, float2 origin, float time,
+                                   device const half4 *stops, int stopCount, float cap);
+[[ stitchable ]] half4  chargeSweep(float2 position, half4 color, float4 bounds, float progress, half4 glow, float cap);
+```
+
 ## Appendix C: Verification log
 
 | Claim | How it was verified |
@@ -2925,4 +3249,5 @@ public struct AuroraField: View, Animatable {
 | SF Symbols | Every name in §14.1 checked against `name_availability.plist` (all ≤ macOS 14) and `symbol_restrictions.strings` (`video*` = FaceTime only; `airpods*`, `beats.*`, `accessibility` restricted to those products/features). |
 | Window behaviour the design relies on | Research R1 (`scratchpad/research/R1-notch-window.md`): per-pixel click-through, `.shadow` pass-through, the tri-state `ignoresMouseEvents`, nonactivating-at-init, key hand-back, fixed-canvas morph at 222–238 fps. |
 | Review amendments (2026-10-14) | `DropZone.title: String`, `Text(verbatim: "Cranny")`, `NookGrid.paddingTune`, `CrannyTheme.panelPaddingTune`: rebuilt inside the full CrannyKit layout (`scratchpad/poc/review`), 0 warnings, Core tests pass incl. `NookGrid(paddingTune: 3)` → padding 15, panel r 35, card r 20. |
-| Not verified here | Real notch radii and widths on each MacBook model (this Mac runs in clamshell mode with an external display). The closed radius 0.30·band and the 0.5-pt inset are starting values; calibrate on 13″/14″/15″/16″ hardware at every scaling mode with the Notch fit sheet and record per-model defaults. On-screen CPU/energy (Instruments on hardware). Haptic delivery from a background agent. |
+| Metal shaders (App. B.2, §5.6; 2026-10-14) | `CrannyShaders.h`, `Dither.metal`, `Aurora.metal`, `ShaderEffects.swift`, the aurora branch and the tests compiled inside a copy of the CrannyKit layout, with `CrannyEffects` built under **both** default isolations and 0 compiler warnings, and passed `swift test`. The universal Release app embeds `CrannyKit_CrannyEffects.bundle/Contents/Resources/default.metallib`, and `ShaderEffects.unavailabilityReason()` is nil inside the app. `ImageRenderer` renders of `auroraField` (+ dither) at 880 × 260 pt: top 40 % alpha 0; peak 0.36 / 0.64 against caps 0.45 / 0.80; curtains visibly tall and three-stop. The other seven signatures compile and render with stub bodies. A missing function or wrong argument count renders transparent, silently (hence `requiredFunctions` + per-function render tests). One comment line of B.1 was updated ("SwiftUI path…"); no code changed. |
+| Not verified here | Real notch radii and widths on each MacBook model (this Mac runs in clamshell mode with an external display). The closed radius 0.30·band and the 0.5-pt inset are starting values; calibrate on 13″/14″/15″/16″ hardware at every scaling mode with the Notch fit sheet and record per-model defaults. On-screen CPU/energy and the shaders' GPU frame time (Instruments on hardware). The look of the seven shaders WP11 still writes, and their parity with the fallbacks. Haptic delivery from a background agent. |
