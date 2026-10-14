@@ -1,7 +1,7 @@
-// CrannyNotchUI/Nook/NookLightLayer.swift — the light behind the open panel (DESIGN.md §5): framed to the
-// shape's CURRENT bounds, so it rises with the bottom edge as the panel opens; fills with `ambientIn` and drains
-// with `ambientOut`; cross-fades palettes with `colorShift`; carries the song-change energy ripple (0.6 s) and the
-// first-light reveal (1.0 s). The effect is `AuroraField` (CrannyEffects) with its energy budget: ≤ 30 fps on
+// CrannyNotchUI/Nook/NookLightLayer.swift — the light behind the open panel (DESIGN.md §5). It fills the frame
+// the canvas gives it (`LightFrame`: the shape's body at its CURRENT, animating size), so it rides the bottom
+// edge as the panel opens; fills with `ambientIn` and drains with `ambientOut`; cross-fades palettes with
+// `colorShift`; carries the song-change energy ripple (0.6 s) and the first-light reveal (1.0 s). The effect is `AuroraField` (CrannyEffects) with its energy budget: ≤ 30 fps on
 // AC, ≤ 20 on battery, a static halo in Low Power Mode, paused while closed, hidden, occluded or behind a
 // full-screen app, and a resting frame under Reduce Motion.
 import CrannyCore
@@ -15,8 +15,6 @@ struct NookLightLayer: View {
     @State private var firstLight: Double = 1
     let model: NotchSceneModel
     let registry: ModuleRegistry
-    /// The shape as drawn now (animating).
-    let geometry: NotchGeometry
 
     var body: some View {
         let level = theme.effectiveAmbience
@@ -29,8 +27,6 @@ struct NookLightLayer: View {
             .mask { if revealing { FirstLightMask(progress: firstLight) } else { Color.white } }
             .overlay { if revealing { FirstLightCrest(progress: firstLight, glow: model.ambient.glow1, cap: Glow.ambientAlphaCap(max(level, .subtle))) } }
             .animation(theme.animation(.colorShift), value: model.ambient)
-            .frame(width: geometry.bodyWidth, height: max(geometry.height, 0))
-            .padding(.top, geometry.topInset)
             .allowsHitTesting(false)
             .accessibilityHidden(true)
             .onChange(of: delight?.serial) { _, _ in play(delight) }

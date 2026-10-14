@@ -97,10 +97,12 @@ private struct CanvasBody: View {
                             keylineTint: keylineTint,
                             underglow: underglow ? model.ambient.glow1.color.opacity(isOpen ? 1 : 0) : nil) {
             ZStack(alignment: .top) {
-                if isOpen && theme.effectiveAmbience != .off {
-                    NookLightLayer(model: model, registry: registry, geometry: geometry)
-                        .transition(.asymmetric(insertion: .opacity.animation(theme.animation(.ambientIn)),
-                                                removal: .opacity.animation(theme.animation(.ambientOut))))
+                LightFrame(geometry: geometry) {
+                    if isOpen && theme.effectiveAmbience != .off {
+                        NookLightLayer(model: model, registry: registry)
+                            .transition(.asymmetric(insertion: .opacity.animation(theme.animation(.ambientIn)),
+                                                    removal: .opacity.animation(theme.animation(.ambientOut))))
+                    }
                 }
                 content(geometry)
                 rim(geometry)
@@ -190,6 +192,25 @@ struct CollapsedAccessibility: ViewModifier {
                     }
                 }
             }
+    }
+}
+
+/// The light layer's frame: the shape's body at its CURRENT size. The frame exists in every phase and animates
+/// with the shape's spring, so the light, which is inserted only when the panel opens, starts at the size the
+/// shape has at that moment and rides its bottom edge down (DESIGN.md §4.3 "backdrop sized to the current
+/// shape"). An empty frame costs nothing while closed.
+private struct LightFrame<Light: View>: View {
+    let geometry: NotchGeometry
+    @ViewBuilder let light: () -> Light
+
+    var body: some View {
+        Color.clear
+            .frame(width: geometry.bodyWidth, height: max(geometry.height, 0))
+            .overlay(alignment: .top) { light() }
+            .padding(.top, geometry.topInset)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+            .lifecycleReport("light")
     }
 }
 

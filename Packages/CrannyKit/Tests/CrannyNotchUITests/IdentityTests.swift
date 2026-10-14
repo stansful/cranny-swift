@@ -37,6 +37,7 @@ extension HostedTests {
                 #expect(probe.appearances(of: "surface") == 1, "surface re-created on → \(phase)")
             }
             #expect(probe.disappearances(of: "surface") == 0)
+            #expect(probe.appearances(of: "light") == 1, "the light's frame moves with the shape in every phase")
         }
     }
 
