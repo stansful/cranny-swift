@@ -482,7 +482,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Открыть в «%@»"
+            "value" : "Открыть в приложении «%@»"
           }
         }
       }
@@ -614,7 +614,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Повторять один"
+            "value" : "Повторять трек"
           }
         }
       }

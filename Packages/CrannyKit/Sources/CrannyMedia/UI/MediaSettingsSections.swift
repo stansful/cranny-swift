@@ -5,8 +5,11 @@ import CrannyCore
 import Foundation
 import SwiftUI
 
-/// Which helper reads Now Playing, its health and the last error; Test media detection; Retry.
+/// Which helper reads Now Playing, its health and the last error; Test media detection; Retry. Status colours are
+/// the theme's semantic tokens (success / warning / danger, DESIGN.md §2.1), never literal colours; the text says
+/// the same thing (Differentiate Without Color).
 struct MediaSourceSection: View {
+    @Environment(\.cranny) private var theme
     let service: MediaService
     let health: BridgeHealthMonitor
     @State private var testResult: String?
@@ -24,7 +27,7 @@ struct MediaSourceSection: View {
             }
             if health.isDegraded {
                 Label { Text(verbatim: MediaPaneStrings.degraded) } icon: { Image(systemName: "exclamationmark") }
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(theme.palette.warning)
             }
             HStack {
                 Button { Task { await test() } } label: { Text(verbatim: MediaPaneStrings.testDetection) }
@@ -56,11 +59,12 @@ struct MediaSourceSection: View {
         }
     }
 
-    private var statusColor: Color {
+    /// In-between states (not started, starting, restarting) are neutral: no semantic colour fits them.
+    private var statusColor: AnyShapeStyle {
         switch service.status {
-        case .running: health.isDegraded ? .orange : .green
-        case .starting, .restarting, .idle: .yellow
-        case .unavailable: .red
+        case .running: AnyShapeStyle(health.isDegraded ? theme.palette.warning : theme.palette.success)
+        case .starting, .restarting, .idle: AnyShapeStyle(.tertiary)
+        case .unavailable: AnyShapeStyle(theme.palette.danger)
         }
     }
 
