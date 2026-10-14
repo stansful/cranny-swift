@@ -16,7 +16,8 @@ private let log = Log.logger(.system)
     private(set) var state: BatteryState?
 
     private let settings: SettingsStore
-    private let read: @Sendable () async -> BatteryState
+    /// `@concurrent`: the model, not each caller, guarantees the IPC read never runs on the main actor (§9.2).
+    private let read: @concurrent @Sendable () async -> BatteryState
     private let observer: (any PowerChangeObserving)?
     private var transitions = PowerTransitions()
     /// The final threshold the persistent warning on screen belongs to (nil while none is shown).
@@ -25,10 +26,10 @@ private let log = Log.logger(.system)
     private var thresholdsToken: ObservationToken?
 
     /// - Parameters:
-    ///   - read: one snapshot of the battery (live: `PowerSources.snapshot`, off the main actor).
+    ///   - read: one snapshot of the battery (live: `PowerSources.snapshot`); always runs off the main actor.
     ///   - observer: power-source notifications (live: `PowerObserver`; nil in tests, which call `apply`).
     init(settings: SettingsStore, charging: ChargingActivity, lowBattery: LowBatteryActivity,
-         read: @escaping @Sendable () async -> BatteryState, observer: (any PowerChangeObserving)?) {
+         read: @escaping @concurrent @Sendable () async -> BatteryState, observer: (any PowerChangeObserving)?) {
         self.settings = settings; self.charging = charging; self.lowBattery = lowBattery
         self.read = read; self.observer = observer
     }

@@ -9,7 +9,7 @@ import Testing
     let charging = ChargingActivity()
     let lowBattery = LowBatteryActivity(openBatterySettings: {})
 
-    private func model(read: @escaping @Sendable () async -> BatteryState = { .noBattery() }) -> PowerModel {
+    private func model(read: @escaping @concurrent @Sendable () async -> BatteryState = { .noBattery() }) -> PowerModel {
         PowerModel(settings: services.settings, charging: charging, lowBattery: lowBattery, read: read, observer: nil)
     }
     private func onBattery(_ percent: Int, minutes: Int? = nil) -> BatteryState {
@@ -181,7 +181,9 @@ import Testing
     }
 
     @Test func refreshReadsOffTheMainActorAndApplies() async {
-        let model = model(read: { BatteryState(hasBattery: true, percent: 42, isPluggedIn: false) })
+        // The read reports where it ran: 42 % on a background thread, 0 % on the main thread. The model calls
+        // it from a main-actor task, so only its `@concurrent` read type can make it 42 (§9.2: no I/O on main).
+        let model = model(read: { BatteryState(hasBattery: true, percent: pthread_main_np() == 0 ? 42 : 0, isPluggedIn: false) })
         model.refresh()
         for _ in 0..<100 where model.state == nil { await Task.yield() }
         #expect(model.state?.percent == 42)
