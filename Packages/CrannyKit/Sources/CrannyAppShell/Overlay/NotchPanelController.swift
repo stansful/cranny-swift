@@ -23,8 +23,12 @@ import SwiftUI
     private let gestures: GestureRouter
     private let drops: DropRouter
     private var tokens: [ObservationToken] = []
-    /// A layout change that arrived while the panel was not idle (applied after the next close).
-    private var pendingAppearance: Appearance?
+    /// A layout or canvas-size change that arrived while the surface was not closed (applied once it has been
+    /// closed long enough for the morph to land).
+    private var layoutIsPending = false
+    private var pendingTask: Task<Void, Never>?
+    /// How long the surface stays closed before a pending canvas change is applied (the close spring lands).
+    static let settleDelay: Duration = .milliseconds(600)
     /// Every event of this display, forwarded by the coordinator to `NotchControl` observers.
     var onEvent: (NotchEvent) -> Void = { _ in }
     /// A drop finished on this panel (the coordinator resets its drag detector).
@@ -84,15 +88,18 @@ import SwiftUI
         tokens.append(observe({ [key] in Self.timerSettings(settings, display: key) }) { [weak self] _ in
             self?.viewModel.send(.configChanged)
         })
-        // The drop zone (and with it the hit area) follows the drag state.
+        // The drop zone (and with it the hit area) follows the drag state; a pending canvas change waits for
+        // the surface to be closed (a peek ends without a `.closed` event, so the state is watched, not events).
         viewModel.didSync = { [weak self] in
             guard let self else { return }
             let zone = self.dropZoneInCanvas()
             if self.chrome.dropZone != zone { self.chrome.dropZone = zone }
+            self.applyPendingWhenSettled()
         }
     }
 
-    /// Geometry changes apply only while closed (the canvas is resized between morphs, never during one).
+    /// The display changed (hot-plug, arrangement, resolution): the panel follows it at once; a new canvas size
+    /// or layout waits until the surface is closed (`PanelFramePlan`).
     func update(screen: NSScreen, style: NoNotchStyle) {
         self.screen = screen; self.style = style
         apply(Self.appearance(screen: screen, style: style, registry: registry, primary: scene.primary))
@@ -100,6 +107,7 @@ import SwiftUI
     }
 
     func close() {
+        pendingTask?.cancel()
         tokens.removeAll()
         keyboard.stop()
         focus.relinquishKeyIfNeeded()
@@ -201,43 +209,48 @@ import SwiftUI
         if case .opened = event, NSWorkspace.shared.isVoiceOverEnabled {
             NSAccessibility.post(element: root, notification: .layoutChanged)
         }
-        if event == .closed {
-            keyboard.panelClosed()
-            if let pendingAppearance {
-                // Let the close animation land before the canvas may change size.
-                Task { [weak self] in
-                    try? await Task.sleep(for: .milliseconds(600))
-                    if let self, self.scene.phase == .idle || self.scene.phase == .hidden || self.scene.phase == .compact {
-                        self.apply(pendingAppearance)
-                    }
-                }
-            }
-        }
+        if event == .closed { keyboard.panelClosed() }
         onEvent(event)
     }
 
+    /// Theme and light apply at once; the frame and layout follow `PanelFramePlan`.
     private func apply(_ appearance: Appearance) {
         if scene.theme != appearance.theme { scene.theme = appearance.theme }
         if scene.ambient != appearance.ambient { scene.ambient = appearance.ambient }
-        guard scene.layout != appearance.layout else { pendingAppearance = nil; return }
-        guard viewModel.state.isClosed else { pendingAppearance = appearance; return }
-        pendingAppearance = nil
-        scene.layout = appearance.layout
-        let frame = Self.panelFrame(canvas: appearance.layout.canvasSize, screen: screen)
-        if panel.frame != frame { panel.setFrame(frame, display: true) }
+        let screen = self.screen
+        let plan = PanelFramePlan(current: panel.frame, canvas: appearance.layout.canvasSize,
+                                  layoutChanged: scene.layout != appearance.layout, isClosed: viewModel.state.isClosed) {
+            Self.panelFrame(canvas: $0, screen: screen)
+        }
+        if panel.frame != plan.frame { panel.setFrame(plan.frame, display: true) }
+        layoutIsPending = plan.layout == .pending
+        guard plan.layout == .apply else { return }
+        pendingTask?.cancel()
+        pendingTask = nil
+        if scene.layout != appearance.layout { scene.layout = appearance.layout }
         viewModel.refresh()
+    }
+
+    /// Applies a pending canvas change once the surface has been closed for `settleDelay` (the close or peek-out
+    /// morph has landed). Re-armed by every sync: leaving the closed surface cancels it, the next close starts over.
+    private func applyPendingWhenSettled() {
+        guard layoutIsPending else { return }
+        guard viewModel.state.isClosed else { pendingTask?.cancel(); pendingTask = nil; return }
+        guard pendingTask == nil else { return }
+        pendingTask = Task { [weak self] in
+            try? await Task.sleep(for: Self.settleDelay)
+            guard !Task.isCancelled, let self else { return }
+            self.pendingTask = nil
+            guard self.layoutIsPending, self.viewModel.state.isClosed else { return }
+            // Recomputed now: the settings or the display may have changed again meanwhile.
+            self.apply(Self.appearance(screen: self.screen, style: self.style, registry: self.registry, primary: self.scene.primary))
+        }
     }
 
     /// Top-centred on the notch (or the screen), pixel-aligned, clamped inside the screen.
     static func panelFrame(canvas: CGSize, screen: NSScreen) -> CGRect {
-        let f = screen.frame
-        var midX = f.midX
-        if let l = screen.auxiliaryTopLeftArea, let r = screen.auxiliaryTopRightArea, l.width > 0, r.width > 0 {
-            midX = f.minX + (f.width + l.width - r.width) / 2               // centre of the camera housing
-        }
-        var frame = CGRect(x: midX - canvas.width / 2, y: f.maxY - canvas.height, width: canvas.width, height: canvas.height)
-        frame.origin.x = min(max(frame.minX, f.minX), f.maxX - frame.width)
-        return frame.integral
+        PanelFramePlan.frame(canvas: canvas, screenFrame: screen.frame, leftArea: screen.auxiliaryTopLeftArea,
+                             rightArea: screen.auxiliaryTopRightArea)
     }
 
     // MARK: Hit area (canvas: top-left origin; root view: bottom-left)

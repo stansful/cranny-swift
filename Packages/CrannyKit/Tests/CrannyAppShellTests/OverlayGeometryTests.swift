@@ -161,6 +161,35 @@ private func front(_ windows: [FullScreenDetector.Window], frontmost: pid_t? = 5
     #expect(visible.contains(corner))
 }
 
+// MARK: - Panel frame (§4.9 reconfiguration, §5.1)
+
+private let housing = (left: CGRect(x: 0, y: 950, width: 650, height: 32), right: CGRect(x: 862, y: 950, width: 650, height: 32))
+
+@Test func thePanelIsTopCentredOnTheHousing() {
+    let canvas = CGSize(width: 900, height: 282)
+    let centred = PanelFramePlan.frame(canvas: canvas, screenFrame: screenFrame, leftArea: housing.left, rightArea: housing.right)
+    #expect(centred == CGRect(x: 306, y: 700, width: 900, height: 282))
+    let moved = PanelFramePlan.frame(canvas: canvas, screenFrame: screenFrame.offsetBy(dx: -1512, dy: 0), leftArea: nil, rightArea: nil)
+    #expect(moved.minX == -1512 + 306 && moved.maxY == 982)
+}
+
+/// Clamshell → lid open moves the built-in display from x = −1512 to 0 without changing its size or layout: the
+/// panel follows at once, even while open. A new canvas size applies while closed and waits otherwise.
+@Test func thePanelFollowsItsDisplayAndResizesOnlyWhileClosed() {
+    let canvas = CGSize(width: 900, height: 282)
+    let stale = CGRect(x: -1206, y: 700, width: 900, height: 282)               // where it was before the lid opened
+    let frame = { (size: CGSize) in PanelFramePlan.frame(canvas: size, screenFrame: screenFrame, leftArea: nil, rightArea: nil) }
+    let moved = PanelFramePlan(current: stale, canvas: canvas, layoutChanged: false, isClosed: false, frame: frame)
+    #expect(moved == PanelFramePlan(frame: CGRect(x: 306, y: 700, width: 900, height: 282), layout: .unchanged))
+    let bigger = CGSize(width: 960, height: 300)
+    let open = PanelFramePlan(current: stale, canvas: bigger, layoutChanged: true, isClosed: false, frame: frame)
+    #expect(open == PanelFramePlan(frame: CGRect(x: 306, y: 700, width: 900, height: 282), layout: .pending))
+    let closed = PanelFramePlan(current: stale, canvas: bigger, layoutChanged: true, isClosed: true, frame: frame)
+    #expect(closed == PanelFramePlan(frame: CGRect(x: 276, y: 682, width: 960, height: 300), layout: .apply))
+    let density = PanelFramePlan(current: moved.frame, canvas: canvas, layoutChanged: true, isClosed: true, frame: frame)
+    #expect(density.layout == .apply && density.frame == moved.frame)          // same canvas, new layout
+}
+
 @Test func typeToCaptureTakesPlainPrintableKeysOnly() {
     #expect(KeyboardRouter.printable("a", modifiers: []) == "a")
     #expect(KeyboardRouter.printable("Ж", modifiers: [.shift]) == "Ж")

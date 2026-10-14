@@ -11,6 +11,8 @@
 //   hands it back (ARCHITECTURE.md §4.10 [UNVERIFIED before WP13]). It briefly takes the keyboard: run it on an idle
 //   Mac. It skips itself while the login window is in front (locked screen, screen saver), where nothing can become
 //   key — the state WP13's machine was in, so it stays on the §11.2 hardware checklist.
+// - Two more opt-in checks drive real controllers without input: a layout change that arrives during a peek is
+//   applied once the peek ends (peeks never emit `.closed`), and a drop on one panel ends the drag on the others.
 // - Not covered without real input (manual, §11.2 hardware checklist): a real click is delivered without
 //   activating the app, and the panel shows above another app's full-screen Space.
 import AppKit
@@ -168,6 +170,26 @@ func keyboardFocusIsTakenAndHandedBack() throws {
     #expect(!controller.viewModel.state.holds.contains(NotchMachineState.typingHold))
     #expect(controller.panel.isVisible)                                         // orderOut + orderFrontRegardless
     #expect(NSWorkspace.shared.frontmostApplication?.processIdentifier == frontBefore)
+}
+
+/// A canvas change (density here; display reconfiguration and Notch fit take the same path) must not resize the
+/// panel mid-morph, and must not be lost when the surface returns to closed without a `.closed` event (a peek).
+@Test(.enabled(if: integration)) func aLayoutChangeDuringAPeekIsAppliedAfterIt() throws {
+    _ = NSApplication.shared
+    let screen = try #require(NSScreen.screens.first)
+    let registry = ModuleRegistry(services: .preview())
+    let controller = NotchPanelController(screen: screen, key: "selftest.layout", style: .floatingIsland, registry: registry)
+    defer { controller.close() }
+    spin(0.3)
+    controller.viewModel.send(.autoPeek(.flash, until: .infinity))
+    let before = controller.scene.layout, frameBefore = controller.panel.frame
+    registry.services.settings[CoreSettings.density] = .roomy
+    spin(0.3)                                                                   // the observation hop
+    #expect(controller.scene.layout == before && controller.panel.frame == frameBefore)   // not during the peek
+    controller.viewModel.send(.close)                                           // the peek ends: no `.closed` event
+    #expect(eventually(within: 3) { controller.scene.layout != before })
+    #expect(controller.scene.layout.grid.density == .roomy)
+    #expect(controller.panel.frame == NotchPanelController.panelFrame(canvas: controller.scene.layout.canvasSize, screen: screen))
 }
 
 /// A drop on one panel ends the drag everywhere: another panel the drag passed lets go of its `drag` hold and its
