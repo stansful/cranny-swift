@@ -1,8 +1,9 @@
 // CrannyNotchUI/Choreography/DelightPlayer.swift — plays `NotchSceneModel.delight` once per `delightSerial`
 // (DESIGN.md §5.5, ARCHITECTURE.md §4.6 step 7). The owner applies the caps (one at a time, not paused, not in
-// full screen, not under Calm/Instant); this file decides which moment is drawn and for how long. CrannyEffects
-// draws them (`EmberBurst`, `ChargeSweep`, `FirstLight`, `songChangeRipple`, `LiquidNeck`), with their Reduce
-// Motion variants; the gulp is NotchUI's own shape motion. Each moment lives ≤ 1 s and is then removed: no clock
+// full screen, not under Instant); this file decides which moment is drawn and for how long. CrannyEffects
+// draws them (`EmberBurst`, `ChargeSweep`, `FirstLight`, `songChangeRipple`, `LiquidNeck`); under Calm and Reduce
+// Motion they draw their reduced variants (`drawsReducedVariant`: static fade, static ember glow, instant rim, no
+// ripple, no gulp). The gulp is NotchUI's own shape motion. Each moment lives ≤ 1 s and is then removed: no clock
 // runs outside a moment.
 import CrannyCore
 import Foundation
@@ -40,6 +41,14 @@ nonisolated struct DelightPlayback: Equatable, Sendable {
     /// nor a closed Nook stops one. Pure.
     static func isSeen(_ budget: EffectBudget) -> Bool {
         budget.onScreen && !budget.fullScreenFront
+    }
+
+    /// Whether this canvas draws a moment's reduced variant (DESIGN.md §5.5, last column: static fade, static ember
+    /// glow, instant rim, colour only, no gulp): under Reduce Motion and under Calm. Instant too, for a stage that
+    /// plays a moment anyway (the shell schedules none under Instant). The ambient light itself is not a moment: it
+    /// keeps moving under Calm. Pure.
+    static func drawsReducedVariant(_ theme: CrannyTheme) -> Bool {
+        theme.reduceMotion || theme.motion == .calm || theme.motion == .instant
     }
 }
 
@@ -83,7 +92,7 @@ extension View {
 
 // MARK: - The gulp (file caught): height −3 pt, spring back over 0.25 s
 
-/// Shape height offset while a gulp plays (DESIGN.md §5.5). Reduce Motion: none (the owner's haptic stays).
+/// Shape height offset while a gulp plays (DESIGN.md §5.5). Calm and Reduce Motion: none (the owner's haptic stays).
 struct GulpModifier: ViewModifier {
     @Environment(\.cranny) private var theme
     @Environment(\.notchDelight) private var delight
@@ -91,7 +100,7 @@ struct GulpModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content.onChange(of: delight?.serial) { _, _ in
-            guard let delight, delight.moment == .gulp, !theme.reduceMotion, theme.motion != .instant else { return }
+            guard let delight, delight.moment == .gulp, !DelightPlayback.drawsReducedVariant(theme) else { return }
             withAnimation(DelightMotion.gulpSwallow) { depth = -Gulp.depth } completion: {
                 withAnimation(DelightMotion.gulpRecover) { depth = 0 }
             }

@@ -1,6 +1,6 @@
 // CrannyNotchUI/NotchScene.swift — the render model of one notch (one per display panel, one per stage).
-// The contract of ARCHITECTURE.md §4.12. Additive since the foundation: `middleLabelWidth` (open issue 3) and
-// `isVisibleOnScreen`.
+// The contract of ARCHITECTURE.md §4.12. Additive since the foundation: `middleLabelWidth` (open issue 3),
+// `isVisibleOnScreen`, `OpenState.gestureVelocity` and `headerActivity` (with `OpenHeaderActivity`).
 import CrannyCore
 import CrannyEffects
 import Foundation
@@ -32,9 +32,14 @@ public nonisolated struct OpenState: Equatable, Sendable {
     public var mode: NookMode
     /// What opened the panel (keyboard opens show the focus ring at once).
     public var reason: OpenReason
+    /// The fingers' speed (pt/s, downward) when a two-finger swipe opened the panel, else 0. The open spring starts
+    /// with it, so the shape keeps moving with the fingers instead of starting from rest (DESIGN.md §4.4); Reduce
+    /// Motion and Instant ignore it.
+    public var gestureVelocity: CGFloat
     /// Creates an open state; `mode` defaults to the grid.
-    public init(page: PageID, focus: WidgetID? = nil, mode: NookMode = .grid, reason: OpenReason) {
+    public init(page: PageID, focus: WidgetID? = nil, mode: NookMode = .grid, reason: OpenReason, gestureVelocity: CGFloat = 0) {
         self.page = page; self.focus = focus; self.mode = mode; self.reason = reason
+        self.gestureVelocity = gestureVelocity
     }
 }
 
@@ -50,6 +55,10 @@ public nonisolated struct OpenState: Equatable, Sendable {
     public var primary: ActivityID?
     /// The second activity: the satellite bubble beside the compact shape.
     public var satellite: ActivityID?
+    /// An activity of this display's lineup with a message for the open header (`OpenHeaderActivity`, e.g. the
+    /// Pause Live Activities confirmation), whatever its rank: it takes the header row while the panel is open, unless
+    /// a HUD is the primary. The owner picks it; stages leave it nil.
+    public var headerActivity: ActivityID?
     /// Peek rows, top to bottom (at most 4 are drawn).
     public var peekRows: [ActivityID] = []
     /// Stages (Settings preview, onboarding) put `RegisteredActivity.makeSample()` instances here; the canvas
@@ -62,9 +71,9 @@ public nonisolated struct OpenState: Equatable, Sendable {
     /// The light-layer palette (`ThemeResolver.ambientPalette`); changes cross-fade (`colorShift`).
     public var ambient: AmbientPalette = .afterglow
     /// One-shot delight to play (DESIGN.md §5.5). The owner applies the caps (one at a time, not paused,
-    /// not in full screen, not under Calm/Instant/Reduce Motion) and bumps `delightSerial`; NotchUI plays
-    /// each serial once. Sources: activities' `delight`, track change (`.songRipple`), first open (`.firstLight`),
-    /// file caught (`.gulp`).
+    /// not in full screen, not under Instant) and bumps `delightSerial`; NotchUI plays each serial once, as its
+    /// reduced variant under Calm and Reduce Motion. Sources: activities' `delight`, track change (`.songRipple`),
+    /// first open (`.firstLight`), file caught (`.gulp`).
     public var delight: DelightMoment?
     /// Bumped by the owner for every delight to play; NotchUI plays each value once.
     public var delightSerial = 0

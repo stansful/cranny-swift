@@ -33,7 +33,9 @@ nonisolated struct NotchMachineState: Equatable {
     var wingsRetracted = false
     /// Appearance ▸ Notch fit is being dragged: the closed shape freezes in the breath (DESIGN.md §3.1).
     var calibrating = false
-    /// A file drag from any app is in progress, with the dragged types (nil = none).
+    /// A file drag from any app is in progress over this panel, with the dragged types (nil = none). Cleared with the
+    /// `drag` hold when the drag ends or the surface closes: a closed panel keeps no drag (and no enlarged drop zone);
+    /// a drag that is still going opens it again when it comes back within the drag zone.
     var fileDrag: [UTType]?
 
     var isOpen: Bool { if case .open = surface { true } else { false } }
@@ -204,11 +206,12 @@ nonisolated enum NotchInput: Equatable {
     case setFocus(WidgetID?)
     /// The coordinator asks for a one-off peek of an activity until `until` (systemUptime; `.infinity` = held).
     case autoPeek(ActivityID, until: TimeInterval)
-    /// A committed two-finger swipe (`SwipeTracker`) and where it began.
-    case swipe(SwipeDirection, target: SwipeTarget)
+    /// A committed two-finger swipe (`SwipeTracker`), where it began and the fingers' speed along its axis (pt/s,
+    /// physical: + = down or right). A swipe down that opens the panel hands it to the open spring (DESIGN.md §4.4).
+    case swipe(SwipeDirection, target: SwipeTarget, velocity: CGFloat = 0)
     /// A file drag came within the drag proximity, or over the open panel, with these types.
     case fileDragEntered([UTType])
-    /// The file drag ended without a drop on this panel.
+    /// The file drag ended without a drop on this panel (its drag state and `drag` hold go, whatever is left of them).
     case fileDragEnded
     /// Files were dropped on this panel (`count` > 0 when something took them).
     case filesDropped(count: Int)

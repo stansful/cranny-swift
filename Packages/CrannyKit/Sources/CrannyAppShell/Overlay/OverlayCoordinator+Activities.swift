@@ -33,9 +33,11 @@ extension OverlayCoordinator {
             guard let self, let open = self.openController else { return }
             self.playDelight(.songRipple, on: open.key)
         })
-        // Pausing silences activities: a flash shown just before must not come back when the pause ends.
+        // Pausing silences activities: a flash shown just before must not come back when the pause ends. The flash
+        // that confirms the pause is the exception (`outlastsPause`).
         tokens.append(observe({ [environment] in environment.areLiveActivitiesPaused }) { [weak self] paused in
-            if paused { self?.notchControl.flashActivity.hide() }
+            guard paused, let flash = self?.notchControl.flashActivity, !flash.outlastsPause else { return }
+            flash.hide()
         })
         if let input = arbitrationInput() { arbitrate(input) }
     }
@@ -45,6 +47,7 @@ extension OverlayCoordinator {
     func arbitrationInput() -> ArbitrationInput? {
         let settings = registry.services.settings
         let preferences = settings[CoreSettings.activityPreferences]
+        let flash = notchControl.flashActivity
         let activities = registry.activities.enumerated().map { index, registered in
             let a = registered.activity
             let preference = preferences[registered.id]
@@ -52,7 +55,8 @@ extension OverlayCoordinator {
                 id: registered.id, registrationIndex: index, isActive: a.isActive, priority: a.priority, slot: a.slot,
                 revision: a.revision, expiresAt: a.expiresAt,
                 isEnabled: preference?.isEnabled ?? registered.kind.isEnabledByDefault,
-                peeksOnChange: preference?.peeksOnChange ?? registered.kind.peeksOnChangeByDefault, delight: a.delight)
+                peeksOnChange: preference?.peeksOnChange ?? registered.kind.peeksOnChangeByDefault, delight: a.delight,
+                ignoresPause: registered.id == .flash && flash.outlastsPause)
         }
         return ArbitrationInput(activities: activities, settings: ArbiterSettings(
             order: settings[CoreSettings.activityOrder], paused: environment.areLiveActivitiesPaused,
@@ -155,7 +159,8 @@ extension OverlayCoordinator {
 
     // MARK: Peeks, announcements, delights
 
-    func requestAutoPeek(_ id: ActivityID) {
+    /// `ignoringPause`: the flash that confirms a pause or resume (it outlasts the pause it confirms).
+    func requestAutoPeek(_ id: ActivityID, ignoringPause: Bool = false) {
         refreshEnvironmentNow()
         let preferences = registry.services.settings[CoreSettings.perDisplay]
         let displays = controllers.values.map { controller in
@@ -163,7 +168,8 @@ extension OverlayCoordinator {
                                   isOpen: controller.viewModel.state.isOpen, isHidden: controller.viewModel.state.hidden != nil,
                                   showsPeeks: preferences[controller.key]?.showsPeeks ?? true, lineup: controller.viewModel.lineup)
         }
-        guard let target = PeekScheduler.target(for: id, among: displays, paused: environment.areLiveActivitiesPaused),
+        let paused = environment.areLiveActivitiesPaused && !ignoringPause
+        guard let target = PeekScheduler.target(for: id, among: displays, paused: paused),
               let controller = controllers[target] else { return }
         let until = ProcessInfo.processInfo.systemUptime + registry.services.settings[CoreSettings.peekDuration]
         controller.viewModel.send(.autoPeek(id, until: until))
@@ -176,8 +182,8 @@ extension OverlayCoordinator {
         registry.services.announcer.announce(activity.accessibilityLabel, kind: .alert)
     }
 
-    /// The caps of §4.6 step 7 (one at a time, not paused, not behind full screen, not on a hidden panel, not
-    /// Calm/Instant/Reduce Motion).
+    /// The caps of §4.6 step 7 (one at a time, not paused, not behind full screen, not on a hidden panel, not under
+    /// Instant). Under Calm and Reduce Motion the scene plays the moment's reduced variant (DelightScheduler).
     func playDelight(_ moment: DelightMoment, on key: DisplayKey) {
         guard let controller = controllers[key] else { return }
         let front = screens.first { $0.key == key }.map { environment.front(of: $0.id) } ?? FullScreenDetector.Front()

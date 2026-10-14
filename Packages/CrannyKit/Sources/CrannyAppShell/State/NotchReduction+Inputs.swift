@@ -10,14 +10,14 @@ import UniformTypeIdentifiers
 nonisolated extension NotchReduction {
     // MARK: Swipes (§4.4, DESIGN.md §4.4)
 
-    mutating func swipe(_ direction: SwipeDirection, over target: SwipeTarget) {
+    mutating func swipe(_ direction: SwipeDirection, over target: SwipeTarget, velocity: CGFloat = 0) {
         guard !s.blocksInput else { return }
         let compact = NotchMachine.compactIsVisible(s, config: config)
         switch (s.surface, direction, target) {
         case (.closed, .down, .shape):
             guard config.swipeOpenClose else { return }
             fx.append(.haptic(.alignment))
-            open(page: nil, focus: nil, reason: .swipe)
+            open(page: nil, focus: nil, reason: .swipe, velocity: velocity)        // "carrying the gesture velocity"
         case (.open, .up, .header):
             guard config.swipeOpenClose else { return }
             fx.append(.haptic(.alignment))
@@ -79,10 +79,12 @@ nonisolated extension NotchReduction {
         }
     }
 
+    /// The drag session ended without a drop here. Everything the drag left goes, the drag state and the `drag` hold
+    /// alike (a hidden panel records a drag without the hold, a panel without a Tray holds without opening).
     mutating func fileDragEnded() {
-        guard s.fileDrag != nil else { return }
+        let held = s.holds.remove(NotchMachineState.dragHold) != nil
+        guard s.fileDrag != nil || held else { return }
         s.fileDrag = nil
-        s.holds.remove(NotchMachineState.dragHold)
         if s.isCatching { scheduleCatchEnd(HoverIntent.closeGrace) } else { scheduleGraceIfLeft() }
     }
 

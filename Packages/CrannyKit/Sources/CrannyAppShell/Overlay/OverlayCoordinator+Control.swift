@@ -46,11 +46,37 @@ extension OverlayCoordinator {
         presentFlash(symbol: symbol, label: label, duration: duration, on: display)
     }
 
-    /// Puts the flash on one display without the pause/lock policy (visual QA forces states on any screen).
-    func presentFlash(symbol: String, label: String, duration: TimeInterval, on display: DisplayKey?) {
-        guard let target = display.flatMap({ controllers[$0] }) ?? alertController, !target.viewModel.state.blocksInput else { return }
+    /// Puts the flash on one display without the pause/lock policy (visual QA forces states on any screen). Returns
+    /// whether it is shown.
+    @discardableResult
+    func presentFlash(symbol: String, label: String, detail: String? = nil, duration: TimeInterval,
+                      outlastsPause: Bool = false, on display: DisplayKey?) -> Bool {
+        guard let target = display.flatMap({ controllers[$0] }) ?? alertController, !target.viewModel.state.blocksInput else { return false }
         flashDisplay = target.key
-        notchControl.flashActivity.show(symbol: symbol, label: label, duration: duration)
+        notchControl.flashActivity.show(symbol: symbol, label: label, detail: detail, duration: duration,
+                                        outlastsPause: outlastsPause)
+        return true
+    }
+
+    // MARK: Pause confirmation (DESIGN.md §9.2, §13)
+
+    /// A pause or resume the user asked for (menu bar, shortcut, ⌘K): the flash on the pointer's display (the pause or
+    /// play glyph and a word in the wings, the sentence in a peek row where peeks may show), for the peek duration,
+    /// and the sentence for VoiceOver. The announcement is feedback (the direct answer to the user's action): the
+    /// app-wide limit neither drops it nor counts it, and without VoiceOver posting it does nothing. Nothing shows on
+    /// a locked screen or sleeping displays. While that display's panel is open (⌘K always runs there) the flash is
+    /// its primary, and the open header shows the glyph and the sentence instead of the tabs (`OpenHeaderActivity`);
+    /// the wings show the rest of its lifetime if the panel closes.
+    func confirmPause(_ confirmation: PauseConfirmation) {
+        let duration = registry.services.settings[CoreSettings.peekDuration]
+        // `presentFlash` shows nothing on a panel that is hidden for a reason that blocks input (lock, sleep, policy).
+        if presentFlash(symbol: confirmation.symbol, label: confirmation.label, detail: confirmation.message,
+                        duration: duration, outlastsPause: true, on: nil) {
+            // Arbitrate now (not on the next observation hop), so the flash is in the lineup the peek checks.
+            if let input = arbitrationInput() { arbitrate(input) }
+            requestAutoPeek(.flash, ignoringPause: true)
+        }
+        registry.services.announcer.announce(confirmation.message, kind: .feedback)
     }
 
     // MARK: Show on Notch (`AppControl.showOnNotch`)

@@ -2,6 +2,7 @@
 // `ShellAppServices` into the `AppControl` port, and the QA launch arguments of the menu.
 import AppKit
 import CrannyCore
+import CrannyOnboarding
 import Foundation
 import SwiftUI
 import Testing
@@ -132,6 +133,22 @@ private func policy(_ selection: DisplaySelection, _ perDisplay: [DisplayKey: Di
     #expect(control.updates?.isConfigured == true)
 }
 
+/// C-SHELL-12: while the tutorial runs, the menu offers Skip Tutorial after Show Tutorial (DESIGN.md §13), and it ends the
+/// tour like the bubble's Skip tutorial.
+@Test func theMenuSkipsARunningTutorial() {
+    let (services, _, _) = makeServices()
+    services.start()
+    defer { services.stop() }
+    let control = services.appControl
+    #expect(!control.isTutorialRunning)
+    control.startTutorial()
+    #expect(control.isTutorialRunning && services.tutorial.isRunning)
+    control.skipTutorial()
+    #expect(!control.isTutorialRunning && !services.tutorial.isRunning)
+    control.skipTutorial()                                                          // nothing running: nothing happens
+    #expect(!control.isTutorialRunning)
+}
+
 @Test func openCrannyInTheMenuNeverCloses() {
     let (services, _, overlay) = makeServices()
     services.start()
@@ -180,6 +197,9 @@ private func policy(_ selection: DisplaySelection, _ perDisplay: [DisplayKey: Di
     #expect(o.snapshotDirectory == "/tmp/shots" && o.snapshotTimes == [1, 3.5])
     #expect(MenuBarQA.Options(arguments: ["Cranny", "--qa-demo", "off"]).demo == false)
     #expect(MenuBarQA.Options(arguments: ["Cranny", "--qa-open-cranny", "2.5"]).openCranny == 2.5)
+    let pause = MenuBarQA.Options(arguments: ["Cranny", "--qa-pause", "untilTomorrow", "--qa-show-tutorial"])
+    #expect(pause.pause == .untilTomorrow && pause.showTutorial && !pause.isEmpty)
+    #expect(MenuBarQA.Options(arguments: ["Cranny", "--qa-pause", "forever"]).isEmpty)
     #expect(MenuBarQA.Options(arguments: ["Cranny", "--qa-menu", "sideways", "--qa-demo", "maybe"]).isEmpty)
     #expect(MenuBarQA.Options(arguments: ["Cranny", "--qa-state", "open"]).isEmpty)                // the shell's own flags
 }

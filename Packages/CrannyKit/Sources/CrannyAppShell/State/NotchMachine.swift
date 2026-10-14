@@ -124,7 +124,7 @@ nonisolated struct NotchReduction {
             o.focus = widget
             s.surface = .open(o)
         case let .autoPeek(id, until): autoPeek(id, until: until)
-        case let .swipe(direction, target): swipe(direction, over: target)
+        case let .swipe(direction, target, velocity): swipe(direction, over: target, velocity: velocity)
         case .fileDragEntered(let types): fileDragEntered(types)
         case .fileDragEnded: fileDragEnded()
         case .filesDropped(let count): filesDropped(count)
@@ -188,11 +188,14 @@ nonisolated struct NotchReduction {
 
     // MARK: Open and close
 
-    mutating func open(page: PageID?, focus: WidgetID?, mode: NookMode = .grid, reason: OpenReason) {
+    /// `velocity`: the fingers' speed of the swipe down that opened it (pt/s), carried into the open spring.
+    mutating func open(page: PageID?, focus: WidgetID?, mode: NookMode = .grid, reason: OpenReason, velocity: CGFloat = 0) {
         let previous = s.openState
         // Re-opening an open panel without naming a page keeps the page it shows.
         let page = page ?? previous?.page ?? config.lastPage
-        s.surface = .open(OpenState(page: page, focus: focus, mode: mode, reason: reason))
+        // Only the change into the open surface travels; re-opening an open panel carries nothing.
+        let carried = previous == nil ? max(velocity, 0) : 0
+        s.surface = .open(OpenState(page: page, focus: focus, mode: mode, reason: reason, gestureVelocity: carried))
         if s.hover != .outside { s.hover = .inside }
         s.handleHidden = false
         for timer in [NotchTimer.dwell, .grace, .peekEnd, .catchEnd] { cancel(timer) }
@@ -226,6 +229,10 @@ nonisolated struct NotchReduction {
             fx += [.relinquishKey, .emit(.closed)]
             if unpinning, s.pinned { s.pinned = false; fx.append(.emit(.pinned(false))) }
         }
+        // A drag still under way belongs to no closed panel: no drag state, no `drag` hold, so no enlarged drop zone
+        // blocks the menu bar. Coming back within the drag zone opens the catch state again (`fileDragEntered`).
+        s.fileDrag = nil
+        s.holds.remove(NotchMachineState.dragHold)
         for timer in [NotchTimer.dwell, .grace, .peekEnd, .catchEnd] { cancel(timer) }
         // A pointer still over the shape must leave and come back before it opens again.
         if s.hover != .outside { s.hover = .inside }

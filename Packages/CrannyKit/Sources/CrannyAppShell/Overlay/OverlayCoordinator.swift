@@ -34,7 +34,8 @@ private let log = Log.logger(.overlay)
     @ObservationIgnored let displayChanges = DisplayChangeObserver()
     @ObservationIgnored var tokens: [ObservationToken] = []
     @ObservationIgnored var menuObservers: [any NSObjectProtocol] = []
-    @ObservationIgnored var trackingMenus = 0
+    /// The NSMenu tracking sessions (§4.5): the `menu` hold and the panels' menu regions.
+    @ObservationIgnored var menus = MenuTracking()
     // Arbitration (+Activities)
     @ObservationIgnored var arbiter = ActivityArbiter()
     @ObservationIgnored var ranked: [ActivitySnapshot] = []
@@ -66,11 +67,15 @@ private let log = Log.logger(.overlay)
         let settings = registry.services.settings
         tokens.append(observe({ Self.displayPolicy(settings) }) { [weak self] _ in self?.rebuildPanels() })
         startArbitration()
-        // §4.5: a tracking menu (a context menu in the panel, the menu bar extra's menu) holds the open panel.
+        // §4.5: a tracking menu (a context menu in the panel, a widget's menu, the menu bar extra's menu) holds the
+        // open panel. Delivered synchronously (`queue: nil`; AppKit posts them on the main thread): the main queue is
+        // not served while a menu tracks, so a queued observer would only run after the menu closed.
         menuObservers = [NSMenu.didBeginTrackingNotification, NSMenu.didEndTrackingNotification].map { name in
-            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: nil) { [weak self] note in
                 let began = note.name == NSMenu.didBeginTrackingNotification
-                MainActor.assumeIsolated { self?.menuTracking(began: began) }          // queue: .main
+                // Posted on the main thread, where the menu is read and stays.
+                nonisolated(unsafe) let menu = note.object as? NSMenu
+                MainActor.assumeIsolated { self?.menuTracking(began: began, size: menu?.size ?? .zero) }
             }
         }
         pointer.start { [weak self] point, kind in self?.pointerEvent(point, kind: kind) }
@@ -232,10 +237,14 @@ private let log = Log.logger(.overlay)
         if !controllers.isEmpty { applyDisplayFacts() }
     }
 
-    /// Menus nest (submenus): hold while any tracking session is open.
-    private func menuTracking(began: Bool) {
-        trackingMenus = max(0, trackingMenus + (began ? 1 : -1))
-        setHoldOpen(trackingMenus > 0, reason: NotchMachineState.menuHold)
+    /// A menu of `size` began or ended tracking. Menus nest (submenus): hold while any tracking session is open. The
+    /// panels learn where the pointer is when the first one begins and the last one ends, before the hold changes
+    /// (`PanelHover.menuTracking`).
+    private func menuTracking(began: Bool, size: CGSize) {
+        PanelHover.menuTracking(&menus, began: began, size: size, panels: controllers.values.map(\.hover),
+                                pointer: { NSEvent.mouseLocation }) {
+            self.setHoldOpen($0, reason: NotchMachineState.menuHold)
+        }
     }
 
     // MARK: Events

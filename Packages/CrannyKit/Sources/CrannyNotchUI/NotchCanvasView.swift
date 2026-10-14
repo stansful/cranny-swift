@@ -52,6 +52,8 @@ private struct CanvasBody: View {
     @Environment(\.cranny) private var theme
     @Environment(\.notchDelight) private var delight
     @State private var previous: ShapeMotionState?
+    /// The shape before the current change (a swipe-down open measures the travel its velocity is carried over).
+    @State private var previousBase: NotchGeometry?
     @State private var gulp: CGFloat = 0
     @State private var resizeFade: ResizeFade?
     let model: NotchSceneModel
@@ -85,14 +87,24 @@ private struct CanvasBody: View {
                     .offset(y: shown.bottom)
             }
         }
-        .animation(ShapeMotion.animation(kind, theme: theme), value: base)
+        .animation(shapeAnimation(kind, to: base), value: base)
         .animation(model.gestureTranslation == .zero ? theme.animation(.snapBack) : nil, value: model.gestureTranslation)
         .opacity(surfaceOpacity)
         .animation(theme.animation(.contentSwap), value: surfaceOpacity)
         .modifier(GulpModifier(depth: $gulp))
         .environment(\.notchSlotRevealDelay, ContentTiming.slotDelay(after: kind))
         .onChange(of: current) { _, new in previous = new }
+        .onChange(of: base, initial: true) { _, new in previousBase = new }
         .onChange(of: ShapeTarget(phase: model.phase, geometry: base)) { old, new in crossFadeResize(from: old, to: new) }
+    }
+
+    /// The spring for this change of shape. A swipe-down open starts with the fingers' speed (DESIGN.md §4.4).
+    private func shapeAnimation(_ kind: CrannyMotion.Kind, to target: NotchGeometry) -> Animation? {
+        if kind == .open, let velocity = model.open?.gestureVelocity, velocity > 0 {
+            return ShapeMotion.openAnimation(velocity: velocity, from: previousBase ?? model.layout.closed, to: target,
+                                             theme: theme)
+        }
+        return ShapeMotion.animation(kind, theme: theme)
     }
 
     /// Reduce Motion: an open → open resize cross-fades the outlines (`ResizeCrossFade`) instead of travelling.
@@ -188,10 +200,10 @@ private struct CanvasBody: View {
     }
 
     /// The budget of the one-shot moments drawn on the canvas (ember burst, charge sweep, satellite neck): their
-    /// path (Reduce Motion and Instant draw the static variant, Low Power the SwiftUI design) and frame rate.
+    /// path (Reduce Motion, Calm and Instant draw the static variant, Low Power the SwiftUI design) and frame rate.
     private var momentBudget: EffectBudget {
         var moment = budget
-        moment.reduceMotion = theme.reduceMotion || theme.motion == .instant
+        moment.reduceMotion = DelightPlayback.drawsReducedVariant(theme)
         return moment
     }
 

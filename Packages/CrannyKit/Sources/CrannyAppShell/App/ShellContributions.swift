@@ -2,7 +2,8 @@
 // Global shortcuts: Open Cranny (⌃⌥N) and Toggle pin → the overlay; Pause activities → `PauseController`.
 // ⌘K: Pause Live Activities for 1 hour (or Resume), Demo mode, Keep Cranny open, Show tutorial, and every
 // Settings pane — and nothing else. Commands resolve state at query time, so their titles always say what they do.
-// No VoiceOver announcements: DESIGN.md §16 keeps them for P1 alerts and pipeline completion.
+// Pausing and resuming confirm themselves (`OverlayCoordinator.confirmPause`: the flash and VoiceOver); the other
+// commands change what the panel or the menu already shows.
 import Carbon.HIToolbox
 import CrannyCore
 import Foundation
@@ -10,7 +11,7 @@ import Foundation
 @MainActor enum ShellContributions {
     static func register(in registry: ModuleRegistry, overlay: OverlayCoordinator) {
         let settings = registry.services.settings
-        let pause = PauseController(settings: settings)
+        let pause = PauseController(settings: settings, confirm: { [weak overlay] in overlay?.confirmPause($0) })
         let demo = DemoMode(settings: settings)
         registry.add(shortcut: GlobalShortcut(
             id: .openNook, title: String(localized: "Open Cranny", bundle: .module, comment: "Menu bar and Settings ▸ Keyboard: item and shortcut that open the panel"),

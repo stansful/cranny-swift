@@ -2,7 +2,7 @@
 // menu (`.menuBarExtraStyle(.menu)`), nothing custom:
 //
 //   Open Cranny  ⌃⌥N · Keep Cranny Open ✓ │ Pause Live Activities ▸ · Show On ▸ · Demo Mode ✓ │
-//   Settings… ⌘, · Check for Updates… · Show Tutorial │ About Cranny · Quit Cranny ⌘Q
+//   Settings… ⌘, · Check for Updates… · Show Tutorial (· Skip Tutorial while it runs) │ About Cranny · Quit Cranny ⌘Q
 //
 // Global shortcuts show their current binding (or nothing when off). Every item is reachable with the keyboard
 // (arrows, type-select, Return) and VoiceOver reads the titles and the checkmarks.
@@ -44,6 +44,12 @@ struct MenuBarContent: View {
         UpdateMenuItem(appControl: appControl)
         Button { appControl.startTutorial() } label: {
             Text("Show Tutorial", bundle: .module, comment: "Menu bar: replays the interactive tutorial in the notch")
+        }
+        if appControl.isTutorialRunning {
+            // The bubble's Skip tutorial and ⌘K are the other ways out (C-SHELL-12).
+            Button { appControl.skipTutorial() } label: {
+                Text("Skip Tutorial", bundle: .module, comment: "Menu bar: ends the interactive tutorial; shown only while it runs")
+            }
         }
         Divider()
         Button { appControl.showAbout() } label: { Text("About Cranny", bundle: .module, comment: "Menu bar: opens Settings ▸ About") }

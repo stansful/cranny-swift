@@ -46,6 +46,7 @@ struct SnapshotGallery {
             ("open-focus", previewScene(.open, mode: .focus(.notes))),
             ("open-catch", previewScene(.open, mode: .catchFiles([.fileURL]))),
             ("open-hud", previewScene(.open, hudInHeader: true)),
+            ("open-confirmation", previewScene(.open, headerMessage: PreviewConfirmation.sentence)),
             ("open-island-palette", previewScene(.open, metrics: PreviewDisplays.external, palette: true)),
             ("compact-satellite", previewScene(.compact, satellite: true)),
             ("compact-timer", previewScene(.compact, sample: .timer)),

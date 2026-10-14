@@ -299,6 +299,12 @@ import Foundation
         let satellite = NotchMachine.satelliteIsVisible(state, config: config) ? lineup.satellite : nil
         if scene.satellite != satellite { scene.satellite = satellite }
         if scene.primarySlot != lineup.primarySlot { scene.primarySlot = lineup.primarySlot }
+        // The open header shows a confirmation of this display's lineup whatever its rank (another alert may lead).
+        // A new message bumps the activity's revision, so the arbiter's `.activityChanged` re-runs this sync.
+        let header = ([lineup.primary, lineup.satellite].compactMap { $0 } + lineup.overflow).first { id in
+            (activity(id) as? any OpenHeaderActivity)?.headerMessage != nil
+        }
+        if scene.headerActivity != header { scene.headerActivity = header }
         let rows: [ActivityID]
         switch state.surface {
         case .open: rows = []

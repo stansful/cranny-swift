@@ -152,6 +152,69 @@ private func kind(_ from: NotchPhase, _ to: NotchPhase, fromHUD: Bool = false, t
         #expect(!DelightPlayback.isSeen(budget(onScreen: false)))             // covered, locked, asleep
         #expect(!DelightPlayback.isSeen(budget(fullScreen: true, open: true)))
     }
+
+    /// Calm and Reduce Motion draw the reduced variants (DESIGN.md §5.5, last column); Standard and Lively the moment.
+    @Test func calmAndReduceMotionDrawTheReducedVariants() {
+        func theme(_ motion: MotionPersonality, reduceMotion: Bool = false) -> CrannyTheme {
+            var t = CrannyTheme()
+            t.motion = motion
+            t.reduceMotion = reduceMotion
+            return t
+        }
+        #expect(!DelightPlayback.drawsReducedVariant(theme(.standard)) && !DelightPlayback.drawsReducedVariant(theme(.lively)))
+        #expect(DelightPlayback.drawsReducedVariant(theme(.calm)))
+        #expect(DelightPlayback.drawsReducedVariant(theme(.standard, reduceMotion: true)))
+        #expect(DelightPlayback.drawsReducedVariant(theme(.lively, reduceMotion: true)))
+        #expect(DelightPlayback.drawsReducedVariant(theme(.instant)))           // a stage that plays one anyway
+    }
+}
+
+/// A swipe-down open starts the open spring at the fingers' speed (DESIGN.md §4.4).
+@Suite("Swipe-down open velocity (DESIGN.md §4.4)") struct OpenVelocityTests {
+    private let layout = NotchLayout(metrics: .reference)
+
+    private func theme(_ motion: MotionPersonality = .standard, reduceMotion: Bool = false) -> CrannyTheme {
+        var t = CrannyTheme()
+        t.motion = motion
+        t.reduceMotion = reduceMotion
+        return t
+    }
+
+    @Test func theFingersSpeedBecomesAShareOfTheTravelPerSecond() {
+        #expect(ShapeMotion.relativeVelocity(640, travel: 160) == 4)
+        #expect(ShapeMotion.relativeVelocity(5000, travel: 160) == ShapeMotion.maximumCarry)    // a flick never throws it
+        #expect(ShapeMotion.relativeVelocity(0, travel: 160) == nil)
+        #expect(ShapeMotion.relativeVelocity(-300, travel: 160) == nil)
+        #expect(ShapeMotion.relativeVelocity(640, travel: 0.5) == nil)                           // nothing to travel
+    }
+
+    @Test func theOpenSpringStartsWithTheVelocity() {
+        let from = layout.closed, to = layout.open(columns: 10)
+        let travel = to.bottom - from.bottom
+        let velocity = 4 * travel
+        #expect(ShapeMotion.openAnimation(velocity: velocity, from: from, to: to, theme: theme())
+                == .interpolatingSpring(duration: 0.42, bounce: 0.14, initialVelocity: 4))
+        // The personality scales the bounce as for every spring: Calm lands without overshoot, Lively bounces more.
+        #expect(ShapeMotion.openAnimation(velocity: velocity, from: from, to: to, theme: theme(.calm))
+                == .interpolatingSpring(duration: 0.42, bounce: 0, initialVelocity: 4))
+        #expect(ShapeMotion.openAnimation(velocity: velocity, from: from, to: to, theme: theme(.lively))
+                == .interpolatingSpring(duration: 0.42, bounce: 0.14 * 1.5, initialVelocity: 4))
+    }
+
+    @Test func reduceMotionAndInstantIgnoreIt() {
+        let from = layout.compact(.short), to = layout.open(columns: 10)
+        let reduced = theme(reduceMotion: true)
+        #expect(ShapeMotion.openAnimation(velocity: 900, from: from, to: to, theme: reduced)
+                == ShapeMotion.animation(.open, theme: reduced))                // the dissolve at the final size
+        #expect(ShapeMotion.openAnimation(velocity: 900, from: from, to: to, theme: theme(.instant)) == nil)
+        #expect(ShapeMotion.openAnimation(velocity: 0, from: from, to: to, theme: theme())
+                == ShapeMotion.animation(.open, theme: theme()))
+    }
+
+    @Test func theOpenStateCarriesItOnlyWhenGiven() {
+        #expect(OpenState(page: .nook, reason: .click).gestureVelocity == 0)
+        #expect(OpenState(page: .nook, reason: .swipe, gestureVelocity: 640).gestureVelocity == 640)
+    }
 }
 
 /// The charge sweep runs along the lower outline of the shape (`LowerRim.outline`), inside it.

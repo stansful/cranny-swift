@@ -22,6 +22,8 @@ nonisolated struct ActivitySnapshot: Equatable, Sendable {
     /// "Peek on change" (`prefs[id]?.peeksOnChange ?? kind.peeksOnChangeByDefault`).
     var peeksOnChange: Bool
     var delight: DelightMoment?
+    /// Shown while Live Activities are paused, like the HUD: only the flash that confirms a pause or resume.
+    var ignoresPause = false
 }
 
 /// The arbitration-relevant settings (§4.6 input line).
@@ -92,7 +94,7 @@ nonisolated struct ActivityArbiter {
         }
         let candidates = activities.filter { a in
             a.isActive && a.isEnabled && (a.expiresAt.map { $0 > now } ?? true)
-                && dismissed[a.id] == nil && (!settings.paused || a.priority == .hud)
+                && dismissed[a.id] == nil && (!settings.paused || a.priority == .hud || a.ignoresPause)
         }
         var outcome = Outcome(ranked: Self.rank(candidates, order: settings.order))
         outcome.nextExpiry = candidates.compactMap(\.expiresAt).filter { $0 > now }.min()

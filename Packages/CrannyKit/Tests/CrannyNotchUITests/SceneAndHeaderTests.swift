@@ -131,6 +131,56 @@ private let notch = NotchLayout(metrics: .reference)
         #expect((0..<first).contains { x in probe.luminance(x: x, y: probe.height / 2) > 0.02 })
     }
 
+    /// What takes the open header: a HUD that leads, else a message of the primary or of the owner's `headerActivity`
+    /// (the Pause Live Activities confirmation behind another alert); an activity without a message never does.
+    @Test func theHeaderIsTakenByAHUDOrAMessage() throws {
+        let hud = PreviewActivity(.hud), media = PreviewActivity(.nowPlaying)
+        let confirmation = PreviewConfirmation(PreviewConfirmation.sentence), silent = PreviewConfirmation(nil)
+        func resolve(_ primary: (any LiveActivity)?, _ header: (any LiveActivity)?) -> String? {
+            HeaderTakeover.resolve(primary: primary.map { ($0.id, $0) }, header: header.map { ($0.id, $0) })?.key
+        }
+        #expect(resolve(nil, nil) == nil && resolve(media, nil) == nil && resolve(media, silent) == nil)
+        #expect(resolve(hud, confirmation) == "hud:\(hud.id.rawValue)")
+        #expect(resolve(media, confirmation) == "message:\(confirmation.id.rawValue):\(PreviewConfirmation.sentence)")
+        #expect(resolve(confirmation, nil) == resolve(media, confirmation))
+        confirmation.headerMessage = ""
+        #expect(resolve(media, confirmation) == nil)
+    }
+
+    /// The confirmation in the open header: the glyph against the camera zone on the left (the tabs make way), the
+    /// sentence against it on the right when it fits the side, else the short word; nothing over the camera.
+    @Test(arguments: [false, true]) func aConfirmationTakesTheHeaderRow(atTheMinimum: Bool) throws {
+        let (model, registry) = previewScene(.open, headerMessage: PreviewConfirmation.sentence)
+        let width = atTheMinimum ? notch.open(columns: 1).bodyWidth - 2 * CrannyTheme().grid.padding : 632
+        let zone = NookHeader.cameraZone(notch)
+        let view = NookHeader(model: model, registry: registry, actions: NotchUIActions(), select: { _ in }, perform: { _ in })
+            .frame(width: width, height: notch.headerHeight)
+            .background(Color.black)
+            .environment(\.notchRendersFinalState, true)
+            .crannyThemeRoot(CrannyTheme())
+        let renderer = ImageRenderer(content: view)
+        renderer.scale = 2
+        let probe = try #require(renderer.cgImage.flatMap { ShapeProbe($0, scale: 2) })
+        func lit(_ x: Int) -> Bool { (0..<probe.height).contains { probe.luminance(x: x, y: $0) > 0.02 } }
+        let left = Int((width - zone) / 2 * 2), right = Int((width + zone) / 2 * 2)
+        #expect(!(left + 2...right - 2).contains(where: lit), "drawn in the camera zone")
+        // Left: only the glyph, against the zone (no tabs further out).
+        let leftmost = try #require((0..<left).first(where: lit))
+        #expect(CGFloat(left - leftmost) / 2 <= 24, "the left side starts \(CGFloat(left - leftmost) / 2) pt from the zone")
+        // Right: the sentence, or the word where the sentence does not fit.
+        func measured(_ text: some View) -> CGFloat {
+            NSHostingView(rootView: text.fixedSize().crannyThemeRoot(CrannyTheme())).fittingSize.width
+        }
+        let sentence = measured(Text(verbatim: PreviewConfirmation.sentence).crannyFont(.headline))
+        let word = measured(Text(verbatim: "Paused").crannyFont(.compact))
+        let side = HeaderRowLayout.sideWidth(width: width, centre: zone)
+        let rightmost = try #require((right..<probe.width).last(where: lit))
+        let drawn = CGFloat(rightmost - right) / 2
+        let expected = sentence <= side ? sentence : word
+        #expect(abs(drawn - expected) <= 3, "drew \(drawn) pt, expected \(expected) (sentence \(sentence), side \(side))")
+        #expect(atTheMinimum == (sentence > side))                     // both layouts are exercised
+    }
+
     @Test func clockWakesOnTheMinute() throws {
         let utc = try #require(TimeZone(identifier: "UTC"))
         var calendar = Calendar(identifier: .gregorian)

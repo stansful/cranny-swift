@@ -20,7 +20,8 @@ nonisolated enum PeekScheduler {
 
     /// The display an auto-peek of `id` plays on, or nil: only the pointer's display, never while it is open,
     /// hidden or not showing peeks, never while Live Activities are paused, and only for an activity that
-    /// display shows (§4.7). Arbiter peeks and `NotchControl.requestPeek` follow the same policy.
+    /// display shows (§4.7). Arbiter peeks and `NotchControl.requestPeek` follow the same policy; the flash that
+    /// confirms a pause or resume passes `paused: false` (it outlasts the pause it confirms).
     static func target(for id: ActivityID, among displays: [Display], paused: Bool) -> DisplayKey? {
         guard !paused, let display = displays.first(where: \.isPointerDisplay) else { return nil }
         guard !display.isOpen, !display.isHidden, display.showsPeeks, display.lineup.contains(id) else { return nil }

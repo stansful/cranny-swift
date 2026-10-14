@@ -190,14 +190,35 @@ private func filter(_ key: DisplayKey = here, pointer: Bool = true, restricted: 
     let early = scheduler.request(.gulp, now: 10.5, gate: open)                // the ember still plays (0.9 s)
     let later = scheduler.request(.gulp, now: 11, gate: open)
     #expect(ember && !early && later)
-    // A hidden panel (locked, asleep, hidden by policy) plays nothing and keeps the stage free.
-    for gate in [DelightScheduler.Gate(paused: true), .init(fullScreenInFront: true), .init(hidden: true), .init(motion: .calm),
-                 .init(motion: .instant), .init(reduceMotion: true)] {
-        let allowed = scheduler.request(.songRipple, now: 100, gate: gate)
-        #expect(!allowed)
+    // A hidden panel (locked, asleep, hidden by policy) plays nothing and keeps the stage free; Motion ▸ Instant is the
+    // only motion setting that suppresses every moment.
+    for gate in [DelightScheduler.Gate(paused: true), .init(fullScreenInFront: true), .init(hidden: true), .init(motion: .instant),
+                 .init(motion: .instant, reduceMotion: true)] {
+        for moment in DelightMoment.allCases {
+            let allowed = scheduler.request(moment, now: 100, gate: gate)
+            #expect(!allowed, "\(moment) under \(gate)")
+        }
     }
     let afterVetoes = scheduler.request(.songRipple, now: 100, gate: open)
     #expect(afterVetoes)
     let firstOpen = scheduler.firstOpen(), secondOpen = scheduler.firstOpen()
     #expect(firstOpen && !secondOpen)                                          // First light: once per session
+}
+
+/// Calm and Reduce Motion play the reduced variants of DESIGN.md §5.5 (static fade, static ember glow, instant rim).
+/// The song ripple (colour only) and the gulp (gone; the haptic stays) draw nothing then, so they never take the stage.
+@Test func calmAndReduceMotionPlayTheReducedVariants() {
+    for gate in [DelightScheduler.Gate(motion: .calm), .init(reduceMotion: true), .init(motion: .lively, reduceMotion: true)] {
+        #expect(gate.allowsDelight && gate.playsReducedVariant)
+        var scheduler = DelightScheduler()
+        let first = scheduler.request(.firstLight, now: 0, gate: gate)
+        let ember = scheduler.request(.emberBurst, now: 1, gate: gate)
+        let rim = scheduler.request(.chargeSweep, now: 2, gate: gate)
+        let ripple = scheduler.request(.songRipple, now: 3, gate: gate)
+        let gulp = scheduler.request(.gulp, now: 3.1, gate: gate)
+        let next = scheduler.request(.emberBurst, now: 3.2, gate: gate)
+        #expect(first && ember && rim && !ripple && !gulp && next, "\(gate)")
+    }
+    #expect(!DelightScheduler.Gate().playsReducedVariant && !DelightScheduler.Gate(motion: .lively).playsReducedVariant)
+    #expect(DelightMoment.allCases.filter(DelightScheduler.hasReducedVariant) == [.emberBurst, .chargeSweep, .firstLight])
 }

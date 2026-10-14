@@ -31,9 +31,12 @@ struct NookLightLayer: View {
         let budget = registry.services.environment.effectBudget(
             isOpen: model.phase == .open, isOnScreen: model.isVisibleOnScreen,
             reduceMotion: theme.reduceMotion || theme.motion == .instant || isSnapshot)   // snapshots: the resting frame
-        Group {
+        // First light is a moment: Calm draws its static fade too, while the light itself keeps moving (DESIGN.md §4.2).
+        var moment = budget
+        moment.reduceMotion = budget.reduceMotion || DelightPlayback.drawsReducedVariant(theme)
+        return Group {
             if let firstLight {
-                FirstLight(palette: model.ambient, level: level, budget: budget) { light(level: level, budget: budget) }
+                FirstLight(palette: model.ambient, level: level, budget: moment) { light(level: level, budget: budget) }
                     .id(firstLight)
             } else {
                 light(level: level, budget: budget)
