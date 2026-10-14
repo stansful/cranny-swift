@@ -61,8 +61,13 @@ import SwiftUI
 
     // MARK: Contributions
 
-    /// Adds a Nook widget. Widget ids are unique (a duplicate is a programmer error).
+    /// Adds a Nook widget. Widget ids are unique (a duplicate is a programmer error); a real widget replaces the
+    /// preview stand-in of its id (`addPreviewStandIns()`).
     public func add<W: NookWidget>(widget: W) {
+        if let index = widgets.firstIndex(where: { $0.id == widget.id }), widgets[index].base is PreviewStandInWidget {
+            widgets[index] = AnyNookWidget(widget)
+            return
+        }
         precondition(self.widget(widget.id) == nil, "duplicate widget id \(widget.id)")
         widgets.append(AnyNookWidget(widget))
     }

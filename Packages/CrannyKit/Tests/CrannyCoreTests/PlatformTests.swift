@@ -182,3 +182,23 @@ private struct Document: Codable, Equatable, Sendable {
     #expect(folder.qaPanelSnapshot == nil && folder.qaSnapshotDirectory == "/tmp/shots") // anything else: a folder
     #expect(LaunchArguments([]).qaSnapshotDirectory == nil)
 }
+
+// MARK: - Preview stand-ins
+
+@MainActor private final class RealMedia: NookWidget {
+    let id: WidgetID = .media
+    let title = "Real media", symbol = "music.note", summary = ""
+    let sizes = WidgetSizes(minimum: 4, preferred: 5, maximum: 6)
+    func makeBody(context: WidgetContext) -> some View { EmptyView() }
+}
+
+@MainActor @Test func standInsNameTheWellKnownWidgetsAndGiveWayToRealOnes() {
+    let registry = ModuleRegistry(services: .preview())
+    registry.addPreviewStandIns()
+    #expect(registry.widgets.count == 9 && registry.widget(.todos)?.title == "To-dos")
+    #expect(registry.widget(.files)?.sizes == WidgetSizes(minimum: 3, preferred: 4, maximum: 8))
+    registry.add(widget: RealMedia())                                                   // replaces its stand-in
+    #expect(registry.widget(.media)?.title == "Real media" && registry.widgets.count == 9)
+    registry.addPreviewStandIns()                                                       // never over a real widget
+    #expect(registry.widget(.media)?.title == "Real media")
+}
