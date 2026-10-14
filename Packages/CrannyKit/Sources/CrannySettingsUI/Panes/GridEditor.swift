@@ -1,0 +1,225 @@
+// CrannySettingsUI/Panes/GridEditor.swift — the WYSIWYG grid editor of Layout & Widgets (DESIGN.md §6.6, §18.7): the
+// page's widgets as cards at their true proportions on a black panel (the notch's own tokens and theme), with the
+// edit-mode look (dashed outline, 8 × 24 resize handle). Drag a card to reorder, drag its handle to resize in whole
+// cells (an `.alignment` detent per cell and an "N cells" tip), "+" opens the widget library. Keyboard: ⌥← ⌥→ move,
+// ⌥⇧← ⌥⇧→ resize; VoiceOver: named actions and an adjustable width; every change is announced.
+import AppKit
+import CrannyCore
+import Foundation
+import SwiftUI
+
+struct GridEditor: View {
+    let page: NookPage
+    let editor: LayoutEditor
+    let registry: ModuleRegistry
+    let theme: CrannyTheme
+    /// Commits a changed layout, or reports why a change was refused.
+    let apply: (_ change: (inout LayoutEditor) -> LayoutEditor.Refusal?) -> Void
+    let showOptions: (WidgetID) -> Void
+    @State private var showsLibrary = false
+
+    var body: some View {
+        let grid = theme.grid
+        GeometryReader { proxy in
+            let metrics = EditorMetrics(width: proxy.size.width, columns: editor.maxColumns, grid: grid)
+            HStack(spacing: metrics.gutter) {
+                ForEach(page.items, id: \.widget) { item in
+                    EditorCard(info: KnownWidgets.info(item.widget, registry: registry),
+                               cells: editor.cells(of: item.widget, on: page.id) ?? item.cells,
+                               metrics: metrics, haptics: registry.services.haptics,
+                               apply: apply, pageID: page.id, showOptions: showOptions)
+                }
+                AddTile(cellsLeft: editor.cellsLeft(on: page.id), metrics: metrics) { showsLibrary = true }
+                    .popover(isPresented: $showsLibrary, arrowEdge: .bottom) {
+                        WidgetLibraryList(registry: registry, page: page, editor: editor, apply: apply, compact: true)
+                            .frame(width: 320, height: 300)
+                    }
+                Spacer(minLength: 0)
+            }
+            .frame(height: metrics.cardHeight)
+        }
+        .frame(height: EditorMetrics.cardHeight)
+        .padding(EditorMetrics.panelPadding)
+        .background(theme.palette.surface, in: RoundedRectangle(cornerRadius: grid.panelRadius * 0.75, style: .continuous))
+        .crannyThemeRoot(theme)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text("Layout of \(LayoutRows.title(of: page))", bundle: .module,
+                                 comment: "Settings ▸ Layout & Widgets: VoiceOver label of the grid editor; the argument is the page name"))
+    }
+}
+
+/// Card geometry scaled so the page's maximum columns fill the editor's width.
+struct EditorMetrics {
+    static let cardHeight: CGFloat = 76
+    static let panelPadding: CGFloat = 12
+    let cell: CGFloat
+    let gutter: CGFloat
+
+    init(width: CGFloat, columns: Int, grid: NookGrid) {
+        let columns = CGFloat(max(columns, 1))
+        let full = grid.width(cells: Int(columns))
+        let scale = full > 0 ? max(width, 1) / full : 1
+        cell = grid.cell * scale
+        gutter = grid.gutter * scale
+    }
+
+    var cardHeight: CGFloat { Self.cardHeight }
+    func width(cells: Int) -> CGFloat { CGFloat(cells) * cell + CGFloat(max(cells - 1, 0)) * gutter }
+}
+
+/// One widget in edit mode.
+private struct EditorCard: View {
+    @Environment(\.cranny) private var theme
+    let info: WidgetInfo
+    let cells: Int
+    let metrics: EditorMetrics
+    let haptics: Haptics
+    let apply: (_ change: (inout LayoutEditor) -> LayoutEditor.Refusal?) -> Void
+    let pageID: PageID
+    let showOptions: (WidgetID) -> Void
+    @State private var dragCells: Int?
+    @State private var isTargeted = false
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        let shown = dragCells ?? cells
+        let p = theme.palette
+        VStack(spacing: Space.xs) {
+            Image(systemName: info.symbol).font(.system(size: 16, weight: .medium)).foregroundStyle(p.secondaryLabel)
+            Text(verbatim: info.title).crannyFont(.caption).foregroundStyle(p.label).lineLimit(1).minimumScaleFactor(0.8)
+            Text(verbatim: LayoutRows.cells(shown)).crannyFont(.caption).foregroundStyle(p.tertiaryLabel).lineLimit(1)
+        }
+        .padding(.horizontal, Space.xs)
+        .frame(width: metrics.width(cells: shown), height: metrics.cardHeight)
+        .background(RoundedRectangle(cornerRadius: Radius.tile, style: .continuous).fill(isTargeted ? p.cardHover : p.card))
+        .overlay(RoundedRectangle(cornerRadius: Radius.tile, style: .continuous)
+            .strokeBorder(focused ? theme.accentColor : p.stroke, style: StrokeStyle(lineWidth: focused ? StrokeWidth.focus : StrokeWidth.emphasis,
+                                                                                    dash: focused ? [] : StrokeWidth.dash)))
+        .overlay(alignment: .trailing) { handle }
+        .overlay(alignment: .top) {
+            if let dragCells {
+                Text(verbatim: LayoutRows.cells(dragCells)).crannyFont(.caption).foregroundStyle(.black)
+                    .padding(.horizontal, Space.s).padding(.vertical, Space.xxs)
+                    .background(Capsule().fill(.white)).offset(y: -Space.xl)
+            }
+        }
+        .animation(theme.animation(.listReorder), value: shown)
+        .contentShape(RoundedRectangle(cornerRadius: Radius.tile, style: .continuous))
+        .draggable(info.id.rawValue)
+        .dropDestination(for: String.self) { dropped, location in
+            guard let raw = dropped.first, raw != info.id.rawValue else { return false }
+            let after = location.x > metrics.width(cells: shown) / 2
+            apply { editor in
+                guard let items = editor.page(pageID)?.items,
+                      let target = items.firstIndex(where: { $0.widget == info.id }) else { return nil }
+                let source = items.firstIndex { $0.widget.rawValue == raw } ?? 0
+                let index = target + (after ? 1 : 0) - (source < target ? 1 : 0)
+                editor.move(WidgetID(raw), on: pageID, to: index)
+                return nil
+            }
+            haptics.play(.alignment)
+            return true
+        } isTargeted: { isTargeted = $0 }
+        .contextMenu { menu }
+        .focusable()
+        .focused($focused)
+        .focusEffectDisabled()
+        .onKeyPress(keys: [.leftArrow, .rightArrow]) { press in
+            guard press.modifiers.contains(.option) else { return .ignored }
+            let step = press.key == .leftArrow ? -1 : 1
+            if press.modifiers.contains(.shift) { resize(by: step) } else { shift(by: step) }
+            return .handled
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(verbatim: info.title))
+        .accessibilityValue(Text(verbatim: LayoutRows.cells(cells)))
+        .accessibilityAdjustableAction { direction in
+            resize(by: direction == .increment ? 1 : -1)
+        }
+        .accessibilityAction(named: Text("Move left", bundle: .module, comment: "Settings ▸ Layout & Widgets: move a widget or a page one place left")) { shift(by: -1) }
+        .accessibilityAction(named: Text("Move right", bundle: .module, comment: "Settings ▸ Layout & Widgets: move a widget or a page one place right")) { shift(by: 1) }
+        .accessibilityAction(named: Text("Remove", bundle: .module, comment: "Settings ▸ Layout & Widgets: remove a widget from the page")) { remove() }
+    }
+
+    /// The 8 × 24 resize handle on the trailing edge.
+    private var handle: some View {
+        Capsule(style: .continuous)
+            .fill(theme.palette.secondaryLabel)
+            .frame(width: 4, height: 24)
+            .frame(width: 8 + Space.s, height: metrics.cardHeight)
+            .contentShape(Rectangle())
+            .gesture(DragGesture(minimumDistance: 2)
+                .onChanged { value in
+                    let step = metrics.cell + metrics.gutter
+                    let delta = Int((value.translation.width / max(step, 1)).rounded())
+                    let next = info.sizes.clamp(cells + delta)
+                    if next != dragCells { haptics.play(.alignment) }
+                    dragCells = next
+                }
+                .onEnded { _ in
+                    if let target = dragCells { apply { $0.resize(info.id, on: pageID, to: target) } }
+                    dragCells = nil
+                })
+            .onHover { inside in
+                if inside { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
+            }
+            .accessibilityHidden(true)
+    }
+
+    @ViewBuilder private var menu: some View {
+        if info.hasOptions {
+            Button { showOptions(info.id) } label: { Text("Options…", bundle: .module, comment: "Settings ▸ Layout & Widgets: opens a widget's options") }
+        }
+        Button { resize(by: 1) } label: { Text("Wider", bundle: .module, comment: "Settings ▸ Layout & Widgets: make a widget one cell wider") }
+            .disabled(cells >= info.sizes.maximum)
+        Button { resize(by: -1) } label: { Text("Narrower", bundle: .module, comment: "Settings ▸ Layout & Widgets: make a widget one cell narrower") }
+            .disabled(cells <= info.sizes.minimum)
+        Divider()
+        Button { shift(by: -1) } label: { Text("Move left", bundle: .module, comment: "Settings ▸ Layout & Widgets: move a widget or a page one place left") }
+        Button { shift(by: 1) } label: { Text("Move right", bundle: .module, comment: "Settings ▸ Layout & Widgets: move a widget or a page one place right") }
+        Divider()
+        Button(role: .destructive) { remove() } label: { Text("Remove", bundle: .module, comment: "Settings ▸ Layout & Widgets: remove a widget from the page") }
+    }
+
+    private func shift(by offset: Int) {
+        apply { $0.shift(info.id, on: pageID, by: offset); return nil }
+    }
+
+    private func resize(by delta: Int) {
+        apply { $0.resize(info.id, on: pageID, to: cells + delta) }
+        let announcement = info.title + ", " + LayoutRows.cells(info.sizes.clamp(cells + delta))
+        AccessibilityNotification.Announcement(announcement).post()
+    }
+
+    private func remove() {
+        apply { $0.remove(info.id, from: pageID); return nil }
+    }
+}
+
+/// "+" at the end of the row: the free cells, and the door to the library.
+private struct AddTile: View {
+    @Environment(\.cranny) private var theme
+    let cellsLeft: Int
+    let metrics: EditorMetrics
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: Space.xs) {
+                Image(systemName: "plus").font(.system(size: 15, weight: .semibold))
+                if cellsLeft > 0 {
+                    Text(verbatim: String(localized: "\(cellsLeft) cells left", bundle: .module,
+                                          comment: "Settings ▸ Layout & Widgets: free cells on the page (plural)"))
+                        .crannyFont(.caption).lineLimit(1).minimumScaleFactor(0.7)
+                }
+            }
+            .foregroundStyle(theme.palette.secondaryLabel)
+            .frame(width: cellsLeft > 0 ? metrics.width(cells: cellsLeft) : HitTarget.preferred, height: metrics.cardHeight)
+            .background(RoundedRectangle(cornerRadius: Radius.tile, style: .continuous)
+                .strokeBorder(theme.palette.stroke, style: StrokeStyle(lineWidth: StrokeWidth.emphasis, dash: StrokeWidth.dash)))
+            .contentShape(RoundedRectangle(cornerRadius: Radius.tile, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text("Add Widget", bundle: .module, comment: "Settings ▸ Layout & Widgets: opens the widget library"))
+    }
+}
