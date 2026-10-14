@@ -19,11 +19,8 @@ import UniformTypeIdentifiers
 
 enum TrayQA {
     #if DEBUG
-    private static let arguments = ProcessInfo.processInfo.arguments
-    private static func value(_ name: String) -> String? {
-        guard let i = arguments.firstIndex(of: name), i + 1 < arguments.count else { return nil }
-        return arguments[i + 1]
-    }
+    private static let arguments = LaunchArguments.current
+    private static func value(_ name: String) -> String? { arguments.value(after: name) }
     static var usesSamples: Bool { arguments.contains("--qa-tray-samples") }
     /// Types for the catch view on the Tray page, if requested.
     static var catchTypes: [UTType]? {

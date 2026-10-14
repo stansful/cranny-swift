@@ -90,9 +90,6 @@ public nonisolated enum PipelineStep: Codable, Hashable, Sendable {
         }
     }
 
-    /// Steps that write files (results get an Undo chip and land in the Tray).
-    var writesFiles: Bool { output != nil }
-
     /// The same kind of step, ignoring its parameters (the editor's step menu, `catalog` lookups).
     var kind: String {
         switch self {

@@ -48,7 +48,6 @@ private let log = Log.logger(.tray)
     @ObservationIgnored private var settingTokens: [ObservationToken] = []
     @ObservationIgnored var tasks: [UUID: Task<Void, Never>] = [:]
     @ObservationIgnored var undoTask: Task<Void, Never>?
-    @ObservationIgnored var lastAnnouncement: Date?
 
     init(settings: SettingsStore, notch: any NotchControl, haptics: Haptics, system: any TraySystem,
          directories: TrayDirectories) {

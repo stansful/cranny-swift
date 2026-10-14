@@ -25,8 +25,10 @@ import SwiftUI
 /// The real thing. Writing the general pasteboard never triggers the paste alert (only reading does, R1 §5.1).
 @MainActor final class LiveTraySystem: TraySystem {
     private let quickLook = QuickLookPresenter()
+    private let announcer: Announcer
 
-    init() {}
+    /// `announcer`: the app's (`services.announcer`), so a pipeline result shares the 10-s limit with every alert.
+    init(announcer: Announcer) { self.announcer = announcer }
 
     func copy(text: String) {
         let pasteboard = NSPasteboard.general
@@ -49,7 +51,7 @@ import SwiftUI
     var isQuickLookVisible: Bool { quickLook.isVisible }
 
     func announce(_ message: String) {
-        AccessibilityNotification.Announcement(message).post()
+        announcer.announce(message, kind: .result)
     }
 
     func trash(_ urls: [URL]) async {

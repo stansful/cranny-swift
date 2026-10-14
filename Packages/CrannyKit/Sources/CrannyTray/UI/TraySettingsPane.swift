@@ -251,7 +251,8 @@ struct TraySettingsPane: View {
     }
 }
 
-/// A row label with the changed-value dot, an optional footnote and "Reset to Default" (DESIGN.md §11.3).
+/// A row label with an optional footnote and Core's row conventions: the changed-value dot, "Reset to Default" and
+/// the VoiceOver hint (DESIGN.md §11.3).
 struct SettingLabel<Value: Codable & Sendable & Equatable>: View {
     let settings: SettingsStore
     let key: SettingKey<Value>
@@ -260,24 +261,12 @@ struct SettingLabel<Value: Codable & Sendable & Equatable>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 6) {
-                Circle().fill(Color.accentColor).frame(width: 6, height: 6)
-                    .opacity(settings.isDefault(key) ? 0 : 1)
-                    .accessibilityHidden(true)
-                Text(verbatim: title)
-            }
+            Text(verbatim: title)
             if let note {
-                Text(verbatim: note).font(.footnote).foregroundStyle(.secondary).padding(.leading, 12)
+                Text(verbatim: note).font(.footnote).foregroundStyle(.secondary)
             }
         }
-        .contextMenu {
-            Button { settings.reset(key) } label: {
-                Text("Reset to Default", bundle: .module, comment: "Settings ▸ Tray: row context menu")
-            }
-            .disabled(settings.isDefault(key))
-        }
-        .accessibilityValue(settings.isDefault(key) ? Text(verbatim: "")
-                            : Text("Changed", bundle: .module, comment: "Settings ▸ Tray: VoiceOver value of a row whose value is not the default"))
+        .crannySettingRow(settings, key)
     }
 }
 

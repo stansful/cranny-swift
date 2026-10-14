@@ -289,6 +289,7 @@
     },
     "Changed" : {
       "comment" : "Settings ▸ Tray: VoiceOver value of a row whose value is not the default",
+      "extractionState" : "stale",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -1043,6 +1044,7 @@
     },
     "Reset to Default" : {
       "comment" : "Settings ▸ Tray: row context menu",
+      "extractionState" : "stale",
       "localizations" : {
         "ru" : {
           "stringUnit" : {

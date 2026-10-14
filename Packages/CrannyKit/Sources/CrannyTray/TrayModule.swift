@@ -15,7 +15,7 @@ public enum TrayModule: FeatureModule {
         let services = registry.services
         let directories = TrayQA.directories ?? TrayDirectories.live(paths: services.paths)
         let store = TrayStore(settings: services.settings, notch: services.notch, haptics: services.haptics,
-                              system: LiveTraySystem(), directories: directories)
+                              system: LiveTraySystem(announcer: services.announcer), directories: directories)
         services.tray = TrayIntakeService(store: store)
         contribute(store, to: registry)
         registry.onLaunch {
