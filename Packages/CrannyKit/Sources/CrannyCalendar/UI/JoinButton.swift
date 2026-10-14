@@ -71,6 +71,9 @@ private struct JoinButtonStyle: ButtonStyle {
                 .overlay(Capsule(style: .continuous).fill(hovered && !configuration.isPressed ? theme.palette.controlHover : .clear))
                 .fixedSize()
                 .frame(minWidth: hit.width, minHeight: hit.height)
+                // Never narrower than the pill: a min-only frame accepts a smaller proposal, so a row's HStack
+                // would squeeze the hit area and the pill would spill past the card (Russian "Подключиться").
+                .fixedSize()
                 .contentShape(Rectangle())
                 .scaleEffect(configuration.isPressed && !theme.reduceMotion ? 0.94 : 1)
                 .opacity(enabled ? (configuration.isPressed && theme.reduceMotion ? 0.7 : 1) : 0.4)
