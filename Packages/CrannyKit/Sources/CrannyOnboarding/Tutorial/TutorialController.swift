@@ -1,10 +1,12 @@
 // CrannyOnboarding/Tutorial/TutorialController.swift — the 5-step interactive tutorial in the real notch
 // (DESIGN.md §12.2). Intra-shell interface fixed by WP0 (ARCHITECTURE.md §10.0): `init(registry:)`, `start()`,
-// `stop()`, `isRunning` (observable, so a menu can offer "Skip tour" while it runs). Every step completes on real
+// `stop()`, `isRunning` (observable, so a menu can offer "Skip tutorial" while it runs). Every step completes on real
 // detection through `NotchControl.addEventObserver`, with a ✓ bounce, an `.alignment` haptic and a VoiceOver
 // announcement. The bubble sits under `NotchControl.shapeFrameOnScreen()` and shows only while the notch does
-// (`TipPresentation`, observed: no timers, no polling). Ways out: "Skip tour" on the bubble, the same command in
-// ⌘K (`TutorialCommands`), and a step that waits longer than `idleLimit` ends the tour (one sleep per step).
+// (`TipPresentation`, observed: no timers, no polling). Steps 4 and 5 act through keys (hold ⌘, Esc) that reach
+// only a key panel, so while they wait the tutorial asks `NotchControl.requestKeyboardFocus()` whenever the panel
+// opens or is pinned, however that happened. Ways out: "Skip tutorial" on the bubble, the same command in ⌘K
+// (`TutorialCommands`), and a step that waits longer than `idleLimit` ends the tour (one sleep per step).
 import AppKit
 import CrannyCore
 import Foundation
@@ -118,8 +120,30 @@ private let log = Log.logger(.onboarding)
             celebrate()
         } else {
             // The shell writes the new shape after emitting the event: follow it on the next turn.
-            Task { [weak self] in self?.render() }
+            Task { [weak self] in
+                self?.render()
+                if Self.asksForKeys(after: event) { self?.takeKeyboardFocusIfNeeded() }
+            }
         }
+    }
+
+    /// Events after which a waiting step 4 or 5 takes keyboard focus: the panel opened (by any route; a hover or a
+    /// click never makes it key), or the person pinned it (the pin button does not make it key either, and Esc
+    /// comes next).
+    private static func asksForKeys(after event: NotchEvent) -> Bool {
+        switch event {
+        case .opened, .pinned(true): true
+        default: false
+        }
+    }
+
+    /// Steps 4 and 5 need the open panel to be key: "Hold ⌘" is seen by a local monitor and Esc goes to the key
+    /// window, so without focus the keys reach the app in front instead (ARCHITECTURE.md §4.10). Asked through
+    /// `requestKeyboardFocus` (released on close, never activates Cranny), only while such a step waits and the
+    /// panel is open. Runs on the turn after the event, once the shell has finished opening.
+    private func takeKeyboardFocusIfNeeded() {
+        guard isRunning, !isCelebrating, run.isOpen, run.current?.needsKeyboardFocus == true else { return }
+        services.notch.requestKeyboardFocus()
     }
 
     /// Shows the step and waits for it (at most `idleLimit`).
@@ -127,6 +151,7 @@ private let log = Log.logger(.onboarding)
         guard let step else { return finish() }
         showing = .step(step, done: false)
         render()
+        takeKeyboardFocusIfNeeded()                                              // the panel may already be open
         announce(content(for: step).text)
         idle?.cancel()
         idle = Task { [weak self, idleLimit] in
@@ -174,8 +199,8 @@ private let log = Log.logger(.onboarding)
         guard isRunning else { return }
         log.info("tutorial ended: step \(self.run.number, privacy: .public) waited too long")
         stop()
-        announce(String(localized: "The tour ended. Replay it any time from the menu bar.", bundle: .module,
-                        comment: "Tutorial: VoiceOver announcement when a step waited for minutes and the tour ended by itself"))
+        announce(String(localized: "The tutorial ended. Replay it any time from the menu bar.", bundle: .module,
+                        comment: "Tutorial: VoiceOver announcement when a step waited for minutes and the tutorial ended by itself"))
     }
 
     /// The bubble as it should be now (observed).
@@ -194,14 +219,16 @@ private let log = Log.logger(.onboarding)
 
     // MARK: Copy
 
-    /// "Skip tour": the bubble's button and the ⌘K command.
+    /// "Skip tutorial": the bubble's button and the ⌘K command. The feature is "the tutorial" in every surface
+    /// (the menu bar's "Show Tutorial", Settings ▸ About's "Replay Tutorial"), so the farewell's "replay it from the
+    /// menu bar" points at an item with the same name.
     static var skipTitle: String {
-        String(localized: "Skip tour", bundle: .module, comment: "Tutorial: always-visible button that ends the tour; also its ⌘K command while it runs")
+        String(localized: "Skip tutorial", bundle: .module, comment: "Tutorial: always-visible button that ends the tutorial; also its ⌘K command while it runs")
     }
 
     private static var farewellText: String {
-        String(localized: "That's the tour. Replay it any time from the menu bar.", bundle: .module,
-               comment: "Tutorial: last bubble after every step is done")
+        String(localized: "Tutorial complete. Replay it any time from the menu bar.", bundle: .module,
+               comment: "Tutorial: last bubble after every step is done (the menu bar item is Show Tutorial)")
     }
 
     private func content(for showing: Showing) -> TipContent {
@@ -232,11 +259,28 @@ private let log = Log.logger(.onboarding)
             return TipContent(text: String(localized: "Swipe sideways with two fingers to change the track", bundle: .module, comment: "Tutorial step 3"),
                               progress: progress, mark: .symbol("hand.draw.fill"), actionTitle: skip)
         case .holdCommand:
-            return TipContent(text: String(localized: "Hold ⌘ to see every shortcut", bundle: .module, comment: "Tutorial step 4; ⌘ is the Command key"),
-                              keys: "⌘", progress: progress, mark: .symbol("keyboard"), actionTitle: skip)
+            return TipContent(text: Self.holdCommandText(isOpen: run.isOpen), keys: "⌘", progress: progress,
+                              mark: .symbol("keyboard"), actionTitle: skip)
         case .pinAndClose:
-            return TipContent(text: String(localized: "Pin it with the pin button, then press Esc", bundle: .module, comment: "Tutorial step 5; followed by the Esc key cap"),
-                              keys: "esc", progress: progress, mark: .symbol("pin.fill"), actionTitle: skip)
+            return TipContent(text: Self.pinAndCloseText(isOpen: run.isOpen), keys: "esc", progress: progress,
+                              mark: .symbol("pin.fill"), actionTitle: skip)
         }
+    }
+
+    /// Step 4. The keys act only on the open panel, so while it is closed the sentence first asks to open it
+    /// (any way: the tutorial makes the panel key when it opens).
+    static func holdCommandText(isOpen: Bool) -> String {
+        isOpen
+            ? String(localized: "Hold ⌘ to see every shortcut", bundle: .module, comment: "Tutorial step 4 while Cranny is open; ⌘ is the Command key")
+            : String(localized: "Open Cranny, then hold ⌘ to see every shortcut", bundle: .module,
+                     comment: "Tutorial step 4 while Cranny is closed; ⌘ is the Command key; followed by the ⌘ key cap")
+    }
+
+    /// Step 5, likewise.
+    static func pinAndCloseText(isOpen: Bool) -> String {
+        isOpen
+            ? String(localized: "Pin it with the pin button, then press Esc", bundle: .module, comment: "Tutorial step 5 while Cranny is open; followed by the Esc key cap")
+            : String(localized: "Open Cranny, pin it with the pin button, then press Esc", bundle: .module,
+                     comment: "Tutorial step 5 while Cranny is closed; followed by the Esc key cap")
     }
 }

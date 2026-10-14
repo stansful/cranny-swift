@@ -1,6 +1,6 @@
 // CrannyOnboarding/Tutorial/TipBubbleView.swift — the tip under the real notch (DESIGN.md §12.2): a dark
 // `.regularMaterial` bubble whose caret points at the shape, one sentence, a `KeyCap` where relevant, "2 of 5"
-// in `micro` and an always-visible "Skip tour". Opaque under Reduce Transparency; ✓ bounces once when a step
+// in `micro` and an always-visible "Skip tutorial". Opaque under Reduce Transparency; ✓ bounces once when a step
 // is really done (not under Reduce Motion). It belongs to the notch family, so it is always dark, and it is drawn
 // with the notch's resolved theme (accent, text size, motion personality).
 import CrannyCore
@@ -136,9 +136,9 @@ nonisolated struct BubbleShape: Shape {
 #Preview("Tip · waiting, done, coach") {
     VStack(spacing: Space.l) {
         TipBubble(content: TipContent(text: "Hold ⌘ to see every shortcut", keys: "⌘", progress: "4 of 5",
-                                      mark: .symbol("keyboard"), actionTitle: "Skip tour"), onAction: {})
+                                      mark: .symbol("keyboard"), actionTitle: "Skip tutorial"), onAction: {})
         TipBubble(content: TipContent(text: "Drag any file onto the notch", progress: "2 of 5", mark: .done,
-                                      actionTitle: "Skip tour"), onAction: {})
+                                      actionTitle: "Skip tutorial"), onAction: {})
         TipBubble(content: TipContent(text: "Rest the pointer here, or press", keys: "⌃⌥N"), onAction: {})
     }
     .padding(Space.huge)

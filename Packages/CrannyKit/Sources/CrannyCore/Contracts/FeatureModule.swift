@@ -94,8 +94,10 @@ import SwiftUI
     /// Adds a type-to-capture target.
     public func add(captureTarget: CaptureTarget) { captureTargets.append(captureTarget) }
     /// Declares a permission the registering module may request, with its localized one-line reason.
-    public func declare(_ kind: PermissionKind, reason: String) {
-        permissionUses.append(PermissionUse(kind: kind, module: registeringModule ?? .shell, reason: reason))
+    /// `optIn`: the module's off-by-default switch that the permission serves (`PermissionUse.optIn`).
+    public func declare(_ kind: PermissionKind, reason: String, optIn: SettingKey<Bool>? = nil) {
+        permissionUses.append(PermissionUse(kind: kind, module: registeringModule ?? .shell, reason: reason,
+                                            optIn: optIn))
     }
 
     /// Runs after ALL modules registered and the services are wired (start observers, load files here). Hooks of

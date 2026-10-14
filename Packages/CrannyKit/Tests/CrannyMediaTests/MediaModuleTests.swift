@@ -71,6 +71,10 @@ import Testing
         let kinds = Set(registry.permissionUses.map(\.kind))
         #expect(kinds == [.automation(bundleID: "com.apple.Music"), .automation(bundleID: "com.spotify.client"), .systemAudioRecording])
         #expect(registry.permissionUses.allSatisfy { $0.module == .media && !$0.reason.isEmpty })
+        // Automation serves only the off-by-default Apple Events fallback (onboarding asks only while it is on).
+        for use in registry.permissionUses {
+            if case .automation = use.kind { #expect(use.optIn == MediaSettings.allowAppleEvents) } else { #expect(use.optIn == nil) }
+        }
     }
 
     @Test func diagnosticsNeverContainPersonalData() throws {

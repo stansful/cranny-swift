@@ -25,7 +25,7 @@ import Testing
     func setHoldOpen(_ hold: Bool, reason: String) {}
     func setFocusMode(_ widget: WidgetID?) {}
     func requestPeek(_ activity: ActivityID) {}
-    func requestKeyboardFocus() {}
+    func requestKeyboardFocus() { calls.append("key") }
     func setCalibrationOverlay(_ visible: Bool) {}
     func shapeFrameOnScreen() -> CGRect? { frame }
     func presentAirDrop(_ urls: [URL]) async -> Bool { false }

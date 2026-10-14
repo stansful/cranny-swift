@@ -36,7 +36,7 @@ nonisolated struct TipContent: Equatable, Sendable {
     /// "2 of 5" (micro style); nil for the coach mark.
     var progress: String?
     var mark: Mark = .none
-    /// "Skip tour" while running, "Done" at the end; nil makes the bubble click-through (coach mark).
+    /// "Skip tutorial" while running, "Done" at the end; nil makes the bubble click-through (coach mark).
     var actionTitle: String?
 
     var isInteractive: Bool { actionTitle != nil }

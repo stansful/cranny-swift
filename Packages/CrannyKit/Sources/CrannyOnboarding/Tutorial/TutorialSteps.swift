@@ -15,6 +15,16 @@ nonisolated enum TutorialStep: String, CaseIterable, Sendable {
     case holdCommand
     /// "Pin it with 📌, then press Esc" — the panel closes while pinned.
     case pinAndClose
+
+    /// The step's action is a key that reaches Cranny only while the open panel is key: the hold-⌘ hints come
+    /// from a local `flagsChanged` monitor and Esc goes to the key window. A hover or click opening never makes
+    /// the panel key (ARCHITECTURE.md §4.10), so the tutorial asks for keyboard focus while these steps wait.
+    var needsKeyboardFocus: Bool {
+        switch self {
+        case .holdCommand, .pinAndClose: true
+        case .reachNotch, .dropFile, .swipeTrack: false
+        }
+    }
 }
 
 /// One run of the tutorial: which steps it has, where it is, and the event matching.
@@ -24,6 +34,9 @@ nonisolated struct TutorialRun: Equatable, Sendable {
     /// The pin as the run last saw it, whatever the step (the person may pin before step 5 asks). The shell
     /// emits `.closed` before the `.pinned(false)` of a close that ends the pin, so the close still counts.
     private(set) var isPinned: Bool
+    /// The panel is open, as the run last saw it (`.opened` / `.closed`; a tour starts with it closed). Steps 4
+    /// and 5 first ask to open Cranny while it is closed, and take keyboard focus only while it is open.
+    private(set) var isOpen = false
 
     /// `includesTrackSwipe`: something plays and a trackpad is present (else step 3 is left out). `isPinned`: the
     /// pin when the tour starts, if known.
@@ -40,7 +53,12 @@ nonisolated struct TutorialRun: Equatable, Sendable {
 
     /// True when `event` completes the current step.
     mutating func handle(_ event: NotchEvent) -> Bool {
-        if case .pinned(let pinned) = event { isPinned = pinned }
+        switch event {
+        case .pinned(let pinned): isPinned = pinned
+        case .opened: isOpen = true
+        case .closed: isOpen = false
+        default: break
+        }
         guard let step = current else { return false }
         switch (step, event) {
         case (.reachNotch, .opened(let reason)):

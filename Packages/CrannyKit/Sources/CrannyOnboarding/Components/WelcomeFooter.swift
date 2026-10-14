@@ -1,6 +1,6 @@
 // CrannyOnboarding/Components/WelcomeFooter.swift — progress dots and the step's buttons (DESIGN.md §12.1):
 // ↩ continues, ⌘[ goes back. Steps 2 and 3 enable Continue once they were really done and offer "Skip" until
-// then (every step can be skipped); step 1 offers "Skip setup", the last step "Done" and "Take the 1-minute tour".
+// then (every step can be skipped); step 1 offers "Skip setup", the last step "Done" and "Take the 1-minute tutorial".
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -25,7 +25,7 @@ struct WelcomeFooter: View {
             if flow.isLastStep {
                 Button { flow.finish(.done) } label: { Text(verbatim: OnboardingCopy.done) }
                 Button { flow.finish(.tour) } label: {
-                    Text("Take the 1-minute tour", bundle: .module, comment: "Welcome step 6: primary button that starts the interactive tutorial")
+                    Text("Take the 1-minute tutorial", bundle: .module, comment: "Welcome step 6: primary button that starts the interactive tutorial")
                 }
                 .keyboardShortcut(.defaultAction)
             } else {

@@ -217,13 +217,19 @@ import Testing
 
     @Test func permissionRowsFollowTheLayoutAndAskOnlyOnAllow() async throws {
         let gateway = StaticPermissionGateway([.calendar: .granted])
-        let (flow, _, _, _) = makeFlow(step: .permissions, permissions: gateway)
+        let (flow, registry, _, _) = makeFlow(step: .permissions, permissions: gateway)
         flow.start(reduceMotion: true)
         #expect(gateway.refreshCount == 1)
         #expect(gateway.requested.isEmpty)                       // nothing is asked on its own
+        // First run: the Apple Events fallback and "every Bluetooth device" are off, so a grant would do nothing.
+        #expect(flow.permissionRows.map(\.group) == [.calendar, .accessibility])
+        #expect(flow.stage.height == WelcomeMetrics.compactStageHeight)      // the rows get the room
+
+        let settings = registry.services.settings                // switched on in Settings: the rows are offered
+        settings[SamplePermissionOptIns.appleEvents] = true
+        settings[SamplePermissionOptIns.allBluetoothDevices] = true
         let rows = flow.permissionRows
         #expect(rows.map(\.group) == [.calendar, .accessibility, .automation, .bluetooth])
-        #expect(flow.stage.height == WelcomeMetrics.compactStageHeight)      // the rows get the room
         #expect(flow.state(of: rows[0]) == .granted)
 
         let automation = try #require(rows.first { $0.group == .automation })
@@ -236,6 +242,8 @@ import Testing
         #expect(flow.permissionRows.map(\.group) == [.accessibility, .bluetooth])
         flow.openSystemSettings(flow.permissionRows[0])
         #expect(gateway.openedSettings == [.accessibility])
+        settings[SamplePermissionOptIns.allBluetoothDevices] = false
+        #expect(flow.permissionRows.map(\.group) == [.accessibility])
         flow.stop()
     }
 

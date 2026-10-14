@@ -134,7 +134,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Щелчок"
+            "value" : "Нажатие"
           }
         }
       }
@@ -145,7 +145,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Щёлкните здесь"
+            "value" : "Нажмите здесь"
           }
         }
       }
@@ -156,7 +156,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Щёлкните здесь или нажмите"
+            "value" : "Нажмите здесь или клавиши"
           }
         }
       }
@@ -167,7 +167,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Щёлкните по вырезу"
+            "value" : "Нажмите на вырез"
           }
         }
       }
@@ -178,7 +178,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Щёлкните по вырезу, чтобы открыть"
+            "value" : "Нажмите на вырез, чтобы открыть"
           }
         }
       }
@@ -189,7 +189,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Щёлкните по вырезу или нажмите"
+            "value" : "Нажмите на вырез или клавиши"
           }
         }
       }
@@ -327,7 +327,7 @@
       }
     },
     "Hold ⌘ to see every shortcut" : {
-      "comment" : "Tutorial step 4; ⌘ is the Command key",
+      "comment" : "Tutorial step 4 while Cranny is open; ⌘ is the Command key",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -502,6 +502,28 @@
         }
       }
     },
+    "Open Cranny, pin it with the pin button, then press Esc" : {
+      "comment" : "Tutorial step 5 while Cranny is closed; followed by the Esc key cap",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откройте Cranny, закрепите его кнопкой с булавкой, затем нажмите Esc"
+          }
+        }
+      }
+    },
+    "Open Cranny, then hold ⌘ to see every shortcut" : {
+      "comment" : "Tutorial step 4 while Cranny is closed; ⌘ is the Command key; followed by the ⌘ key cap",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откройте Cranny и удерживайте ⌘, чтобы увидеть все сочетания клавиш"
+          }
+        }
+      }
+    },
     "Open at login" : {
       "comment" : "Welcome step 6: launch at login switch",
       "localizations" : {
@@ -552,7 +574,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Открыто щелчком"
+            "value" : "Открыто нажатием"
           }
         }
       }
@@ -602,7 +624,7 @@
       }
     },
     "Pin it with the pin button, then press Esc" : {
-      "comment" : "Tutorial step 5; followed by the Esc key cap",
+      "comment" : "Tutorial step 5 while Cranny is open; followed by the Esc key cap",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -750,7 +772,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Задержите указатель на вырезе или щёлкните по нему"
+            "value" : "Задержите указатель на вырезе или нажмите на него"
           }
         }
       }
@@ -876,13 +898,13 @@
         }
       }
     },
-    "Skip tour" : {
-      "comment" : "Tutorial: always-visible button that ends the tour; also its ⌘K command while it runs",
+    "Skip tutorial" : {
+      "comment" : "Tutorial: always-visible button that ends the tutorial; also its ⌘K command while it runs",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Пропустить тур"
+            "value" : "Пропустить обучение"
           }
         }
       }
@@ -948,35 +970,24 @@
         }
       }
     },
-    "Take the 1-minute tour" : {
+    "Take the 1-minute tutorial" : {
       "comment" : "Welcome step 6: primary button that starts the interactive tutorial",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Пройти тур за минуту"
+            "value" : "Пройти обучение за минуту"
           }
         }
       }
     },
-    "That's the tour. Replay it any time from the menu bar." : {
-      "comment" : "Tutorial: last bubble after every step is done",
+    "The tutorial ended. Replay it any time from the menu bar." : {
+      "comment" : "Tutorial: VoiceOver announcement when a step waited for minutes and the tutorial ended by itself",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вот и весь тур. Повторить его можно в любой момент из строки меню."
-          }
-        }
-      }
-    },
-    "The tour ended. Replay it any time from the menu bar." : {
-      "comment" : "Tutorial: VoiceOver announcement when a step waited for minutes and the tour ended by itself",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Тур закончился. Повторить его можно в любой момент из строки меню."
+            "value" : "Обучение закончилось. Повторить его можно в любой момент из строки меню."
           }
         }
       }
@@ -1021,6 +1032,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Попробуйте жесты"
+          }
+        }
+      }
+    },
+    "Tutorial complete. Replay it any time from the menu bar." : {
+      "comment" : "Tutorial: last bubble after every step is done (the menu bar item is Show Tutorial)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обучение пройдено. Повторить его можно в любой момент из строки меню."
           }
         }
       }
@@ -1114,7 +1136,7 @@
       }
     },
     "tutorial, tour, stop, end, skip" : {
-      "comment" : "⌘K: search words for Skip tour while the tutorial runs, comma-separated",
+      "comment" : "⌘K: search words for Skip tutorial while the tutorial runs, comma-separated",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
