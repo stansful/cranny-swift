@@ -69,6 +69,68 @@ private let notch = NotchLayout(metrics: .reference)
         #expect(NookHeader.cameraZone(notch) == 201)                       // N + 16 stays empty
     }
 
+    @Test func theCentreIsAlwaysInTheMiddle() {
+        #expect(HeaderRowLayout.sideWidth(width: 481, centre: 201) == 140)       // 14″ header minimum: 505 − 2 × 12
+        #expect(HeaderRowLayout.sideWidth(width: 632, centre: 201) == 215.5)     // default 10-cell page
+        #expect(HeaderRowLayout.sideWidth(width: 100, centre: 201) == 0)
+    }
+
+    /// One to five pages (Home, three user pages, the Tray with a count), long titles, XL text: the track
+    /// always fits its side zone, collapsing to icons and then to the selected page plus a menu.
+    @Test func tabsAlwaysFitTheirZone() {
+        let titles = ["Главная", "Сосредоточение", "Рабочий стол", "Путешествия"]
+        let symbols = ["square.grid.2x2.fill", "note.text", "folder", "calendar"]
+        for size in [CrannyTextSize.standard, .extraLarge] {
+            var theme = CrannyTheme()
+            theme.textSize = size
+            for count in 1...5 {
+                var tabs = (0..<min(count, 4)).map { HeaderTab(id: PageID(rawValue: "p\($0)"), title: titles[$0], symbol: symbols[$0], badge: nil) }
+                if count == 5 { tabs.append(HeaderTab(id: .tray, title: "Лоток", symbol: "tray.full.fill", badge: 128)) }
+                let host = NSHostingController(rootView: HeaderTabsView(tabs: tabs, selected: tabs[0].id, select: { _ in })
+                    .crannyThemeRoot(theme))
+                let side: CGFloat = 140
+                let width = host.sizeThatFits(in: CGSize(width: side, height: 32)).width
+                #expect(width <= side, "\(count) tabs at \(size): \(width) pt in a \(side)-pt zone")
+            }
+        }
+        #expect(HeaderTabsView.menuTitle(HeaderTab(id: .tray, title: "Tray", symbol: "tray.full.fill", badge: 3)) == "Tray · 3")
+        // The layout editor's bar takes the other side: "N cells left" shortens to N when the zone is narrow.
+        let (model, registry) = previewScene(.open, mode: .editLayout)
+        let page = registry.services.settings[CoreSettings.pages][0]
+        let bar = NSHostingController(rootView: EditLayoutBar(page: page, model: model, registry: registry, actions: NotchUIActions())
+            .crannyThemeRoot(CrannyTheme()))
+        #expect(bar.sizeThatFits(in: CGSize(width: 140, height: 32)).width <= 140)
+    }
+
+    /// The header at its minimum width (N + 2 · 160) with five pages: nothing is drawn in the camera zone.
+    @Test func theCameraZoneStaysEmptyAtTheHeaderMinimum() throws {
+        let (model, registry) = previewScene(.open)
+        registry.services.settings[CoreSettings.pages] += [
+            NookPage(id: "page.focus", title: "Сосредоточение", symbol: "note.text", items: []),
+            NookPage(id: "page.work", title: "Рабочий стол", symbol: "folder", items: []),
+            NookPage(id: "page.trip", title: "Путешествия", symbol: "calendar", items: []),
+        ]
+        registry.add(page: PageDescriptor(id: .tray, title: "Лоток", symbol: "tray.full.fill", order: 10, badge: { 128 }) { _ in
+            AnyView(EmptyView())
+        })
+        let width = notch.open(columns: 1).bodyWidth - 2 * CrannyTheme().grid.padding
+        let zone = NookHeader.cameraZone(notch)
+        let view = NookHeader(model: model, registry: registry, actions: NotchUIActions(), select: { _ in }, perform: { _ in })
+            .frame(width: width, height: notch.headerHeight)
+            .background(Color.black)
+            .environment(\.notchRendersFinalState, true)
+            .crannyThemeRoot(CrannyTheme())
+        let renderer = ImageRenderer(content: view)
+        renderer.scale = 2
+        let probe = try #require(renderer.cgImage.flatMap { ShapeProbe($0, scale: 2) })
+        let first = Int(((width - zone) / 2 + 1) * 2), last = Int(((width + zone) / 2 - 1) * 2)
+        var lit = 0
+        for y in 0..<probe.height { for x in first...last where probe.luminance(x: x, y: y) > 0.02 { lit += 1 } }
+        #expect(lit == 0, "\(lit) pixels drawn in the camera zone")
+        // … and the tabs are there, left of it.
+        #expect((0..<first).contains { x in probe.luminance(x: x, y: probe.height / 2) > 0.02 })
+    }
+
     @Test func clockWakesOnTheMinute() throws {
         let utc = try #require(TimeZone(identifier: "UTC"))
         var calendar = Calendar(identifier: .gregorian)

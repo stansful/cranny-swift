@@ -35,7 +35,7 @@ struct NookHeader: View {
 
     private var row: some View {
         let layout = model.layout
-        return HStack(spacing: 0) {
+        return HeaderRowLayout {
             HeaderTabsView(tabs: tabs, selected: model.open?.page ?? .nook, select: select)
                 .frame(maxWidth: .infinity, alignment: .leading)
             if layout.metrics.hasNotch {
@@ -90,6 +90,32 @@ struct NookHeader: View {
             }
         }
     }
+}
+
+/// The header row: leading zone | centre | trailing zone, with the centre (the camera zone N + 16, or the clock)
+/// exactly in the middle. Both sides get exactly (width − centre) / 2, whatever their content asks for, so wide
+/// tabs (Russian, XL text, five pages at the header's minimum width) can never push the camera zone sideways
+/// and slide a tab under the housing; the tabs collapse instead (`HeaderTabsView`).
+struct HeaderRowLayout: Layout {
+    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+        let ideal = subviews.map { $0.sizeThatFits(.unspecified) }
+        return CGSize(width: proposal.width ?? ideal.reduce(0) { $0 + $1.width },
+                      height: proposal.height ?? ideal.map(\.height).max() ?? 0)
+    }
+
+    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+        guard subviews.count == 3 else { return }
+        let centre = subviews[1].sizeThatFits(.unspecified).width
+        let side = HeaderRowLayout.sideWidth(width: bounds.width, centre: centre)
+        let height = ProposedViewSize(width: side, height: bounds.height)
+        subviews[0].place(at: CGPoint(x: bounds.minX, y: bounds.midY), anchor: .leading, proposal: height)
+        subviews[1].place(at: CGPoint(x: bounds.midX, y: bounds.midY), anchor: .center,
+                          proposal: ProposedViewSize(width: centre, height: bounds.height))
+        subviews[2].place(at: CGPoint(x: bounds.maxX, y: bounds.midY), anchor: .trailing, proposal: height)
+    }
+
+    /// Width of each side zone (pure).
+    nonisolated static func sideWidth(width: CGFloat, centre: CGFloat) -> CGFloat { max((width - centre) / 2, 0) }
 }
 
 /// A 28-pt icon button (`CrannyIconButtonStyle`, shape from Appearance ▸ Buttons) with a 32 × 28 hit area:

@@ -109,13 +109,19 @@ struct EditLayoutBar: View {
         let editing = LayoutEditing(pages: registry.services.settings[CoreSettings.pages], pageID: page.id,
                                     maxColumns: model.layout.maxColumns, registry: registry)
         let addable = registry.widgets.filter { w in !editing.items.contains { $0.widget == w.id } }
+        let left = max(editing.cellsLeft, 0)
+        let counter = Text("\(left) cells left", bundle: .module, comment: "Layout editor: room left on the page, in grid cells")
         HStack(spacing: Space.s) {
-            Text("\(max(editing.cellsLeft, 0)) cells left", bundle: .module,
-                 comment: "Layout editor: room left on the page, in grid cells")
-                .crannyFont(.caption)
-                .foregroundStyle(theme.palette.tertiaryLabel)
-                .contentTransition(.numericText(value: Double(editing.cellsLeft)))
-                .animation(theme.animation(.contentSwap), value: editing.cellsLeft)
+            // "N cells left", or just N (same tooltip and VoiceOver label) when the header's side zone is narrow.
+            ViewThatFits(in: .horizontal) {
+                counter.crannyFont(.caption).fixedSize()
+                Text(left, format: .number).crannyFont(.caption).fixedSize()
+                    .help(counter)
+                    .accessibilityLabel(counter)
+            }
+            .foregroundStyle(theme.palette.tertiaryLabel)
+            .contentTransition(.numericText(value: Double(editing.cellsLeft)))
+            .animation(theme.animation(.contentSwap), value: editing.cellsLeft)
             Menu {
                 ForEach(addable) { widget in
                     let over = editing.overflow(adding: widget.sizes)

@@ -2,7 +2,8 @@
 // (`control`, 2-pt inset) of 22-pt segments with an icon and a `headline` title; the selected segment is
 // `controlPressed` and moves with matched geometry (`tabIndicator`). Built-in pages are Home (code id `nook`)
 // and the Tray (with a `micro` count badge); user pages follow. Titles that do not fit (Russian, XL text)
-// collapse to icons with tooltips and VoiceOver labels.
+// collapse to icons with tooltips and VoiceOver labels; when even the icons do not fit their zone (up to five
+// pages at the header's minimum width), the track shows the selected page and a menu of all pages.
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -38,6 +39,7 @@ struct HeaderTabsView: View {
         ViewThatFits(in: .horizontal) {
             track(showsTitles: true)
             track(showsTitles: false)
+            overflowTrack                                    // always fits: two segments
         }
         .animation(theme.animation(.tabIndicator), value: selected)
     }
@@ -45,22 +47,68 @@ struct HeaderTabsView: View {
     private func track(showsTitles: Bool) -> some View {
         HStack(spacing: Space.xxs) {
             ForEach(Array(tabs.enumerated()), id: \.element.id) { index, tab in
-                Button { select(tab.id) } label: {
-                    TabSegmentLabel(tab: tab, shortcut: NookKeyMap.page(index), showsTitle: showsTitles)
-                }
-                .buttonStyle(TabSegmentStyle(isSelected: tab.id == selected, indicator: selection,
-                                             indicatorID: showsTitles ? "tab.titled" : "tab.icons"))
-                .help(tab.title)                                   // ⌘1–⌘5: NookHiddenShortcuts
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(Text(verbatim: tab.title))
-                .modifier(BadgeValue(count: tab.badge))
-                .accessibilityAddTraits(tab.id == selected ? [.isButton, .isSelected] : .isButton)
-                .shortcutHint(NookKeyMap.page(index))
+                segment(tab, index: index, showsTitle: showsTitles, indicatorID: showsTitles ? "tab.titled" : "tab.icons")
             }
         }
-        .padding(Space.xxs)
-        .background(Capsule(style: .continuous).fill(theme.palette.control))
-        .fixedSize()
+        .modifier(TrackChrome())
+    }
+
+    /// The selected page, then a ⌄ menu with every page (titles, the selected one checked, Tray count).
+    private var overflowTrack: some View {
+        HStack(spacing: Space.xxs) {
+            if let index = tabs.firstIndex(where: { $0.id == selected }) {
+                segment(tabs[index], index: index, showsTitle: false, indicatorID: "tab.overflow")
+            }
+            Menu {
+                ForEach(tabs) { tab in
+                    Toggle(isOn: Binding(get: { tab.id == selected }, set: { if $0 { select(tab.id) } })) {
+                        Text(verbatim: HeaderTabsView.menuTitle(tab))
+                    }
+                }
+            } label: {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(theme.palette.secondaryLabel)
+                    .frame(minWidth: HitTarget.band.width, minHeight: TabSegmentStyle.height)
+                    .contentShape(Rectangle().inset(by: -TabSegmentStyle.hitOutset))
+            }
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .help(String(localized: "All pages", bundle: .module, comment: "Open panel: menu of every page when the tabs do not fit"))
+            .accessibilityLabel(Text("All pages", bundle: .module, comment: "Open panel: menu of every page when the tabs do not fit"))
+        }
+        .modifier(TrackChrome())
+    }
+
+    private func segment(_ tab: HeaderTab, index: Int, showsTitle: Bool, indicatorID: String) -> some View {
+        Button { select(tab.id) } label: {
+            TabSegmentLabel(tab: tab, shortcut: NookKeyMap.page(index), showsTitle: showsTitle)
+        }
+        .buttonStyle(TabSegmentStyle(isSelected: tab.id == selected, indicator: selection, indicatorID: indicatorID))
+        .help(tab.title)                                   // ⌘1–⌘5: NookHiddenShortcuts
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(verbatim: tab.title))
+        .modifier(BadgeValue(count: tab.badge))
+        .accessibilityAddTraits(tab.id == selected ? [.isButton, .isSelected] : .isButton)
+        .shortcutHint(NookKeyMap.page(index))
+    }
+
+    /// A page in the overflow menu: its title, and the Tray's count after a middle dot. Pure.
+    static func menuTitle(_ tab: HeaderTab) -> String {
+        tab.badge.map { "\(tab.title) · \($0.formatted())" } ?? tab.title
+    }
+}
+
+/// The capsule track (`control`, 2-pt inset) at its ideal size.
+private struct TrackChrome: ViewModifier {
+    @Environment(\.cranny) private var theme
+    func body(content: Content) -> some View {
+        content
+            .padding(Space.xxs)
+            .background(Capsule(style: .continuous).fill(theme.palette.control))
+            .fixedSize()
     }
 }
 

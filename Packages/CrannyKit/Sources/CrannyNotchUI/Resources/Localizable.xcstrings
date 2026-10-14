@@ -345,6 +345,17 @@
         }
       }
     },
+    "All pages" : {
+      "comment" : "Open panel: menu of every page when the tabs do not fit",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Все страницы"
+          }
+        }
+      }
+    },
     "Calendar" : {
       "comment" : "Open panel: placeholder card for a widget whose module is not built yet",
       "localizations" : {
