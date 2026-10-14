@@ -244,6 +244,18 @@ struct TodosModelTests {
         #expect(titles(model) == ["a"])
     }
 
+    @Test func changingThePageEndsEditing() async {
+        let model = model(["a"])
+        await model.start()
+        model.beginEditing(model.items[0].id)
+        (services.notch as? PreviewNotchControl)?.emit(.pageChanged(.tray))
+        #expect(model.editingID == nil)
+        (services.notch as? PreviewNotchControl)?.emit(.pinned(true))      // other events leave it alone
+        model.beginEditing(model.items[0].id)
+        (services.notch as? PreviewNotchControl)?.emit(.pinned(false))
+        #expect(model.editingID == model.items[0].id)
+    }
+
     @Test func titlesTypedIntoTheEditorAreSanitized() {
         let model = model(["a"])
         model.setTitle("x\ny", for: model.items[0].id)

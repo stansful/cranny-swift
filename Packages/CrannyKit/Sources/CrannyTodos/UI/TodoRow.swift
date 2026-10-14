@@ -31,13 +31,14 @@ struct TodoRow: View {
                                onBegin: { [model] in model.editorDidBegin() },
                                onEnd: { [model, id = todo.id] in model.editorDidEnd(id) })
             } else {
-                title
+                // The toggle semantics sit on the title, not the row: wrapping the row would swap its subtree
+                // when editing starts and re-create the editor mid-focus.
+                title.modifier(TodoRowAccessibility(todo: todo, model: model, isActive: !isReadOnly, onDelete: onDelete))
             }
         }
         .frame(height: metrics.rowHeight)
         .background { focusRing }
         .contextMenu { if !isReadOnly { menu } }
-        .modifier(TodoRowAccessibility(todo: todo, model: model, isActive: !isEditing && !isReadOnly, onDelete: onDelete))
     }
 
     private var title: some View {
@@ -77,8 +78,8 @@ struct TodoRow: View {
     }
 }
 
-/// VoiceOver: one toggle per row, named by its text, with Edit / Move up / Move down / Delete actions.
-/// While the row is being edited, the text field itself is exposed instead.
+/// VoiceOver: one toggle per row, named by its text, with Edit / Move up / Move down / Delete actions and the
+/// shortcuts as a hint. While the row is being edited, the text field is exposed instead.
 private struct TodoRowAccessibility: ViewModifier {
     let todo: Todo
     let model: TodosModel

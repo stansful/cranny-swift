@@ -52,8 +52,9 @@ struct TodoTitleField: NSViewRepresentable {
     }
 
     static func dismantleNSView(_ field: TitleTextField, coordinator: Coordinator) {
-        // Removed while still editing (the next row took over, or the widget went away): report the end once.
-        if coordinator.isEditing { coordinator.end() }
+        // Leaving the hierarchy is not the user leaving the field (SwiftUI may rebuild a row, the page may change):
+        // editing ends by Esc, ↩, a click elsewhere, a page change or the panel closing — never by teardown.
+        coordinator.end(notify: false)
         field.delegate = nil
         field.coordinator = nil
     }
@@ -82,10 +83,10 @@ struct TodoTitleField: NSViewRepresentable {
             parent.onBegin()
         }
 
-        func end() {
+        func end(notify: Bool = true) {
             guard isEditing else { return }
             isEditing = false
-            parent.onEnd()
+            if notify { parent.onEnd() }
         }
 
         func controlTextDidChange(_ notification: Notification) {
@@ -105,13 +106,22 @@ struct TodoTitleField: NSViewRepresentable {
     final class TitleTextField: NSTextField {
         weak var coordinator: Coordinator?
         var appliedStyle: Style?
+        /// Set while the field is being taken out of its window: the resulting end of editing is not the user's.
+        private var isLeavingWindow = false
+
+        override func viewWillMove(toWindow newWindow: NSWindow?) {
+            isLeavingWindow = newWindow == nil
+            super.viewWillMove(toWindow: newWindow)
+        }
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
             guard window != nil else { return }
             // After the current SwiftUI update: the previous row's field may still be the first responder.
+            // A hidden copy (an outgoing transition) never takes focus.
             Task { @MainActor [weak self] in
-                guard let self, let window = self.window, self.currentEditor() == nil else { return }
+                guard let self, let window = self.window, self.currentEditor() == nil,
+                      !self.isHiddenOrHasHiddenAncestor else { return }
                 guard window.makeFirstResponder(self) else { return }
                 let end = (self.stringValue as NSString).length
                 self.currentEditor()?.selectedRange = NSRange(location: end, length: 0)
@@ -126,7 +136,7 @@ struct TodoTitleField: NSViewRepresentable {
 
         override func textDidEndEditing(_ notification: Notification) {
             super.textDidEndEditing(notification)
-            coordinator?.end()
+            coordinator?.end(notify: !isLeavingWindow)
         }
     }
 }

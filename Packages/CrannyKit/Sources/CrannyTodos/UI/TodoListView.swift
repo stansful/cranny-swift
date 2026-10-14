@@ -85,6 +85,7 @@ struct TodoListView: View {
         }
         .onChange(of: model.selectionRequest) { _, _ in applySelectionRequest() }
         .onChange(of: isFocusedWidget) { _, focused in if focused { focusList() } }
+        .onChange(of: isReadOnly) { _, readOnly in if readOnly { model.endEditing() } }   // ⌘E, Demo redaction
         .onAppear {
             applySelectionRequest()
             if isFocusedWidget { focusList() }

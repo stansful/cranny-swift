@@ -137,6 +137,5 @@ struct TodosSnapshotTests {
         .background(Color.black)
         .crannyThemeRoot(CrannyTheme())
         try await write(content, "30-editor-alignment")
-        #expect(model.editingID == nil)                      // the editor went away with the window: editing ended
     }
 }

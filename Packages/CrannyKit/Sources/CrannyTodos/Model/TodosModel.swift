@@ -53,11 +53,14 @@ private let log = Log.logger(.todos)
 
     // MARK: Lifecycle
 
-    /// `onLaunch`: reads the file and starts listening for the Nook closing (which ends editing).
+    /// `onLaunch`: reads the file and starts listening for the panel closing or changing page (both end editing).
     func start() async {
         if notchObserver == nil {
             notchObserver = notch.addEventObserver { [weak self] event in
-                if event == .closed { self?.endEditing() }
+                switch event {
+                case .closed, .pageChanged: self?.endEditing()
+                default: break
+                }
             }
         }
         await store.load()
