@@ -117,6 +117,16 @@ final class AmbientMetalNSView: NSView {
         drawNow()
     }
 
+    override func viewDidHide() {
+        super.viewDidHide()
+        updateLoop()
+    }
+
+    override func viewDidUnhide() {
+        super.viewDidUnhide()
+        updateLoop()
+    }
+
     @objc private func occlusionDidChange(_ notification: Notification) {
         updateLoop()
         if isWindowVisible { drawNow() }
