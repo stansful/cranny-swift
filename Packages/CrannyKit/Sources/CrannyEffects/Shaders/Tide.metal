@@ -7,8 +7,10 @@ using namespace metal;
 
 namespace cranny {
 
-/// Three soft, tapered sine lines (line i in stop i) with a 3-pt bloom, summed additively. Points throughout. A pixel
-/// evaluates only the lines that can reach it (one or two).
+/// Three soft, tapered sine lines (line i in stop i) with a 3-pt bloom, summed additively. Points throughout.
+/// No per-line cull inside the loop: a branch there keeps the compiler from unrolling it and splits SIMD groups along
+/// every line, which measured 2.5× slower on the GPU than evaluating all three lines (rows above every line still
+/// return at once, and the layer draws only the lit band).
 static inline half4 tide(float2 p, float2 size, float time, thread const Palette &pal,
                          float energy, float intensity, float cap) {
     float width = max(size.x, 1.0), height = max(size.y, 1.0);
@@ -24,10 +26,6 @@ static inline half4 tide(float2 p, float2 size, float time, thread const Palette
         float base = height * (0.80 + 0.06 * fi);
         float amplitude = amplitude0 * (1.0 - 0.2 * fi);
         float k = 2.0 * M_PI_F * (0.75 + 0.35 * fi) / width;
-        // A line strays at most 1.45 · amplitude from its base, with a slope of at most 1.855 · amplitude · k: farther
-        // than that plus 10 slope-corrected points, its core is 0 and its bloom ≤ 0.35 · e⁻¹¹ (< 0.001 LSB). Skip it.
-        float slopeMax = 1.855 * abs(amplitude) * k;
-        if (abs(p.y - base) > 1.45 * abs(amplitude) + 10.0 * sqrt(1.0 + slopeMax * slopeMax)) { continue; }
         float omega = 2.0 * M_PI_F * (0.09 + 0.035 * fi);
         float a1 = k * p.x + omega * time + 2.1 * fi;
         float a2 = 1.9 * k * p.x - 1.4 * omega * time;
