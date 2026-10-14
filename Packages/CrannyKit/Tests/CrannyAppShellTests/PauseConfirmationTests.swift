@@ -105,3 +105,14 @@ import Testing
     shortcut.perform()
     #expect(recorder.announcements == [PauseConfirmation.paused(.oneHour).message, PauseConfirmation.resumed.message])
 }
+
+/// The Russian wing words fit a flash label and say what the menu and the sentence say: «Возобновить активности»,
+/// «Активности возобновлены», «Возобновлены».
+@Test func theRussianWingWordsFitAndKeepTheResumeVerb() throws {
+    let path = try #require(Bundle.module.path(forResource: "ru", ofType: "lproj"))
+    let russian = try #require(Bundle(path: path))
+    func text(_ key: String) -> String { russian.localizedString(forKey: key, value: "\u{0}", table: "Localizable") }
+    #expect(text("Paused") == "Пауза" && text("Resumed") == "Возобновлены")
+    #expect(text("Paused").count <= 12 && text("Resumed").count <= 12)
+    #expect(text("Resume Live Activities").hasPrefix("Возобнов") && text("Live Activities resumed").hasSuffix("возобновлены"))
+}
