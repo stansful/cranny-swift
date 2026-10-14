@@ -15,6 +15,8 @@ Install once per clone (scripts/lib.sh does not do it for you):
   language; a language changed on both sides keeps ours and the merge is
   reported as a conflict (exit 1) so a human looks at it
 - deleted on one side, untouched on the other -> deleted
+- deleted on one side, changed on the other -> kept with the change, reported
+  as a conflict (exit 1): usually the key was renamed and the change is stale
 The result is written to %A (ours) in Xcode's formatting.
 """
 
@@ -95,11 +97,19 @@ def main():
             else:
                 result[key] = merge_entry(key, b, o, t, conflicts)
         elif in_ours:
-            if not (in_base and base_strings[key] == our_strings[key]):
-                result[key] = our_strings[key]   # added or changed by us; theirs deleted an unchanged key otherwise
+            if not in_base:
+                result[key] = our_strings[key]                  # added by us
+            elif base_strings[key] != our_strings[key]:
+                result[key] = our_strings[key]                  # we changed it, they deleted it
+                conflicts.append(f"{key} (changed here, deleted on the other branch)")
+            # else: they deleted a key we left alone -> deleted
         elif in_theirs:
-            if not (in_base and base_strings[key] == their_strings[key]):
-                result[key] = their_strings[key]
+            if not in_base:
+                result[key] = their_strings[key]                # added by them
+            elif base_strings[key] != their_strings[key]:
+                result[key] = their_strings[key]                # they changed it, we deleted it
+                conflicts.append(f"{key} (deleted here, changed on the other branch)")
+            # else: we deleted a key they left alone -> deleted
 
     merged = dict(ours)
     merged["strings"] = result
@@ -112,7 +122,7 @@ def main():
         handle.write(xcode_json(merged) + ("\n" if trailing_newline else ""))
 
     if conflicts:
-        sys.stderr.write("xcstrings: kept our translation for " + ", ".join(conflicts) + "\n")
+        sys.stderr.write("xcstrings: resolve by hand: " + "; ".join(conflicts) + "\n")
         return 1
     return 0
 
