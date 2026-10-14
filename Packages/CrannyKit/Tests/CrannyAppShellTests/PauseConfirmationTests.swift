@@ -4,6 +4,7 @@
 // hears the sentence as feedback. No windows are created.
 import CrannyCore
 import Foundation
+import SwiftUI
 import Testing
 @testable import CrannyAppShell
 
@@ -106,13 +107,31 @@ import Testing
     #expect(recorder.announcements == [PauseConfirmation.paused(.oneHour).message, PauseConfirmation.resumed.message])
 }
 
-/// The Russian wing words fit a flash label and say what the menu and the sentence say: «Возобновить активности»,
-/// «Активности возобновлены», «Возобновлены».
-@Test func theRussianWingWordsFitAndKeepTheResumeVerb() throws {
+/// The Russian wing words are short states, «Пауза» and «Активны»: the Resume verb («Возобновлены», 12 characters)
+/// is 96 pt wide at 1u, and the wing holds 72. The menu and the sentence keep the verb.
+@Test func theRussianWingWordsAreShortStates() throws {
     let path = try #require(Bundle.module.path(forResource: "ru", ofType: "lproj"))
     let russian = try #require(Bundle(path: path))
     func text(_ key: String) -> String { russian.localizedString(forKey: key, value: "\u{0}", table: "Localizable") }
-    #expect(text("Paused") == "Пауза" && text("Resumed") == "Возобновлены")
-    #expect(text("Paused").count <= 12 && text("Resumed").count <= 12)
+    #expect(text("Paused") == "Пауза" && text("Resumed") == "Активны")
     #expect(text("Resume Live Activities").hasPrefix("Возобнов") && text("Live Activities resumed").hasSuffix("возобновлены"))
+}
+
+/// Every confirmation's wing word fits the wing it is drawn in (`FlashActivity.compactTrailing` in its slot's content,
+/// slot − 20u), in English and Russian, at every notch unit: the 12-character limit of flash labels does not ensure it.
+@MainActor @Test(arguments: ["en", "ru"]) func theWingWordsFitTheWing(language: String) throws {
+    let russian = try #require(Bundle.module.path(forResource: "ru", ofType: "lproj").flatMap { Bundle(path: $0) })
+    for key in ["Paused", "Resumed"] {                     // English: the keys
+        let label = language == "en" ? key : russian.localizedString(forKey: key, value: "\u{0}", table: "Localizable")
+        let flash = FlashActivity()
+        flash.show(symbol: "pause.fill", label: label, duration: 60)
+        for unit in [0.8, 0.9375, 1, 1.0625, 1.25] as [CGFloat] {
+            var theme = CrannyTheme()
+            theme.notchUnit = unit
+            let drawn = NSHostingView(rootView: flash.compactTrailing().fixedSize().crannyThemeRoot(theme)).fittingSize.width
+            let wing = flash.slot.points(unit: unit) - 20 * unit
+            #expect(drawn <= wing, "\(label) at \(unit)u: \(drawn) pt in a \(wing)-pt wing")
+        }
+        flash.hide()
+    }
 }
