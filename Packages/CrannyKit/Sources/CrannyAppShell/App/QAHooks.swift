@@ -4,6 +4,9 @@
 //   --qa-page <page id>                   with `open`: show this page (`nook` = Home, `tray`, `page.<uuid>`)
 //   --qa-exit-after <seconds>             quit after that many seconds (screenshots in scripts and CI)
 //   --qa-settings <pane id>               also open Settings at that pane (`general`, `about`, …)
+//   --qa-menu main|pause|showOn           open the menu bar extra's menu (or one of its submenus) after 1.5 s (WP16)
+//   --qa-demo on|off                      turn Demo mode on or off after 1 s, so the icon badge changes live (WP16)
+//   --qa-update-check                     run "Check for Updates…" as the menu does; the alert closes after 6 s (WP16)
 //
 // No input is synthesized: the state is written through the same view-model inputs the pointer uses.
 // The whole file is compiled out of Release builds.
@@ -23,9 +26,14 @@ enum QAHooks {
         var page: PageID?
         var exitAfter: Double?
         var settingsPage: SettingsPageID?
+        var menu: MenuBarQA.Target?
+        var demo: Bool?
+        var updateCheck = false
 
-        init(state: State? = nil, page: PageID? = nil, exitAfter: Double? = nil, settingsPage: SettingsPageID? = nil) {
+        init(state: State? = nil, page: PageID? = nil, exitAfter: Double? = nil, settingsPage: SettingsPageID? = nil,
+             menu: MenuBarQA.Target? = nil, demo: Bool? = nil, updateCheck: Bool = false) {
             self.state = state; self.page = page; self.exitAfter = exitAfter; self.settingsPage = settingsPage
+            self.menu = menu; self.demo = demo; self.updateCheck = updateCheck
         }
 
         init(arguments: [String]) {
@@ -36,10 +44,15 @@ enum QAHooks {
             self.init(state: value("--qa-state").flatMap(State.init(rawValue:)),
                       page: value("--qa-page").map(PageID.init(rawValue:)),
                       exitAfter: value("--qa-exit-after").flatMap(Double.init).flatMap { $0 > 0 ? $0 : nil },
-                      settingsPage: value("--qa-settings").map(SettingsPageID.init(rawValue:)))
+                      settingsPage: value("--qa-settings").map(SettingsPageID.init(rawValue:)),
+                      menu: value("--qa-menu").flatMap(MenuBarQA.Target.init(rawValue:)),
+                      demo: value("--qa-demo").flatMap { ["on": true, "off": false][$0] },
+                      updateCheck: arguments.contains("--qa-update-check"))
         }
 
-        var isEmpty: Bool { state == nil && exitAfter == nil && settingsPage == nil }
+        var isEmpty: Bool {
+            state == nil && exitAfter == nil && settingsPage == nil && menu == nil && demo == nil && !updateCheck
+        }
     }
 
     /// The label of the sample activity used for `compact` and `peek`.
@@ -55,6 +68,9 @@ enum QAHooks {
                 try? await Task.sleep(for: .milliseconds(300))
                 overlay.forceQAState(state, page: options.page)
             }
+        }
+        if let shell = appControl as? ShellAppControl {
+            MenuBarQA.apply(menu: options.menu, demo: options.demo, updateCheck: options.updateCheck, to: shell)
         }
         if let seconds = options.exitAfter {
             Task {
