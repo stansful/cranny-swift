@@ -217,20 +217,22 @@ func keyboardFocusIsTakenAndHandedBack() throws {
 
 /// A canvas change (density here; display reconfiguration and Notch fit take the same path) must not resize the
 /// panel mid-morph, and must not be lost when the surface returns to closed without a `.closed` event (a peek).
-@Test(.enabled(if: integration)) func aLayoutChangeDuringAPeekIsAppliedAfterIt() throws {
+/// Async: the settings observation and the settle delay run as main-actor tasks, which a nested run loop inside
+/// a synchronous test would never drain.
+@Test(.enabled(if: integration)) func aLayoutChangeDuringAPeekIsAppliedAfterIt() async throws {
     _ = NSApplication.shared
     let screen = try #require(NSScreen.screens.first)
     let registry = ModuleRegistry(services: .preview())
     let controller = NotchPanelController(screen: screen, key: "selftest.layout", style: .floatingIsland, registry: registry)
     defer { controller.close() }
-    spin(0.3)
+    try await Task.sleep(for: .milliseconds(300))
     controller.viewModel.send(.autoPeek(.flash, until: .infinity))
     let before = controller.scene.layout, frameBefore = controller.panel.frame
     registry.services.settings[CoreSettings.density] = .roomy
-    spin(0.3)                                                                   // the observation hop
+    try await Task.sleep(for: .milliseconds(1000))                              // the observation hop, then some
     #expect(controller.scene.layout == before && controller.panel.frame == frameBefore)   // not during the peek
     controller.viewModel.send(.close)                                           // the peek ends: no `.closed` event
-    #expect(eventually(within: 3) { controller.scene.layout != before })
+    for _ in 0..<60 where controller.scene.layout == before { try await Task.sleep(for: .milliseconds(50)) }
     #expect(controller.scene.layout.grid.density == .roomy)
     #expect(controller.panel.frame == NotchPanelController.panelFrame(canvas: controller.scene.layout.canvasSize, screen: screen))
 }
