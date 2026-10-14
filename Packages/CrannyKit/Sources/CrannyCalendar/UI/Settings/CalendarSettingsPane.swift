@@ -24,7 +24,7 @@ struct CalendarSettingsPane: View {
 
             Section {
                 DayRangeRows(settings: settings)
-                toggle(CalendarSettings.showsPastEventsToday, String(localized: "Show today's past events", bundle: .module, comment: "Calendar options: keep ended events in today's list"))
+                toggle(CalendarSettings.showsPastEventsToday, String(localized: "Show today’s past events", bundle: .module, comment: "Calendar options: keep ended events in today's list"))
                 toggle(CalendarSettings.includesAllDay, String(localized: "Show all-day events", bundle: .module, comment: "Settings ▸ Calendar: toggle"))
             } header: {
                 Text("Events", bundle: .module, comment: "Settings ▸ Calendar: section title")
@@ -50,7 +50,7 @@ struct CalendarSettingsPane: View {
             } header: {
                 Text("Meeting links", bundle: .module, comment: "Settings ▸ Calendar: section title (services that get a Join button)")
             } footer: {
-                Footnote(String(localized: "Join appears when an event's URL, location or notes link to one of these services. The app is used only when it is installed.",
+                Footnote(String(localized: "Join appears when an event’s URL, location or notes link to one of these services. The app is used only when it is installed.",
                                 bundle: .module, comment: "Settings ▸ Calendar: footnote under the meeting services"))
             }
         }
@@ -71,7 +71,7 @@ struct CalendarSettingsPane: View {
         [String(localized: "Calendars", bundle: .module, comment: "Settings ▸ Calendar: section title"),
          String(localized: "Days before today", bundle: .module, comment: "Calendar settings: how many past days the widget can show"),
          String(localized: "Days after today", bundle: .module, comment: "Calendar settings: how many future days the widget can show"),
-         String(localized: "Show today's past events", bundle: .module, comment: "Calendar options: keep ended events in today's list"),
+         String(localized: "Show today’s past events", bundle: .module, comment: "Calendar options: keep ended events in today's list"),
          String(localized: "Show all-day events", bundle: .module, comment: "Settings ▸ Calendar: toggle"),
          String(localized: "Meeting links", bundle: .module, comment: "Settings ▸ Calendar: section title (services that get a Join button)"),
          String(localized: "Open meetings in", bundle: .module, comment: "Settings ▸ Calendar: where Join opens a meeting"),
@@ -141,7 +141,7 @@ private struct AccessRow: View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text(status == .denied ? String(localized: "Calendar access is off.", bundle: .module, comment: "Calendar widget: access was denied in System Settings")
-                                       : String(localized: "Cranny can't see your calendars yet.", bundle: .module, comment: "Settings ▸ Calendar: access not granted yet"))
+                                       : String(localized: "Cranny can’t see your calendars yet.", bundle: .module, comment: "Settings ▸ Calendar: access not granted yet"))
                 Text("Show your events in Cranny. Cranny never edits or uploads them.", bundle: .module,
                      comment: "Permission reason: Calendar (Settings ▸ Calendar, Permissions pane, onboarding)")
                     .font(.callout).foregroundStyle(.secondary)

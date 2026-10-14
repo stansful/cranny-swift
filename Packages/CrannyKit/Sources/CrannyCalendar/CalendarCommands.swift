@@ -1,5 +1,5 @@
 // CrannyCalendar/CalendarCommands.swift — ⌘K (DESIGN.md §6.4): "Join next meeting" when the meeting in progress
-// or the next one today has a link, and "Show today's events". In-memory filtering only (called per keystroke).
+// or the next one today has a link, and "Show today’s events". In-memory filtering only (called per keystroke).
 import CrannyCore
 import Foundation
 
@@ -26,7 +26,7 @@ import Foundation
         }
         list.append(PaletteCommand(
             id: "calendar.showToday",
-            title: String(localized: "Show today's events", bundle: .module, comment: "Command palette: Calendar command (opens the panel at the Calendar widget)"),
+            title: String(localized: "Show today’s events", bundle: .module, comment: "Command palette: Calendar command (opens the panel at the Calendar widget)"),
             kind: kind, symbol: "calendar",
             keywords: [String(localized: "agenda", bundle: .module, comment: "Command palette: search keyword for Show today's events"),
                        String(localized: "schedule", bundle: .module, comment: "Command palette: search keyword for Show today's events")]) { [notch] in

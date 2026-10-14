@@ -10,7 +10,7 @@ import SwiftUI
     let symbol = "calendar"
     let sizes = WidgetSizes(minimum: 2, preferred: 3, maximum: 5)
     var title: String { String(localized: "Calendar", bundle: .module, comment: "Calendar: module name (widget, Settings pane, ⌘K result kind)") }
-    var summary: String { String(localized: "Today's events, with Join for meetings", bundle: .module, comment: "Widget library: Calendar description") }
+    var summary: String { String(localized: "Today’s events, with Join for meetings", bundle: .module, comment: "Widget library: Calendar description") }
 
     private let model: CalendarModel
     private let services: CrannyServices
