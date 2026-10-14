@@ -70,8 +70,10 @@ struct WidgetCard: View {
             }
             .accessibilityElement(children: .contain)
             .accessibilityLabel(Text(verbatim: title))
-            .accessibilityActions { CardAccessibilityActions(widget: item.widget, hasOptions: widget?.hasOptions ?? false,
-                                                             commands: commands, showOptions: { showsOptions = true }) }
+            .accessibilityActions {
+                CardAccessibilityActions(widget: item.widget, hasOptions: widget?.hasOptions ?? false, cells: cells,
+                                         isEditing: isEditing, commands: commands, showOptions: { showsOptions = true })
+            }
     }
 
     @ViewBuilder private func content(widget: AnyNookWidget?, cells: Int) -> some View {

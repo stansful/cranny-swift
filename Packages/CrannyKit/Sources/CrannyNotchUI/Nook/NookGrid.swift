@@ -9,8 +9,10 @@ import SwiftUI
 struct WidgetGridPage: View {
     @Environment(\.cranny) private var theme
     @Environment(\.notchContext) private var context
+    @Environment(\.notchEntrance) private var entrance
     @Namespace private var rotor
     @FocusState private var focused: WidgetID?
+    @AccessibilityFocusState private var voiceOverFocus: WidgetID?
     let page: NookPage
     let model: NotchSceneModel
     let registry: ModuleRegistry
@@ -29,6 +31,7 @@ struct WidgetGridPage: View {
                     .focusEffectDisabled()
                     .focusSection()
                     .accessibilityRotorEntry(id: item.widget, in: rotor)
+                    .accessibilityFocused($voiceOverFocus, equals: item.widget)
                     .overlay(alignment: .trailing) { if index < items.count - 1 { FlatDivider() } }
                     .staggeredReveal(delay: Stagger.delay(ring: rings[index], reduceMotion: theme.reduceMotion))
             }
@@ -39,13 +42,27 @@ struct WidgetGridPage: View {
                                         id: item.widget, in: rotor)
             }
         }
-        .onAppear { focused = model.open?.focus }
+        .onAppear {
+            focused = model.open?.focus
+            // Opening puts VoiceOver on the widget the panel opened for, else the first one (DESIGN.md §16). Only
+            // when the panel opens: after a tab switch VoiceOver stays on the tab the user chose.
+            if let target = WidgetGridPage.voiceOverTarget(entrance: entrance, focus: model.open?.focus, items: items) {
+                Task { @MainActor in voiceOverFocus = target }
+            }
+        }
         .onChange(of: model.open?.focus) { _, focus in if let focus { focused = focus } }
         .onChange(of: focused) { _, widget in actions.focusWidget(widget) }
     }
 
     private func cells(of item: NookItem) -> Int {
         registry.widget(item.widget)?.sizes.clamp(item.cells) ?? max(item.cells, 1)
+    }
+
+    /// Where VoiceOver lands when the panel opens on this page (nil: leave it where it is). Pure.
+    nonisolated static func voiceOverTarget(entrance: Bool, focus: WidgetID?, items: [NookItem]) -> WidgetID? {
+        guard entrance else { return nil }
+        if let focus, items.contains(where: { $0.widget == focus }) { return focus }
+        return items.first?.widget
     }
 }
 
@@ -88,13 +105,19 @@ enum GridCommands {
             LayoutEditing(pages: registry.services.settings[CoreSettings.pages], pageID: page.id,
                           maxColumns: model.layout.maxColumns, registry: registry)
         }
+        func title(_ widget: WidgetID) -> String { registry.widget(widget)?.title ?? WidgetPlaceholder(widget).title }
         var c = CardCommands()
-        c.remove = { widget in if let next = editing().removing(widget) { actions.commitLayout(next.pages) } }
+        c.remove = { widget in
+            guard let next = editing().removing(widget) else { return }
+            actions.commitLayout(next.pages)
+            LayoutAnnouncement.post(LayoutAnnouncement.removed(title(widget)))
+        }
         c.resize = { widget, cells in
             let e = editing()
             guard let index = e.items.firstIndex(where: { $0.widget == widget }),
                   let next = e.resizing(at: index, to: cells) else { return }
             actions.commitLayout(next.pages)
+            LayoutAnnouncement.post(LayoutAnnouncement.resized(title(widget), cells: next.cells(of: next.items[index])))
         }
         c.editLayout = { actions.setMode(.editLayout) }
         c.allowedSizes = { widget in editing().allowedSizes(for: widget) }

@@ -4,6 +4,35 @@ import CrannyCore
 import Foundation
 import SwiftUI
 
+/// What VoiceOver hears after a layout change (DESIGN.md §6.6 "every change is announced"): from the editor
+/// (drag, keys, the "–" badge, the Add menu) and from a card's ⋯ menu or VoiceOver actions.
+enum LayoutAnnouncement {
+    static func moved(_ widget: String, position: Int) -> String {
+        String(localized: "\(widget), position \(position)", bundle: .module,
+               comment: "Layout editor: VoiceOver announcement after a move (widget name, new position)")
+    }
+
+    static func resized(_ widget: String, cells: Int) -> String {
+        String(localized: "\(widget), \(cells) cells", bundle: .module,
+               comment: "Layout editor: VoiceOver announcement after a resize (widget name, width in cells)")
+    }
+
+    static func removed(_ widget: String) -> String {
+        String(localized: "Removed \(widget)", bundle: .module,
+               comment: "Layout editor: VoiceOver announcement after a widget was removed")
+    }
+
+    static func added(_ widget: String) -> String {
+        String(localized: "Added \(widget)", bundle: .module,
+               comment: "Layout editor: VoiceOver announcement after a widget was added from the Add widget menu")
+    }
+
+    /// Speaks `message` (only while VoiceOver runs).
+    @MainActor static func post(_ message: String) {
+        AccessibilityNotification.Announcement(message).post()
+    }
+}
+
 /// The "–" badge shown instead of the wiggle under Reduce Motion; it removes the widget.
 struct RemoveBadge: View {
     @Environment(\.cranny) private var theme
@@ -91,7 +120,10 @@ struct EditLayoutBar: View {
                 ForEach(addable) { widget in
                     let over = editing.overflow(adding: widget.sizes)
                     Button {
-                        if let next = editing.adding(widget.id, sizes: widget.sizes) { actions.commitLayout(next.pages) }
+                        if let next = editing.adding(widget.id, sizes: widget.sizes) {
+                            actions.commitLayout(next.pages)
+                            LayoutAnnouncement.post(LayoutAnnouncement.added(widget.title))
+                        }
                     } label: {
                         if over > 0 {
                             Text("\(widget.title) — \(over) cells over; move a widget to another page", bundle: .module,

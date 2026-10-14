@@ -91,6 +91,32 @@ private let editing = LayoutEditing(pages: [home, focus], pageID: .nook, maxColu
         #expect(LayoutEditing.cellDelta(translation: -130, cell: 56, gutter: 8) == -2)
     }
 
+    /// DESIGN.md §6.8: the ⋯ menu (Options, Resize, Remove, Edit Layout…) is also a VoiceOver action; Resize is
+    /// "Wider" / "Narrower", one allowed width at a time.
+    @Test func voiceOverResizeStepsThroughAllowedWidths() {
+        #expect(CardAccessibilityActions.resizeSteps(cells: 3, allowed: [2, 3, 4, 5]) == (4, 2))
+        #expect(CardAccessibilityActions.resizeSteps(cells: 5, allowed: [4, 5]) == (nil, 4))
+        #expect(CardAccessibilityActions.resizeSteps(cells: 2, allowed: [2]) == (nil, nil))      // nothing to offer
+        #expect(CardAccessibilityActions.resizeSteps(cells: 4, allowed: []) == (nil, nil))       // unregistered widget
+    }
+
+    /// DESIGN.md §16: opening puts VoiceOver on the first widget, or on the widget the panel opened for.
+    @Test func voiceOverLandsOnTheFocusedOrFirstWidgetWhenOpening() {
+        let items = home.items
+        #expect(WidgetGridPage.voiceOverTarget(entrance: true, focus: nil, items: items) == .media)
+        #expect(WidgetGridPage.voiceOverTarget(entrance: true, focus: .calendar, items: items) == .calendar)
+        #expect(WidgetGridPage.voiceOverTarget(entrance: true, focus: .timer, items: items) == .media)   // not on the page
+        #expect(WidgetGridPage.voiceOverTarget(entrance: false, focus: .calendar, items: items) == nil)  // tab switch
+        #expect(WidgetGridPage.voiceOverTarget(entrance: true, focus: nil, items: []) == nil)
+    }
+
+    @Test func everyLayoutChangeHasAnAnnouncement() {
+        #expect(LayoutAnnouncement.added("Timer").contains("Timer"))
+        #expect(LayoutAnnouncement.removed("Timer").contains("Timer"))
+        #expect(LayoutAnnouncement.resized("Timer", cells: 3).contains("3"))
+        #expect(LayoutAnnouncement.moved("Timer", position: 2).contains("2"))
+    }
+
     @MainActor @Test func cardMenuWritesThroughCommitLayout() {
         let services = CrannyServices.preview()
         services.settings[CoreSettings.pages] = [home]

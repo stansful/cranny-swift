@@ -85,10 +85,14 @@ struct CardActionsList: View {
     }
 }
 
-/// VoiceOver actions of a card (DESIGN.md §6.8: the menu is also a VoiceOver action).
+/// VoiceOver actions of a card (DESIGN.md §6.8: the menu is also a VoiceOver action): Options…, Wider and
+/// Narrower (the Resize submenu, one allowed width at a time), Remove, Edit Layout… (not while editing).
 struct CardAccessibilityActions: View {
     let widget: WidgetID
     let hasOptions: Bool
+    /// The width the card is drawn at.
+    let cells: Int
+    let isEditing: Bool
     let commands: CardCommands
     let showOptions: @MainActor () -> Void
 
@@ -96,8 +100,22 @@ struct CardAccessibilityActions: View {
         if hasOptions {
             Button(action: showOptions) { CardStrings.options }
         }
+        let step = CardAccessibilityActions.resizeSteps(cells: cells, allowed: commands.allowedSizes(widget))
+        if let wider = step.wider {
+            Button { commands.resize(widget, wider) } label: { CardStrings.wider }
+        }
+        if let narrower = step.narrower {
+            Button { commands.resize(widget, narrower) } label: { CardStrings.narrower }
+        }
         Button { commands.remove(widget) } label: { CardStrings.remove }
-        Button(action: commands.editLayout) { CardStrings.editLayout }
+        if !isEditing {
+            Button(action: commands.editLayout) { CardStrings.editLayout }
+        }
+    }
+
+    /// The next allowed width up and down from `cells` (nil = none). Pure.
+    nonisolated static func resizeSteps(cells: Int, allowed: [Int]) -> (wider: Int?, narrower: Int?) {
+        (allowed.filter { $0 > cells }.min(), allowed.filter { $0 < cells }.max())
     }
 }
 
@@ -107,6 +125,8 @@ enum CardStrings {
     static var resize: Text { Text("Resize", bundle: .module, comment: "Widget card menu: submenu of widths in cells") }
     static var remove: Text { Text("Remove", bundle: .module, comment: "Widget card menu: removes the widget from the page") }
     static var editLayout: Text { Text("Edit Layout…", bundle: .module, comment: "Widget card menu: enters the layout editor (⌘E)") }
+    static var wider: Text { Text("Wider", bundle: .module, comment: "Widget card: VoiceOver action, one allowed width wider") }
+    static var narrower: Text { Text("Narrower", bundle: .module, comment: "Widget card: VoiceOver action, one allowed width narrower") }
     static func cells(_ n: Int) -> Text {
         Text("\(n) cells", bundle: .module, comment: "Widget card menu and layout editor: a widget's width in grid cells")
     }

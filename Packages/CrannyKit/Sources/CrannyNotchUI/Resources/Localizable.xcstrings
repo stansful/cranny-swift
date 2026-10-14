@@ -334,6 +334,17 @@
         }
       }
     },
+    "Added %@" : {
+      "comment" : "Layout editor: VoiceOver announcement after a widget was added from the Add widget menu",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавлено: %@"
+          }
+        }
+      }
+    },
     "Calendar" : {
       "comment" : "Open panel: placeholder card for a widget whose module is not built yet",
       "localizations" : {
@@ -500,7 +511,7 @@
       }
     },
     "Narrower" : {
-      "comment" : "Layout editor: VoiceOver action, one cell narrower",
+      "comment" : "Widget card: VoiceOver action, one allowed width narrower",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -676,7 +687,7 @@
       }
     },
     "Wider" : {
-      "comment" : "Layout editor: VoiceOver action, one cell wider",
+      "comment" : "Widget card: VoiceOver action, one allowed width wider",
       "localizations" : {
         "ru" : {
           "stringUnit" : {

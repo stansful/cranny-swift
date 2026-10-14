@@ -96,12 +96,7 @@ struct EditLayoutView: View {
             .accessibilityAction(named: Text("Move right", bundle: .module, comment: "Layout editor: VoiceOver action")) {
                 move(item.widget, by: 1)
             }
-            .accessibilityAction(named: Text("Wider", bundle: .module, comment: "Layout editor: VoiceOver action, one cell wider")) {
-                resize(item.widget, by: 1)
-            }
-            .accessibilityAction(named: Text("Narrower", bundle: .module, comment: "Layout editor: VoiceOver action, one cell narrower")) {
-                resize(item.widget, by: -1)
-            }
+            // Wider / Narrower: the card's own VoiceOver actions (CardAccessibilityActions), through cardCommands.
     }
 
     /// The 8 × 24 handle on the trailing edge, with the "4 cells" tooltip while it is dragged.
@@ -158,10 +153,11 @@ struct EditLayoutView: View {
             .onEnded { _ in
                 guard let final = drag, final.widget == widget else { return }
                 drag = nil
-                if final.draft != page.items, let editing = editing() {
-                    var next = editing
+                if final.draft != page.items {
+                    var next = editing()
                     if let p = next.pages.firstIndex(where: { $0.id == page.id }) { next.pages[p].items = final.draft }
-                    commit(next, announce: positionAnnouncement(widget, in: next))
+                    let position = (final.draft.firstIndex { $0.widget == widget } ?? 0) + 1
+                    commit(next, announce: LayoutAnnouncement.moved(title(of: widget), position: position))
                 }
             }
     }
@@ -175,9 +171,9 @@ struct EditLayoutView: View {
                     ?? HandleDrag(widget: widget, origin: value.startLocation, startCells: cells, cells: cells)
                 let target = current.startCells + LayoutEditing.cellDelta(translation: value.translation.width,
                                                                           cell: theme.grid.cell, gutter: theme.grid.gutter)
-                if target != current.cells, let editing = editing(),
-                   let index = editing.items.firstIndex(where: { $0.widget == widget }),
-                   let next = editing.resizing(at: index, to: target) {
+                let rules = editing()
+                if target != current.cells, let index = rules.items.firstIndex(where: { $0.widget == widget }),
+                   let next = rules.resizing(at: index, to: target) {
                     current.cells = next.items[index].cells
                     actions.commitLayout(next.pages)                         // the shape follows live (`resize`)
                     registry.services.haptics.play(.alignment)
@@ -186,7 +182,7 @@ struct EditLayoutView: View {
             }
             .onEnded { _ in
                 if let final = resize, final.widget == widget, final.cells != final.startCells {
-                    announce(cellsAnnouncement(final.widget, cells: final.cells))
+                    LayoutAnnouncement.post(LayoutAnnouncement.resized(title(of: final.widget), cells: final.cells))
                 }
                 resize = nil
             }
@@ -207,59 +203,51 @@ struct EditLayoutView: View {
     }
 
     private func move(_ widget: WidgetID, by step: Int) {
-        guard let editing = editing(), let index = editing.items.firstIndex(where: { $0.widget == widget }),
-              let next = editing.moving(from: index, to: index + step) else { return }
-        commit(next, announce: positionAnnouncement(widget, in: next))
-    }
-
-    private func positionAnnouncement(_ widget: WidgetID, in editing: LayoutEditing) -> String {
-        let position = (editing.items.firstIndex { $0.widget == widget } ?? 0) + 1
-        return String(localized: "\(title(of: widget)), position \(position)", bundle: .module,
-                      comment: "Layout editor: VoiceOver announcement after a move (widget name, new position)")
+        let rules = editing()
+        guard let index = rules.items.firstIndex(where: { $0.widget == widget }),
+              let next = rules.moving(from: index, to: index + step) else { return }
+        let position = (next.items.firstIndex { $0.widget == widget } ?? 0) + 1
+        commit(next, announce: LayoutAnnouncement.moved(title(of: widget), position: position))
     }
 
     private func resize(_ widget: WidgetID, by step: Int) {
-        guard let editing = editing(), let index = editing.items.firstIndex(where: { $0.widget == widget }) else { return }
-        guard let next = editing.resizing(at: index, to: editing.cells(of: editing.items[index]) + step) else { return }
+        let rules = editing()
+        guard let index = rules.items.firstIndex(where: { $0.widget == widget }) else { return }
+        resize(widget, to: rules.cells(of: rules.items[index]) + step)
+    }
+
+    /// ⌥⇧← / ⌥⇧→, the card's Wider / Narrower VoiceOver actions: one step, a haptic, the new width announced.
+    private func resize(_ widget: WidgetID, to cells: Int) {
+        let rules = editing()
+        guard let index = rules.items.firstIndex(where: { $0.widget == widget }),
+              let next = rules.resizing(at: index, to: cells) else { return }
         registry.services.haptics.play(.alignment)
-        commit(next, announce: cellsAnnouncement(widget, cells: next.items[index].cells))
+        commit(next, announce: LayoutAnnouncement.resized(title(of: widget), cells: next.cells(of: next.items[index])))
     }
 
     private func remove(_ widget: WidgetID) {
-        guard let next = editing()?.removing(widget) else { return }
-        commit(next, announce: String(localized: "Removed \(title(of: widget))", bundle: .module,
-                                      comment: "Layout editor: VoiceOver announcement after a widget was removed"))
+        guard let next = editing().removing(widget) else { return }
+        commit(next, announce: LayoutAnnouncement.removed(title(of: widget)))
     }
 
     private func commit(_ editing: LayoutEditing, announce message: String) {
         actions.commitLayout(editing.pages)
-        announce(message)
-    }
-
-    private func announce(_ message: String) {
-        AccessibilityNotification.Announcement(message).post()
-    }
-
-    private func cellsAnnouncement(_ widget: WidgetID, cells: Int) -> String {
-        String(localized: "\(title(of: widget)), \(cells) cells", bundle: .module,
-               comment: "Layout editor: VoiceOver announcement after a resize (widget name, width in cells)")
+        LayoutAnnouncement.post(message)
     }
 
     // MARK: Helpers
 
+    /// The card's ⋯ commands while editing (VoiceOver actions; the hover menu is hidden in the editor).
     private var cardCommands: CardCommands {
         var c = CardCommands()
         c.remove = { remove($0) }
-        c.resize = { widget, cells in
-            guard let editing = editing(), let index = editing.items.firstIndex(where: { $0.widget == widget }),
-                  let next = editing.resizing(at: index, to: cells) else { return }
-            commit(next, announce: cellsAnnouncement(widget, cells: cells))
-        }
+        c.resize = { widget, cells in resize(widget, to: cells) }
+        c.allowedSizes = { editing().allowedSizes(for: $0) }
         c.editLayout = {}
         return c
     }
 
-    private func editing() -> LayoutEditing? {
+    private func editing() -> LayoutEditing {
         LayoutEditing(pages: registry.services.settings[CoreSettings.pages], pageID: page.id,
                       maxColumns: model.layout.maxColumns, registry: registry)
     }
