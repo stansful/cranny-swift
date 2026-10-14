@@ -15,6 +15,14 @@ import Testing
     #expect(CommandMatcher.score(["a", "Safari"], query: "saf") == 2)       // best of several texts
 }
 
+@Test func aTrimmedQueryScoresLikeTheRawOne() {
+    for query in ["  saf ", "rout\n", "  ", "xyz"] {
+        for texts in [["Safari"], ["Morning routine"], ["a", "Safari"]] {
+            #expect(CommandMatcher.score(texts, trimmedQuery: CommandMatcher.trimmed(query)) == CommandMatcher.score(texts, query: query))
+        }
+    }
+}
+
 @Test func optionDigitKeyCombos() throws {
     let first = try #require(CommandMatcher.optionDigit(0))
     #expect(first.keyCode == 18 && first.modifiers == [.option] && first.display == "⌥1")
@@ -47,6 +55,20 @@ import Testing
     // Prefix matches rank first.
     let ranked = QuickAppsCommands(model: h.model).commands(matching: "re")
     #expect(ranked.first?.id.rawValue == "quickapps.run.5C1B1E0B-2B7A-4E59-8D3B-7A0C1F3E2D02")   // "Resize (50%) images"
+    h.model.stop()
+}
+
+@Test func listedShortcutsMatchTheirShownName() async {
+    // The list's display names are worked out once per read: an unnamed shortcut answers "Untitled shortcut", and a
+    // padded query still finds a shortcut.
+    let listing = "   (7B2C4D6E-8F01-4A23-B456-C789D0E1F2A3)\nSend weekly report (6A1B2C3D-4E5F-4061-8273-94A5B6C7D8E9)\n"
+    let h = ModelHarness(cli: FakeCLI(listing: listing))
+    await h.model.start()
+    await h.model.shortcutsCatalog.refresh()
+    let untitled = ShortcutEntry(id: "7B2C4D6E-8F01-4A23-B456-C789D0E1F2A3", name: "").displayName
+    let commands = QuickAppsCommands(model: h.model)
+    #expect(commands.commands(matching: untitled).map(\.id.rawValue) == ["quickapps.run.7B2C4D6E-8F01-4A23-B456-C789D0E1F2A3"])
+    #expect(commands.commands(matching: "  weekly ").map(\.id.rawValue) == ["quickapps.run.6A1B2C3D-4E5F-4061-8273-94A5B6C7D8E9"])
     h.model.stop()
 }
 

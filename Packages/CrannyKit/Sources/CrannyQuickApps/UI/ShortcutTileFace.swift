@@ -1,7 +1,8 @@
 // CrannyQuickApps/UI/ShortcutTileFace.swift — a shortcut tile's squircle and its run state (DESIGN.md §7.3):
 // running = a 2.5-pt progress ring in place of the glyph · success = a check that bounces once · failure = a
 // `danger` badge with "!" on the corner (the tooltip says why). Glyph swaps use `contentSwap`. The "+N" tile uses
-// the same parts for the shortcuts it holds (`RunStateGlyph`, `shortcutFailureBadge`).
+// the same parts for the shortcuts it holds (`RunStateGlyph`, `shortcutFailureBadge`). Only the running ring reads the
+// effect budget, so an idle tile never follows lock, Low Power, thermal or power-source changes.
 import CrannyCore
 import SwiftUI
 
@@ -10,12 +11,12 @@ struct ShortcutTileFace: View {
     let state: ShortcutRunState
     let metrics: TileMetrics
     let redacted: Bool
-    /// The running ring's frame interval (`RunningRing.frameInterval`); nil holds it still.
-    let frameInterval: Double?
+    /// Paces the running ring (`RunningRing`).
+    let environment: any SystemEnvironment
 
     var body: some View {
         ShortcutGlyph(entry: entry, size: metrics.icon, redacted: redacted) {
-            RunStateGlyph(state: state, metrics: metrics, frameInterval: frameInterval) {
+            RunStateGlyph(state: state, metrics: metrics, environment: environment) {
                 ShortcutMark(entry: entry, size: metrics.icon, redacted: redacted)
             }
         }
@@ -29,14 +30,15 @@ struct RunStateGlyph<Mark: View>: View {
     @Environment(\.cranny) private var theme
     let state: ShortcutRunState
     let metrics: TileMetrics
-    let frameInterval: Double?
+    /// Paces the running ring (`RunningRing`).
+    let environment: any SystemEnvironment
     @ViewBuilder let mark: () -> Mark
 
     var body: some View {
         ZStack {
             switch state {
             case .running(let since):
-                RunningRing(since: since, size: metrics.ring, frameInterval: frameInterval)
+                RunningRing(since: since, size: metrics.ring, environment: environment)
                     .transition(.opacity)
             case .succeeded:
                 SuccessCheck(size: metrics.glyph)
@@ -91,12 +93,13 @@ private enum RunStateKey: Equatable {
 
 /// An indeterminate run shown as a ring that fills quickly, then ever more slowly (we never know how long a
 /// shortcut takes). Ticks through `EffectClock` only while the effect budget allows (ARCHITECTURE.md §9.2), at
-/// most 8 times a second; otherwise it holds its last frame. Under Reduce Motion it rests at a quarter.
+/// most 8 times a second; otherwise it holds its last frame. Under Reduce Motion it rests at a quarter. The budget
+/// is read here, in the only view that needs it, so idle tiles do not depend on it.
 struct RunningRing: View {
     @Environment(\.cranny) private var theme
     let since: Date
     let size: CGFloat
-    let frameInterval: Double?
+    let environment: any SystemEnvironment
 
     static func progress(elapsed: TimeInterval) -> Double {
         0.12 + 0.78 * (1 - exp(-max(elapsed, 0) / 4))
@@ -109,6 +112,8 @@ struct RunningRing: View {
     }
 
     var body: some View {
+        let frameInterval = Self.frameInterval(environment.effectBudget(isOpen: true, isOnScreen: true,
+                                                                         reduceMotion: theme.reduceMotion))
         EffectClock(minimumInterval: frameInterval) { date in
             ProgressRing(progress: theme.reduceMotion ? 0.25 : Self.progress(elapsed: date.timeIntervalSince(since)),
                          color: .white, lineWidth: StrokeWidth.ringCompact)
@@ -151,11 +156,12 @@ struct FailureBadge: View {
 #Preview("Shortcut states") {
     let metrics = TileMetrics(tile: 56, showsLabels: false)
     let entry = ShortcutEntry(id: "A", name: "Morning routine", symbol: "sun.max.fill", tint: .orange)
+    let environment = PreviewSystemEnvironment()
     HStack(spacing: Space.xl) {
-        ShortcutTileFace(entry: entry, state: .idle, metrics: metrics, redacted: false, frameInterval: 1.0 / 8)
-        ShortcutTileFace(entry: entry, state: .running(since: .now), metrics: metrics, redacted: false, frameInterval: 1.0 / 8)
-        ShortcutTileFace(entry: entry, state: .succeeded, metrics: metrics, redacted: false, frameInterval: 1.0 / 8)
-        ShortcutTileFace(entry: entry, state: .failed(.shortcutFailed), metrics: metrics, redacted: false, frameInterval: 1.0 / 8)
+        ShortcutTileFace(entry: entry, state: .idle, metrics: metrics, redacted: false, environment: environment)
+        ShortcutTileFace(entry: entry, state: .running(since: .now), metrics: metrics, redacted: false, environment: environment)
+        ShortcutTileFace(entry: entry, state: .succeeded, metrics: metrics, redacted: false, environment: environment)
+        ShortcutTileFace(entry: entry, state: .failed(.shortcutFailed), metrics: metrics, redacted: false, environment: environment)
     }
     .padding(Space.xl)
     .background(.black)

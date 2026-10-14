@@ -6,7 +6,14 @@ nonisolated enum CommandMatcher {
     /// How well `query` matches any of `texts`: 2 = prefix, 1 = start of a word, 0 = anywhere, nil = no match.
     /// Case, diacritics and width are ignored ("сафари" never matches "Safari", but "SAF" does). Empty query = 0.
     static func score(_ texts: [String], query: String) -> Int? {
-        let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        score(texts, trimmedQuery: trimmed(query))
+    }
+
+    /// `query` without surrounding whitespace, as `score(_:trimmedQuery:)` takes it.
+    static func trimmed(_ query: String) -> String { query.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    /// `score(_:query:)` for a query already `trimmed`: ⌘K trims once per keystroke, not once per candidate.
+    static func score(_ texts: [String], trimmedQuery q: String) -> Int? {
         guard !q.isEmpty else { return 0 }
         var best: Int?
         for text in texts {

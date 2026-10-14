@@ -1,7 +1,9 @@
 // CrannyQuickApps/QuickAppsCommands.swift — ⌘K: open a quick app, run a shortcut (DESIGN.md §6.4).
 //
 // In-memory only (called on every keystroke): the tiles, plus — once the user types — every shortcut of the last
-// Shortcuts list. The list is refreshed when the palette opens (`NotchEvent.paletteOpened`), never here.
+// Shortcuts list. The list is refreshed when the palette opens (`NotchEvent.paletteOpened`), never here. The query is
+// trimmed once, and the list's display names are worked out when it is read, so a keystroke only compares strings
+// and builds commands for the matches.
 // Demo mode hides shortcut names as the tiles do: tile shortcuts read "Run Shortcut" (with their ⌥ key), and the
 // rest of Shortcuts.app is not listed.
 import CrannyCore
@@ -13,20 +15,22 @@ final class QuickAppsCommands: PaletteCommandProvider {
 
     func commands(matching query: String) -> [PaletteCommand] {
         var scored: [(score: Int, rank: Int, command: PaletteCommand)] = []
+        let trimmed = CommandMatcher.trimmed(query)
         let tiles = model.tiles
         for (index, tile) in tiles.enumerated() {
             let command = command(for: tile, index: index)
-            if let score = CommandMatcher.score([tile.name] + command.keywords, query: query) {
+            if let score = CommandMatcher.score([tile.name] + command.keywords, trimmedQuery: trimmed) {
                 scored.append((score, index, command))
             }
         }
         // The rest of Shortcuts.app, only for a typed query (an empty palette lists the tiles), never in Demo mode.
-        if !model.environment.isDemoMode, !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if !model.environment.isDemoMode, !trimmed.isEmpty {
             let onTiles = Set(model.shortcutEntries.map(\.id))
-            for (offset, info) in model.shortcutsCatalog.shortcuts.enumerated() where !onTiles.contains(info.id) {
-                let entry = ShortcutEntry(id: info.id, name: info.name)
-                guard let score = CommandMatcher.score([entry.displayName], query: query) else { continue }
-                scored.append((score, tiles.count + offset, runCommand(entry, shortcut: nil)))
+            let catalog = model.shortcutsCatalog
+            for (offset, info) in catalog.shortcuts.enumerated() where !onTiles.contains(info.id) {
+                let name = catalog.displayName(of: info)
+                guard let score = CommandMatcher.score([name], trimmedQuery: trimmed) else { continue }
+                scored.append((score, tiles.count + offset, runCommand(ShortcutEntry(id: info.id, name: info.name), shortcut: nil)))
             }
         }
         return scored.sorted { ($0.score, -$0.rank) > ($1.score, -$1.rank) }.map(\.command)

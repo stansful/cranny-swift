@@ -23,15 +23,13 @@ struct OverflowTile: View {
         let p = theme.palette
         let more = String(localized: "\(count) more", bundle: .module, comment: "Quick Apps: the overflow tile (number of tiles that do not fit)")
         let state = ShortcutRunState.combined(shortcutStates)
-        let interval = RunningRing.frameInterval(model.environment.effectBudget(isOpen: true, isOnScreen: true,
-                                                                                reduceMotion: theme.reduceMotion))
         Button { Self.showMenu(tiles: tiles, model: model, redacted: redacted, anchor: anchor) } label: {
             TileContent(metrics: metrics, label: model.showsLabels ? more : nil, isRunning: false) {
                 RoundedRectangle(cornerRadius: metrics.squircleRadius, style: .continuous)
                     .fill(p.control)
                     .frame(width: metrics.body, height: metrics.body)
                     .overlay {
-                        RunStateGlyph(state: state, metrics: metrics, frameInterval: interval) {
+                        RunStateGlyph(state: state, metrics: metrics, environment: model.environment) {
                             Text(verbatim: count.formatted(.number.sign(strategy: .always())))   // "+3", "+٣"
                                 .crannyFont(.headline)
                                 .monospacedDigit()

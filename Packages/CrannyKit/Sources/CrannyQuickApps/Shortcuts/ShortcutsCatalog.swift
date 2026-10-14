@@ -17,6 +17,9 @@ import Observation
     /// The last list read (kept while a refresh runs or after it failed).
     private(set) var shortcuts: [ShortcutInfo] = []
     private(set) var state: State = .idle
+    /// `ShortcutEntry.displayName` of each listed shortcut by id, worked out once per read (⌘K matches on every
+    /// keystroke). Always set together with `shortcuts`.
+    @ObservationIgnored private var displayNames: [String: String] = [:]
 
     @ObservationIgnored private let cli: ShortcutsCLI
     @ObservationIgnored private let now: @MainActor () -> Date
@@ -32,6 +35,11 @@ import Observation
 
     /// Name of a shortcut in the last list, nil if it is not there (or the list was never read).
     func info(for id: String) -> ShortcutInfo? { shortcuts.first { $0.id == id } }
+
+    /// What a listed shortcut is called on screen (`ShortcutEntry.displayName`), without working it out again.
+    func displayName(of info: ShortcutInfo) -> String {
+        displayNames[info.id] ?? ShortcutEntry.displayName(for: info.name)
+    }
 
     /// Reads the list unless the last read succeeded less than `maximumAge` seconds ago (after a failure it always
     /// reads again). Concurrent callers share one read.
@@ -53,7 +61,10 @@ import Observation
         let previous = state
         state = .loading
         do {
-            shortcuts = try await cli.list()
+            let list = try await cli.list()
+            displayNames = Dictionary(list.map { ($0.id, ShortcutEntry.displayName(for: $0.name)) },
+                                      uniquingKeysWith: { first, _ in first })
+            shortcuts = list
             loadedAt = now()
             state = .loaded
         } catch is CancellationError {

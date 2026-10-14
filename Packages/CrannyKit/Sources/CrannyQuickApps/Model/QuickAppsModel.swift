@@ -2,7 +2,8 @@
 // Editing (add, remove, reorder, appearance) is in QuickAppsModel+Editing.swift.
 //
 // Energy: `init` does nothing. `start()` (registry.onLaunch) resolves the quick apps once and subscribes to app
-// launch/quit notifications; the Shortcuts list is read only on demand (ShortcutsCatalog). Nothing polls.
+// launch/quit notifications; the Shortcuts list is read only on demand (ShortcutsCatalog), and never for a ⌘K that
+// cannot use it (Demo mode lists no Shortcuts.app shortcuts and hides the tile names). Nothing polls.
 import CrannyCore
 import Foundation
 import Observation
@@ -90,6 +91,8 @@ nonisolated private let log = Log.logger(.quickApps)
         case .pinned(let pinned):
             isPinned = pinned
         case .paletteOpened:
+            // Demo mode: ⌘K lists no Shortcuts.app shortcut and tiles hide their names, so the read would be wasted.
+            guard !environment.isDemoMode else { break }
             Task { await shortcutsCatalog.refresh(maximumAge: 300) }
         default:
             break

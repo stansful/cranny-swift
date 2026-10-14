@@ -252,6 +252,21 @@ private let resize = ShortcutEntry(id: "5C1B1E0B-2B7A-4E59-8D3B-7A0C1F3E2D02", n
     h.model.stop()
 }
 
+@Test func inDemoModeOpeningThePaletteReadsNothing() async {
+    // Demo mode lists no Shortcuts.app shortcut in ⌘K and hides the tile names: the read would be wasted.
+    let fake = FakeCLI(listing: shortcutListFixture)
+    let h = ModelHarness(cli: fake)
+    await h.model.start()
+    h.environment.isDemoMode = true
+    h.notch.emit(.paletteOpened)
+    try? await Task.sleep(for: .milliseconds(30))
+    #expect(fake.calls.isEmpty)
+    h.environment.isDemoMode = false
+    h.notch.emit(.paletteOpened)
+    #expect(await waitUntil { h.model.shortcutsCatalog.shortcuts.count == 9 })
+    h.model.stop()
+}
+
 @Test func renamedShortcutsKeepTheirTileAndTakeTheNewName() async {
     let renamed = ShortcutEntry(id: morning.id, name: "Old name", symbol: "bolt.fill", tint: .teal)
     let h = ModelHarness(apps: [], shortcuts: [renamed], cli: FakeCLI(listing: shortcutListFixture))

@@ -23,7 +23,10 @@ nonisolated enum LauncherTile: Identifiable, Hashable, Sendable {
 
 extension ShortcutEntry {
     /// The name, or "Untitled shortcut" for a shortcut without one.
-    nonisolated var displayName: String {
+    nonisolated var displayName: String { Self.displayName(for: name) }
+
+    /// `displayName` for a shortcut called `name` (also for listed shortcuts that are not tiles, `ShortcutsCatalog`).
+    nonisolated static func displayName(for name: String) -> String {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
         return trimmed.isEmpty
             ? String(localized: "Untitled shortcut", bundle: .module, comment: "Quick Apps: name of a shortcut whose name is empty")

@@ -6,7 +6,8 @@ import SwiftUI
 
 struct LauncherTileView: View {
     @Environment(\.cranny) private var theme
-    @Environment(\.notchContext) private var notchContext
+    /// Only this field of the context: tiles are not re-evaluated when the phase, page or focus changes.
+    @Environment(\.notchContext.showsCommandHints) private var showsCommandHints
     let tile: LauncherTile
     /// Position among the visible tiles (⌥ number, VoiceOver moves).
     let index: Int
@@ -50,7 +51,7 @@ struct LauncherTileView: View {
                     .transition(.opacity)
             }
         }
-        .animation(theme.animation(.hover), value: notchContext.showsCommandHints)
+        .animation(theme.animation(.hover), value: showsCommandHints)
         .crannyFocusRing(isFocused, radius: Radius.tile)
         .help(helpText)
         .contextMenu { if interactive { TileMenu(tile: tile, model: model) } }
@@ -63,7 +64,7 @@ struct LauncherTileView: View {
         .accessibilityActions { if interactive { accessibilityActions } }
     }
 
-    private var showsHint: Bool { interactive && notchContext.showsCommandHints && index < 9 }
+    private var showsHint: Bool { interactive && showsCommandHints && index < 9 }
 
     // MARK: Face
 
@@ -77,8 +78,7 @@ struct LauncherTileView: View {
         case .shortcut(let entry):
             TileContent(metrics: metrics, label: label, isRunning: false) {
                 ShortcutTileFace(entry: entry, state: model.runs.state(of: entry.id), metrics: metrics, redacted: redacted,
-                                 frameInterval: RunningRing.frameInterval(
-                                    model.environment.effectBudget(isOpen: true, isOnScreen: true, reduceMotion: theme.reduceMotion)))
+                                 environment: model.environment)
             }
         }
     }
