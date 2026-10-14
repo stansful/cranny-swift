@@ -20,6 +20,16 @@
 //   --qa-snapshot <dir> [--qa-snapshot-at 1,3.5]   render every window of the app (menus, Settings, the status
 //                                         item) in-process into <dir> at those seconds; works while displays sleep
 //
+// Welcome and tour (WP15, acted on by `WelcomeWindowController`):
+//   --qa-welcome <step>                   show the Welcome window at a step (`hello`, `openIt`, `gestures`,
+//                                         `preset`, `permissions`, `done`); records nothing
+//   --qa-tutorial <n>                     start the interactive tutorial at step n (1-based); records nothing
+//   --qa-snapshot <dir>                   with --qa-welcome / --qa-tutorial: also draw every visible window into
+//                                         <dir>/<level>-<n>.png (+ frames.txt) after 3 s
+//
+// `--qa-snapshot` is one argument with two meanings: a path ending in `.png` is the panel canvas (NotchUI); any
+// other path is a directory for the window snapshots (menu bar extra, welcome).
+//
 // No input is synthesized: the state is written through the same view-model inputs the pointer uses.
 // The whole file is compiled out of Release builds.
 #if DEBUG
@@ -40,11 +50,19 @@ enum QAHooks {
         var settingsPage: SettingsPageID?
         var captureDirectory: URL?
         var captureAfter: Double = 3
+        /// `WelcomeStep` raw value; `WelcomeWindowController` acts on it (WP15).
+        var welcomeStep: String?
+        /// 1-based tutorial step; `WelcomeWindowController` starts the tour there (WP15).
+        var tutorialStep: Int?
+        /// `--qa-snapshot`: a `.png` file (the panel canvas, NotchUI) or a directory for in-process window snapshots.
+        var snapshotPath: String?
 
         init(state: State? = nil, page: PageID? = nil, exitAfter: Double? = nil, settingsPage: SettingsPageID? = nil,
-             captureDirectory: URL? = nil, captureAfter: Double = 3) {
+             captureDirectory: URL? = nil, captureAfter: Double = 3,
+             welcomeStep: String? = nil, tutorialStep: Int? = nil, snapshotPath: String? = nil) {
             self.state = state; self.page = page; self.exitAfter = exitAfter; self.settingsPage = settingsPage
             self.captureDirectory = captureDirectory; self.captureAfter = captureAfter
+            self.welcomeStep = welcomeStep; self.tutorialStep = tutorialStep; self.snapshotPath = snapshotPath
         }
 
         init(arguments: [String]) {
@@ -57,10 +75,23 @@ enum QAHooks {
                       exitAfter: value("--qa-exit-after").flatMap(Double.init).flatMap { $0 > 0 ? $0 : nil },
                       settingsPage: value("--qa-settings").map(SettingsPageID.init(rawValue:)),
                       captureDirectory: value("--qa-capture").map { URL(fileURLWithPath: $0, isDirectory: true) },
-                      captureAfter: value("--qa-capture-after").flatMap(Double.init).flatMap { $0 >= 0 ? $0 : nil } ?? 3)
+                      captureAfter: value("--qa-capture-after").flatMap(Double.init).flatMap { $0 >= 0 ? $0 : nil } ?? 3,
+                      welcomeStep: value("--qa-welcome"),
+                      tutorialStep: value("--qa-tutorial").flatMap(Int.init).flatMap { $0 > 0 ? $0 : nil },
+                      snapshotPath: value("--qa-snapshot"))
         }
 
-        var isEmpty: Bool { state == nil && exitAfter == nil && settingsPage == nil && captureDirectory == nil }
+        /// A snapshot alone forces nothing (it records what the other arguments show).
+        var isEmpty: Bool {
+            state == nil && exitAfter == nil && settingsPage == nil && captureDirectory == nil
+                && welcomeStep == nil && tutorialStep == nil
+        }
+
+        /// `--qa-snapshot <dir>` (not a `.png` file, which is NotchUI's panel snapshot).
+        var snapshotDirectory: URL? {
+            guard let snapshotPath, !snapshotPath.lowercased().hasSuffix(".png") else { return nil }
+            return URL(fileURLWithPath: snapshotPath, isDirectory: true)
+        }
     }
 
     /// The label of the sample activity used for `compact` and `peek`.

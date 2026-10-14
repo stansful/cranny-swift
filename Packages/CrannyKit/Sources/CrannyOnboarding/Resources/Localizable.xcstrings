@@ -1,13 +1,437 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%lld of %lld" : {
+      "comment" : "Tutorial: progress in the bubble, e.g. \"2 of 5\" (shown in small capitals)",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld of %2$lld"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld из %2$lld"
+          }
+        }
+      }
+    },
+    "Accessibility" : {
+      "comment" : "Welcome step 5: permission name (System Settings ▸ Privacy)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Универсальный доступ"
+          }
+        }
+      }
+    },
+    "Allow" : {
+      "comment" : "Welcome step 5: button that shows the system permission prompt",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешить"
+          }
+        }
+      }
+    },
+    "Allowed" : {
+      "comment" : "Welcome step 5: status of a granted permission",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешено"
+          }
+        }
+      }
+    },
+    "Asks when needed" : {
+      "comment" : "Welcome step 5: status when the system could not ask yet (e.g. the music app is not running)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Спросит, когда понадобится"
+          }
+        }
+      }
+    },
+    "Automation" : {
+      "comment" : "Welcome step 5: permission name (System Settings ▸ Privacy; Apple Events to music apps)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Автоматизация"
+          }
+        }
+      }
+    },
+    "Back" : {
+      "comment" : "Welcome: button that returns to the previous step (⌘[)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Назад"
+          }
+        }
+      }
+    },
+    "Bluetooth" : {
+      "comment" : "Welcome step 5: permission name (System Settings ▸ Privacy)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth"
+          }
+        }
+      }
+    },
+    "Calendar" : {
+      "comment" : "Welcome, layouts: widget name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Календарь"
+          }
+        }
+      }
+    },
+    "Calendars" : {
+      "comment" : "Welcome step 5: permission name (System Settings ▸ Privacy)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Календари"
+          }
+        }
+      }
+    },
+    "Check for updates" : {
+      "comment" : "Welcome step 6: daily update check switch",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверять обновления"
+          }
+        }
+      }
+    },
+    "Choose how Cranny opens, then try it on the real notch at the top of your screen." : {
+      "comment" : "Welcome step 2: sentence under the headline",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите, как открывать Cranny, и попробуйте на настоящем вырезе вверху экрана."
+          }
+        }
+      }
+    },
+    "Click" : {
+      "comment" : "Welcome step 2: way to open Cranny",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Щелчок"
+          }
+        }
+      }
+    },
+    "Click here" : {
+      "comment" : "Welcome step 2: coach mark under the real notch (no shortcut set)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Щёлкните здесь"
+          }
+        }
+      }
+    },
+    "Click here, or press" : {
+      "comment" : "Welcome step 2: coach mark under the real notch; followed by a key cap such as ⌃⌥N",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Щёлкните здесь или нажмите"
+          }
+        }
+      }
+    },
+    "Click the notch" : {
+      "comment" : "Tutorial step 1 when Cranny opens on a click, or has no shortcut to press",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Щёлкните по вырезу"
+          }
+        }
+      }
+    },
+    "Click the notch to open it" : {
+      "comment" : "Welcome step 2: Click card description",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Щёлкните по вырезу, чтобы открыть"
+          }
+        }
+      }
+    },
+    "Click the notch, or press" : {
+      "comment" : "Tutorial step 1 when Cranny opens on a click; followed by a key cap such as ⌃⌥N",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Щёлкните по вырезу или нажмите"
+          }
+        }
+      }
+    },
+    "Close Cranny" : {
+      "comment" : "Welcome step 6 cheat sheet: Esc",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрыть Cranny"
+          }
+        }
+      }
+    },
     "Continue" : {
-      "comment" : "Welcome: button that closes the window",
+      "comment" : "Welcome: button that goes to the next step (↩)",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Продолжить"
+          }
+        }
+      }
+    },
+    "Control Music and Spotify when other ways fail. Cranny sends only playback commands." : {
+      "comment" : "Welcome step 5: fallback reason for the Automation permission",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Управлять Музыкой и Spotify, если другие способы не сработали. Cranny отправляет только команды воспроизведения."
+          }
+        }
+      }
+    },
+    "Cranny waits at the top of your screen. A few keys worth knowing:" : {
+      "comment" : "Welcome step 6: sentence under the headline, before the cheat sheet",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny ждёт вверху экрана. Несколько клавиш, которые стоит запомнить:"
+          }
+        }
+      }
+    },
+    "Delay" : {
+      "comment" : "Welcome step 2: hover delay picker label",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задержка"
+          }
+        }
+      }
+    },
+    "Done" : {
+      "comment" : "Welcome and tutorial: closing button; also VoiceOver's word for a completed step",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Готово"
+          }
+        }
+      }
+    },
+    "Drag any file onto the notch" : {
+      "comment" : "Tutorial step 2",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перетащите любой файл на вырез"
+          }
+        }
+      }
+    },
+    "Edit the layout" : {
+      "comment" : "Welcome step 6 cheat sheet: ⌘E",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить раскладку"
+          }
+        }
+      }
+    },
+    "Everything here is optional. You can allow it later in Settings ▸ Permissions." : {
+      "comment" : "Welcome step 5: sentence under the headline",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Всё это необязательно. Разрешить можно и позже: Настройки ▸ Разрешения."
+          }
+        }
+      }
+    },
+    "Files" : {
+      "comment" : "Welcome, layouts: widget name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файлы"
+          }
+        }
+      }
+    },
+    "Find any command" : {
+      "comment" : "Welcome step 6 cheat sheet: ⌘K command palette",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Найти любую команду"
+          }
+        }
+      }
+    },
+    "Hi" : {
+      "comment" : "Welcome step 1: the greeting the real notch shows (12 characters at most)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Привет"
+          }
+        }
+      }
+    },
+    "Hold to see shortcuts" : {
+      "comment" : "Welcome step 6 cheat sheet: hold ⌘",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удерживать для подсказок"
+          }
+        }
+      }
+    },
+    "Hold ⌘ to see every shortcut" : {
+      "comment" : "Tutorial step 4; ⌘ is the Command key",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удерживайте ⌘, чтобы увидеть все сочетания клавиш"
+          }
+        }
+      }
+    },
+    "Hover" : {
+      "comment" : "Welcome step 2: way to open Cranny (rest the pointer on the notch)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Наведение"
+          }
+        }
+      }
+    },
+    "Instant" : {
+      "comment" : "Welcome step 2: hover delay preset (no delay)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сразу"
+          }
+        }
+      }
+    },
+    "Just music and the volume HUD" : {
+      "comment" : "Welcome, layouts: Minimal preset description",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только музыка и индикатор громкости"
+          }
+        }
+      }
+    },
+    "Keep Cranny open" : {
+      "comment" : "Welcome step 6 cheat sheet: ⌘P pin",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрепить Cranny"
+          }
+        }
+      }
+    },
+    "Keep going" : {
+      "comment" : "Welcome: Esc confirmation, stays in the setup",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Продолжить настройку"
+          }
+        }
+      }
+    },
+    "Listener" : {
+      "comment" : "Welcome, layouts: preset name (Media, Calendar, Apps)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Меломан"
+          }
+        }
+      }
+    },
+    "Long, %@" : {
+      "comment" : "Welcome step 2: hover delay preset; argument is a duration such as 450 ms",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Долго, %@"
           }
         }
       }
@@ -23,6 +447,738 @@
         }
       }
     },
+    "Maker" : {
+      "comment" : "Welcome, layouts: preset name (Notes, To-dos, Timer, Shortcuts)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Мастер"
+          }
+        }
+      }
+    },
+    "Managed by your organisation" : {
+      "comment" : "Welcome step 5: status of a permission a device profile controls",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Управляется организацией"
+          }
+        }
+      }
+    },
+    "Media" : {
+      "comment" : "Welcome, layouts: widget name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Медиа"
+          }
+        }
+      }
+    },
+    "Meetings" : {
+      "comment" : "Welcome, layouts: preset name (Calendar, Mirror, Timer, Apps)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Встречи"
+          }
+        }
+      }
+    },
+    "Minimal" : {
+      "comment" : "Welcome, layouts: preset name (Media only, plus the HUD)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Минимум"
+          }
+        }
+      }
+    },
+    "Mirror" : {
+      "comment" : "Welcome, layouts: widget name (camera preview)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зеркало"
+          }
+        }
+      }
+    },
+    "Music, your day and favourite apps" : {
+      "comment" : "Welcome, layouts: Listener preset description",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Музыка, ваш день и любимые приложения"
+          }
+        }
+      }
+    },
+    "Notes" : {
+      "comment" : "Welcome, layouts: widget name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заметки"
+          }
+        }
+      }
+    },
+    "Notes, to-dos and a timer" : {
+      "comment" : "Welcome, layouts: Maker preset description",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заметки, задачи и таймер"
+          }
+        }
+      }
+    },
+    "On displays without a notch, Cranny floats just under the menu bar." : {
+      "comment" : "Welcome step 1: note shown on Macs whose display has no camera notch",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На экранах без выреза Cranny парит прямо под строкой меню."
+          }
+        }
+      }
+    },
+    "Open at login" : {
+      "comment" : "Welcome step 6: launch at login switch",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открывать при входе"
+          }
+        }
+      }
+    },
+    "Open it your way" : {
+      "comment" : "Welcome step 2: headline",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открывайте как удобно"
+          }
+        }
+      }
+    },
+    "Open or close Cranny" : {
+      "comment" : "Welcome step 6 cheat sheet: ⌃⌥N",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть или закрыть Cranny"
+          }
+        }
+      }
+    },
+    "Opened by resting the pointer" : {
+      "comment" : "Welcome step 2: VoiceOver announcement after the real notch opened",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыто наведением указателя"
+          }
+        }
+      }
+    },
+    "Opened with a click" : {
+      "comment" : "Welcome step 2: VoiceOver announcement after the real notch opened",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыто щелчком"
+          }
+        }
+      }
+    },
+    "Opened with the shortcut" : {
+      "comment" : "Welcome step 2: VoiceOver announcement after the real notch opened",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыто сочетанием клавиш"
+          }
+        }
+      }
+    },
+    "Opens only with the keys" : {
+      "comment" : "Welcome step 2: Shortcut only card description",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открывается только клавишами"
+          }
+        }
+      }
+    },
+    "Permissions, only for what you chose" : {
+      "comment" : "Welcome step 5: headline",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешения — только для выбранного"
+          }
+        }
+      }
+    },
+    "Pick a starting layout" : {
+      "comment" : "Welcome step 4: headline",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите начальную раскладку"
+          }
+        }
+      }
+    },
+    "Pin it with the pin button, then press Esc" : {
+      "comment" : "Tutorial step 5; followed by the Esc key cap",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрепите кнопкой с булавкой, затем нажмите Esc"
+          }
+        }
+      }
+    },
+    "Practice notch: swipe with two fingers on the trackpad" : {
+      "comment" : "Welcome stage: VoiceOver description of the gesture practice",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тренировочный вырез: смахните двумя пальцами по трекпаду"
+          }
+        }
+      }
+    },
+    "Press" : {
+      "comment" : "Welcome step 2: coach mark under the real notch; followed by a key cap such as ⌃⌥N",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нажмите"
+          }
+        }
+      }
+    },
+    "Press the shortcut" : {
+      "comment" : "Tutorial step 1 when Cranny opens only with its shortcut; followed by a key cap such as ⌃⌥N",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нажмите сочетание клавиш"
+          }
+        }
+      }
+    },
+    "Preview: Cranny says hi" : {
+      "comment" : "Welcome stage: VoiceOver description of the preview",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Превью: Cranny здоровается"
+          }
+        }
+      }
+    },
+    "Preview: Cranny, closed" : {
+      "comment" : "Welcome stage: VoiceOver description of the preview",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Превью: Cranny закрыт"
+          }
+        }
+      }
+    },
+    "Preview: Cranny, open with your layout" : {
+      "comment" : "Welcome stage: VoiceOver description of the preview",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Превью: Cranny открыт с вашей раскладкой"
+          }
+        }
+      }
+    },
+    "Pull down to open" : {
+      "comment" : "Welcome step 3: practice task (two-finger swipe down)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Потяните вниз, чтобы открыть"
+          }
+        }
+      }
+    },
+    "Push up to close it again" : {
+      "comment" : "Welcome step 3: optional practice hint (two-finger swipe up)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Смахните вверх, чтобы закрыть"
+          }
+        }
+      }
+    },
+    "Put two fingers on the trackpad and swipe over the notch above. It's only practice." : {
+      "comment" : "Welcome step 3: sentence under the headline",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Положите два пальца на трекпад и смахните над вырезом выше. Это просто тренировка."
+          }
+        }
+      }
+    },
+    "Quick Apps" : {
+      "comment" : "Welcome, layouts: widget name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Быстрые приложения"
+          }
+        }
+      }
+    },
+    "Rest the pointer here" : {
+      "comment" : "Welcome step 2: coach mark under the real notch (no shortcut set)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задержите указатель здесь"
+          }
+        }
+      }
+    },
+    "Rest the pointer here, or press" : {
+      "comment" : "Welcome step 2: coach mark under the real notch; followed by a key cap such as ⌃⌥N",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задержите указатель здесь или нажмите"
+          }
+        }
+      }
+    },
+    "Rest the pointer on the notch" : {
+      "comment" : "Welcome step 2: Hover card description",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задержите указатель на вырезе"
+          }
+        }
+      }
+    },
+    "Rest the pointer on the notch, or click it" : {
+      "comment" : "Tutorial step 1 (no keyboard shortcut set)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задержите указатель на вырезе или щёлкните по нему"
+          }
+        }
+      }
+    },
+    "Rest the pointer on the notch, or press" : {
+      "comment" : "Tutorial step 1; followed by a key cap such as ⌃⌥N",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задержите указатель на вырезе или нажмите"
+          }
+        }
+      }
+    },
+    "Say hi again" : {
+      "comment" : "Welcome step 1: replays the greeting on the real notch",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поздороваться ещё раз"
+          }
+        }
+      }
+    },
+    "Set a shortcut in Settings ▸ Keyboard" : {
+      "comment" : "Welcome step 2: coach mark when the Open Cranny shortcut is turned off",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задайте сочетание клавиш: Настройки ▸ Клавиатура"
+          }
+        }
+      }
+    },
+    "Short, %@" : {
+      "comment" : "Welcome step 2: hover delay preset; argument is a duration such as 120 ms",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Коротко, %@"
+          }
+        }
+      }
+    },
+    "Shortcut only" : {
+      "comment" : "Welcome step 2: way to open Cranny (only the keyboard shortcut)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Только сочетание"
+          }
+        }
+      }
+    },
+    "Show the battery of every Bluetooth device. Cranny never connects to them." : {
+      "comment" : "Welcome step 5: fallback reason for the Bluetooth permission",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывать заряд всех Bluetooth-устройств. Cranny никогда к ним не подключается."
+          }
+        }
+      }
+    },
+    "Show volume and brightness in the notch instead of the system HUD. Cranny reads no other keys." : {
+      "comment" : "Welcome step 5: fallback reason for the Accessibility permission",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывать громкость и яркость в вырезе вместо системного индикатора. Другие клавиши Cranny не читает."
+          }
+        }
+      }
+    },
+    "Show your events in Cranny. Cranny never edits or uploads them." : {
+      "comment" : "Welcome step 5: fallback reason for the Calendars permission",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывать ваши события в Cranny. Cranny никогда не изменяет и не выгружает их."
+          }
+        }
+      }
+    },
+    "Skip" : {
+      "comment" : "Welcome: skips a step that was not tried yet",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пропустить"
+          }
+        }
+      }
+    },
+    "Skip setup" : {
+      "comment" : "Welcome: skips the whole setup (button on the first step and in the Esc confirmation)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пропустить настройку"
+          }
+        }
+      }
+    },
+    "Skip setup?" : {
+      "comment" : "Welcome: Esc confirmation title",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пропустить настройку?"
+          }
+        }
+      }
+    },
+    "Skip tour" : {
+      "comment" : "Tutorial: always-visible button that ends the tour; also its ⌘K command while it runs",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пропустить тур"
+          }
+        }
+      }
+    },
+    "Standard, %@" : {
+      "comment" : "Welcome step 2: hover delay preset; argument is a duration such as 220 ms",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стандартно, %@"
+          }
+        }
+      }
+    },
+    "Step %lld of %lld" : {
+      "comment" : "Welcome: VoiceOver label of the progress dots",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Step %1$lld of %2$lld"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Шаг %1$lld из %2$lld"
+          }
+        }
+      }
+    },
+    "Swipe sideways to change the track" : {
+      "comment" : "Welcome step 3: practice task (two-finger swipe left or right)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Смахните вбок, чтобы сменить трек"
+          }
+        }
+      }
+    },
+    "Swipe sideways with two fingers to change the track" : {
+      "comment" : "Tutorial step 3",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Смахните двумя пальцами вбок, чтобы сменить трек"
+          }
+        }
+      }
+    },
+    "System Settings…" : {
+      "comment" : "Welcome step 5: opens System Settings for a permission that was turned off",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Системные настройки…"
+          }
+        }
+      }
+    },
+    "Take the 1-minute tour" : {
+      "comment" : "Welcome step 6: primary button that starts the interactive tutorial",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пройти тур за минуту"
+          }
+        }
+      }
+    },
+    "That's the tour. Replay it any time from the menu bar." : {
+      "comment" : "Tutorial: last bubble after every step is done",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вот и весь тур. Повторить его можно в любой момент из строки меню."
+          }
+        }
+      }
+    },
+    "The tour ended. Replay it any time from the menu bar." : {
+      "comment" : "Tutorial: VoiceOver announcement when a step waited for minutes and the tour ended by itself",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тур закончился. Повторить его можно в любой момент из строки меню."
+          }
+        }
+      }
+    },
+    "This layout needs no permissions." : {
+      "comment" : "Welcome step 5: shown when the chosen layout needs no permission",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этой раскладке разрешения не нужны."
+          }
+        }
+      }
+    },
+    "Timer" : {
+      "comment" : "Welcome, layouts: widget name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Таймер"
+          }
+        }
+      }
+    },
+    "To open at login, allow Cranny in System Settings ▸ General ▸ Login Items." : {
+      "comment" : "Welcome step 6: footnote when macOS waits for the login item to be approved",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы Cranny открывался при входе, разрешите это: Системные настройки ▸ Основные ▸ Объекты входа."
+          }
+        }
+      }
+    },
+    "To-dos" : {
+      "comment" : "Welcome, layouts: widget name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задачи"
+          }
+        }
+      }
+    },
+    "Tried on the notch" : {
+      "comment" : "Welcome step 2: VoiceOver value of a card whose way in was used",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Опробовано на вырезе"
+          }
+        }
+      }
+    },
+    "Try a gesture" : {
+      "comment" : "Welcome step 3: headline",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Попробуйте жесты"
+          }
+        }
+      }
+    },
+    "Updates are only checked, never installed. Nothing else uses the network." : {
+      "comment" : "Welcome step 6: footnote under the switches",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обновления только проверяются, но не устанавливаются. Больше ничто не обращается к сети."
+          }
+        }
+      }
+    },
+    "Welcome to Cranny" : {
+      "comment" : "Welcome: window title (VoiceOver, Mission Control)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добро пожаловать в Cranny"
+          }
+        }
+      }
+    },
+    "You can change it any time in Settings ▸ Layout & Widgets." : {
+      "comment" : "Welcome step 4: sentence under the headline",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Её можно изменить в любой момент: Настройки ▸ Раскладка и виджеты."
+          }
+        }
+      }
+    },
+    "You can run it again from Settings ▸ About." : {
+      "comment" : "Welcome: Esc confirmation message",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Её можно пройти снова: Настройки ▸ О программе."
+          }
+        }
+      }
+    },
+    "You're set" : {
+      "comment" : "Welcome step 6: headline",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Всё готово"
+          }
+        }
+      }
+    },
+    "Your calendar, a camera check and a timer" : {
+      "comment" : "Welcome, layouts: Meetings preset description",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Календарь, проверка камеры и таймер"
+          }
+        }
+      }
+    },
     "Your music, calendar, files and shortcuts live in the notch, one glance away." : {
       "comment" : "Welcome: one sentence about what Cranny does",
       "localizations" : {
@@ -30,6 +1186,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Музыка, календарь, файлы и быстрые команды — в вырезе экрана, на расстоянии одного взгляда."
+          }
+        }
+      }
+    },
+    "Your own layout stays unless you pick one. You can change it any time in Settings ▸ Layout & Widgets." : {
+      "comment" : "Welcome step 4: sentence when the person already arranged their own layout",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ваша раскладка останется, если не выбрать другую. Изменить её можно в любой момент: Настройки ▸ Раскладка и виджеты."
+          }
+        }
+      }
+    },
+    "tutorial, tour, stop, end, skip" : {
+      "comment" : "⌘K: search words for Skip tour while the tutorial runs, comma-separated",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "обучение, тур, стоп, остановить, закончить, пропустить"
           }
         }
       }
