@@ -10,6 +10,9 @@ extension NSWindow.Level {
 final class NotchPanel: NSPanel {
     /// Every scroll event delivered to this window passes through here first (gestures, scroll zones).
     var scrollInterceptor: ((NSEvent) -> Bool)?
+    /// Esc (`cancelOperation`) that nothing in the panel handled, e.g. from a text field without its own Esc action
+    /// (KeyboardRouter lets field editors see Esc first).
+    var onCancel: (() -> Void)?
 
     init(frame: CGRect) {
         // .nonactivatingPanel MUST be in the init style mask (R1 gotcha 4).
@@ -33,6 +36,9 @@ final class NotchPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
     override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect { frameRect }
+    override func cancelOperation(_ sender: Any?) {
+        if let onCancel { onCancel() } else { super.cancelOperation(sender) }
+    }
     override func sendEvent(_ event: NSEvent) {
         if event.type == .scrollWheel, let intercept = scrollInterceptor, intercept(event) { return }
         super.sendEvent(event)

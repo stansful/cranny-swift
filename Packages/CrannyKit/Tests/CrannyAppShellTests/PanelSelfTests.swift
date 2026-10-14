@@ -106,6 +106,34 @@ private func escapeEvent(in window: NSWindow) -> NSEvent? {
     #expect(notchUIHandled == 1 && viewModel.state.isOpen, "NotchUI: \(notchUIHandled), shell closed: \(viewModel.state.isClosed)")
 }
 
+/// A text field being edited (a field editor: the Notes rename field, a to-do title) sees Esc first and ends its
+/// edit; Esc it does not handle reaches the panel's `cancelOperation`, which runs the chain (WP5/WP6 contract).
+@Test func aFieldEditorSeesEscapeFirst() throws {
+    _ = NSApplication.shared
+    let registry = ModuleRegistry(services: .preview())
+    let scene = NotchSceneModel(layout: NotchLayout(metrics: .reference), theme: CrannyTheme())
+    let viewModel = NotchViewModel(scene: scene, registry: registry)
+    let panel = NotchPanel(frame: CGRect(x: 0, y: 0, width: 400, height: 200))
+    defer { panel.close() }
+    let router = KeyboardRouter(panel: panel, viewModel: viewModel, registry: registry)
+    router.start()
+    defer { router.stop() }
+    let content = NSView(frame: CGRect(x: 0, y: 0, width: 400, height: 200))
+    let editor = NSTextView(frame: CGRect(x: 0, y: 0, width: 200, height: 20))
+    editor.isFieldEditor = true
+    content.addSubview(editor)
+    panel.contentView = content
+    viewModel.send(.open(page: nil, focus: nil, reason: .programmatic))
+    try #require(panel.makeFirstResponder(editor))
+    #expect(KeyboardRouter.isEditingText(panel.firstResponder))
+    let press = try #require(escapeEvent(in: panel))
+    #expect(router.handleKeyDown(press) === press && viewModel.state.isOpen)    // passed on to the text field
+    panel.cancelOperation(nil)                                                 // the field did not handle it
+    #expect(viewModel.state.isClosed)
+    editor.isFieldEditor = false                                               // a plain text view (the Notes editor)
+    #expect(!KeyboardRouter.isEditingText(editor))
+}
+
 // MARK: - On screen (opt-in)
 
 nonisolated private let integration = ProcessInfo.processInfo.environment["CRANNY_INTEGRATION"] == "1"

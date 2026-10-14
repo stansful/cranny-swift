@@ -43,11 +43,14 @@ import Foundation
             return event
         }
         monitors = [keys, flags, clicks].compactMap { $0 }
+        // Esc that a text field let through travels up the responder chain to the panel.
+        (panel as? NotchPanel)?.onCancel = { [weak self] in self?.viewModel.send(.escape) }
     }
 
     func stop() {
         for monitor in monitors { NSEvent.removeMonitor(monitor) }
         monitors.removeAll()
+        (panel as? NotchPanel)?.onCancel = nil
         hintTask?.cancel()
     }
 
@@ -66,6 +69,10 @@ import Foundation
         guard let panel, event.window === panel else { return event }
         if event.keyCode == 53 {                                                 // kVK_Escape
             if Self.isComposing(panel.firstResponder) { return event }           // Esc cancels the marked text first
+            // A text field being edited (a field editor: the Notes rename field, a to-do title, the palette's
+            // search) ends its edit first; the next Esc runs the chain (WP5/WP6, §4.10). If the field does not
+            // handle it, the panel's `cancelOperation` runs the chain instead (`NotchPanel.onCancel`).
+            if Self.isEditingText(panel.firstResponder) { return event }
             if panel.contentView?.performKeyEquivalent(with: event) == true { return nil }   // NotchUI's chain took it
             viewModel.send(.escape)
             return nil
@@ -125,6 +132,12 @@ import Foundation
     /// Tab and the arrows: the user navigates with the keyboard, so focus rings show (DESIGN.md §16).
     nonisolated static func isNavigationKey(_ keyCode: UInt16) -> Bool {
         [48, 123, 124, 125, 126].contains(keyCode)                               // Tab, ←, →, ↓, ↑
+    }
+
+    /// The first responder is a field editor (a text field being edited): Esc belongs to it. The Notes editor is a
+    /// plain NSTextView, not a field editor, so Esc there leaves focus mode through the chain.
+    static func isEditingText(_ responder: NSResponder?) -> Bool {
+        (responder as? NSTextView)?.isFieldEditor ?? false
     }
 
     /// An input method is composing in the first responder: Esc belongs to it.
