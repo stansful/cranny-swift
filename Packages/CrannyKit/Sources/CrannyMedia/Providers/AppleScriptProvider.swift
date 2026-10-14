@@ -2,28 +2,29 @@
 // helper is unavailable (ARCHITECTURE.md §6.5, R2 §5.2). Metadata comes from the players' distributed
 // notifications (no permission); position, artwork and commands need Apple Events (Automation, per app).
 //
-// Rules: never launches a player (checks `runningApplications` first), never prompts by itself (scripts run
-// only for players whose Automation status is granted), 2-s Apple Event timeout, no network (Spotify's
-// artwork URL is not fetched: the update check is Cranny's only network access, §7.11). A denial (−1743) is
-// reported as `.permissionDenied`, and the service records it in `PermissionsCenter`. Scripts per notification:
+// Rules: never launches a player (checks `runningApplications` first, and every script re-checks), never prompts by
+// itself (scripts run only for players whose Automation was found granted, at most 30 s ago; see the session's
+// header), 2-s Apple Event timeout, no network
+// (Spotify's artwork URL is not fetched: the update check is Cranny's only network access, §7.11). A denial (−1743)
+// is reported as `.permissionDenied`, and the service records it in `PermissionsCenter`. Scripts per notification:
 // the position only when the payload lacks it (Music), the artwork only when the track changes.
-// Threading: everything runs on the main actor (NSAppleScript is main-thread only); the provider façade
-// hops there.
+// Threading: the session's state lives on the main actor; the scripts run off it, one at a time, on
+// `SerialAppleScriptRunner`'s queue (AppleScriptRunner.swift), and the session awaits them in order
+// (AppleScriptSession.swift). The provider façade is nonisolated and hops to the main actor.
 import AppKit
 import CrannyCore
 import Foundation
-import os
-
-private nonisolated let log = Log.logger(.media)
 
 nonisolated final class AppleScriptProvider: MediaProvider, @unchecked Sendable {   // immutable; state lives in `session`
     let kind = MediaProviderKind.appleScript
     let supportsCommands = true
     private let session: AppleScriptSession
 
-    /// `isPermitted(bundleID)` = Automation granted for that player (asked from Settings ▸ Media).
-    @MainActor init(isPermitted: @escaping @MainActor (String) -> Bool) {
-        session = AppleScriptSession(isPermitted: isPermitted)
+    /// `isPermitted(bundleID)` = Automation granted for that player (asked from Settings ▸ Media). `runner` executes
+    /// the scripts (the process-wide serial runner; tests pass a fake).
+    @MainActor init(isPermitted: @escaping @MainActor (String) -> Bool,
+                    runner: any AppleScriptRunning = SerialAppleScriptRunner.shared) {
+        session = AppleScriptSession(isPermitted: isPermitted, runner: runner)
     }
 
     func start() -> AsyncStream<ProviderEvent> {
@@ -35,8 +36,7 @@ nonisolated final class AppleScriptProvider: MediaProvider, @unchecked Sendable 
     }
 
     func send(_ command: MediaCommand) async -> Bool {
-        let session = session
-        return await MainActor.run { session.send(command) }
+        await session.send(command)
     }
 
     func refresh() {
@@ -64,6 +64,17 @@ nonisolated struct ScriptablePlayer: Sendable, Equatable {
     static let spotify = ScriptablePlayer(bundleID: "com.spotify.client", notification: "com.spotify.client.PlaybackStateChanged", durationKey: "Duration")
     static let all = [music, spotify]
 
+    /// The players installed on this Mac, in `all` order (Settings ▸ Permissions and onboarding list Automation only
+    /// for these). `isInstalled` is a Launch Services lookup in the app.
+    static func installed(_ isInstalled: (String) -> Bool = ScriptablePlayer.isInstalled) -> [ScriptablePlayer] {
+        all.filter { isInstalled($0.bundleID) }
+    }
+
+    /// Launch Services knows an app with this bundle identifier (wherever it is; nothing in it is read).
+    static func isInstalled(_ bundleID: String) -> Bool {
+        NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) != nil
+    }
+
     /// Spotify's payload carries the position; Music's does not (it needs a `player position` script).
     func reportsPosition(_ info: [String: String]) -> Bool { info["Playback Position"].flatMap(Double.init) != nil }
 
@@ -78,48 +89,11 @@ nonisolated struct ScriptablePlayer: Sendable, Equatable {
         np.isMusicApp = true
         return np
     }
-}
 
-@MainActor final class AppleScriptSession {
-    private let isPermitted: @MainActor (String) -> Bool
-    private var observers: [any NSObjectProtocol] = []
-    private var current: ScriptablePlayer?
-    /// The last snapshot sent, the base for `refresh()`.
-    private var lastSnapshot: NowPlaying?
-    /// The track whose artwork was fetched last (Music re-posts `playerInfo` on play, pause and seek).
-    private var lastArtworkKey: String?
-    /// Players already reported as denied (one event each).
-    private var reportedDenied: Set<String> = []
-    private var continuation: AsyncStream<ProviderEvent>.Continuation?
-
-    init(isPermitted: @escaping @MainActor (String) -> Bool) { self.isPermitted = isPermitted }
-
-    func start(_ continuation: AsyncStream<ProviderEvent>.Continuation) {
-        self.continuation = continuation
-        let center = DistributedNotificationCenter.default()
-        for player in ScriptablePlayer.all {
-            observers.append(center.addObserver(forName: Notification.Name(player.notification), object: nil, queue: .main) { [weak self] note in
-                // userInfo is not Sendable: copy the string values out before crossing into the actor.
-                let info = (note.userInfo ?? [:]).reduce(into: [String: String]()) { out, pair in
-                    if let key = pair.key as? String { out[key] = "\(pair.value)" }
-                }
-                MainActor.assumeIsolated { self?.handle(player, info) }    // queue: .main
-            })
-        }
-        continuation.yield(.nowPlaying(nil))
-    }
-
-    func stop() {
-        for observer in observers { DistributedNotificationCenter.default().removeObserver(observer) }
-        observers.removeAll()
-        continuation?.finish()
-        continuation = nil
-    }
-
-    func send(_ command: MediaCommand) -> Bool {
-        guard let player = current else { return false }
-        let music = player == .music
-        let verb: String = switch command {
+    /// What to tell the player for `command` (Music and Spotify name shuffle and repeat differently).
+    func script(for command: MediaCommand) -> String {
+        let music = self == .music
+        return switch command {
         case .play: "play"
         case .pause: "pause"
         case .togglePlayPause: "playpause"
@@ -131,66 +105,10 @@ nonisolated struct ScriptablePlayer: Sendable, Equatable {
         case .setShuffle(let m): music ? "set shuffle enabled to \(m != .off)" : "set shuffling to \(m != .off)"
         case .setRepeat(let m): music ? "set song repeat to \(m == .one ? "one" : m == .all ? "all" : "off")" : "set repeating to \(m != .off)"
         }
-        return run(verb, in: player) != nil
     }
 
-    /// After a command that no notification confirmed (`MediaService`): the player's state and position, asked
-    /// directly. Nothing is sent when the scripts cannot run; the service then shows the last snapshot again.
-    func refresh() {
-        guard let player = current, var np = lastSnapshot,
-              let state = run("player state as string", in: player)?.stringValue?.lowercased() else { return }
-        guard state != "stopped" else {
-            current = nil; lastSnapshot = nil
-            continuation?.yield(.nowPlaying(nil))
-            return
-        }
-        np.isPlaying = state == "playing"
-        np.rate = np.isPlaying ? 1 : 0
-        if let position = run("player position", in: player)?.doubleValue { np.elapsed = position }
-        np.timestamp = Date()
-        lastSnapshot = np
-        continuation?.yield(.nowPlaying(np))
-    }
-
-    private func handle(_ player: ScriptablePlayer, _ info: [String: String]) {
-        guard var np = player.nowPlaying(info, now: Date()) else {
-            if current == player { current = nil; lastSnapshot = nil; continuation?.yield(.nowPlaying(nil)) }
-            return
-        }
-        current = player
-        if !player.reportsPosition(info), let position = run("player position", in: player)?.doubleValue {
-            np.elapsed = position
-            np.timestamp = Date()
-        }
-        lastSnapshot = np
-        continuation?.yield(.nowPlaying(np))
-        guard player == .music, np.trackKey != lastArtworkKey else { return }
-        lastArtworkKey = np.trackKey                                     // once per track, even without artwork
-        if let art = run("get raw data of artwork 1 of current track", in: player),
-           art.descriptorType != typeUnicodeText, art.descriptorType != typeUTF8Text, !art.data.isEmpty {
-            continuation?.yield(.artwork(trackKey: np.trackKey, data: art.data))
-        }
-    }
-
-    static let notPermitted = -1743
-
-    /// NSAppleScript with a 2-s timeout; only for a running player whose Automation is granted.
-    private func run(_ body: String, in player: ScriptablePlayer) -> NSAppleEventDescriptor? {
-        guard isPermitted(player.bundleID),
-              !NSRunningApplication.runningApplications(withBundleIdentifier: player.bundleID).isEmpty else { return nil }
-        let source = "with timeout of 2 seconds\ntell application id \"\(player.bundleID)\" to \(body)\nend timeout"
-        var error: NSDictionary?
-        let result = NSAppleScript(source: source)?.executeAndReturnError(&error)
-        if let error {
-            let number = error[NSAppleScript.errorNumber] as? Int ?? 0
-            log.error("Apple Events to \(player.bundleID, privacy: .public) failed: \(number, privacy: .public)")
-            // −1743 (errAEEventNotPermitted): the user turned Automation off for this player. The service records
-            // it (Settings ▸ Media and Permissions show it), and no further script runs for that player.
-            if number == Self.notPermitted, reportedDenied.insert(player.bundleID).inserted {
-                continuation?.yield(.permissionDenied(bundleID: player.bundleID))
-            }
-            return nil
-        }
-        return result
-    }
+    /// Music's artwork of the current track (raw image data; `ScriptValue.binary`).
+    static let artworkScript = "get raw data of artwork 1 of current track"
+    static let positionScript = "player position"
+    static let stateScript = "player state as string"
 }

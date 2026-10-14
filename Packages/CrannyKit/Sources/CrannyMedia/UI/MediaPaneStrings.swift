@@ -37,8 +37,6 @@ enum MediaPaneStrings {
     }
     static var testDetection: String { String(localized: "Test Media Detection", bundle: .module,
                comment: "Settings ▸ Media: button") }
-    static var resetToDefault: String { String(localized: "Reset to Default", bundle: .module,
-               comment: "Settings ▸ Media: row context menu item") }
 
     // Status
     static var statusIdle: String { String(localized: "Not started", bundle: .module,
