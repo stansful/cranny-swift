@@ -123,3 +123,15 @@ struct LayoutEditor: Equatable {
 
     private func index(of page: PageID) -> Int? { pages.firstIndex { $0.id == page } }
 }
+
+/// Commits a change to the live layout (Layout & Widgets): writes the pages and returns true, or returns false when
+/// the change was refused (the pane shows and announces why, so callers announce only what was applied).
+struct LayoutCommit {
+    let perform: (_ change: (inout LayoutEditor) -> LayoutEditor.Refusal?) -> Bool
+
+    @discardableResult
+    func callAsFunction(_ change: (inout LayoutEditor) -> LayoutEditor.Refusal?) -> Bool { perform(change) }
+
+    /// Previews: refuses nothing and writes nothing.
+    static let preview = LayoutCommit { _ in true }
+}

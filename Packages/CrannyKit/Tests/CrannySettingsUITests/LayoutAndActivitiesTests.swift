@@ -17,6 +17,22 @@ private func editor(maxColumns: Int = 12) -> LayoutEditor {
 
 // MARK: - Layout & Widgets (DESIGN.md §6.3, §6.6)
 
+/// The grid editor's row (cards, gutters, "+" tile) never pokes out of the panel: not when the page has free cells,
+/// not when it is full, not when it is over after a Text size or Density change.
+@Test func gridEditorRowFitsItsPanel() {
+    let grid = NookGrid()
+    for width in [380.0, 520, 640] {
+        for (maxColumns, cards) in [(12, [5, 3, 2]), (12, [6, 4, 2]), (10, [6, 4, 2]), (12, []), (8, [8])] {
+            let used = cards.reduce(0, +)
+            let metrics = EditorMetrics(width: width, maxColumns: maxColumns, usedCells: used, grid: grid)
+            let row = metrics.rowWidth(cards: cards)
+            #expect(row <= width + 0.001, "row \(row) > \(width) for \(cards) of \(maxColumns)")
+            if used < maxColumns { #expect(abs(row - width) < 0.001) }      // free cells: the row is exactly the page
+            #expect(metrics.addTile >= (used < maxColumns ? metrics.cell : EditorMetrics.fullPageAddTile))
+        }
+    }
+}
+
 @Test func addingUsesThePreferredWidthOrSqueezesOrRefuses() {
     var e = editor()
     #expect(e.usedCells(on: .nook) == 10 && e.cellsLeft(on: .nook) == 2)
@@ -117,6 +133,29 @@ private let kinds = [kind(.nowPlaying, .ongoing), kind(.hud, .hud), kind(.timerR
     #expect(ActivityOrdering.shifting(.timerRunning, by: -1, in: groups) == [.meetingSoon, .flash, .timerRunning, .nowPlaying, .meetingNow])
     #expect(ActivityOrdering.shifting(.meetingNow, by: 1, in: groups) == [.meetingSoon, .flash, .nowPlaying, .timerRunning, .meetingNow])
     #expect(ActivityOrdering.shifting(.flash, by: 1, in: groups) == [.meetingSoon, .flash, .nowPlaying, .timerRunning, .meetingNow])
+}
+
+/// Dragging a row onto another takes its place, within one class only.
+@Test func droppingARowTakesTheTargetsPlace() {
+    let groups = ActivityOrdering.groups(kinds, order: [])                     // ongoing: nowPlaying, timerRunning, meetingNow
+    #expect(ActivityOrdering.dropping(.nowPlaying, on: .meetingNow, in: groups)
+            == [.meetingSoon, .flash, .timerRunning, .meetingNow, .nowPlaying])  // down: lands after the target
+    #expect(ActivityOrdering.dropping(.meetingNow, on: .nowPlaying, in: groups)
+            == [.meetingSoon, .flash, .meetingNow, .nowPlaying, .timerRunning])  // up: lands before it
+    #expect(ActivityOrdering.dropping(.flash, on: .nowPlaying, in: groups) == nil)       // another class
+    #expect(ActivityOrdering.dropping(.nowPlaying, on: .nowPlaying, in: groups) == nil)
+    #expect(ActivityOrdering.dropping("some dragged text", on: .nowPlaying, in: groups) == nil)
+}
+
+/// Move up / Move down (menu, ⌥↑ ⌥↓, VoiceOver) are offered only where they move something.
+@Test func shiftsAreOfferedOnlyWithinTheClass() {
+    let groups = ActivityOrdering.groups(kinds, order: [])
+    #expect(!ActivityOrdering.canShift(.nowPlaying, by: -1, in: groups))      // first of Ongoing: not into Alerts
+    #expect(ActivityOrdering.canShift(.nowPlaying, by: 1, in: groups))
+    #expect(ActivityOrdering.canShift(.meetingNow, by: -1, in: groups))
+    #expect(!ActivityOrdering.canShift(.meetingNow, by: 1, in: groups))
+    #expect(!ActivityOrdering.canShift(.flash, by: 1, in: groups))           // last of Alerts
+    #expect(!ActivityOrdering.canShift(.hud, by: 1, in: groups))             // not listed
 }
 
 @Test func preferencesStoreOnlyChangesFromTheDefaults() {

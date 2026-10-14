@@ -22,9 +22,9 @@ struct NookWidgetsPane: View {
         let page = editor.page(pageID) ?? NookPage(id: .nook, symbol: "square.grid.2x2.fill", items: [])
         SettingsForm(.nookAndWidgets) {
             Section {
-                PageStrip(editor: editor, selection: Binding(get: { pageID }, set: { selection = $0 }), apply: apply)
+                PageStrip(editor: editor, selection: Binding(get: { pageID }, set: { selection = $0 }), apply: commit)
                 VStack(alignment: .leading, spacing: 8) {
-                    GridEditor(page: page, editor: editor, registry: registry, theme: theme, apply: apply,
+                    GridEditor(page: page, editor: editor, registry: registry, theme: theme, apply: commit,
                                showOptions: { optionsWidget = $0 })
                     Text(verbatim: refusal.map(LayoutRows.message(for:))
                          ?? String(localized: "Drag to reorder, drag the right edge to resize. ⌥← ⌥→ move the selected widget, ⌥⇧← ⌥⇧→ resize it.",
@@ -41,7 +41,7 @@ struct NookWidgetsPane: View {
                 Text(verbatim: LayoutRows.layout.title)
             }
             Section {
-                WidgetLibraryList(registry: registry, page: page, editor: editor, apply: apply)
+                WidgetLibraryList(registry: registry, page: page, editor: editor, apply: commit)
             } header: {
                 Text(verbatim: LayoutRows.library.title)
             }
@@ -74,17 +74,20 @@ struct NookWidgetsPane: View {
 
     private var theme: CrannyTheme { stage?.model.theme ?? CrannyTheme() }
 
-    /// Runs `change` on a copy; writes the pages when it succeeds, shows the refusal otherwise.
-    private func apply(_ change: (inout LayoutEditor) -> LayoutEditor.Refusal?) {
+    private var commit: LayoutCommit { LayoutCommit(perform: apply) }
+
+    /// Runs `change` on a copy; writes the pages when it succeeds (true), shows and announces the refusal otherwise.
+    private func apply(_ change: (inout LayoutEditor) -> LayoutEditor.Refusal?) -> Bool {
         var editor = currentEditor
         if let refused = change(&editor) {
             refusal = refused
             registry.services.haptics.play(.alignment)
             AccessibilityNotification.Announcement(LayoutRows.message(for: refused)).post()
-            return
+            return false
         }
         refusal = nil
         if editor.pages != settings[CoreSettings.pages] { settings[CoreSettings.pages] = editor.pages }
+        return true
     }
 }
 

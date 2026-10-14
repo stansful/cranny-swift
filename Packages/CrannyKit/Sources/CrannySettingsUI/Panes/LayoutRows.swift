@@ -54,4 +54,9 @@ enum LayoutRows {
     static func cells(_ count: Int) -> String {
         String(localized: "\(count) cells", bundle: .module, comment: "Settings ▸ Layout & Widgets: a widget's width in grid cells (plural)")
     }
+
+    /// "Media, 4 cells": the VoiceOver announcement after a resize.
+    static func width(of title: String, cells count: Int) -> String {
+        SettingsFormat.pair(title, cells(count))
+    }
 }

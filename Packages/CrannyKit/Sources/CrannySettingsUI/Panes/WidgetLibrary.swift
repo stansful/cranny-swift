@@ -10,7 +10,7 @@ struct WidgetLibraryList: View {
     let registry: ModuleRegistry
     let page: NookPage
     let editor: LayoutEditor
-    let apply: (_ change: (inout LayoutEditor) -> LayoutEditor.Refusal?) -> Void
+    let apply: LayoutCommit
     /// Popover form: rows are buttons and options are not offered.
     var compact = false
 
@@ -37,7 +37,7 @@ private struct LibraryRow: View {
     let widget: AnyNookWidget
     let page: NookPage
     let editor: LayoutEditor
-    let apply: (_ change: (inout LayoutEditor) -> LayoutEditor.Refusal?) -> Void
+    let apply: LayoutCommit
     let compact: Bool
     @State private var showsOptions = false
 
@@ -51,7 +51,7 @@ private struct LibraryRow: View {
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 1) {
                 Text(verbatim: widget.title)
-                Text(verbatim: widget.summary + " · " + Self.widths(widget.sizes))
+                Text(verbatim: SettingsFormat.detailed(widget.summary, Self.widths(widget.sizes)))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
@@ -114,7 +114,7 @@ struct WidgetOptionsPopover: View {
     let page = NookPreset.listener.page
     Form {
         WidgetLibraryList(registry: registry, page: page,
-                          editor: LayoutEditor(pages: [page], maxColumns: 12, sizes: [:]), apply: { _ in })
+                          editor: LayoutEditor(pages: [page], maxColumns: 12, sizes: [:]), apply: .preview)
     }
     .formStyle(.grouped)
     .frame(width: 600, height: 200)

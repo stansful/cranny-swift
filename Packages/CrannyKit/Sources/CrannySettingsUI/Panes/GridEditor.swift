@@ -14,14 +14,15 @@ struct GridEditor: View {
     let registry: ModuleRegistry
     let theme: CrannyTheme
     /// Commits a changed layout, or reports why a change was refused.
-    let apply: (_ change: (inout LayoutEditor) -> LayoutEditor.Refusal?) -> Void
+    let apply: LayoutCommit
     let showOptions: (WidgetID) -> Void
     @State private var showsLibrary = false
 
     var body: some View {
         let grid = theme.grid
         GeometryReader { proxy in
-            let metrics = EditorMetrics(width: proxy.size.width, columns: editor.maxColumns, grid: grid)
+            let metrics = EditorMetrics(width: proxy.size.width, maxColumns: editor.maxColumns,
+                                        usedCells: editor.usedCells(on: page.id), grid: grid)
             HStack(spacing: metrics.gutter) {
                 ForEach(page.items, id: \.widget) { item in
                     EditorCard(info: KnownWidgets.info(item.widget, registry: registry),
@@ -29,7 +30,7 @@ struct GridEditor: View {
                                metrics: metrics, haptics: registry.services.haptics,
                                apply: apply, pageID: page.id, showOptions: showOptions)
                 }
-                AddTile(cellsLeft: editor.cellsLeft(on: page.id), metrics: metrics) { showsLibrary = true }
+                AddTile(cellsLeft: editor.cellsLeft(on: page.id), width: metrics.addTile, height: metrics.cardHeight) { showsLibrary = true }
                     .popover(isPresented: $showsLibrary, arrowEdge: .bottom) {
                         WidgetLibraryList(registry: registry, page: page, editor: editor, apply: apply, compact: true)
                             .frame(width: 320, height: 300)
@@ -48,23 +49,38 @@ struct GridEditor: View {
     }
 }
 
-/// Card geometry scaled so the page's maximum columns fill the editor's width.
+/// Card geometry scaled so the whole row fits the editor's width: the cards and, after one gutter, the "+" tile. On a
+/// page with free cells the tile takes them, so the row is exactly the page's maximum columns. On a full page (or one
+/// that is over after a Text size or Density change) the tile keeps a fixed width and the cards shrink to make room,
+/// so nothing pokes out of the panel.
 struct EditorMetrics {
     static let cardHeight: CGFloat = 76
     static let panelPadding: CGFloat = 12
+    /// The "+" tile when no cell is free.
+    static let fullPageAddTile: CGFloat = HitTarget.preferred
     let cell: CGFloat
     let gutter: CGFloat
+    /// Width of the "+" tile.
+    let addTile: CGFloat
 
-    init(width: CGFloat, columns: Int, grid: NookGrid) {
-        let columns = CGFloat(max(columns, 1))
-        let full = grid.width(cells: Int(columns))
-        let scale = full > 0 ? max(width, 1) / full : 1
+    init(width: CGFloat, maxColumns: Int, usedCells: Int, grid: NookGrid) {
+        let columns = max(maxColumns, usedCells, 1)
+        let cellsLeft = maxColumns - usedCells
+        let reserved = cellsLeft > 0 ? 0 : Self.fullPageAddTile
+        let full = grid.width(cells: columns) + (cellsLeft > 0 ? 0 : grid.gutter)
+        let scale = full > 0 ? max(width - reserved, 1) / full : 1
         cell = grid.cell * scale
         gutter = grid.gutter * scale
+        addTile = cellsLeft > 0 ? CGFloat(cellsLeft) * cell + CGFloat(cellsLeft - 1) * gutter : reserved
     }
 
     var cardHeight: CGFloat { Self.cardHeight }
     func width(cells: Int) -> CGFloat { CGFloat(cells) * cell + CGFloat(max(cells - 1, 0)) * gutter }
+
+    /// The laid-out row: cards of `cards` cells with a gutter after each, then the "+" tile.
+    func rowWidth(cards: [Int]) -> CGFloat {
+        cards.reduce(0) { $0 + width(cells: $1) + gutter } + addTile
+    }
 }
 
 /// One widget in edit mode.
@@ -74,7 +90,7 @@ private struct EditorCard: View {
     let cells: Int
     let metrics: EditorMetrics
     let haptics: Haptics
-    let apply: (_ change: (inout LayoutEditor) -> LayoutEditor.Refusal?) -> Void
+    let apply: LayoutCommit
     let pageID: PageID
     let showOptions: (WidgetID) -> Void
     @State private var dragCells: Int?
@@ -185,10 +201,12 @@ private struct EditorCard: View {
         apply { $0.shift(info.id, on: pageID, by: offset); return nil }
     }
 
+    /// One cell wider (+1) or narrower (−1). The new width is announced only when it was applied; a refusal is
+    /// announced by the pane ("1 cell over…").
     private func resize(by delta: Int) {
-        apply { $0.resize(info.id, on: pageID, to: cells + delta) }
-        let announcement = info.title + ", " + LayoutRows.cells(info.sizes.clamp(cells + delta))
-        AccessibilityNotification.Announcement(announcement).post()
+        let target = info.sizes.clamp(cells + delta)
+        guard apply({ $0.resize(info.id, on: pageID, to: target) }) else { return }
+        AccessibilityNotification.Announcement(LayoutRows.width(of: info.title, cells: target)).post()
     }
 
     private func remove() {
@@ -218,7 +236,8 @@ private struct ResizeCursor: ViewModifier {
 private struct AddTile: View {
     @Environment(\.cranny) private var theme
     let cellsLeft: Int
-    let metrics: EditorMetrics
+    let width: CGFloat
+    let height: CGFloat
     let action: () -> Void
 
     var body: some View {
@@ -232,7 +251,7 @@ private struct AddTile: View {
                 }
             }
             .foregroundStyle(theme.palette.secondaryLabel)
-            .frame(width: cellsLeft > 0 ? metrics.width(cells: cellsLeft) : HitTarget.preferred, height: metrics.cardHeight)
+            .frame(width: width, height: height)
             .background(RoundedRectangle(cornerRadius: Radius.tile, style: .continuous)
                 .strokeBorder(theme.palette.stroke, style: StrokeStyle(lineWidth: StrokeWidth.emphasis, dash: StrokeWidth.dash)))
             .contentShape(RoundedRectangle(cornerRadius: Radius.tile, style: .continuous))
@@ -246,7 +265,7 @@ private struct AddTile: View {
     let registry = ModuleRegistry(services: .preview())
     let page = NookPreset.listener.page
     GridEditor(page: page, editor: LayoutEditor(pages: [page], maxColumns: 12, sizes: [:]), registry: registry,
-               theme: CrannyTheme(), apply: { _ in }, showOptions: { _ in })
+               theme: CrannyTheme(), apply: .preview, showOptions: { _ in })
         .padding()
         .frame(width: 620)
 }

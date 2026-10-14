@@ -39,6 +39,19 @@ enum SettingsFormat {
         fraction.formatted(.percent.precision(.fractionLength(0)).locale(locale))
     }
 
+    /// "Media, 4 cells", "Peeks, Studio Display": a name and its detail as one VoiceOver label, through a localized
+    /// pattern rather than concatenation (ARCHITECTURE §8.7.5).
+    static func pair(_ name: String, _ detail: String) -> String {
+        String(localized: "\(name), \(detail)", bundle: .module,
+               comment: "Settings: a VoiceOver label made of a name and its detail (\"Media, 4 cells\", \"Peeks, Studio Display\")")
+    }
+
+    /// "Song, artist and controls · 4–6 cells": a description and a detail on one line (widget library).
+    static func detailed(_ text: String, _ detail: String) -> String {
+        String(localized: "\(text) · \(detail)", bundle: .module,
+               comment: "Settings ▸ Layout & Widgets: a widget's description and the widths it allows, on one line")
+    }
+
     /// A timeout where 0 means off: "Off" or "10 s".
     static func timeout(_ seconds: Double, locale: Locale = .autoupdatingCurrent) -> String {
         seconds <= 0 ? String(localized: "Off", bundle: .module, comment: "Settings: option that turns something off (a timeout, a display)")
