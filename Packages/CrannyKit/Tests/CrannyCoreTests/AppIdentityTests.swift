@@ -115,6 +115,22 @@ import Testing
     #expect(ProtectedLocations.normalized("/a/./b/../c//d") == "/a/c/d")
 }
 
+/// A QA run's isolated home (`CFFIXED_USER_HOME` moves `homeDirectoryForCurrentUser`) does not unguard the account's
+/// own folders: those are what macOS protects. String checks only; nothing in the real home is read.
+@Test func theAccountsOwnFoldersStayProtectedUnderAnIsolatedHome() throws {
+    let account = try #require(ProtectedLocations.accountHome)
+    #expect(account.hasPrefix("/") && account != "/")
+    let isolated = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true).appending(path: "qa-home-\(UUID())")
+    for folder in ["Desktop", "Documents", "Downloads", "Library/Containers/com.example.other"] {
+        #expect(!ProtectedLocations.isSafeToRead(URL(fileURLWithPath: account + "/" + folder + "/wall.jpg"),
+                                                 home: isolated, ownBundleID: nil), "\(folder)")
+        #expect(!ProtectedLocations.isSafeToRead(isolated.appending(path: folder + "/wall.jpg"), home: isolated,
+                                                 ownBundleID: nil), "\(folder)")
+    }
+    #expect(ProtectedLocations.isSafeToRead(URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app"),
+                                            home: isolated, ownBundleID: nil))
+}
+
 // MARK: - Helpers
 
 /// The bundle identifiers a lookup was asked for (from the lookups' isolation domain).

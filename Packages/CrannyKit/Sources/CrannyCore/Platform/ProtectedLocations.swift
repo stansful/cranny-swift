@@ -8,6 +8,10 @@
 // only after the path up to it has been found outside every protected place, and a link whose target lies inside one
 // is refused without touching the target. So a wallpaper reached through `~/Pictures/wall.jpg → ~/Downloads/wall.jpg`
 // is never read (tested). Paths are normalized as strings (".", ".."), never through APIs that consult the disk.
+//
+// The places are those of the caller's `home` AND of the account's own home from the user database: the one macOS
+// guards. `homeDirectoryForCurrentUser` follows `CFFIXED_USER_HOME`, which a QA run sets to an isolated folder, so the
+// default `home` alone would leave the real Desktop, Documents and Downloads unguarded in such a run.
 import Foundation
 
 /// Whether reading a file could raise a privacy prompt. Pure string work plus symbolic-link reads that cannot prompt.
@@ -15,17 +19,33 @@ public nonisolated enum ProtectedLocations {
     /// The most links followed before giving up (a loop, or a chain nobody needs).
     private static let maximumLinks = 16
 
-    /// True when reading `url` cannot raise a privacy prompt: a local file outside the protected places, also after
-    /// following its symbolic links. `ownBundleID`'s own container is not protected.
+    /// True when reading `url` cannot raise a privacy prompt: a local file outside the protected places of `home` and
+    /// of the account's own home (`accountHome`), also after following its symbolic links. `ownBundleID`'s own
+    /// container is not protected.
     public static func isSafeToRead(_ url: URL, home: URL = FileManager.default.homeDirectoryForCurrentUser,
                              ownBundleID: String? = Bundle.main.bundleIdentifier,
                              fileManager: FileManager = .default) -> Bool {
         guard url.isFileURL else { return false }
-        let homePath = normalized(home.path)
-        let protected = ProtectedSet(home: resolved(homePath, fileManager: fileManager) { _ in false } ?? homePath,
-                                     ownBundleID: ownBundleID)
-        return resolved(normalized(url.path), fileManager: fileManager, refusing: protected.contains) != nil
+        var homes = [normalized(home.path)]
+        if let account = accountHome.map(normalized), !homes.contains(account) { homes.append(account) }
+        let protected = homes.map { path in
+            ProtectedSet(home: resolved(path, fileManager: fileManager) { _ in false } ?? path, ownBundleID: ownBundleID)
+        }
+        return resolved(normalized(url.path), fileManager: fileManager,
+                        refusing: { path in protected.contains { $0.contains(path) } }) != nil
     }
+
+    /// The account's home folder from the user database (the one macOS protects), whatever `CFFIXED_USER_HOME` says.
+    static let accountHome: String? = {
+        var entry = passwd()
+        var result: UnsafeMutablePointer<passwd>?
+        var buffer = [CChar](repeating: 0, count: 16_384)
+        return buffer.withUnsafeMutableBufferPointer { storage -> String? in
+            guard getpwuid_r(getuid(), &entry, storage.baseAddress, storage.count, &result) == 0, result != nil,
+                  let directory = entry.pw_dir else { return nil }
+            return String(cString: directory)
+        }
+    }()
 
     /// `path` with its symbolic links followed one component at a time, or nil when `refusing` turns down the path
     /// or a link's target (before anything inside it is read), or after too many links.
