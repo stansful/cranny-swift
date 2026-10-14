@@ -132,7 +132,7 @@ public struct MarqueeText: View {
         Text(text).crannyFont(style).lineLimit(1).fixedSize()
             .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { textWidth = $0 }
             .offset(x: offset)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)   // min 0: the box takes the proposed width, so overflow > 0
             .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { boxWidth = $0 }
             .clipped()
             .help(text)
