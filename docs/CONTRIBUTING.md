@@ -117,7 +117,10 @@ Motion, Reduce Transparency, Increase Contrast and Differentiate Without Color t
 
 **Testing.** Swift Testing in `Tests/<Target>Tests`. Test pure logic exhaustively; test modules alone
 with `CrannyServices.preview()` and the public doubles (`PreviewNotchControl.calls`, `emit`). Tests that
-need hardware or prompts are opt-in (`CRANNY_INTEGRATION=1`) and never run in CI.
+need hardware or prompts are opt-in (`CRANNY_INTEGRATION=1`) and never run in CI. After touching the panel
+(`Overlay/`), run `CRANNY_INTEGRATION=1 swift test --scratch-path .build-test --filter panelOnScreen`: it
+shows a panel for a few seconds and re-checks R1's facts (layer 26, per-pixel pass-through, no activation)
+through window-server queries, without posting input.
 
 **Definition of done.** `scripts/check-modules.sh <YourTarget>` with zero warnings; your tests pass;
 `make strings-check` with Russian for every new key; `make build && make smoke`; previews, accessibility
