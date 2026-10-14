@@ -5,12 +5,17 @@ small panel that grows out of the hardware: what's playing, your next meeting, a
 you're moving, volume and brightness — glanceable when closed, a full set of widgets when you open it.
 Free and open source (MIT), no account, no analytics.
 
-> **Status: early development (v0.1.0, the foundation).** This build has the notch panel itself —
-> the closed cutout (or a small handle on displays without a notch), hover-to-open, the open panel with
-> its grid, the menu bar item and the Settings window skeleton. The features below arrive one by one;
-> see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §10 for the plan.
+> **Status: 0.1.0, the first complete build.** Every feature below is implemented and covered by about
+> 1,500 unit tests, and `make dist` produces a universal app. So far it has run only on macOS 27 with an
+> external display. **Not verified yet:** a MacBook with a notch (the cutout fit), macOS 14 and 15, Intel
+> Macs, real permission prompts and grants (Accessibility, Calendars, Camera, System Audio Recording,
+> Automation), controlling a real player, real keyboard and trackpad input (hover, the volume and brightness
+> keys, swipes), and energy use on a 120-Hz MacBook. The builds so far are ad-hoc signed and not notarized,
+> and the update check stays off until releases are published. The checklist for those runs is in
+> [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §11.2 and [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)
+> ("Manual checks").
 
-## Features (v1 plan)
+## Features
 
 - **Live activities in the notch** — now playing (with an honest visualizer), timers, meetings with a
   Join button, charging and low battery, AirPods and other Bluetooth accessories. Two at once: the
@@ -111,7 +116,7 @@ removes it.
 
 Bug reports and pull requests are welcome. Start with [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)
 (workflow, rules, how to build one module, visual QA), then [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-(code structure and contracts) and [docs/DESIGN.md](docs/DESIGN.md) (every pixel, colour and animation).
+(code structure and contracts) and [docs/DESIGN.md](docs/DESIGN.md) (every pixel, color and animation).
 
 ## Credits
 
