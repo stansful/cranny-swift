@@ -58,6 +58,20 @@ import Testing
                 == .browser(try #require(URL(string: "https://teams.microsoft.com/l/meetup-join/19%3ameeting_Y%40thread.v2/0"))))
     }
 
+    @Test func theZoomWebFallbackStaysOnZoom() throws {
+        // The detector refuses foreign hosts; the conversion pins the host on its own as well (defence in depth).
+        let crafted = MeetingLink(service: .zoom, url: try #require(URL(string: "zoommtg://zoom-login.evil.example/join?action=join&confno=8125550100&pwd=x")))
+        #expect(MeetingLinkDetector.classify(crafted.url) == nil)
+        #expect(JoinLauncher.plan(crafted, joinsInApp: true, hasApp: { _ in false })
+                == .browser(try #require(URL(string: "https://zoom.us/j/8125550100?pwd=x"))))
+        let gov = try link("zoommtg://acme.zoomgov.com/join?confno=7")
+        #expect(JoinLauncher.plan(gov, joinsInApp: false, hasApp: { _ in false })
+                == .browser(try #require(URL(string: "https://acme.zoomgov.com/j/7"))))
+        // A meeting number that is not a number cannot reshape the path.
+        let path = try link("zoommtg://zoom.us/join?confno=..%2F..%2Fsignin")
+        #expect(JoinLauncher.plan(path, joinsInApp: true, hasApp: { _ in false }) == .failed)
+    }
+
     @Test func failedOpenIsReported() throws {
         let opener = RecordingOpener()
         opener.opens = false

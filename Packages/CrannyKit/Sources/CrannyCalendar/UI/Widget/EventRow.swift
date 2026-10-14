@@ -2,6 +2,8 @@
 // 18-pt line: calendar capsule · title (`caption`) · start time (`caption`, mono, secondary). The live or next
 // event is featured on two lines — title, then "Now · 12m left" / "In 4m" in the event colour — with Join when it
 // has a link; while one is live, the meeting "Meeting soon" announces is featured as well. Today's ended events are tertiary and struck through (not dimmed alone, §16).
+// A featured row picks the first `FeaturedRowLayout` that fits, so Join keeps its word (§16) wherever a layout with
+// the word fits: beside both lines, else on the title line.
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -47,60 +49,141 @@ struct EventRow: View {
     }
 }
 
+/// How a featured row fits its trailing part — Join, or the start time when there is no link — beside its two
+/// lines. `FeaturedEventRow` offers them to `ViewThatFits` in this order, then `overflow` when none fits.
+enum FeaturedRowLayout: CaseIterable {
+    /// Join (glyph and word) or the start time beside both lines: the layout of DESIGN.md §7.2.
+    case roomy
+    /// Join or the start time on the title line (the title truncates first), so "Now · 12m left" gets the row's
+    /// full width: a 3-cell row in Russian.
+    case stacked
+    /// Last resort: Join keeps only its glyph (its VoiceOver label and tooltip still say "Join meeting") and the
+    /// start time goes; the second line matters more.
+    case compact
+
+    var showsJoinWord: Bool { self != .compact }
+
+    /// When even the second line is wider than the row, it is cut short whatever the layout: the stacked layout
+    /// cuts it least and keeps Join's word. (`ViewThatFits` shows its last child when none fits.)
+    static let overflow = FeaturedRowLayout.stacked
+
+    /// The title's ideal width, which decides whether the layout fits: a comfortable ten characters beside both
+    /// lines; on the title line it may shrink to about seven before Join gives up its word (the full title is in the
+    /// tooltip and VoiceOver).
+    var titleIdealWidth: CGFloat { self == .stacked ? 44 : 64 }
+}
+
 struct FeaturedEventRow: View {
-    @Environment(\.cranny) private var theme
     @State private var hovered = false
     let row: Agenda.Row
     let context: EventRowContext
 
     var body: some View {
         let event = row.event
-        let link = context.model.link(for: event)
-        // Prefer Join with its word (or the start time) beside a fully readable "Now · 12m left"; when the row is too
-        // narrow, Join keeps only its glyph and the start time goes (the second line matters more).
-        ViewThatFits(in: .horizontal) {
-            content(event: event, link: link, roomy: true)
-            content(event: event, link: link, roomy: false)
+        MinuteClock(anchor: row.role == .live ? event.end : event.start) { tick in
+            FeaturedRowChoice { layout($0, tick: tick) }
         }
         .rowChrome(hovered: hovered, isSelected: context.isSelected, isKeyboardFocused: context.isKeyboardFocused)
         .onHover { hovered = $0 }
         .eventAccessibility(row: row, context: context)
     }
 
-    private func content(event: EventSnapshot, link: MeetingLink?, roomy: Bool) -> some View {
-        let p = theme.palette
-        let live = row.role == .live
-        return HStack(spacing: Space.s) {
-            CalendarMark(color: event.color, height: 28)
-            VStack(alignment: .leading, spacing: 1) {
-                Text(CalendarFormat.title(event, redacted: context.redacted))
-                    .crannyFont(.caption).fontWeight(.semibold)
-                    .foregroundStyle(p.label)
-                    .lineLimit(1)
-                    .frame(minWidth: 0, idealWidth: 64, maxWidth: .infinity, alignment: .leading)
-                MinuteClock(anchor: live ? event.end : event.start) { tick in
-                    let now = context.model.displayNow(tick)
-                    let text = live ? CalendarFormat.nowWithTimeLeft(minutes: max(MinuteMath.minutesUntil(event.end, from: now), 1))
-                                    : CalendarFormat.startsIn(minutes: max(MinuteMath.minutesUntil(event.start, from: now), 1))
-                    Text(text)
-                        .crannyFont(.caption)
-                        .foregroundStyle(theme.eventColor(event.color))
-                        .lineLimit(1)
-                        .contentTransition(.numericText(countsDown: true))
-                        .animation(theme.animation(.contentSwap), value: text)
+    private func layout(_ layout: FeaturedRowLayout, tick: Date) -> FeaturedRowBody {
+        let event = row.event
+        let now = context.model.displayNow(tick)
+        let status = row.role == .live
+            ? CalendarFormat.nowWithTimeLeft(minutes: max(MinuteMath.minutesUntil(event.end, from: now), 1))
+            : CalendarFormat.startsIn(minutes: max(MinuteMath.minutesUntil(event.start, from: now), 1))
+        let model = context.model
+        var join: (@MainActor () -> Void)?
+        if model.link(for: event) != nil { join = { model.join(event) } }
+        return FeaturedRowBody(layout: layout, title: CalendarFormat.title(event, redacted: context.redacted), status: status,
+                               color: event.color, start: CalendarFormat.time(event.start), join: join)
+    }
+}
+
+/// The first `FeaturedRowLayout` that fits, else `overflow`. (`ViewThatFits` needs distinct children: positional
+/// ones, not a `ForEach` that repeats an id.)
+struct FeaturedRowChoice<Row: View>: View {
+    let row: (FeaturedRowLayout) -> Row
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {                                       // `FeaturedRowLayout.allCases`, then `overflow`
+            row(.roomy)
+            row(.stacked)
+            row(.compact)
+            row(FeaturedRowLayout.overflow)
+        }
+    }
+}
+
+/// One `FeaturedRowLayout` of a featured row, from its words alone (tests measure it in English and Russian).
+struct FeaturedRowBody: View {
+    @Environment(\.cranny) private var theme
+    let layout: FeaturedRowLayout
+    let title: String
+    /// "Now · 12m left" / "In 4m".
+    let status: String
+    let color: RGB
+    /// The start time, shown instead of Join when the event has no link (not in the compact layout).
+    let start: String
+    let join: (@MainActor () -> Void)?
+
+    var body: some View {
+        HStack(spacing: Space.s) {
+            CalendarMark(color: color, height: 28)
+            switch layout {
+            case .roomy:
+                VStack(alignment: .leading, spacing: 1) {
+                    titleText
+                    statusText
                 }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            if link != nil {
-                JoinButton(size: .row(word: roomy)) { context.model.join(event) }
-            } else if roomy {
-                Text(CalendarFormat.time(event.start))
-                    .crannyFont(.caption)
-                    .foregroundStyle(p.secondaryLabel)
-                    .fixedSize()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if let join { JoinButton(size: .row(word: true), action: join) } else { startText }
+            case .stacked:
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(spacing: Space.s) {
+                        titleText
+                        if let join { JoinButton(size: .titleLine, action: join) } else { startText }
+                    }
+                    .frame(height: JoinButton.titleLineHeight)
+                    statusText
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            case .compact:
+                VStack(alignment: .leading, spacing: 1) {
+                    titleText
+                    statusText
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if let join { JoinButton(size: .row(word: false), action: join) }
             }
         }
         .frame(height: AgendaScroll.featuredHeight)
+    }
+
+    private var titleText: some View {
+        Text(title)
+            .crannyFont(.caption).fontWeight(.semibold)
+            .foregroundStyle(theme.palette.label)
+            .lineLimit(1)
+            .frame(minWidth: 0, idealWidth: layout.titleIdealWidth, maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var statusText: some View {
+        Text(status)
+            .crannyFont(.caption)
+            .foregroundStyle(theme.eventColor(color))
+            .lineLimit(1)
+            .contentTransition(.numericText(countsDown: true))
+            .animation(theme.animation(.contentSwap), value: status)
+    }
+
+    private var startText: some View {
+        Text(start)
+            .crannyFont(.caption)
+            .foregroundStyle(theme.palette.secondaryLabel)
+            .fixedSize()
     }
 }
 

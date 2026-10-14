@@ -125,13 +125,17 @@ nonisolated enum NativeJoinURL {
         return c.url
     }
 
-    /// `zoommtg://zoom.us/join?confno=123&pwd=abc` → `https://zoom.us/j/123?pwd=abc`.
+    /// `zoommtg://zoom.us/join?confno=123&pwd=abc` → `https://zoom.us/j/123?pwd=abc`. The web host is always Zoom's:
+    /// the link's own host only when it is a Zoom host (the detector already insists on that), else zoom.us; and the
+    /// meeting number must be a number, so it cannot reshape the path.
     private static func zoomWeb(_ url: URL) -> URL? {
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
-        guard let confno = items.first(where: { $0.name == "confno" })?.value, !confno.isEmpty else { return nil }
+        guard let confno = items.first(where: { $0.name == "confno" })?.value, !confno.isEmpty,
+              confno.allSatisfy({ $0.isASCII && $0.isNumber }) else { return nil }
+        let host = url.host?.lowercased() ?? ""
         var c = URLComponents()
         c.scheme = "https"
-        c.host = url.host ?? "zoom.us"
+        c.host = MeetingLinkDetector.isZoomHost(host) ? host : "zoom.us"
         c.path = "/j/" + confno
         if let pwd = items.first(where: { $0.name == "pwd" })?.value { c.queryItems = [URLQueryItem(name: "pwd", value: pwd)] }
         return c.url
