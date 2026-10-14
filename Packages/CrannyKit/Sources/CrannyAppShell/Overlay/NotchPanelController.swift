@@ -246,14 +246,16 @@ import SwiftUI
 
     /// What the appearance reads of the display, measured once per display change rather than with every appearance:
     /// the appearance observer runs again with each change of the primary activity (every HUD), and the display has
-    /// not changed then. Measured again whenever the frame or the visible frame's top differs (a reconfiguration not
-    /// handled yet, the menu bar starting or stopping to auto-hide), and never kept for a display whose metrics come
-    /// from the window list (an auto-hidden menu bar's height depends on whether it shows at that moment).
+    /// not changed then. Measured again (metrics and model) whenever the frame, the visible frame's top or the backing
+    /// scale differs (a reconfiguration not handled yet, the menu bar starting or stopping to auto-hide), and never
+    /// kept for a display whose metrics come from the window list (an auto-hidden menu bar's height depends on whether
+    /// it shows at that moment).
     private struct DisplayMeasure {
         var metrics: NotchMetrics
         var model: String?
         var frame: CGRect
         var visibleTop: CGFloat
+        var scale: CGFloat
         var readsWindowList: Bool
 
         init(_ screen: NSScreen) {
@@ -261,23 +263,26 @@ import SwiftUI
             model = ThemeResolver.displayModelKey(screen)
             frame = screen.frame
             visibleTop = screen.visibleFrame.maxY
+            scale = screen.backingScaleFactor
             readsWindowList = DisplayCatalog.menuBarAutoHides(on: screen, hasNotch: metrics.hasNotch)
         }
 
-        /// `DisplayCatalog.metrics(for: screen)`, from the measurement while it still holds.
-        func metrics(for screen: NSScreen) -> NotchMetrics {
-            guard !readsWindowList, screen.frame == frame, screen.visibleFrame.maxY == visibleTop else {
-                return DisplayCatalog.metrics(for: screen)
+        /// `DisplayCatalog.metrics(for: screen)` and `ThemeResolver.displayModelKey(screen)`, from the measurement
+        /// while it still holds.
+        func current(_ screen: NSScreen) -> (metrics: NotchMetrics, model: String?) {
+            guard !readsWindowList, screen.frame == frame, screen.visibleFrame.maxY == visibleTop,
+                  screen.backingScaleFactor == scale else {
+                return (DisplayCatalog.metrics(for: screen), ThemeResolver.displayModelKey(screen))
             }
-            return metrics
+            return (metrics, model)
         }
     }
 
     private static func appearance(screen: NSScreen, display: DisplayMeasure, style: NoNotchStyle, registry: ModuleRegistry,
                                    primary: ActivityID?) -> Appearance {
         let settings = registry.services.settings
-        let metrics = display.metrics(for: screen)
-        let layout = ThemeResolver.layout(metrics: metrics, displayModel: display.model, style: style,
+        let (metrics, model) = display.current(screen)
+        let layout = ThemeResolver.layout(metrics: metrics, displayModel: model, style: style,
                                           settings: settings, textSize: settings[CoreSettings.textSize],
                                           density: settings[CoreSettings.density], widgetStyle: settings[CoreSettings.widgetStyle])
         let systemAccent = AccentResolver.systemAccent()

@@ -72,6 +72,22 @@ private let pdfDrag = DragDetector.Contents(hasFiles: true, types: [.pdf])
     #expect(detector.update(.dragged, nearPanel: true) == nil)                  // the next drag wrote nothing
 }
 
+/// A drop on our own panel that the detector never inspected (the drop router alone saw it, over the panel) settles
+/// the baseline at once: a next drag that begins before any up or move and writes nothing is no file drag.
+@Test func aDropOnThePanelSettlesTheBaseline() {
+    let drag = TestDragPasteboard()
+    defer { drag.release() }
+    let detector = DragDetector(pasteboard: drag.pasteboard)
+    drag.write("/tmp/dropped.pdf")
+    #expect(detector.update(.dragged, nearPanel: false) == nil)                 // never within a drag zone
+    detector.reset()                                                            // dropped; no up or move follows
+    #expect(detector.awaitsInspection)
+    #expect(detector.update(.dragged, nearPanel: true) == nil)                  // the next drag wrote nothing
+    drag.write("/tmp/report.pdf")
+    #expect(detector.update(.dragged, nearPanel: true) == .some(pdfDrag))       // a write of its own is caught
+    #expect(!detector.awaitsInspection)                                         // once per mouse-down
+}
+
 /// Drags made while the pointer was paused: their presses settle the baseline (every earlier drag is over), so a
 /// drag still in progress when the pointer resumes is judged by its own write, and with every button up the
 /// baseline takes everything written meanwhile.

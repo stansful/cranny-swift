@@ -59,12 +59,18 @@ import UniformTypeIdentifiers
         }
     }
 
-    /// The drag ended through our own drop destination (the global up event may follow, or not). The next up or
-    /// move still settles the baseline.
+    /// The drag ended through our own drop destination (the global up event may follow, or not). What it wrote joins
+    /// the baseline now, inspected or not (a drag `DropRouter` alone saw over the panel), so a next drag that begins
+    /// before any up or move is judged by its own write.
     func reset() {
         current = nil
         inspected = false
+        sawDrag = false
+        lastChangeCount = pasteboard.changeCount
     }
+
+    /// The current drag (if any) has not been inspected yet: only then does `update` need `nearPanel`.
+    var awaitsInspection: Bool { !inspected }
 
     // MARK: Paused pointer (OverlayCoordinator+Pointer)
 

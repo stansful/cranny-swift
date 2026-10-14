@@ -2,8 +2,9 @@
 // Global AND local NSEvent monitors (global monitors miss our own windows); mouse events need no permission.
 // The handler is O(displays) and allocation-free. Speed feeds HoverIntent's pass-through rule; the event kind
 // lets `DragDetector` see other apps' file drags (R1 §5.1). While the pointer cannot change anything (one display,
-// and it shows no panel or its panel is hidden behind lock, sleep or "Hide everything"), the coordinator pauses it:
-// no move or drag reaches the app then (a game's 1000 Hz mouse included), only mouse-downs (`pause(onPress:)`).
+// and it shows no panel or its panel is hidden by lock, sleep or In full-screen apps ▸ Hide), the coordinator
+// pauses it: no move or drag reaches the app then (a game's 1000 Hz mouse included), only mouse-downs
+// (`pause(onPress:)`).
 import AppKit
 import Foundation
 

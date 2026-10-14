@@ -3,11 +3,12 @@
 // drag pasteboard only while the pointer is within some panel's drag zone) and each panel's hover.
 //
 // While the pointer can change nothing, its events pause: one display, and it shows no panel or its panel is
-// hard-hidden (lock, display sleep, "Hide everything" behind a full-screen or excluded app), so there are no hover or
-// drag zones and the pointer's display cannot change. The pause starts after a plain move was handled (the panels
-// have seen the pointer leave; no drag is in progress) and ends with the display facts that let the pointer matter
-// again (`applyDisplayFacts`). Then the panels learn where the pointer is at its next event, exactly as without the
-// pause. Mouse-downs still arrive while paused, so the drag detector's baseline stays what it would have been.
+// hard-hidden (lock, display sleep, In full-screen apps ▸ Hide with a full-screen or excluded app in front), so there
+// are no hover or drag zones and the pointer's display cannot change. The pause starts after a plain move was handled
+// (the panels have seen the pointer leave; no drag is in progress) and ends with the display facts that let the
+// pointer matter again (`applyDisplayFacts`). Then the panels learn where the pointer is at its next event, exactly
+// as without the pause. Mouse-downs still arrive while paused, so the drag detector's baseline stays what it would
+// have been.
 import AppKit
 import CrannyCore
 import Foundation
@@ -18,8 +19,10 @@ private let log = Log.logger(.overlay)
 extension OverlayCoordinator {
     func pointerEvent(_ point: CGPoint, kind: PointerMonitor.Kind) {
         updatePointerDisplay(point)
-        // A file drag acts only within a drag zone; elsewhere the detector leaves the drag pasteboard alone.
-        let nearPanel = kind == .dragged && controllers.values.contains { $0.hoverZones?.dragZone.contains(point) == true }
+        // A file drag acts only within a drag zone; elsewhere the detector leaves the drag pasteboard alone. Asked only
+        // while the drag waits for its inspection (once per mouse-down).
+        let nearPanel = kind == .dragged && drags.awaitsInspection
+            && controllers.values.contains { $0.hoverZones?.dragZone.contains(point) == true }
         if let change = drags.update(kind, nearPanel: nearPanel), change == nil {
             for controller in controllers.values { controller.dragEnded() }
         }
