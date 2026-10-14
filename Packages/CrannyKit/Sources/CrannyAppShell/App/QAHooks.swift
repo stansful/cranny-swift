@@ -9,6 +9,7 @@
 //   --qa-menu main|pause|showOn           open the menu bar extra's menu (or one of its submenus) after 1.5 s
 //   --qa-demo on|off                      turn Demo mode on or off after 1 s, so the icon badge changes live
 //   --qa-update-check                     run "Check for Updates…" as the menu does (Settings ▸ About opens)
+//   --qa-open-cranny <seconds>            run the menu's "Open Cranny" then (it opens, never closes)
 //   --qa-snapshot <dir> [--qa-snapshot-at 1,3.5]   render every window of the app (menus, Settings, the status
 //                                         item) in-process into <dir> at those seconds; works while displays sleep
 //

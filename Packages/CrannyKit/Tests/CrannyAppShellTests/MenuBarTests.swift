@@ -183,6 +183,7 @@ private func policy(_ selection: DisplaySelection, _ perDisplay: [DisplayKey: Di
     #expect(o.menu == .showOn && o.demo == true && o.updateCheck && !o.isEmpty)
     #expect(o.snapshotDirectory == "/tmp/shots" && o.snapshotTimes == [1, 3.5])
     #expect(MenuBarQA.Options(arguments: ["Cranny", "--qa-demo", "off"]).demo == false)
+    #expect(MenuBarQA.Options(arguments: ["Cranny", "--qa-open-cranny", "2.5"]).openCranny == 2.5)
     #expect(MenuBarQA.Options(arguments: ["Cranny", "--qa-menu", "sideways", "--qa-demo", "maybe"]).isEmpty)
     #expect(MenuBarQA.Options(arguments: ["Cranny", "--qa-state", "open"]).isEmpty)                // the shell's own flags
 }

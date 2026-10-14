@@ -22,12 +22,14 @@ private let log = Log.logger(.app)
         var menu: Target?
         var demo: Bool?
         var updateCheck = false
+        /// Seconds after launch at which the menu's "Open Cranny" action runs.
+        var openCranny: Double?
         var snapshotDirectory: String?
         var snapshotTimes: [Double] = [3]
 
-        init(menu: Target? = nil, demo: Bool? = nil, updateCheck: Bool = false, snapshotDirectory: String? = nil,
-             snapshotTimes: [Double] = [3]) {
-            self.menu = menu; self.demo = demo; self.updateCheck = updateCheck
+        init(menu: Target? = nil, demo: Bool? = nil, updateCheck: Bool = false, openCranny: Double? = nil,
+             snapshotDirectory: String? = nil, snapshotTimes: [Double] = [3]) {
+            self.menu = menu; self.demo = demo; self.updateCheck = updateCheck; self.openCranny = openCranny
             self.snapshotDirectory = snapshotDirectory; self.snapshotTimes = snapshotTimes
         }
 
@@ -39,11 +41,12 @@ private let log = Log.logger(.app)
             self.init(menu: value("--qa-menu").flatMap(Target.init(rawValue:)),
                       demo: value("--qa-demo").flatMap { ["on": true, "off": false][$0] },
                       updateCheck: arguments.contains("--qa-update-check"),
+                      openCranny: value("--qa-open-cranny").flatMap(Double.init),
                       snapshotDirectory: value("--qa-snapshot"),
                       snapshotTimes: value("--qa-snapshot-at").map { $0.split(separator: ",").compactMap { Double($0) } } ?? [3])
         }
 
-        var isEmpty: Bool { menu == nil && demo == nil && !updateCheck && snapshotDirectory == nil }
+        var isEmpty: Bool { menu == nil && demo == nil && !updateCheck && openCranny == nil && snapshotDirectory == nil }
     }
 
     static func apply(_ options: Options, to appControl: any AppControl) {
@@ -64,6 +67,14 @@ private let log = Log.logger(.app)
             Task {
                 try? await Task.sleep(for: .seconds(1))
                 appControl.checkForUpdatesFromMenu()                // Settings ▸ About opens and shows the result
+            }
+        }
+        if let seconds = options.openCranny {
+            Task {
+                try? await Task.sleep(for: .seconds(seconds))
+                let before = appControl.isPanelOpen
+                appControl.openPanel()                              // what the menu item does
+                trace("open cranny: panel open before \(before), request \(appControl.openRequest)")
             }
         }
         if let menu = options.menu {
