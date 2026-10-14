@@ -26,14 +26,15 @@ struct TrayTile: View {
         let job = store.job(for: item.id)
         let missing = store.isLoaded && store.url(item.id) == nil
         let failure = store.failures[item.id] ?? (missing ? TrayError.fileMissing.errorDescription : nil)
+        let layout = TrayTileLayout(theme: theme)
         ZStack(alignment: .top) {
             if isInteractive && !renderStatically { FileDragSource(handlers: handlers) }
-            visuals(selected: selected, job: job, failure: failure, missing: missing)
+            visuals(selected: selected, job: job, failure: failure, missing: missing, layout: layout)
                 .allowsHitTesting(false)
             controls(job: job)
         }
-        .frame(width: showsCaption ? TrayMetrics.tileWidth : TrayMetrics.thumbnail,
-               height: showsCaption ? TrayMetrics.tileHeight : TrayMetrics.thumbnail)
+        .frame(width: showsCaption ? layout.width : TrayMetrics.thumbnail,
+               height: showsCaption ? layout.height : TrayMetrics.thumbnail)
         .help(failure ?? item.name)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(verbatim: item.name))
@@ -45,11 +46,11 @@ struct TrayTile: View {
 
     // MARK: Visuals
 
-    private func visuals(selected: Bool, job: TrayJob?, failure: String?, missing: Bool) -> some View {
+    private func visuals(selected: Bool, job: TrayJob?, failure: String?, missing: Bool, layout: TrayTileLayout) -> some View {
         let p = theme.palette
         let radius = theme.grid.innerRadius
         let well = RoundedRectangle(cornerRadius: radius, style: .continuous)
-        return VStack(spacing: Space.xs) {
+        return VStack(spacing: 0) {
             TrayThumbnailView(url: store.url(item.id), type: item.contentType, cache: store.thumbnails)
                 .opacity(job != nil ? 0.5 : missing ? 0.4 : 1)
                 .overlay { if let job { TrayProgressRing(progress: job.progress) } }
@@ -63,7 +64,7 @@ struct TrayTile: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .foregroundStyle(selected ? p.label : p.secondaryLabel)
-                    .frame(width: TrayMetrics.tileWidth - Space.xs)
+                    .frame(width: layout.width - Space.xs, height: layout.captionHeight)
             }
         }
         .padding(.top, showsCaption ? Space.xs : 0)

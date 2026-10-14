@@ -61,7 +61,7 @@ struct TrayFilesCard: View {
                                 message: String(localized: "Drop files on the notch to keep them here", bundle: .module,
                                                 comment: "Tray page: empty state"))
             } else {
-                VStack(alignment: .leading, spacing: Space.m) {
+                VStack(alignment: .leading, spacing: TrayTileLayout(theme: theme).rowSpacing) {
                     TrayTileRow(store: store, isInteractive: isInteractive)
                     PipelineChips(store: store)
                         .allowsHitTesting(isInteractive)

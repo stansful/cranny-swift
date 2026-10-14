@@ -66,6 +66,29 @@ import Testing
     #expect(TrayError.keeping(name, failedWith: CocoaError(.fileWriteOutOfSpace)) == .cannotKeep(name))
 }
 
+@Test func tilesGrowWithTextSizeAndNeverClip() {
+    let standard = TrayTileLayout(textSize: .standard, grid: NookGrid())
+    #expect(standard.width == 64 && standard.height == 66)                // DESIGN.md §8.1 at Standard
+    for density in NookDensity.allCases {
+        var previous: TrayTileLayout?
+        for textSize in CrannyTextSize.allCases {
+            let grid = NookGrid(density: density, textSize: textSize)
+            let layout = TrayTileLayout(textSize: textSize, grid: grid)
+            let label = "\(density) \(textSize)"
+            // The caption's line box sits inside the well with room to spare below it for the 1.5-pt selection ring.
+            let caption = CrannyTextStyle.caption.pointSize(textSize: textSize, notchUnit: 1)
+            #expect(layout.captionHeight >= caption * 1.2, "\(label)")
+            #expect(layout.height - Space.xs - TrayMetrics.thumbnail - layout.captionHeight >= StrokeWidth.emphasis + 2, "\(label)")
+            // Tile row, gap and chips fit the page card.
+            let content = grid.height - 2 * density.cardPadding
+            #expect(layout.height + layout.rowSpacing + TrayTileLayout.chipRowHeight(textSize: textSize) <= content, "\(label)")
+            if let previous { #expect(layout.height >= previous.height && layout.width >= previous.width, "\(label)") }
+            previous = layout
+        }
+    }
+    #expect(TrayTileLayout(textSize: .extraLarge, grid: NookGrid(textSize: .extraLarge)).width > 64)
+}
+
 @Test func quickLookOpensCentredOnThePointersScreen() {
     let frame = QuickLookPresenter.frame(for: NSEvent.mouseLocation)
     #expect((480...1101).contains(frame.width))           // `.integral` may add a point

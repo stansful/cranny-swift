@@ -39,7 +39,7 @@ struct TrayTileRow: View {
                 .animation(theme.animation(.listReorder), value: store.order)
                 .animation(theme.animation(.listReorder), value: store.jobs.map(\.id))
             }
-            .frame(height: TrayMetrics.tileHeight)
+            .frame(height: TrayTileLayout(theme: theme).height)
             .onChange(of: store.selection.cursor) { _, cursor in
                 guard let cursor else { return }
                 withAnimation(theme.animation(.listReorder)) { proxy.scrollTo(cursor) }
@@ -90,7 +90,8 @@ struct TrayJobTile: View {
 
     var body: some View {
         let p = theme.palette
-        VStack(spacing: Space.xs) {
+        let layout = TrayTileLayout(theme: theme)
+        VStack(spacing: 0) {
             ZStack {
                 RoundedRectangle(cornerRadius: theme.grid.innerRadius, style: .continuous).fill(p.control)
                 if job.failure == nil {
@@ -108,10 +109,10 @@ struct TrayJobTile: View {
                 .lineLimit(1)
                 .truncationMode(.middle)
                 .foregroundStyle(p.secondaryLabel)
-                .frame(width: TrayMetrics.tileWidth - Space.xs)
+                .frame(width: layout.width - Space.xs, height: layout.captionHeight)
         }
         .padding(.top, Space.xs)
-        .frame(width: TrayMetrics.tileWidth, height: TrayMetrics.tileHeight, alignment: .top)
+        .frame(width: layout.width, height: layout.height, alignment: .top)
         .overlay(alignment: .topLeading) {
             if hovered {
                 TrayRoundButton(symbol: "xmark", label: job.failure == nil

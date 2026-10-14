@@ -49,7 +49,7 @@ struct PipelineChips: View {
                 TrayScrollRow { HStack(spacing: Space.s) { chips } }
             }
         }
-        .frame(height: TrayMetrics.chipHeight)
+        .frame(height: TrayTileLayout.chipRowHeight(textSize: theme.textSize))
         .animation(theme.animation(.contentSwap), value: store.undoOffer)
     }
 

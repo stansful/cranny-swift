@@ -48,9 +48,10 @@ struct TrayThumbnailView: View {
     }
 }
 
-/// Fixed sizes of the Tray's pieces (DESIGN.md §8.1). Everything else comes from the theme.
-enum TrayMetrics {
-    /// Tile: 64 × 66 (44-pt thumbnail + caption).
+/// Fixed sizes of the Tray's pieces (DESIGN.md §8.1). Everything else comes from the theme; the captioned tile grows
+/// with Cranny's Text size (`TrayTileLayout`).
+nonisolated enum TrayMetrics {
+    /// Tile at Standard text size: 64 × 66 (44-pt thumbnail + caption).
     static let tileWidth: CGFloat = 64
     static let tileHeight: CGFloat = 66
     static let thumbnail: CGFloat = 44
@@ -64,6 +65,38 @@ enum TrayMetrics {
     static let newDot: CGFloat = 6
     /// Horizontal fade at the ends of scrolling rows.
     static let fade: CGFloat = 12
+}
+
+/// A captioned tile's size at a Text size (DESIGN.md §8.1 64 × 66 at Standard; §16: larger text grows the tile, so the
+/// caption never reaches the 1.5-pt selection ring). Inside the well: `Space.xs`, the 44-pt thumbnail, one caption line
+/// (its own line height, which holds the space above the letters), `Space.xs`.
+nonisolated struct TrayTileLayout: Equatable, Sendable {
+    let width: CGFloat
+    let height: CGFloat
+    /// The caption's line box (11-pt `caption` at Standard: 14 pt).
+    let captionHeight: CGFloat
+    /// Gap between the tile row and the chip row of the Tray page.
+    let rowSpacing: CGFloat
+
+    init(textSize: CrannyTextSize, grid: NookGrid) {
+        let style = CrannyTextStyle.caption
+        let points = style.pointSize(textSize: textSize, notchUnit: 1)
+        captionHeight = (style.spec.lineHeight * points / style.spec.size).rounded(.up)
+        height = Space.xs + TrayMetrics.thumbnail + captionHeight + Space.xs
+        width = (TrayMetrics.tileWidth * max(textSize.scale, 1)).rounded()
+        // The page card holds the tile row, this gap and the chip row; dense grids shrink the gap, never the tiles.
+        let content = grid.height - 2 * grid.density.cardPadding
+        rowSpacing = max(min(Space.m, content - height - Self.chipRowHeight(textSize: textSize)), 0)
+    }
+
+    init(theme: CrannyTheme) { self.init(textSize: theme.textSize, grid: theme.grid) }
+
+    /// The chip row: 22-pt capsules, taller only if the chip text (caption semibold) outgrows them.
+    static func chipRowHeight(textSize: CrannyTextSize) -> CGFloat {
+        let style = CrannyTextStyle.caption
+        let points = style.pointSize(textSize: textSize, notchUnit: 1)
+        return max(TrayMetrics.chipHeight, (style.spec.lineHeight * points / style.spec.size).rounded(.up))
+    }
 }
 
 #Preview("Thumbnails") {

@@ -76,7 +76,7 @@ struct FilesShelfView: View {
 
     /// One row of captioned tiles and a footer.
     private func captioned(interactive: Bool) -> some View {
-        let columns = max(Int((context.contentSize.width + Space.m) / (TrayMetrics.tileWidth + Space.m)), 1)
+        let columns = max(Int((context.contentSize.width + Space.m) / (TrayTileLayout(theme: theme).width + Space.m)), 1)
         return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: Space.m) {
                 ForEach(store.items.prefix(min(Self.recentCount, columns))) { item in
@@ -93,7 +93,7 @@ struct FilesShelfView: View {
                 Spacer(minLength: Space.m)
                 ChipButton(title: openTrayTitle, symbol: "tray.full.fill", action: openTray)
             }
-            .frame(height: TrayMetrics.chipHeight)
+            .frame(height: TrayTileLayout.chipRowHeight(textSize: theme.textSize))
         }
     }
 
