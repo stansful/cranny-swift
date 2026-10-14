@@ -26,8 +26,8 @@ private nonisolated let log = Log.logger(.media)
     private var isStarting = false
     /// Counts starts and stops: the queue's answer to a start that was stopped meanwhile is ignored.
     private var generation = 0
-    /// Told when the tap queue reports that the tap could not start (the source is stopped then).
-    private var onFailure: (@MainActor (SystemAudioTapError) -> Void)?
+    /// Told when the tap queue reports whether the tap started (after a failure the source is stopped).
+    private var onStart: (@MainActor (Result<Void, SystemAudioTapError>) -> Void)?
     /// Seconds per frame; read by the loop before every frame.
     private(set) var interval: Double = 1.0 / 30
     private let onFrame: @MainActor (LiveFrame) -> Void
@@ -42,11 +42,12 @@ private nonisolated let log = Log.logger(.media)
     }
 
     /// Starts the tap (prompting the first time) on the tap queue, then the analysis loop at `interval` seconds per
-    /// frame. A tap that cannot start is reported to `onFailure` on the main actor. Already running: retunes.
-    func start(interval: Double, onFailure: @escaping @MainActor (SystemAudioTapError) -> Void) {
+    /// frame. Whether the tap started is reported to `onStart` on the main actor (not for a start that `stop`
+    /// overtook). Already running: retunes.
+    func start(interval: Double, onStart: @escaping @MainActor (Result<Void, SystemAudioTapError>) -> Void) {
         guard !isRunning else { retune(interval: interval); return }
         self.interval = Self.clamped(interval)
-        self.onFailure = onFailure
+        self.onStart = onStart
         isStarting = true
         generation += 1
         let generation = generation
@@ -73,7 +74,7 @@ private nonisolated let log = Log.logger(.media)
         guard isRunning else { return }                         // nothing to tear down: no hop to the tap queue
         generation += 1
         isStarting = false
-        onFailure = nil
+        onStart = nil
         loop?.cancel()
         loop = nil
         follower = EnergyFollower()
@@ -87,15 +88,13 @@ private nonisolated let log = Log.logger(.media)
     private func tapStarted(_ result: Result<Void, SystemAudioTapError>, generation: Int) {
         guard generation == self.generation, isStarting else { return }   // stopped meanwhile: `stop` queued the teardown
         isStarting = false
-        switch result {
-        case .success:
+        if case .success = result {
             log.info("live visualizer: tap running")
             loop = makeLoop()
-        case .failure(let error):
-            let report = onFailure
-            onFailure = nil
-            report?(error)
         }
+        let report = onStart
+        onStart = nil
+        report?(result)
     }
 
     private func makeLoop() -> Task<Void, Never> {

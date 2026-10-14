@@ -89,9 +89,12 @@ nonisolated final class AudioOutputMonitor: OutputMonitoring, @unchecked Sendabl
         others.formIntersection(current)
         own.formIntersection(current)
         let me = getpid()
-        for process in current where !others.contains(process) && !own.contains(process) {
-            guard Self.pid(of: process) != me else { own.insert(process); continue }
-            others.insert(process)
+        for process in current where listeners[process] == nil && !own.contains(process) {
+            if !others.contains(process) {                            // new: whose is it?
+                guard Self.pid(of: process) != me else { own.insert(process); continue }
+                others.insert(process)
+            }
+            // A registration that failed is tried again at the next list change.
             let block: AudioObjectPropertyListenerBlock = { [weak self] _, _ in self?.outputChanged(process) }
             var address = AudioHAL.address(kAudioProcessPropertyIsRunningOutput)
             if AudioObjectAddPropertyListenerBlock(process, &address, queue, block) == noErr { listeners[process] = block }

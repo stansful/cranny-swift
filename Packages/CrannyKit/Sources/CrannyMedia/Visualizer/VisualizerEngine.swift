@@ -24,7 +24,8 @@ nonisolated enum VisualizerRender: Equatable, Sendable {
     case live
 }
 
-/// A visualizer view on screen. The engine pushes Live levels to it, outside SwiftUI (no 30-Hz invalidations).
+/// A visualizer view on screen that uses Live levels (`wantsLevels`). The engine pushes them to it, outside SwiftUI
+/// (no 30-Hz invalidations).
 @MainActor protocol LevelSink: AnyObject {
     func receive(levels: [Double])
 }
@@ -43,8 +44,9 @@ nonisolated struct LiveFrame: Equatable, Sendable {
     /// From `start` until `stop` or a reported failure (also while the tap is still starting).
     var isRunning: Bool { get }
     /// Starts the tap (prompting the first time) off the main thread, then the analysis loop at `interval` seconds
-    /// per frame. A tap that cannot start is reported to `onFailure` (on the main actor); the source is stopped then.
-    func start(interval: Double, onFailure: @escaping @MainActor (SystemAudioTapError) -> Void)
+    /// per frame. `onStart` tells (on the main actor) whether the tap started; after a failure the source is
+    /// stopped. Not called for a start that `stop` overtook.
+    func start(interval: Double, onStart: @escaping @MainActor (Result<Void, SystemAudioTapError>) -> Void)
     /// Changes the running loop's frame interval from its next frame on (at once when shorter). The tap keeps running.
     func retune(interval: Double)
     func stop()
@@ -241,20 +243,26 @@ nonisolated struct LiveFrame: Equatable, Sendable {
         guard !source.isRunning else { source.retune(interval: liveInterval); return }
         if !force, let lastFailedStart, clock.now.timeIntervalSince(lastFailedStart) < Self.retryAfter { return }
         lastFailedStart = nil
-        liveStatus = .waiting                                         // before `start`: a failure may be reported in it
-        lastAudio = clock.now
-        source.start(interval: liveInterval) { [weak self] error in self?.liveStartFailed(error) }
+        source.start(interval: liveInterval) { [weak self] outcome in self?.liveStarted(outcome) }
     }
 
-    /// The tap could not start: the status says why, render() keeps drawing Ambient, and no retry for `retryAfter`.
-    private func liveStartFailed(_ error: SystemAudioTapError) {
-        lastFailedStart = clock.now
-        switch error {
-        case .permissionDenied:
-            liveStatus = .denied
-            permissions.record(.denied, for: .systemAudioRecording)
-        case .coreAudio:
-            liveStatus = .failed
+    /// The tap queue's answer. Until it comes the status stays what it was (a retry after a denial keeps showing
+    /// "denied" instead of flashing "waiting"). A tap that could not start: the status says why, render() keeps
+    /// drawing Ambient, and no automatic retry for `retryAfter`.
+    private func liveStarted(_ outcome: Result<Void, SystemAudioTapError>) {
+        switch outcome {
+        case .success:
+            liveStatus = .waiting
+            lastAudio = clock.now
+        case .failure(let error):
+            lastFailedStart = clock.now
+            switch error {
+            case .permissionDenied:
+                liveStatus = .denied
+                permissions.record(.denied, for: .systemAudioRecording)
+            case .coreAudio:
+                liveStatus = .failed
+            }
         }
     }
 

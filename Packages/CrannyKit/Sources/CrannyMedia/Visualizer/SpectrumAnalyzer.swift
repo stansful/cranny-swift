@@ -105,7 +105,7 @@ nonisolated final class SpectrumAnalyzer {
     /// `fold`'s groups of `levelCount` levels (each non-empty; empty list for no levels or no groups).
     static func foldGroups(_ levelCount: Int, into count: Int) -> [Range<Int>] {
         guard levelCount > 0, count > 0 else { return [] }
-        // Group boundaries on a gentle power curve: 24 bands → 3, 4, 5, 6, 6.
+        // Group boundaries on a gentle power curve: 24 bands → 3, 5, 5, 5, 6.
         let bounds = (0...count).map { i in Int((Double(levelCount) * pow(Double(i) / Double(count), 1.25)).rounded()) }
         return (0..<count).map { g in
             let lo = min(bounds[g], levelCount - 1)

@@ -215,8 +215,9 @@ import Testing
     }
 }
 
-/// Stands in for `LiveSpectrum`: records what the engine asks for and never touches Core Audio. A `failure` is
-/// reported at once, inside `start` (the real source reports it a queue hop later).
+/// Stands in for `LiveSpectrum`: records what the engine asks for and never touches Core Audio. The outcome of a
+/// start (`failure`, else success) is reported at once, inside `start`, unless `defersStart` holds it until
+/// `answerStart()` (the real source answers a queue hop later).
 @MainActor final class FakeLiveSource: LiveLevelSource {
     private(set) var starts = 0
     private(set) var stops = 0
@@ -226,19 +227,35 @@ import Testing
     private(set) var interval: Double?
     private(set) var isRunning = false
     var failure: SystemAudioTapError?
+    var defersStart = false
+    private var pendingStart: (@MainActor (Result<Void, SystemAudioTapError>) -> Void)?
     let onFrame: @MainActor (LiveFrame) -> Void
 
     init(onFrame: @escaping @MainActor (LiveFrame) -> Void) { self.onFrame = onFrame }
 
-    func start(interval: Double, onFailure: @escaping @MainActor (SystemAudioTapError) -> Void) {
-        if let failure { failedStarts += 1; onFailure(failure); return }
-        starts += 1
-        isRunning = true
+    func start(interval: Double, onStart: @escaping @MainActor (Result<Void, SystemAudioTapError>) -> Void) {
+        isRunning = true                                                  // starting
         self.interval = interval
+        pendingStart = onStart
+        if !defersStart { answerStart() }
+    }
+    /// The tap queue's answer to the pending start.
+    func answerStart() {
+        guard let onStart = pendingStart else { return }
+        pendingStart = nil
+        if let failure {
+            failedStarts += 1
+            isRunning = false
+            onStart(.failure(failure))
+        } else {
+            starts += 1
+            onStart(.success(()))
+        }
     }
     func retune(interval: Double) { self.interval = interval }
     func stop() {
         if isRunning { stops += 1 }
+        pendingStart = nil                                                // overtaken: never answered
         isRunning = false
     }
 }
@@ -458,13 +475,22 @@ import Testing
         e.requestLiveAccess()                                              // the why-sheet tries at once
         #expect(live.failedStarts == 3)
 
+        live.defersStart = true                                            // while a try is on its way …
+        e.requestLiveAccess()
+        #expect(live.isRunning)
+        #expect(e.liveStatus == .failed)                                  // … the status does not flash "waiting"
+        live.answerStart()
+        #expect(live.failedStarts == 4)
+        #expect(e.liveStatus == .failed)
+        live.defersStart = false
+
         settings[MediaSettings.visualizer] = .ambient                     // choosing Live again, too
         await settle()
         #expect(e.liveStatus == .off)
         live.failure = nil
         settings[MediaSettings.visualizer] = .live
         await settle()
-        #expect(live.failedStarts == 3)
+        #expect(live.failedStarts == 4)
         #expect(live.starts == 1)
         #expect(e.liveStatus == .waiting)
         #expect(sources.made.count == 1)
