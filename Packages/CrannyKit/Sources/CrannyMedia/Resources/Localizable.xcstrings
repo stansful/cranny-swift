@@ -619,17 +619,6 @@
         }
       }
     },
-    "Reset to Default" : {
-      "comment" : "Settings ▸ Media: row context menu item",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Вернуть значение по умолчанию"
-          }
-        }
-      }
-    },
     "Restarting" : {
       "comment" : "Settings ▸ Media: source status",
       "localizations" : {
