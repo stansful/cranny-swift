@@ -287,18 +287,6 @@
         }
       }
     },
-    "Changed" : {
-      "comment" : "Settings ▸ Tray: VoiceOver value of a row whose value is not the default",
-      "extractionState" : "stale",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Изменено"
-          }
-        }
-      }
-    },
     "Clear" : {
       "comment" : "Tray chip: remove every item from the Tray (⌥⌘⌫)",
       "localizations" : {
@@ -1038,18 +1026,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Удалять объекты"
-          }
-        }
-      }
-    },
-    "Reset to Default" : {
-      "comment" : "Settings ▸ Tray: row context menu",
-      "extractionState" : "stale",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Вернуть значение по умолчанию"
           }
         }
       }

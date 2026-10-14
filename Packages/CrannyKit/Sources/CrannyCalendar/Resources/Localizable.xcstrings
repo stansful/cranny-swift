@@ -693,18 +693,6 @@
         }
       }
     },
-    "Reset to Default" : {
-      "comment" : "Settings: context menu item that restores a row's default value",
-      "extractionState" : "stale",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Вернуть значение по умолчанию"
-          }
-        }
-      }
-    },
     "Roadmap sync" : {
       "comment" : "Calendar sample data: event title",
       "localizations" : {

@@ -617,18 +617,6 @@
         }
       }
     },
-    "Reset to Default" : {
-      "comment" : "Settings: row context menu item",
-      "extractionState" : "stale",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Восстановить по умолчанию"
-          }
-        }
-      }
-    },
     "Run" : {
       "comment" : "Quick Apps: tile menu, run the shortcut",
       "localizations" : {
