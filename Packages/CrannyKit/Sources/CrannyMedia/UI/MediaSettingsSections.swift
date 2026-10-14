@@ -1,0 +1,192 @@
+// CrannyMedia/UI/MediaSettingsSections.swift — the larger rows of Settings ▸ Media: source status with
+// "Test media detection", the Live visualizer's permission row and why-sheet, and the Apple Events fallback with
+// its per-player Automation rows. Permission prompts happen only on a click here (ARCHITECTURE.md §3.12).
+import CrannyCore
+import Foundation
+import SwiftUI
+
+/// Which helper reads Now Playing, its health and the last error; Test media detection; Retry.
+struct MediaSourceSection: View {
+    let service: MediaService
+    let health: BridgeHealthMonitor
+    @State private var testResult: String?
+    @State private var testing = false
+
+    var body: some View {
+        Section {
+            LabeledContent {
+                HStack(spacing: Space.s) {
+                    Circle().fill(statusColor).frame(width: 8, height: 8).accessibilityHidden(true)
+                    Text(verbatim: statusText).foregroundStyle(.secondary)
+                }
+            } label: {
+                Text(verbatim: service.activeKind?.title ?? MediaPaneStrings.noSource)
+            }
+            if health.isDegraded {
+                Label { Text(verbatim: MediaPaneStrings.degraded) } icon: { Image(systemName: "exclamationmark") }
+                    .foregroundStyle(.orange)
+            }
+            HStack {
+                Button { Task { await test() } } label: { Text(verbatim: MediaPaneStrings.testDetection) }
+                    .disabled(testing)
+                if service.status == .unavailable {
+                    Button { service.restart() } label: { Text(verbatim: MediaStrings.retry) }
+                }
+                Spacer()
+            }
+            if let testResult {
+                Text(verbatim: testResult).font(.callout).foregroundStyle(.secondary)
+            }
+        } header: {
+            Text(verbatim: MediaPaneStrings.source)
+        } footer: {
+            if let error = service.lastError?.errorDescription {
+                Text(verbatim: error).foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private var statusText: String {
+        switch service.status {
+        case .idle: MediaPaneStrings.statusIdle
+        case .starting: MediaPaneStrings.statusStarting
+        case .running: health.isDegraded ? MediaPaneStrings.statusDegraded : MediaPaneStrings.statusWorking
+        case .restarting: MediaPaneStrings.statusRestarting
+        case .unavailable: MediaPaneStrings.statusUnavailable
+        }
+    }
+
+    private var statusColor: Color {
+        switch service.status {
+        case .running: health.isDegraded ? .orange : .green
+        case .starting, .restarting, .idle: .yellow
+        case .unavailable: .red
+        }
+    }
+
+    /// The helper answers `ping`; while sound plays, a session must be visible (R2 §5.4).
+    private func test() async {
+        testing = true
+        defer { testing = false }
+        guard service.activeKind == .perl || service.activeKind == .ruby else {
+            testResult = service.status == .running(.sample) ? MediaPaneStrings.testSample : MediaPaneStrings.testNoHelper
+            return
+        }
+        guard let roundTrip = await service.ping() else { testResult = MediaPaneStrings.testNoAnswer; return }
+        let milliseconds = Int((roundTrip.timeInterval * 1000).rounded())
+        if let np = service.nowPlaying {
+            let app = PlayerApps.name(for: np.bundleID ?? np.parentBundleID ?? "", fallback: np.appName)
+            testResult = MediaPaneStrings.testSeesPlayer(app, milliseconds)
+        } else if AudioOutputMonitor.isOtherProcessRunningOutput() {
+            testResult = MediaPaneStrings.testBlind(milliseconds)
+        } else {
+            testResult = MediaPaneStrings.testIdle(milliseconds)
+        }
+    }
+}
+
+/// Live mode: what the tap observed (System Audio Recording has no query API).
+struct LiveVisualizerStatusRow: View {
+    let engine: VisualizerEngine
+    let permissions: PermissionsCenter
+
+    var body: some View {
+        LabeledContent {
+            HStack(spacing: Space.m) {
+                Text(verbatim: statusText).foregroundStyle(.secondary)
+                if engine.liveStatus == .denied || engine.liveStatus == .silent {
+                    Button { permissions.openSystemSettings(.systemAudioRecording) } label: {
+                        Text(verbatim: MediaPaneStrings.openPrivacySettings)
+                    }
+                }
+            }
+        } label: {
+            Text(verbatim: PermissionKind.systemAudioRecording.title)
+        }
+    }
+
+    private var statusText: String {
+        switch engine.liveStatus {
+        case .receiving: MediaPaneStrings.liveReceiving
+        case .waiting, .off: MediaPaneStrings.liveWaiting
+        case .silent: MediaPaneStrings.liveSilent
+        case .denied: MediaPaneStrings.liveDenied
+        case .failed: MediaPaneStrings.liveFailed
+        case .unsupported: MediaPaneStrings.liveUnsupported
+        }
+    }
+}
+
+/// The why-sheet shown before Live is turned on (DESIGN.md §11.1).
+struct LiveVisualizerSheet: View {
+    let confirm: () -> Void
+    let cancel: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.l) {
+            Image(systemName: "waveform").font(.largeTitle).foregroundStyle(.tint).accessibilityHidden(true)
+            Text(verbatim: MediaPaneStrings.liveSheetTitle).font(.title3.weight(.semibold))
+            Text(verbatim: MediaPaneStrings.liveSheetBody).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Spacer()
+                Button(role: .cancel) { cancel() } label: { Text(verbatim: MediaPaneStrings.cancel) }
+                    .keyboardShortcut(.cancelAction)
+                Button { confirm() } label: { Text(verbatim: MediaPaneStrings.continueTitle) }
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(Space.xxl)
+        .frame(width: 380)
+    }
+}
+
+/// Apple Events fallback for Music and Spotify (off by default: it asks for Automation per app).
+struct AppleEventsSection: View {
+    let services: CrannyServices
+
+    var body: some View {
+        let settings = services.settings
+        Section {
+            SettingRow(isDefault: settings.isDefault(MediaSettings.allowAppleEvents), reset: { settings.reset(MediaSettings.allowAppleEvents) }) {
+                Toggle(isOn: settings.binding(MediaSettings.allowAppleEvents)) { Text(verbatim: MediaPaneStrings.appleEvents) }
+            }
+            if settings[MediaSettings.allowAppleEvents] {
+                ForEach(ScriptablePlayer.all, id: \.bundleID) { player in
+                    AutomationRow(bundleID: player.bundleID, permissions: services.permissions)
+                }
+            }
+        } footer: {
+            Text(verbatim: MediaPaneStrings.appleEventsFootnote).foregroundStyle(.secondary)
+        }
+    }
+}
+
+private struct AutomationRow: View {
+    let bundleID: String
+    let permissions: PermissionsCenter
+
+    var body: some View {
+        let kind = PermissionKind.automation(bundleID: bundleID)
+        let status = permissions.status(kind)
+        LabeledContent {
+            switch status {
+            case .granted:
+                Text(verbatim: MediaPaneStrings.allowed).foregroundStyle(.secondary)
+            case .denied, .restricted:
+                Button { permissions.openSystemSettings(kind) } label: { Text(verbatim: MediaPaneStrings.openPrivacySettings) }
+            case .notDetermined:
+                Button { Task { await permissions.request(kind) } } label: { Text(verbatim: MediaPaneStrings.allow) }
+            case .unknown:
+                Text(verbatim: PlayerApps.url(for: bundleID) == nil ? MediaPaneStrings.notInstalled : MediaPaneStrings.openToAllow)
+                    .foregroundStyle(.secondary)
+            }
+        } label: {
+            HStack(spacing: Space.s) {
+                if let icon = PlayerApps.icon(for: bundleID) {
+                    Image(nsImage: icon).resizable().frame(width: 16, height: 16).accessibilityHidden(true)
+                }
+                Text(verbatim: PlayerApps.name(for: bundleID))
+            }
+        }
+    }
+}

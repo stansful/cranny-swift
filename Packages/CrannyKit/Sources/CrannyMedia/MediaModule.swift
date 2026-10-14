@@ -1,14 +1,83 @@
-// CrannyMedia/MediaModule.swift — the module's single entry point (ARCHITECTURE.md §3.4).
-// Placeholder from WP0: WP1 (Media) grows it. Keep `register(in:)` cheap — models + contributions only;
-// file I/O, hardware, prompts and processes start in `registry.onLaunch`.
+// CrannyMedia/MediaModule.swift — the module's single entry point (ARCHITECTURE.md §3.4, §10.2). `register(in:)`
+// only creates models and contributes; the helper process and the Core Audio listeners start in `onLaunch`.
 import CrannyCore
+import Foundation
+import SwiftUI
 
-/// Media: Now Playing, the Media widget and the media bridge client (ARCHITECTURE.md §3.4). Registered by the shell's `CompositionRoot`.
+/// Media: Now Playing, the Media widget and the media bridge client. Registered by the shell's `CompositionRoot`.
 public enum MediaModule: FeatureModule {
     /// The module's settings namespace and owner tag (`.media`).
     public static var id: ModuleID { .media }
-    /// Registers the module's contributions; cheap — I/O, hardware and prompts start in `registry.onLaunch`.
+
+    /// Publishes `services.nowPlaying`, then the widget, the Now Playing activity (+ sample, + options row),
+    /// Settings ▸ Media, ⌘K commands and the permissions the module may ask for.
     public static func register(in registry: ModuleRegistry) {
-        // WP1: publish `registry.services.nowPlaying` (MediaService), then the Media widget, the Now Playing activity, Settings ▸ Media, ⌘K commands and permission uses.
+        let services = registry.services
+        let service = makeService(services)
+        services.nowPlaying = service
+        let health = BridgeHealthMonitor(service: service)
+
+        registry.add(widget: MediaWidget(service: service, services: services))
+        registry.add(activity: NowPlayingActivity(service: service, settings: services.settings), kind: NowPlayingActivity.kind,
+                     sample: {
+                         NowPlayingActivity(service: SampleMedia.service(settings: services.settings, environment: services.environment,
+                                                                         permissions: services.permissions),
+                                            settings: services.settings, open: { _ in })
+                     },
+                     options: { AnyView(NowPlayingOptions(settings: services.settings)) })
+        registry.add(settingsPage: SettingsPage(
+            id: .media, title: MediaStrings.moduleName, symbol: "music.note", tint: .red, group: .features, order: 0,
+            keywords: MediaPaneStrings.keywords, previewState: .activity) {
+                AnyView(MediaSettingsPane(service: service, health: health, services: services))
+            })
+        registry.add(commands: MediaCommands(service: service))
+        for player in ScriptablePlayer.all {
+            registry.declare(.automation(bundleID: player.bundleID), reason: String(
+                localized: "Read and control Music or Spotify when the media helper can't. Only if you turn on the Apple Events fallback.",
+                bundle: .module, comment: "Permissions pane: why Media may ask for Automation"))
+        }
+        registry.declare(.systemAudioRecording, reason: String(
+            localized: "Let the Live visualizer move with the sound. Cranny never records or saves audio.",
+            bundle: .module, comment: "Permissions pane: why Media may ask for System Audio Recording"))
+
+        registry.onLaunch {
+            service.start()
+            health.start()
+        }
+        registry.onTerminate {
+            health.stop()
+            service.stop()                      // closes the helper's stdin and terminates it before Cranny exits
+        }
     }
+
+    private static func makeService(_ services: CrannyServices) -> MediaService {
+        #if DEBUG
+        if let qa = MediaQA.service(services) { return qa }
+        #endif
+        return MediaService(settings: services.settings, environment: services.environment, permissions: services.permissions,
+                            providers: MediaProviderFactory.standardChain(settings: services.settings, paths: services.paths,
+                                                                          permissions: services.permissions))
+    }
+}
+
+/// Settings ▸ Live Activities ▸ Now Playing: "Hide paused media" (DESIGN.md §11.1; key `media.hidePausedAfterSeconds`).
+struct NowPlayingOptions: View {
+    let settings: SettingsStore
+
+    var body: some View {
+        Picker(selection: settings.binding(MediaSettings.hidePausedAfterSeconds)) {
+            ForEach(MediaSettings.hidePausedChoices, id: \.self) { seconds in
+                Text(verbatim: seconds == 0 ? MediaPaneStrings.never : MediaPaneStrings.after(seconds)).tag(seconds)
+            }
+        } label: {
+            Text(verbatim: MediaPaneStrings.hidePaused)
+        }
+        .pickerStyle(.menu)
+    }
+}
+
+#Preview("Now Playing options row") {
+    Form { NowPlayingOptions(settings: CrannyServices.preview().settings) }
+        .formStyle(.grouped)
+        .frame(width: 460, height: 120)
 }

@@ -128,8 +128,16 @@ final class VisualizerNSView: NSView, LevelSink {
 
     private var isOnScreen: Bool {
         guard let window else { return false }
+        #if DEBUG
+        if Self.qaIgnoresOcclusion { return true }       // `--qa-media`: animate behind a locked screen for captures
+        #endif
         return window.occlusionState.contains(.visible)
     }
+
+    #if DEBUG
+    /// Visual QA only (`MediaQA`): window captures of a locked Mac still show the moving bars.
+    static var qaIgnoresOcclusion = false
+    #endif
 
     private func refresh() {
         guard let configuration else { return }

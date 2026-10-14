@@ -1,6 +1,1037 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ left" : {
+      "comment" : "Media: VoiceOver value; argument is a spelled-out duration (\"2 minutes 11 seconds\")",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "осталось %@"
+          }
+        }
+      }
+    },
+    "Add" : {
+      "comment" : "Settings ▸ Media ▸ Ignore apps: menu button",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить"
+          }
+        }
+      }
+    },
+    "After %@" : {
+      "comment" : "Live Activities pane: Now Playing option; argument is a spelled-out duration (\"30 seconds\")",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Через %@"
+          }
+        }
+      }
+    },
+    "Allowed" : {
+      "comment" : "Settings ▸ Media: permission status (Automation for a player, System Audio Recording for Live)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешено"
+          }
+        }
+      }
+    },
+    "Allow…" : {
+      "comment" : "Settings ▸ Media: button that asks for Automation permission",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешить…"
+          }
+        }
+      }
+    },
+    "Ambient" : {
+      "comment" : "Settings ▸ Media ▸ Visualizer: segment, a pattern made from the track",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Фоновый"
+          }
+        }
+      }
+    },
+    "Ambient is a calm pattern made from the track, not from the sound. No permission needed." : {
+      "comment" : "Settings ▸ Media ▸ Visualizer: footnote for Ambient",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Фоновый — спокойный узор по треку, а не по звуку. Разрешение не нужно."
+          }
+        }
+      }
+    },
+    "Apple Events (Music, Spotify)" : {
+      "comment" : "Settings ▸ Media: name of the media source in use",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Events («Музыка», Spotify)"
+          }
+        }
+      }
+    },
+    "Apple Events fallback for Music and Spotify" : {
+      "comment" : "Settings ▸ Media: toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запасной путь через Apple Events для «Музыки» и Spotify"
+          }
+        }
+      }
+    },
+    "Can't see the player" : {
+      "comment" : "Settings ▸ Media: source status when sound plays but nothing is detected",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не видит плеер"
+          }
+        }
+      }
+    },
+    "Can't start" : {
+      "comment" : "Settings ▸ Media: System Audio Recording status for the Live visualizer",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не запускается"
+          }
+        }
+      }
+    },
+    "Cancel" : {
+      "comment" : "Settings ▸ Media: why-sheet button",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отменить"
+          }
+        }
+      }
+    },
+    "Choose an app…" : {
+      "comment" : "Settings ▸ Media ▸ Ignore apps: menu item that opens a file picker",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбрать приложение…"
+          }
+        }
+      }
+    },
+    "Continue" : {
+      "comment" : "Settings ▸ Media: why-sheet button",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Продолжить"
+          }
+        }
+      }
+    },
+    "Cranny can't read what's playing right now." : {
+      "comment" : "Media: error line when no media source works (widget and Settings ▸ Media)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny сейчас не видит, что играет."
+          }
+        }
+      }
+    },
+    "Cranny isn't allowed to control this player." : {
+      "comment" : "Settings ▸ Media: last error, Automation permission denied",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny не разрешено управлять этим плеером."
+          }
+        }
+      }
+    },
+    "Hide paused media" : {
+      "comment" : "Live Activities pane: Now Playing option, picker label",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скрывать музыку на паузе"
+          }
+        }
+      }
+    },
+    "Ignore apps" : {
+      "comment" : "Settings ▸ Media: row label and file-picker button",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Игнорировать приложения"
+          }
+        }
+      }
+    },
+    "Let the Live visualizer move with the sound. Cranny never records or saves audio." : {
+      "comment" : "Permissions pane: why Media may ask for System Audio Recording",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы живой визуализатор двигался в такт звуку. Cranny никогда не записывает и не сохраняет звук."
+          }
+        }
+      }
+    },
+    "Live" : {
+      "comment" : "Media: a live stream has no duration (VoiceOver value; shown uppercase in the widget)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Эфир"
+          }
+        }
+      }
+    },
+    "Live listens to the sound your Mac plays and never records or saves it." : {
+      "comment" : "Settings ▸ Media ▸ Visualizer: footnote for Live",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Живой слушает звук, который играет Mac, и никогда его не записывает и не сохраняет."
+          }
+        }
+      }
+    },
+    "Live visualizer mode" : {
+      "comment" : "Settings ▸ Media ▸ Visualizer: segment, real audio levels",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Live"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Живой"
+          }
+        }
+      }
+    },
+    "Media" : {
+      "comment" : "Media: module name (widget title, ⌘K result kind)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Медиа"
+          }
+        }
+      }
+    },
+    "MediaRemote helper (perl)" : {
+      "comment" : "Settings ▸ Media: name of the media source in use",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Помощник MediaRemote (perl)"
+          }
+        }
+      }
+    },
+    "MediaRemote helper (ruby)" : {
+      "comment" : "Settings ▸ Media: name of the media source in use",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Помощник MediaRemote (ruby)"
+          }
+        }
+      }
+    },
+    "Needs macOS 14.2 or later" : {
+      "comment" : "Settings ▸ Media: System Audio Recording status for the Live visualizer",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нужна macOS 14.2 или новее"
+          }
+        }
+      }
+    },
+    "Never" : {
+      "comment" : "Live Activities pane: Now Playing option, never hide paused media",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Никогда"
+          }
+        }
+      }
+    },
+    "Next track" : {
+      "comment" : "Media: transport button and VoiceOver action",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Следующий трек"
+          }
+        }
+      }
+    },
+    "No sound received" : {
+      "comment" : "Settings ▸ Media: System Audio Recording status for the Live visualizer",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Звук не поступает"
+          }
+        }
+      }
+    },
+    "No source" : {
+      "comment" : "Settings ▸ Media: source row label when no helper runs",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет источника"
+          }
+        }
+      }
+    },
+    "No visualizer in the notch or the widget." : {
+      "comment" : "Settings ▸ Media ▸ Visualizer: footnote for Off",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Без визуализатора в вырезе и в виджете."
+          }
+        }
+      }
+    },
+    "Not allowed" : {
+      "comment" : "Settings ▸ Media: System Audio Recording status for the Live visualizer",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не разрешено"
+          }
+        }
+      }
+    },
+    "Not available" : {
+      "comment" : "Settings ▸ Media: source status",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Недоступно"
+          }
+        }
+      }
+    },
+    "Not installed" : {
+      "comment" : "Settings ▸ Media: Automation row of a player that is not installed",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не установлено"
+          }
+        }
+      }
+    },
+    "Not started" : {
+      "comment" : "Settings ▸ Media: source status",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не запущено"
+          }
+        }
+      }
+    },
+    "Nothing playing" : {
+      "comment" : "Media widget: empty state",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ничего не играет"
+          }
+        }
+      }
+    },
+    "Now Playing" : {
+      "comment" : "Live Activities pane: the media activity's name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сейчас играет"
+          }
+        }
+      }
+    },
+    "Now playing: %@" : {
+      "comment" : "Media: VoiceOver label; argument is the track title",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сейчас играет: %@"
+          }
+        }
+      }
+    },
+    "Now playing: %@ by %@" : {
+      "comment" : "Media: VoiceOver label; arguments are the track title and the artist",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Now playing: %1$@ by %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сейчас играет: %1$@ — %2$@"
+          }
+        }
+      }
+    },
+    "Off" : {
+      "comment" : "Media: \"off\" state (shuffle/repeat VoiceOver value, Settings ▸ Media ▸ Visualizer segment)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выкл."
+          }
+        }
+      }
+    },
+    "Open %@" : {
+      "comment" : "Media widget: empty-state text button that launches the player; argument is its name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть «%@»"
+          }
+        }
+      }
+    },
+    "Open System Settings…" : {
+      "comment" : "Settings ▸ Media: button that opens Privacy & Security",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть Системные настройки…"
+          }
+        }
+      }
+    },
+    "Open in %@" : {
+      "comment" : "Media: tooltip and VoiceOver action on the artwork; argument is the player's name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть в «%@»"
+          }
+        }
+      }
+    },
+    "Open the app to allow" : {
+      "comment" : "Settings ▸ Media: Automation row while the player is not running",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Откройте приложение, чтобы разрешить"
+          }
+        }
+      }
+    },
+    "Pause" : {
+      "comment" : "Media: transport button and VoiceOver action",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пауза"
+          }
+        }
+      }
+    },
+    "Paused" : {
+      "comment" : "Media: VoiceOver value while playback is paused",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На паузе"
+          }
+        }
+      }
+    },
+    "Peek when the track changes" : {
+      "comment" : "Settings ▸ Media: toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Мини-просмотр при смене трека"
+          }
+        }
+      }
+    },
+    "Play" : {
+      "comment" : "Media: transport button and VoiceOver action",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Воспроизвести"
+          }
+        }
+      }
+    },
+    "Playback position" : {
+      "comment" : "Media widget: VoiceOver label of the scrubber",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Позиция воспроизведения"
+          }
+        }
+      }
+    },
+    "Previews use a sample track." : {
+      "comment" : "Settings ▸ Media: test result in a preview",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В предпросмотре — пример трека."
+          }
+        }
+      }
+    },
+    "Previous track" : {
+      "comment" : "Media: transport button and VoiceOver action",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Предыдущий трек"
+          }
+        }
+      }
+    },
+    "Read and control Music or Spotify when the media helper can't. Only if you turn on the Apple Events fallback." : {
+      "comment" : "Permissions pane: why Media may ask for Automation",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы читать «Музыку» или Spotify и управлять ими, когда помощник медиа не работает. Только если включён запасной путь через Apple Events."
+          }
+        }
+      }
+    },
+    "Repeat" : {
+      "comment" : "Media widget: repeat button (6 cells)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повтор"
+          }
+        }
+      }
+    },
+    "Repeat all" : {
+      "comment" : "Media widget: repeat button value for VoiceOver",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторять все"
+          }
+        }
+      }
+    },
+    "Repeat one" : {
+      "comment" : "Media widget: repeat button value for VoiceOver",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторять один"
+          }
+        }
+      }
+    },
+    "Reset to Default" : {
+      "comment" : "Settings ▸ Media: row context menu item",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вернуть значение по умолчанию"
+          }
+        }
+      }
+    },
+    "Restarting" : {
+      "comment" : "Settings ▸ Media: source status",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перезапуск"
+          }
+        }
+      }
+    },
+    "Retry" : {
+      "comment" : "Media widget: error state button",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторить"
+          }
+        }
+      }
+    },
+    "Sample track" : {
+      "comment" : "Settings ▸ Media: name of the media source in previews",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пример трека"
+          }
+        }
+      }
+    },
+    "Show artwork in the notch" : {
+      "comment" : "Settings ▸ Media: toggle (compact activity)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обложка в вырезе"
+          }
+        }
+      }
+    },
+    "Show media from browsers" : {
+      "comment" : "Settings ▸ Media: toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Медиа из браузеров"
+          }
+        }
+      }
+    },
+    "Show the visualizer" : {
+      "comment" : "Media widget options: toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывать визуализатор"
+          }
+        }
+      }
+    },
+    "Shuffle" : {
+      "comment" : "Media widget: shuffle button (6 cells)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перемешать"
+          }
+        }
+      }
+    },
+    "Shuffle on" : {
+      "comment" : "Media widget: shuffle button value for VoiceOver",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перемешивание включено"
+          }
+        }
+      }
+    },
+    "Sound is playing, but the media helper reports nothing. Try the Apple Events fallback below." : {
+      "comment" : "Settings ▸ Media: warning when the helper seems blocked",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Звук играет, но помощник медиа ничего не видит. Попробуйте запасной путь через Apple Events ниже."
+          }
+        }
+      }
+    },
+    "Sound output" : {
+      "comment" : "Media widget: tooltip and VoiceOver label of the output device menu",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вывод звука"
+          }
+        }
+      }
+    },
+    "Source" : {
+      "comment" : "Settings ▸ Media: section header for the media source",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Источник"
+          }
+        }
+      }
+    },
+    "Starting" : {
+      "comment" : "Settings ▸ Media: source status",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запуск"
+          }
+        }
+      }
+    },
+    "Starts when music plays" : {
+      "comment" : "Settings ▸ Media: System Audio Recording status for the Live visualizer",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Включится, когда заиграет музыка"
+          }
+        }
+      }
+    },
+    "Static" : {
+      "comment" : "Settings ▸ Media ▸ Visualizer: segment, dots that never move",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Статичный"
+          }
+        }
+      }
+    },
+    "Static shows that something is playing without any movement." : {
+      "comment" : "Settings ▸ Media ▸ Visualizer: footnote for Static",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Статичный показывает, что что-то играет, без движения."
+          }
+        }
+      }
+    },
+    "Stop ignoring" : {
+      "comment" : "Settings ▸ Media ▸ Ignore apps: remove button (tooltip, VoiceOver)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Больше не игнорировать"
+          }
+        }
+      }
+    },
+    "Test media detection" : {
+      "comment" : "Settings ▸ Media: button",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверить распознавание медиа"
+          }
+        }
+      }
+    },
+    "The helper answered in %lld ms, but sound is playing and it sees nothing. Try the Apple Events fallback." : {
+      "comment" : "Settings ▸ Media: test result; argument is a round-trip time in milliseconds",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Помощник ответил за %lld мс, но звук играет, а он ничего не видит. Попробуйте запасной путь через Apple Events."
+          }
+        }
+      }
+    },
+    "The helper answered in %lld ms. Play something to check that it appears." : {
+      "comment" : "Settings ▸ Media: test result when nothing plays; argument is a round-trip time in milliseconds",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Помощник ответил за %lld мс. Включите что-нибудь, чтобы проверить, что оно появится."
+          }
+        }
+      }
+    },
+    "The media helper could not start." : {
+      "comment" : "Settings ▸ Media: last error, the perl/ruby helper could not be launched",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось запустить помощник медиа."
+          }
+        }
+      }
+    },
+    "The media helper did not respond." : {
+      "comment" : "Settings ▸ Media: last error, the helper never answered",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Помощник медиа не отвечает."
+          }
+        }
+      }
+    },
+    "The media helper didn't answer." : {
+      "comment" : "Settings ▸ Media: test result",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Помощник медиа не ответил."
+          }
+        }
+      }
+    },
+    "The media helper isn't running." : {
+      "comment" : "Settings ▸ Media: test result",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Помощник медиа не запущен."
+          }
+        }
+      }
+    },
+    "The media helper stopped unexpectedly." : {
+      "comment" : "Settings ▸ Media: last error, the helper process ended",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Помощник медиа неожиданно остановился."
+          }
+        }
+      }
+    },
+    "To move with the music, Cranny listens to the sound your Mac plays. macOS will ask you to allow System Audio Recording. Cranny never records, saves or sends any audio, and listens only while the visualizer is on screen." : {
+      "comment" : "Settings ▸ Media: why-sheet text before the System Audio Recording prompt",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы двигаться в такт музыке, Cranny слушает звук, который играет ваш Mac. macOS попросит разрешить запись системного звука. Cranny никогда не записывает, не сохраняет и не отправляет звук и слушает, только пока визуализатор на экране."
+          }
+        }
+      }
+    },
+    "Use the Live visualizer?" : {
+      "comment" : "Settings ▸ Media: why-sheet title",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Включить живой визуализатор?"
+          }
+        }
+      }
+    },
+    "Used only when the media helper can't run. macOS asks once per app whether Cranny may control it." : {
+      "comment" : "Settings ▸ Media: footnote under the Apple Events fallback",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Используется, только если помощник медиа не может работать. macOS один раз спросит для каждого приложения, можно ли Cranny им управлять."
+          }
+        }
+      }
+    },
+    "Visualizer" : {
+      "comment" : "Settings ▸ Media: row label",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Визуализатор"
+          }
+        }
+      }
+    },
+    "What's playing, with controls" : {
+      "comment" : "Widget library: Media description",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Что играет, с управлением"
+          }
+        }
+      }
+    },
+    "Working" : {
+      "comment" : "Settings ▸ Media: source status",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Работает"
+          }
+        }
+      }
+    },
+    "Working: the helper answered in %lld ms and sees %@." : {
+      "comment" : "Settings ▸ Media: test result; arguments are a round-trip time in milliseconds and a player name",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Working: the helper answered in %1$lld ms and sees %2$@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Работает: помощник ответил за %1$lld мс и видит «%2$@»."
+          }
+        }
+      }
+    },
+    "back song" : {
+      "comment" : "Command palette: extra search words for Previous track, space-separated (translate each word)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "назад песня предыдущая"
+          }
+        }
+      }
+    },
+    "macOS shares only the app it picked as now playing, so ignoring an app is the way to keep it out of the notch." : {
+      "comment" : "Settings ▸ Media: footnote under Ignore apps",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS сообщает только о приложении, которое сама выбрала как играющее, поэтому убрать приложение из выреза можно, только игнорируя его."
+          }
+        }
+      }
+    },
+    "music now playing player artwork spotify youtube" : {
+      "comment" : "Settings search: extra words for the Media pane, space-separated (translate each word)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "музыка сейчас играет плеер обложка spotify youtube"
+          }
+        }
+      }
+    },
+    "music song track resume stop" : {
+      "comment" : "Command palette: extra search words for Play/Pause, space-separated (translate each word)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "музыка песня трек продолжить стоп"
+          }
+        }
+      }
+    },
+    "skip forward song" : {
+      "comment" : "Command palette: extra search words for Next track, space-separated (translate each word)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "пропустить вперёд песня следующая"
+          }
+        }
+      }
+    }
   },
   "version" : "1.0"
 }
