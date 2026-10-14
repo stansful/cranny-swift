@@ -6,7 +6,7 @@ import AppKit
 import CrannyCore
 import Foundation
 
-@MainActor final class ShellNotchControl: NotchControl {
+@MainActor final class ShellNotchControl: NotchControl, NotchSelectionFocus {
     /// Set by `OverlayCoordinator.init`.
     weak var coordinator: OverlayCoordinator?
     /// The shell-owned transient activity behind `flash(symbol:label:)` (`ActivityID.flash`).
@@ -23,6 +23,8 @@ import Foundation
     /// A one-off peek on the pointer's display; ignored while paused, open, hidden or not shown there (§4.7).
     func requestPeek(_ activity: ActivityID) { coordinator?.requestPeek(activity) }
     func requestKeyboardFocus() { coordinator?.requestKeyboardFocus() }
+    /// Key status for a selection (a Tray tile): the panel still closes when the pointer leaves (`KeyHold`).
+    func requestSelectionFocus() { coordinator?.requestSelectionFocus() }
     func setCalibrationOverlay(_ visible: Bool) { coordinator?.setCalibrating(visible) }
     func shapeFrameOnScreen() -> CGRect? { coordinator?.shapeFrameOnScreen() }
     func presentAirDrop(_ urls: [URL]) async -> Bool { await sharing.presentAirDrop(urls) }

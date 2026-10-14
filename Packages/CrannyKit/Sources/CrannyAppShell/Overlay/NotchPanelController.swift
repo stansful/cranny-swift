@@ -126,6 +126,9 @@ import SwiftUI
         if !panel.isVisible { panel.orderFrontRegardless() }
     }
 
+    /// `NotchSelectionFocus`: key status for a selection, which does not hold the panel open (`KeyHold`).
+    func takeSelectionFocus() { focus.makeKey(forTyping: false) }
+
     private func updateVisibility() {
         let visible = panel.occlusionState.contains(.visible)
         if scene.isVisibleOnScreen != visible { scene.isVisibleOnScreen = visible }

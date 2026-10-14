@@ -64,7 +64,8 @@ nonisolated struct NotchMachineState: Equatable {
 
     // MARK: Shell-owned hold reasons (§4.5); module reasons are namespaced ("notes.editing").
 
-    /// The panel is key (opened by the hot key, a text field clicked, `requestKeyboardFocus`): §4.4 "panel not key".
+    /// The panel is key for typing (opened by the hot key, a text field clicked, `requestKeyboardFocus`): §4.4 "panel
+    /// not key". Key status for a selection (a Tray tile, `NotchSelectionFocus`) is not a hold (`KeyHold`).
     static let typingHold = "typing"
     /// An `NSMenu` is tracking (a context menu in the panel, the menu bar extra's menu).
     static let menuHold = "menu"

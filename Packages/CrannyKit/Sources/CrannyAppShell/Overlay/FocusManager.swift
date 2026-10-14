@@ -1,7 +1,8 @@
 // CrannyAppShell/Overlay/FocusManager.swift — key focus of one panel (ARCHITECTURE.md §4.5, §4.10, §5.8).
 // The non-activating panel becomes key without activating Cranny (a clicked text field, the hot key,
-// `requestKeyboardFocus`); every close hands key status back with `orderOut` + `orderFrontRegardless`, which
-// returns it to the previous app's window (R1 §3.5). Key status and popovers shown from the panel are holds.
+// `requestKeyboardFocus`, a Tray tile selected); every close hands key status back with `orderOut` +
+// `orderFrontRegardless`, which returns it to the previous app's window (R1 §3.5). Key status taken for typing and
+// popovers shown from the panel are holds; key status taken for a selection is not (`KeyHold`).
 // Who is frontmost is read from `NSWorkspace.frontmostApplication`, never `NSApp.isActive` (true while key).
 import AppKit
 import Foundation
@@ -13,6 +14,8 @@ import Foundation
     private var popovers: Set<ObjectIdentifier> = []
     /// Called with a hold reason and whether it is on (`typing`, `popover`).
     var onHold: (String, Bool) -> Void = { _, _ in }
+    /// Whether key status holds the panel open (the `typing` hold).
+    private var keyHold = KeyHold()
 
     init(panel: NSPanel) { self.panel = panel }
 
@@ -21,8 +24,13 @@ import Foundation
         let center = NotificationCenter.default
         for (name, isKey) in [(NSWindow.didBecomeKeyNotification, true), (NSWindow.didResignKeyNotification, false)] {
             observers.append(center.addObserver(forName: name, object: panel, queue: .main) { [weak self] _ in
-                MainActor.assumeIsolated { self?.onHold(NotchMachineState.typingHold, isKey) }   // queue: .main
+                MainActor.assumeIsolated {                                                      // queue: .main
+                    self?.updateKeyHold { if isKey { $0.becameKey() } else { $0.resignedKey() } }
+                }
             })
+        }
+        (panel as? NotchPanel)?.onFirstResponderChange = { [weak self] responder in
+            if Self.isTextEditing(responder) { self?.updateKeyHold { $0.editingBegan() } }
         }
         for (name, shown) in [(NSPopover.didShowNotification, true), (NSPopover.didCloseNotification, false)] {
             observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
@@ -35,14 +43,29 @@ import Foundation
     func stop() {
         for observer in observers { NotificationCenter.default.removeObserver(observer) }
         observers.removeAll()
+        (panel as? NotchPanel)?.onFirstResponderChange = nil
+        keyHold = KeyHold()
         if !popovers.isEmpty { popovers.removeAll(); onHold(NotchMachineState.popoverHold, false) }
     }
 
-    /// Makes the panel key without activating the app (typing). Only an open panel takes focus.
-    func makeKey() {
+    /// Makes the panel key without activating the app. Only an open panel takes focus. `forTyping` false: for a
+    /// selection (a Tray tile), which does not hold the panel open (`KeyHold`).
+    func makeKey(forTyping: Bool = true) {
         guard let panel, panel.isVisible else { return }
+        updateKeyHold { $0.request(forTyping: forTyping) }
+        defer { updateKeyHold { $0.requestEnded() } }
         panel.makeKey()
         if !panel.isKeyWindow { panel.makeKeyAndOrderFront(nil) }              // already front: only takes key
+    }
+
+    /// Field editors (text fields) and text views: their first responder status means typing.
+    static func isTextEditing(_ responder: NSResponder?) -> Bool { responder is NSText }
+
+    /// Applies `change` and sends the `typing` hold when it flips.
+    private func updateKeyHold(_ change: (inout KeyHold) -> Void) {
+        let held = keyHold.holdsOpen
+        change(&keyHold)
+        if keyHold.holdsOpen != held { onHold(NotchMachineState.typingHold, keyHold.holdsOpen) }
     }
 
     /// Hand key status back to the previously focused window (R1 §3.5): invisible, same run-loop turn.

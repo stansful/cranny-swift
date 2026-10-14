@@ -28,9 +28,9 @@ struct TrayTileRow: View {
                     ForEach(store.items) { item in
                         TrayTile(item: item, store: store, isFocused: focused && usedKeyboard && store.selection.cursor == item.id,
                                  isInteractive: isInteractive) {
-                            // Like clicking a text field: the panel becomes key (without activating Cranny), so the
-                            // Tray's keys work; it hands focus back when Cranny closes (ARCHITECTURE.md §4.10).
-                            store.notch.requestKeyboardFocus()
+                            // The panel becomes key (without activating Cranny) so the Tray's keys work, but only
+                            // for the selection: it still closes when the pointer leaves (TrayStore.takeSelectionFocus).
+                            store.takeSelectionFocus()
                             usedKeyboard = false
                             focused = true
                         }

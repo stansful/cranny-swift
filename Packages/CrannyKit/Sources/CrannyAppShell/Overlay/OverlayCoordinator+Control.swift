@@ -26,6 +26,7 @@ extension OverlayCoordinator {
         openController?.viewModel.send(.setMode(widget.map { .focus($0) } ?? .grid))
     }
     func requestKeyboardFocus() { openController?.viewModel.makeKey() }
+    func requestSelectionFocus() { openController?.takeSelectionFocus() }
     func requestPeek(_ activity: ActivityID) { requestAutoPeek(activity) }
     func shapeFrameOnScreen() -> CGRect? { (openController ?? alertController)?.shapeFrameOnScreen }
 
