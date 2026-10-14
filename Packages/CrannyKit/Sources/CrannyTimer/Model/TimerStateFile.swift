@@ -3,8 +3,11 @@
 //
 // Writes happen off the main actor (`@concurrent`) in the order the model made them: each write carries a sequence
 // number and a write older than the newest one on disk is dropped. The terminate hook writes synchronously (it must
-// finish before the process exits); the same lock orders it against a background write still in flight.
+// finish before the process exits). Each write stages its bytes in a temporary file with no lock held; only the
+// compare-and-rename that publishes it runs under the lock, so a background write in flight delays the quit write
+// by one rename(2), never by disk I/O.
 import CrannyCore
+import Darwin
 import Foundation
 import os
 
@@ -57,17 +60,28 @@ nonisolated final class TimerStateFile: Sendable {
 
     /// Writes `snapshot` atomically unless a newer sequence number is already on disk. Returns whether it wrote.
     @discardableResult func write(_ snapshot: TimerSnapshot, sequence: Int) throws -> Bool {
+        guard newestWritten.withLock({ sequence > $0 }) else { return false }   // already superseded: no I/O
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         let data = try encoder.encode(snapshot)
+        let directory = url.deletingLastPathComponent()
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        // Same directory as the target, so the rename below stays on one volume and is atomic.
+        let staged = directory.appending(path: ".\(url.lastPathComponent).\(UUID().uuidString).tmp",
+                                         directoryHint: .notDirectory)
+        try data.write(to: staged)
+        var published = false
+        defer { if !published { try? FileManager.default.removeItem(at: staged) } }
         let url = self.url
-        return try newestWritten.withLock { newest in
-            guard sequence > newest else { return false }
-            try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try data.write(to: url, options: .atomic)
+        published = try newestWritten.withLock { newest in
+            guard sequence > newest else { return false }                        // a newer write won meanwhile
+            guard rename(staged.path, url.path) == 0 else {
+                throw POSIXError(POSIXErrorCode(rawValue: errno) ?? .EIO)
+            }
             newest = sequence
             return true
         }
+        return published
     }
 
     /// `write` on the global executor (never on the main actor). Failures are logged: the timer keeps working.

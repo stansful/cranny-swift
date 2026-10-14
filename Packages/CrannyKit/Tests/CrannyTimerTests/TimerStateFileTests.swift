@@ -21,7 +21,8 @@ import Testing
     }
 
     @Test func backgroundWritesKeepTheirOrder() async throws {
-        let file = TimerStateFile(url: temporaryFile())
+        let url = temporaryFile()
+        let file = TimerStateFile(url: url)
         await withTaskGroup(of: Void.self) { group in
             for n in 1...20 {
                 let s = TimerSnapshot(state: TimerState(), lastDuration: n)
@@ -29,6 +30,21 @@ import Testing
             }
         }
         #expect(file.load()?.lastDuration == 20)
+        #expect(try contents(of: url) == ["state.json"])                        // no staged file left behind
+    }
+
+    @Test func aSupersededWriteLeavesNothingBehind() throws {
+        let url = temporaryFile()
+        let file = TimerStateFile(url: url)
+        #expect(try file.write(snapshot, sequence: 2))
+        #expect(try file.write(snapshot, sequence: 3))                          // replaces the published file
+        #expect(try !file.write(TimerSnapshot(state: TimerState(), lastDuration: 1), sequence: 1))
+        #expect(file.load() == snapshot)
+        #expect(try contents(of: url) == ["state.json"])
+    }
+
+    private func contents(of url: URL) throws -> [String] {
+        try FileManager.default.contentsOfDirectory(atPath: url.deletingLastPathComponent().path).sorted()
     }
 
     @Test func aCorruptFileIsMovedAsideAndIgnored() throws {
