@@ -45,7 +45,9 @@ make check                                   # every CrannyKit target builds alo
 scripts/check-modules.sh CrannyTimer         # just your module (logs in build/logs/)
 make test                                    # swift test (all test targets)
 cd Packages/CrannyKit && swift test --scratch-path .build-test --filter CrannyTimerTests
-make strings && make strings-check           # sync String Catalogs, then verify + copy rules (add Russian first)
+make strings                                 # add new English keys to the String Catalogs
+make l10n-pending                            # mark them pending in every language you did not translate (docs/TRANSLATING.md)
+make strings-check                           # catalogs in sync + copy rules + every shipped language valid (CI)
 make copy-check                              # just the copy rules (scripts/lint-copy.py, no build)
 make l10n-check                              # shipped languages complete and valid (scripts/l10n/validate.py, no build)
 make probe-check                             # SDK name-collision probe is current
@@ -288,16 +290,23 @@ exports (`make probe` keeps a compile-time check of every public CrannyCore name
 pass the module bundle (`Text("…", bundle: .module, comment: "…")`, `String(localized:bundle:comment:)`);
 never bare `LocalizedStringKey` initializers inside the package. Keys are the English text, written to
 the copy rules below; every key has a comment `"<Surface>: <purpose>"` (one comment per key; a key used in
-two places shares one), Russian follows the glossary in ARCHITECTURE.md §8.7 with state `translated`.
+two places shares one). **New or changed English text: translate it or mark it pending, for every shipped
+language** (all 35, `scripts/l10n/languages.json`). Translate the languages you know through `scripts/l10n`
+(`export.py <lang> --missing-only` → `validate.py` → `import.py`; Russian follows the glossary in ARCHITECTURE.md
+§8.7), then run `make l10n-pending`, which gives every language still without the key the English text in state
+`needs_review`. `make strings-check` (and CI) accepts pending keys and lists them; it fails on a key a shipped
+language has no entry for. The release workflow fails while any key is pending, so maintainers translate them before
+a release. You never need to know 34 languages to send a pull request: docs/TRANSLATING.md ▸ New strings.
 Formatting through `FormatStyle` only. A name, file name or key combination put into a sentence is
 `crannyIsolated`, and layout code follows the right-to-left rules of ARCHITECTURE.md §8.7 rule 10 (leading/trailing,
 media and rings left to right, physical input converted). Every count gets plural variations in the catalog (English one/other,
 Russian one/few/many/other), also when English writes both forms alike; `make l10n-check` fails a count without
 them. Never choose words with `count == 1` for a number that is shown.
-**Other languages** (every UI language macOS ships, `scripts/l10n/languages.json`) come in through
-`scripts/l10n`: `export.py <lang>` writes one JSON file for translators, `validate.py` checks it, `import.py`
-writes it back, and `apple-terms.py <lang>` lists Apple's own names for Apple's apps and settings in that language.
-`scripts/l10n/README.md` is the translators' guide.
+**Translations** (every UI language macOS ships) come in through `scripts/l10n`: `export.py <lang>` writes one
+JSON file for translators, `validate.py` checks it, `import.py` writes it back, `pending.py` marks what is not
+translated yet, and `apple-terms.py <lang>` lists Apple's own names for Apple's apps and settings in that language.
+[docs/TRANSLATING.md](TRANSLATING.md) is the guide for translators (rules, terminology sheets in
+`docs/l10n/terms/`, adding a language); `scripts/l10n/README.md` documents the file format and every check.
 Catalogs are JSON, so parallel branches conflict line by line; `.gitattributes` routes them to a
 per-key merge driver. Enable it once per clone:
 
@@ -371,7 +380,7 @@ value for installs from an earlier revision and bump `currentRevision` (ARCHITEC
 to capture on Notes for existing users when the fresh-install default became Off).
 
 **Definition of done.** `scripts/check-modules.sh <YourTarget>` with zero warnings; your tests pass;
-`make strings-check` (Russian for every new key, copy rules); `make build && make smoke`; previews, accessibility
+`make strings-check` (every new key translated or pending in every shipped language, copy rules); `make build && make smoke`; previews, accessibility
 labels and Reduce Motion behaviour for every view; energy rules respected; settings keys documented in
 your `<Module>Settings` enum; permissions declared; the package's acceptance criteria demonstrated in the
 PR (a screen recording for UI).

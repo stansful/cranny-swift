@@ -29,6 +29,23 @@ Free and open source (MIT), no account, no analytics.
 - **Respectful** — Reduce Motion, Reduce Transparency, Increase Contrast, keyboard-only use and VoiceOver labels and
   actions throughout; zero work while closed; in 35 languages.
 
+## Languages
+
+Cranny speaks your Mac's language, or the one you pick for it under System Settings ▸ General ▸ Language & Region ▸
+Applications:
+
+English · العربية · Català · Čeština · Dansk · Deutsch · Ελληνικά · Español · Suomi · Français · עברית · हिन्दी ·
+Hrvatski · Magyar · Bahasa Indonesia · Italiano · 日本語 · 한국어 · Bahasa Melayu · Norsk bokmål · Nederlands ·
+Polski · Português (Brasil) · Português (Portugal) · Română · Русский · Slovenčina · Slovenščina · Svenska · ไทย ·
+Türkçe · Українська · Tiếng Việt · 简体中文 · 繁體中文
+
+Arabic and Hebrew use a right-to-left layout. **About the translations:** English is the original; every other
+language was translated and cross-reviewed by AI, using Apple's own terms for macOS in that language and checked by
+automated tests (placeholders, plural forms, quotation marks, and the measured width of every text that has to fit
+the notch). They have not been reviewed by native speakers yet, so some wording will be off. Corrections are very
+welcome — an issue quoting the text is enough; [docs/TRANSLATING.md](docs/TRANSLATING.md) shows how to fix or review
+a language.
+
 ## Install
 
 Requires **macOS 14 Sonoma or later** (Apple silicon or Intel; so far it has only run on macOS 27 on Apple silicon,
@@ -142,6 +159,7 @@ The checklists for these runs are [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) �
 Bug reports and pull requests are welcome. Start with [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)
 (workflow, rules, how to build one module, visual QA), then [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 (code structure and contracts) and [docs/DESIGN.md](docs/DESIGN.md) (every pixel, color and animation).
+Translators: [docs/TRANSLATING.md](docs/TRANSLATING.md).
 
 ## Credits
 
