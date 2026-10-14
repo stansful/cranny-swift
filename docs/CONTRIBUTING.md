@@ -28,7 +28,10 @@ are normative.
 - Xcode 26+ (27 recommended; `make strings`/`strings-check` need Xcode 27's SwiftPM), Swift 6.2+.
 - **Metal Toolchain** component: CrannyEffects compiles `Sources/CrannyEffects/Shaders/*.metal` into
   `default.metallib`. Install once with `xcodebuild -downloadComponent MetalToolchain` (check:
-  `xcrun metal -v`). The scripts stop with that exact command when it is missing.
+  `xcodebuild -showComponent MetalToolchain` says `Status: installed`). The scripts stop with that exact
+  command when it is missing. Shaders live only in CrannyEffects, are SwiftUI stitchable functions reached
+  through `ShaderEffects.library`, are listed in `ShaderEffects.requiredFunctions` with a render test, end
+  with `cranny::light(…, cap)` and keep a SwiftUI fallback (ARCHITECTURE.md D13, DESIGN.md §5.6).
 - If `xcode-select` points at the Command Line Tools, start every manual command with
   `export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` (the scripts do it themselves).
   If your shell profile prints errors, run important commands one by one and check each exit status
@@ -64,6 +67,7 @@ you can screenshot every presentation from a script. They are compiled out of Re
 | `--qa-page <page id>` | With `open`: shows that page — `nook` (Home), `tray`, or a user page `page.<uuid>`. |
 | `--qa-exit-after <seconds>` | Quits after that many seconds. |
 | `--qa-settings <pane id>` | Also opens Settings at that pane (`general`, `appearance`, `about`, …). |
+| `-CrannyDisableShaders YES` | Forces every effect onto its SwiftUI fallback (also in Release builds: QA and energy A/B runs). |
 
 ```sh
 scripts/run.sh -- --qa-state open --qa-page tray --qa-exit-after 8

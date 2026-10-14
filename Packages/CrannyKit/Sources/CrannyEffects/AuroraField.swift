@@ -1,7 +1,8 @@
-// CrannyEffects/AuroraField.swift — DESIGN.md Appendix B (signature effect), plus the Metal path:
-// while motion is allowed the aurora is drawn by `Shaders/Aurora.metal` (`ShaderAurora`); the SwiftUI
-// path below (MeshGradient on 15+, Canvas on 14) stays for Reduce Motion (a frozen resting frame), Low
-// Power (static halo) and Macs where the shader library cannot load.
+// CrannyEffects/AuroraField.swift — the signature effect. The SwiftUI path below is DESIGN.md Appendix B.1
+// verbatim (the fallback specification); the Metal path is App. B.2's shader branch, placed in front of it
+// (ARCHITECTURE.md D13, DESIGN.md §5.6): `auroraField` in Shaders/Aurora.metal, chosen by
+// `ShaderEffects.usesShader(budget)`. Reduce Motion, Low Power / thermal and an unavailable library keep the
+// SwiftUI path; pausing (closed, occluded, full screen) only stops time and never switches paths.
 import SwiftUI
 import CrannyCore
 
@@ -15,6 +16,7 @@ public struct AuroraField: View, Animatable {
     public var energy: Double            // 0…1 (real RMS with permission, else 0)
     public var budget: EffectBudget
     public var restingTime: Double = 7.3
+    @Environment(\.displayScale) private var displayScale
 
     public init(palette: AmbientPalette, level: AmbienceLevel, energy: Double, budget: EffectBudget) {
         self.palette = palette; self.level = level; self.energy = energy; self.budget = budget
@@ -32,8 +34,8 @@ public struct AuroraField: View, Animatable {
             Group {
                 if budget.effective(.aurora) == .halo {
                     RadialGradient(colors: [palette.glow1.color(cap * 0.6), .clear], center: .bottom, startRadius: 0, endRadius: 260)
-                } else if usesShader {
-                    ShaderAurora(palette: palette, cap: cap, energy: energy, time: t)
+                } else if ShaderEffects.usesShader(budget) {
+                    auroraShader(palette: palette, level: level, energy: energy, time: t, displayScale: displayScale)
                 } else if #available(macOS 15.0, *) {
                     mesh(t)
                 } else {
@@ -46,10 +48,6 @@ public struct AuroraField: View, Animatable {
     }
 
     private var cap: Double { Glow.ambientAlphaCap(level) }
-
-    /// Metal whenever motion is allowed. While paused (closed, occluded, full screen) the shader keeps
-    /// drawing its resting frame, so closing never swaps renderers mid-animation.
-    private var usesShader: Bool { !budget.reduceMotion && !budget.lowPower && EffectShaders.isAvailable }
 
     @available(macOS 15.0, *)
     private func mesh(_ time: Double) -> some View {
@@ -103,6 +101,19 @@ public struct AuroraField: View, Animatable {
             }
         }
     }
+}
+
+// MARK: - Shader branch (DESIGN.md App. B.2)
+
+/// The aurora through `auroraField` (Aurora.metal). Same inputs as the SwiftUI path; `time` comes from the
+/// effect's TimelineView, so `EffectBudget` still decides the frame rate.
+@MainActor func auroraShader(palette: AmbientPalette, level: AmbienceLevel, energy: Double, time: Double,
+                  displayScale: CGFloat) -> some View {
+    Rectangle()
+        .colorEffect(ShaderEffects.library.auroraField(
+            .boundingRect, .float(time), .colorArray(palette.glows.map { $0.color(1) }),
+            .float(energy), .float(level.intensity), .float(Glow.ambientAlphaCap(level))))
+        .crannyDithered(scale: displayScale)
 }
 
 #Preview("Aurora · subtle") {

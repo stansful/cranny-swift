@@ -55,10 +55,8 @@ jobs:
 
       - name: Metal Toolchain (CrannyEffects compiles Metal shaders)
         run: |
-          xcodebuild -showComponent MetalToolchain || true
-          if ! xcrun metal -v >/dev/null 2>&1; then
-            xcodebuild -downloadComponent MetalToolchain
-          fi
+          xcodebuild -showComponent MetalToolchain | grep -q 'Status: installed' || xcodebuild -downloadComponent MetalToolchain
+          xcodebuild -showComponent MetalToolchain
           xcrun metal -v
 
       - name: Build (universal)

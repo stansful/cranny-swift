@@ -32,7 +32,7 @@ enum Diagnostics {
         let bridge = Bundle.main.privateFrameworksURL?.appending(path: "libCrannyMediaBridge.dylib").path ?? ""
         r["bridge"] = FileManager.default.fileExists(atPath: bridge) ? bridge : "(missing)"
         // Metal effects: the CrannyEffects bundle's default.metallib, loaded the way the app loads it (Bundle.module).
-        r["shaders"] = EffectShaders.status
+        r["shaders"] = EffectsDiagnostics.shaderStatus
         // Which display(s) get a panel under the current settings, in AppKit screen coordinates (visual QA).
         r["panelScreens"] = OverlayCoordinator.panelScreens(settings: registry.services.settings).map { entry in
             ["key": entry.key.rawValue, "name": entry.screen.localizedName, "style": entry.style.rawValue,

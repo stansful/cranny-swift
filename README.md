@@ -47,7 +47,7 @@ You need **Xcode 26 or later** (Xcode 27 recommended; the string-catalog tooling
 **Metal Toolchain** component — Cranny's light effects are Metal shaders compiled at build time:
 
 ```sh
-xcodebuild -downloadComponent MetalToolchain     # once; check with: xcrun metal -v
+xcodebuild -downloadComponent MetalToolchain     # once; check: xcodebuild -showComponent MetalToolchain
 ```
 
 Then:
