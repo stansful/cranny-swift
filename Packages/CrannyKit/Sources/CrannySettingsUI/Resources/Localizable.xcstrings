@@ -625,12 +625,12 @@
       }
     },
     "Automation: %@" : {
-      "comment" : "Settings ▸ Permissions: Apple Events permission for one app; the argument is the app's name",
+      "comment" : "Settings ▸ Permissions: Apple Events permission for one app; the argument is the app's name (Music, Spotify)",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Автоматизация: %@"
+            "value" : "Автоматизация: «%@»"
           }
         }
       }
