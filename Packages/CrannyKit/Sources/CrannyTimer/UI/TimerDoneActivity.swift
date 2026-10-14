@@ -17,7 +17,8 @@ import SwiftUI
     let id: ActivityID = .timerDone
     var isActive: Bool { model.state.isDone }
     let priority: ActivityPriority = .alert
-    let slot: SlotWidth = .medium
+    /// `.medium` ("4:59", "Done"); `.glyph` in the glyph form of Large / Extra Large text (DESIGN.md §16).
+    var slot: SlotWidth { model.bandUsesGlyphForm ? .glyph : .medium }
     /// One per finished timer: the shell peeks, announces it to VoiceOver and plays `delight` once.
     var revision: Int { model.doneRevision }
     var expiresAt: Date? { model.state.doneAt?.addingTimeInterval(TimerLimits.doneLinger) }
@@ -34,7 +35,7 @@ import SwiftUI
     var delight: DelightMoment? { .emberBurst }
 
     func compactLeading() -> some View { TimerDoneGlyph(model: model) }
-    func compactTrailing() -> some View { TimerDoneLabel() }
+    func compactTrailing() -> some View { TimerDoneLabel(model: model) }
     func minimal() -> some View { TimerDoneGlyph(model: model) }
     func peekRow() -> some View { TimerDonePeekRow(model: model) }
 }

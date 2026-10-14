@@ -113,6 +113,7 @@ struct TimerFace: View {
     // MARK: Scroll: one detent per 12 pt of finger travel, one `.levelChange` per minute applied
 
     private func handleScroll(_ update: SwipeUpdate) {
+        guard !context.isPreview, !context.isEditingLayout else { return }       // the zone outlives edit mode
         switch update {
         case .tracking(_, let translation):
             let steps = detents.update(translation: translation)
@@ -127,62 +128,57 @@ struct TimerFace: View {
         }
     }
 
-    // MARK: Keyboard (DESIGN.md §16: digits ↩ start · Space pause/resume · ⌫ reset)
+    // MARK: Keyboard (DESIGN.md §16: digits ↩ start · Space pause/resume · ⌫ reset) — rules in `TimerKeyMap`
 
     private func handleKey(_ press: KeyPress) -> KeyPress.Result {
-        guard press.modifiers.isDisjoint(with: [.command, .control, .option]) else { return .ignored }
+        guard press.modifiers.isDisjoint(with: [.command, .control, .option]),
+              let key = Self.timerKey(press) else { return .ignored }
+        let phase: TimerKeyMap.Phase = switch model.state.phase {
+        case .idle: .idle
+        case .running, .paused: .counting
+        case .done: .done
+        }
+        let result = TimerKeyMap.handle(key, entry: entry, phase: phase, hasDraft: model.draft != nil)
+        entry = result.entry
+        switch result.command {
+        case .none: break
+        case .start(let seconds): model.start(seconds: seconds)
+        case .startSetup: model.startSetup()
+        case .togglePause: model.togglePause()
+        case .stop: model.stop()
+        case .clearDraft: model.clearDraft()
+        case .adjust(let minutes): if model.adjust(byMinutes: minutes) { playHaptic(.levelChange) }
+        }
+        return result.handled ? .handled : .ignored
+    }
+
+    private static func timerKey(_ press: KeyPress) -> TimerKey? {
         switch press.key {
-        case .return: return submit()
-        case .delete: return erase()
-        case .escape:
-            guard !entry.isEmpty else { return .ignored }                       // Esc then closes the panel
-            entry = ""
-            return .handled
-        case .upArrow:
-            if model.adjust(byMinutes: 1) { playHaptic(.levelChange) }
-            return .handled
-        case .downArrow:
-            if model.adjust(byMinutes: -1) { playHaptic(.levelChange) }
-            return .handled
-        case .space where entry.isEmpty:
-            guard model.state.isCounting else { return .ignored }
-            model.togglePause()
-            return .handled
+        case .return: return .returnKey
+        case .delete: return .delete
+        case .escape: return .escape
+        case .upArrow: return .up
+        case .downArrow: return .down
+        case .space: return .space
         default:
-            guard press.characters.count == 1, let character = press.characters.first,
-                  DurationParser.accepts(character) else { return .ignored }
-            if entry.count < DurationParser.maximumLength { entry.append(character) }
-            return .handled
+            guard press.characters.count == 1, let character = press.characters.first else { return nil }
+            return .character(character)
         }
     }
+}
 
-    private func submit() -> KeyPress.Result {
-        if !entry.isEmpty {
-            if let seconds = DurationParser.seconds(from: entry) {
-                model.start(seconds: seconds)
-                entry = ""
-            }
-            return .handled                                                     // invalid: the hint stays
-        }
-        switch model.state.phase {
-        case .idle: model.startSetup()
-        case .running, .paused: model.togglePause()
-        case .done: model.stop()
-        }
-        return .handled
+#Preview("Face · focused, typing and 3 cells") {
+    let services = CrannyServices.preview()
+    let size = CGSize(width: 96, height: 96)
+    HStack(spacing: Space.l) {
+        TimerFace(model: .sample(.running(left: 272, total: 300), settings: services.settings),
+                  context: WidgetContext(cells: 2, contentSize: size, isFocused: true), playHaptic: { _ in })
+            .crannyCard(cells: 2)
+        TimerFace(model: .sample(.idle, settings: services.settings),
+                  context: WidgetContext(cells: 3, contentSize: CGSize(width: 160, height: 96)), playHaptic: { _ in })
+            .crannyCard(cells: 3)
     }
-
-    private func erase() -> KeyPress.Result {
-        if !entry.isEmpty {
-            entry.removeLast()
-            return .handled
-        }
-        if model.state.phase != .idle {
-            model.stop()
-            return .handled
-        }
-        guard model.draft != nil else { return .ignored }
-        model.clearDraft()
-        return .handled
-    }
+    .padding(Space.l)
+    .background(.black)
+    .crannyThemeRoot(CrannyTheme())
 }

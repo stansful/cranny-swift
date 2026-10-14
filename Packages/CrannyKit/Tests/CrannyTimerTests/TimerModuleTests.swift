@@ -84,6 +84,18 @@ import Testing
         #expect(h.model.state.isRunning)
     }
 
+    @Test func largeTextSwitchesTheBandToItsGlyphForm() {
+        let h = TimerHarness()
+        let running = TimerRunningActivity(model: h.model), done = TimerDoneActivity(model: h.model)
+        #expect(running.slot == .medium && done.slot == .medium)
+        for size in [CrannyTextSize.large, .extraLarge] {
+            h.services.settings[CoreSettings.textSize] = size
+            #expect(running.slot == .glyph && done.slot == .glyph)
+        }
+        h.services.settings[CoreSettings.textSize] = .small
+        #expect(running.slot == .medium)
+    }
+
     @Test func everyPlacementRenders() {
         let h = TimerHarness()
         h.model.start(seconds: 300)

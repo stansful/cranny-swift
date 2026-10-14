@@ -18,12 +18,15 @@ struct TimerCompactRing: View {
 }
 
 /// Trailing wing of the running timer: "4:59" (`compact`; `warning` in the last minute; dimmed while paused).
+/// Nothing in the glyph form of Large / Extra Large text (no clock runs then either).
 struct TimerCompactValue: View {
     let model: TimerModel
     var body: some View {
-        TimerDigits(state: model.state, style: .compact, rolls: false, warnsInLastMinute: true)
-            .minimumScaleFactor(0.75)
-            .accessibilityHidden(true)
+        if !model.bandUsesGlyphForm {
+            TimerDigits(state: model.state, style: .compact, rolls: false, warnsInLastMinute: true)
+                .minimumScaleFactor(0.75)
+                .accessibilityHidden(true)
+        }
     }
 }
 
@@ -52,16 +55,19 @@ struct TimerDoneGlyph: View {
     }
 }
 
-/// Trailing wing of "Timer done": "Done".
+/// Trailing wing of "Timer done": "Done" (nothing in the glyph form).
 struct TimerDoneLabel: View {
     @Environment(\.cranny) private var theme
+    let model: TimerModel
     var body: some View {
-        Text(TimerCopy.done)
-            .crannyFont(.compact)
-            .lineLimit(1)
-            .minimumScaleFactor(0.75)
-            .foregroundStyle(theme.palette.label)
-            .accessibilityHidden(true)
+        if !model.bandUsesGlyphForm {
+            Text(TimerCopy.done)
+                .crannyFont(.compact)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+                .foregroundStyle(theme.palette.label)
+                .accessibilityHidden(true)
+        }
     }
 }
 
@@ -186,4 +192,24 @@ extension View {
         frame(minWidth: HitTarget.nook.width, minHeight: HitTarget.nook.height)
             .contentShape(Rectangle())
     }
+}
+
+#Preview("Band · default and the glyph form (Extra Large text)") {
+    let services = CrannyServices.preview()
+    let large = CrannyServices.preview()
+    large.settings[CoreSettings.textSize] = .extraLarge
+    let models = [TimerModel.sample(.running(left: 272, total: 300), settings: services.settings),
+                  TimerModel.sample(.running(left: 272, total: 300), settings: large.settings)]
+    return VStack(alignment: .leading, spacing: Space.l) {
+        ForEach(Array(models.enumerated()), id: \.offset) { _, model in
+            HStack(spacing: Space.l) { TimerCompactRing(model: model); TimerCompactValue(model: model) }
+        }
+        HStack(spacing: Space.l) {
+            TimerDoneGlyph(model: .sample(.done(total: 300)))
+            TimerDoneLabel(model: .sample(.done(total: 300)))
+        }
+    }
+    .padding(Space.xl)
+    .background(.black)
+    .crannyThemeRoot(CrannyTheme())
 }

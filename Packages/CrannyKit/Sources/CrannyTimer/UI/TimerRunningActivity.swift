@@ -19,7 +19,8 @@ import SwiftUI
     let id: ActivityID = .timerRunning
     var isActive: Bool { model.state.isCounting }
     let priority: ActivityPriority = .ongoing
-    let slot: SlotWidth = .medium
+    /// `.medium` ("4:59", "Done"); `.glyph` in the glyph form of Large / Extra Large text (DESIGN.md §16).
+    var slot: SlotWidth { model.bandUsesGlyphForm ? .glyph : .medium }
     /// A new run and the last minute (DESIGN.md §9.2 "the last minute of a timer" undoes a swipe-up dismissal).
     var revision: Int { model.runningRevision }
     var palette: AmbientPalette? { .timer }

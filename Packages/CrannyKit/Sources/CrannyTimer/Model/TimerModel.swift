@@ -46,6 +46,13 @@ private let log = Log.logger(.timer)
             .prefix(TimerSettings.maximumPresets).map { $0 }
     }
 
+    /// DESIGN.md §16 (Text size): band text follows the notch unit, so at Large and Extra Large text the band shows
+    /// the glyph form (ring or glyph only, a narrower slot) and the time moves to the peek.
+    var bandUsesGlyphForm: Bool {
+        let size = settings[CoreSettings.textSize]
+        return size == .large || size == .extraLarge
+    }
+
     // MARK: Actions
 
     /// Starts a new timer (replacing any other) for `seconds`, clamped to the limits.
