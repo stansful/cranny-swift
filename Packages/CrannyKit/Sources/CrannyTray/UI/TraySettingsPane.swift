@@ -232,14 +232,10 @@ struct TraySettingsPane: View {
 
     private func pinnedBinding(_ slot: Int) -> Binding<String?> {
         Binding {
-            let pinned = settings[TraySettings.pinnedPipelines]
-            return pinned.indices.contains(slot) ? pinned[slot] : nil
+            PinnedPipelineSlots.id(in: settings[TraySettings.pinnedPipelines], slot: slot)
         } set: { newValue in
-            var pinned = settings[TraySettings.pinnedPipelines]
-            while pinned.count <= slot { pinned.append("") }
-            pinned[slot] = newValue ?? ""
-            if let newValue { for i in pinned.indices where i != slot && pinned[i] == newValue { pinned[i] = "" } }
-            settings[TraySettings.pinnedPipelines] = pinned.filter { !$0.isEmpty }
+            settings[TraySettings.pinnedPipelines] = PinnedPipelineSlots.setting(newValue, slot: slot,
+                                                                                 in: settings[TraySettings.pinnedPipelines])
         }
     }
 
@@ -251,7 +247,7 @@ struct TraySettingsPane: View {
 
     private func delete(_ pipeline: PipelineDefinition) {
         settings[TraySettings.userPipelines] = settings[TraySettings.userPipelines].filter { $0.id != pipeline.id }
-        settings[TraySettings.pinnedPipelines] = settings[TraySettings.pinnedPipelines].filter { $0 != pipeline.id }
+        settings[TraySettings.pinnedPipelines] = PinnedPipelineSlots.removing(pipeline.id, from: settings[TraySettings.pinnedPipelines])
     }
 }
 

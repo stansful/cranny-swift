@@ -15,7 +15,8 @@ public nonisolated enum TraySettings {
     public static let opensTrayOnDrop = SettingKey<Bool>(.tray, "opensTrayOnDrop", default: true)
     /// AirDrop zone in the drag catch state and on the Tray page.
     public static let showsAirDropZone = SettingKey<Bool>(.tray, "showsAirDropZone", default: true)
-    /// Up to three pipelines (by `PipelineDefinition.id`) offered as drop zones while dragging.
+    /// Up to three pipelines (by `PipelineDefinition.id`) offered as drop zones while dragging, by slot ("Drop zone
+    /// 1–3"); an empty string is a free slot (`PinnedPipelineSlots`).
     public static let pinnedPipelines = SettingKey<[String]>(.tray, "pinnedPipelines", default: ["builtin.compress", "builtin.zip"])
     /// Chains built in Settings ▸ Tray.
     public static let userPipelines = SettingKey<[PipelineDefinition]>(.tray, "userPipelines", default: [])

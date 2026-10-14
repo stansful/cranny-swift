@@ -81,6 +81,28 @@ import UniformTypeIdentifiers
         #expect(BuiltinPipelines.catchZones(pinned: ["user.gone"], userPipelines: [], types: [.png]).isEmpty)
     }
 
+    @Test func pinnedSlotsStayWhereTheUserPutThem() {
+        let defaults = TraySettings.pinnedPipelines.defaultValue
+        #expect(PinnedPipelineSlots.id(in: defaults, slot: 0) == "builtin.compress")
+        #expect(PinnedPipelineSlots.id(in: defaults, slot: 2) == nil)
+        // Freeing zone 1 leaves Zip in zone 2.
+        let freed = PinnedPipelineSlots.setting(nil, slot: 0, in: defaults)
+        #expect(freed == ["", "builtin.zip"])
+        #expect(PinnedPipelineSlots.id(in: freed, slot: 0) == nil && PinnedPipelineSlots.id(in: freed, slot: 1) == "builtin.zip")
+        // Zone 3 can be used while zone 1 is free; a pipeline pinned twice leaves its old slot.
+        let third = PinnedPipelineSlots.setting("builtin.unzip", slot: 2, in: freed)
+        #expect(third == ["", "builtin.zip", "builtin.unzip"])
+        #expect(PinnedPipelineSlots.setting("builtin.zip", slot: 0, in: third) == ["builtin.zip", "", "builtin.unzip"])
+        // Trailing free slots are dropped, so choosing the defaults again reads as the default.
+        #expect(PinnedPipelineSlots.setting(nil, slot: 2, in: ["builtin.compress", "builtin.zip", "builtin.unzip"]) == defaults)
+        #expect(PinnedPipelineSlots.setting("builtin.compress", slot: 0, in: freed) == defaults)
+        // Deleting a user pipeline frees its slot only.
+        #expect(PinnedPipelineSlots.removing("user.web", from: ["user.web", "builtin.zip"]) == ["", "builtin.zip"])
+        #expect(PinnedPipelineSlots.removing("user.web", from: ["builtin.zip", "user.web"]) == ["builtin.zip"])
+        // The catch view skips free slots.
+        #expect(BuiltinPipelines.catchZones(pinned: third, userPipelines: [], types: [.zip]).map(\.id) == ["builtin.zip", "builtin.unzip"])
+    }
+
     @Test func catchLayoutKeepsAtLeastFourCellsForKeep() {
         #expect(CatchLayout.cells(total: 12, showsAirDrop: true, pipelines: 3) == (keep: 4, airDrop: 2, pipelines: 3))
         #expect(CatchLayout.cells(total: 10, showsAirDrop: true, pipelines: 3) == (keep: 4, airDrop: 2, pipelines: 2))

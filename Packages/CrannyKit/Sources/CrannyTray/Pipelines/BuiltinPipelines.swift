@@ -50,3 +50,33 @@ nonisolated enum BuiltinPipelines {
         PipelineDefinition(id: "builtin.\(id)", name: nil, symbol: symbol, steps: [step])
     }
 }
+
+/// `TraySettings.pinnedPipelines` as numbered slots (Settings ▸ Tray ▸ Drop zone 1–3). An empty string is a free slot,
+/// so freeing zone 1 never moves zone 2's pipeline up; trailing free slots are dropped (the default stays equal).
+/// The catch view skips free slots (`BuiltinPipelines.catchZones` ignores ids it does not know).
+nonisolated enum PinnedPipelineSlots {
+    /// The id in `slot`, nil when free.
+    static func id(in pinned: [String], slot: Int) -> String? {
+        pinned.indices.contains(slot) && !pinned[slot].isEmpty ? pinned[slot] : nil
+    }
+
+    /// `pinned` with `id` in `slot` (nil frees it). A pipeline pinned in another slot leaves that slot.
+    static func setting(_ id: String?, slot: Int, in pinned: [String]) -> [String] {
+        var slots = Array(pinned.prefix(TraySettings.maxPinnedPipelines))
+        while slots.count <= slot { slots.append("") }
+        if let id { for i in slots.indices where slots[i] == id { slots[i] = "" } }
+        slots[slot] = id ?? ""
+        return trimmed(slots)
+    }
+
+    /// `pinned` without `id` (a deleted user pipeline); its slot becomes free.
+    static func removing(_ id: String, from pinned: [String]) -> [String] {
+        trimmed(pinned.map { $0 == id ? "" : $0 })
+    }
+
+    private static func trimmed(_ slots: [String]) -> [String] {
+        var slots = slots
+        while slots.last?.isEmpty == true { slots.removeLast() }
+        return slots
+    }
+}
