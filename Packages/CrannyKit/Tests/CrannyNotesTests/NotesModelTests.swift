@@ -238,6 +238,15 @@ import Testing
         #expect(!model.isFocusPresented && !model.isEditing)
     }
 
+    @Test func closingThePanelDropsAnUnusedFocusRequestAndPendingDialogs() async {
+        let model = await loadedModel()
+        model.newNote(text: "x")                                                // asks for focus
+        model.requestDelete()
+        model.panelClosed()
+        #expect(!model.focusRequested)
+        #expect(model.pendingDeletion == nil)
+    }
+
     @Test func revealOpensThePageThatHoldsNotes() async {
         let model = await loadedModel()
         model.reveal()

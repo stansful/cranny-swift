@@ -30,17 +30,19 @@ struct NotesHeader: View {
                     .accessibilityLabel(Text(NotesStrings.saveFailed))
             }
             HeaderButton(symbol: "chevron.left.forwardslash.chevron.right", label: NotesStrings.codeMode,
-                         isOn: entry.mode == .code) { model.toggleCodeMode() }
-                .keyboardShortcut("/", modifiers: .command)
+                         isOn: entry.mode == .code, shortcut: KeyboardShortcut("/", modifiers: .command)) {
+                model.toggleCodeMode()
+            }
             if showsFocusButton {
                 HeaderButton(symbol: model.isFocusPresented ? "arrow.down.right.and.arrow.up.left" : "arrow.up.left.and.arrow.down.right",
-                             label: model.isFocusPresented ? NotesStrings.exitFocusMode : NotesStrings.focusMode) {
+                             label: model.isFocusPresented ? NotesStrings.exitFocusMode : NotesStrings.focusMode,
+                             shortcut: KeyboardShortcut(.return, modifiers: .command)) {
                     model.toggleFocusMode()
                 }
-                .keyboardShortcut(.return, modifiers: .command)
             }
-            HeaderButton(symbol: "plus", label: NotesStrings.newNote) { model.newNote() }
-                .keyboardShortcut("n", modifiers: .command)
+            HeaderButton(symbol: "plus", label: NotesStrings.newNote, shortcut: KeyboardShortcut("n", modifiers: .command)) {
+                model.newNote()
+            }
         }
         .frame(height: HitTarget.nook.height)
     }
@@ -68,6 +70,8 @@ struct HeaderButton: View {
     let symbol: String
     let label: String
     var isOn = false
+    /// Works while the panel is key, also when the editor is not first responder.
+    var shortcut: KeyboardShortcut?
     let action: () -> Void
 
     var body: some View {
@@ -75,6 +79,7 @@ struct HeaderButton: View {
             Image(systemName: symbol)
                 .foregroundStyle(isOn ? theme.accentColor : theme.palette.secondaryLabel)
         }
+        .keyboardShortcut(shortcut)
         .buttonStyle(CrannyIconButtonStyle(isOn ? .filled : .plain, size: HitTarget.nook.height))
         .frame(width: HitTarget.nook.width, height: HitTarget.nook.height)
         .contentShape(Rectangle())

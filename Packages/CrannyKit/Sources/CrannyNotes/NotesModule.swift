@@ -24,6 +24,9 @@ public enum NotesModule: FeatureModule {
             services.environment.isDemoMode && services.settings[CoreSettings.demoRedactsCalendar]
         })
         registry.onLaunch {
+            services.notch.addEventObserver { event in
+                if case .closed = event { model.panelClosed() }
+            }
             await model.load()
             #if DEBUG
             NotesQAHooks.apply(to: model)

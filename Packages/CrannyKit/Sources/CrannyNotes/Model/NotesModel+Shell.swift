@@ -38,6 +38,14 @@ extension NotesModel {
         editorEditingChanged(false)
         focusPresentationChanged(false)
         if renamingID != nil { renamingID = nil }
+        if pendingDeletion != nil { cancelDelete() }
+    }
+
+    /// The panel closed (`NotchEvent.closed`): a focus request that no editor took (the widget was on another
+    /// page) must not make the panel key the next time it opens by hover.
+    func panelClosed() {
+        if focusRequested { consumeFocusRequest() }
+        widgetDisappeared()
     }
 
     /// Makes the panel key without activating the app, so typing reaches the editor (new note from a button).
