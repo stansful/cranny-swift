@@ -50,6 +50,7 @@ private struct CanvasBody: View {
     @Environment(\.notchDelight) private var delight
     @State private var previous: ShapeMotionState?
     @State private var gulp: CGFloat = 0
+    @State private var resizeFade: ResizeFade?
     let model: NotchSceneModel
     let registry: ModuleRegistry
     let actions: NotchUIActions
@@ -59,10 +60,10 @@ private struct CanvasBody: View {
         let kind = ShapeMotion.kind(from: previous ?? current, to: current)
         let base = CanvasGeometry.base(model)
         let shown = CanvasGeometry.adjusted(base, phase: model.phase, gesture: model.gestureTranslation, gulp: gulp)
-        let key = ShapeMotion.crossFadeKey(phase: model.phase, openColumns: model.openColumns,
-                                           isFocusMode: isFocusMode, reduceMotion: theme.reduceMotion)
+        let key = ShapeMotion.crossFadeKey(phase: model.phase, reduceMotion: theme.reduceMotion)
         ZStack(alignment: .top) {
             surface(shown)
+                .modifier(ResizeCrossFade(fade: resizeFade, isEnabled: theme.reduceMotion))
                 .id(key)
                 .transition(.opacity)
             if model.phase == .compact, let id = model.satellite, let activity = model.activity(id, in: registry) {
@@ -82,6 +83,19 @@ private struct CanvasBody: View {
         .modifier(GulpModifier(depth: $gulp))
         .environment(\.notchSlotRevealDelay, ContentTiming.slotDelay(after: kind))
         .onChange(of: current) { _, new in previous = new }
+        .onChange(of: ShapeTarget(phase: model.phase, geometry: base)) { old, new in crossFadeResize(from: old, to: new) }
+    }
+
+    /// Reduce Motion: an open → open resize cross-fades the outlines (`ResizeCrossFade`) instead of travelling.
+    private func crossFadeResize(from old: ShapeTarget, to new: ShapeTarget) {
+        guard new.phase == .open else { resizeFade = nil; return }
+        guard theme.reduceMotion, old.phase == .open, old.geometry != new.geometry,
+              let animation = theme.animation(.resize) else { return }
+        let fade = ResizeFade(from: old.geometry)
+        resizeFade = fade
+        withAnimation(animation) { resizeFade?.progress = 1 } completion: {
+            if resizeFade?.id == fade.id { resizeFade = nil }
+        }
     }
 
     // MARK: Surface
@@ -147,10 +161,6 @@ private struct CanvasBody: View {
 
     private var primaryIsHUD: Bool {
         model.primary.flatMap { model.activity($0, in: registry) }?.priority == .hud
-    }
-
-    private var isFocusMode: Bool {
-        if case .focus? = model.open?.mode { true } else { false }
     }
 
     /// While music plays, the keyline takes the album accent (DESIGN.md §5.1).

@@ -39,17 +39,20 @@ nonisolated enum ShapeMotion {
         kind == .close && !reduceMotion ? 0.04 : 0
     }
 
-    /// Under Reduce Motion open, close and resize do not travel: the old and new shapes cross-fade at their
-    /// final sizes (`CrannyMotion.morphsShape`). Every presentation with the same key morphs; a new key
-    /// cross-fades. Without Reduce Motion the key never changes.
-    static func crossFadeKey(phase: NotchPhase, openColumns: Int, isFocusMode: Bool, reduceMotion: Bool) -> String {
+    /// Under Reduce Motion open and close do not travel: the old and new surfaces cross-fade at their final
+    /// sizes (`CrannyMotion.morphsShape`), so opening and closing change the key. Every presentation with the
+    /// same key keeps the same surface. An open → open resize keeps the key too (the open panel inside must stay
+    /// the same view for focus and VoiceOver); `ResizeCrossFade` cross-fades its outlines instead. Without Reduce
+    /// Motion the key never changes.
+    static func crossFadeKey(phase: NotchPhase, reduceMotion: Bool) -> String {
         guard reduceMotion else { return "morph" }
-        guard phase == .open else { return "band" }                       // closed, breath, compact, peek: small morphs
-        return isFocusMode ? "open.focus" : "open.\(openColumns)"
+        return phase == .open ? "open" : "band"                           // closed, breath, compact, peek: small morphs
     }
 
-    /// The animation of a shape change, with the close delay applied.
+    /// The animation of a shape change, with the close delay applied. Under Reduce Motion a resize has none: the
+    /// shape takes its new size at once and `ResizeCrossFade` dissolves the outlines.
     static func animation(_ kind: CrannyMotion.Kind, theme: CrannyTheme) -> Animation? {
+        if !CrannyMotion.morphsShape(kind, reduceMotion: theme.reduceMotion) && kind == .resize { return nil }
         let delay = delay(for: kind, reduceMotion: theme.reduceMotion)
         return theme.animation(kind).map { delay > 0 ? $0.delay(delay) : $0 }
     }

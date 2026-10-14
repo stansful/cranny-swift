@@ -50,17 +50,20 @@ private func kind(_ from: NotchPhase, _ to: NotchPhase, fromHUD: Bool = false, t
     }
 
     @Test func reduceMotionCrossFadesOnlyBigMorphs() {
-        let morph = ShapeMotion.crossFadeKey(phase: .open, openColumns: 10, isFocusMode: false, reduceMotion: false)
-        #expect(morph == ShapeMotion.crossFadeKey(phase: .idle, openColumns: 10, isFocusMode: false, reduceMotion: false))
+        let morph = ShapeMotion.crossFadeKey(phase: .open, reduceMotion: false)
+        #expect(morph == ShapeMotion.crossFadeKey(phase: .idle, reduceMotion: false))
         // Reduce Motion: closed ⇄ compact ⇄ peek morph (same key) …
-        let band = ShapeMotion.crossFadeKey(phase: .compact, openColumns: 10, isFocusMode: false, reduceMotion: true)
-        #expect(band == ShapeMotion.crossFadeKey(phase: .peek, openColumns: 10, isFocusMode: false, reduceMotion: true))
-        #expect(band == ShapeMotion.crossFadeKey(phase: .idle, openColumns: 4, isFocusMode: false, reduceMotion: true))
-        // … open, close and resize cross-fade (new key).
-        let open10 = ShapeMotion.crossFadeKey(phase: .open, openColumns: 10, isFocusMode: false, reduceMotion: true)
-        #expect(open10 != band)
-        #expect(open10 != ShapeMotion.crossFadeKey(phase: .open, openColumns: 8, isFocusMode: false, reduceMotion: true))
-        #expect(open10 != ShapeMotion.crossFadeKey(phase: .open, openColumns: 10, isFocusMode: true, reduceMotion: true))
+        let band = ShapeMotion.crossFadeKey(phase: .compact, reduceMotion: true)
+        #expect(band == ShapeMotion.crossFadeKey(phase: .peek, reduceMotion: true))
+        #expect(band == ShapeMotion.crossFadeKey(phase: .idle, reduceMotion: true))
+        // … open and close cross-fade the whole surface (new key) …
+        #expect(ShapeMotion.crossFadeKey(phase: .open, reduceMotion: true) != band)
+        // … and a resize keeps the surface: no travel, `ResizeCrossFade` dissolves the outlines.
+        var reduced = CrannyTheme()
+        reduced.reduceMotion = true
+        #expect(ShapeMotion.animation(.resize, theme: reduced) == nil)
+        #expect(ShapeMotion.animation(.open, theme: reduced) != nil)        // drives the open cross-fade
+        #expect(ShapeMotion.animation(.resize, theme: CrannyTheme()) != nil)
     }
 
     @Test func instantHasNoAnimation() {

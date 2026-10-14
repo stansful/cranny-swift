@@ -34,6 +34,7 @@ struct NookView: View {
         .padding(.top, shape.topInset)
         .foregroundStyle(theme.palette.label)
         .background { NookHiddenShortcuts(perform: perform) }
+        .lifecycleReport("nook")
         .onAppear {
             AccessibilityNotification.LayoutChanged().post()                // VoiceOver lands in the opened panel
             if let qa = NotchUIQAHooks.mode, !NotchUIQAHooks.didApplyMode, !context.isPreview {   // DEBUG-only visual QA

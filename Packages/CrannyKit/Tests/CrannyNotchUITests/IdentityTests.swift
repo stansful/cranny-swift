@@ -39,6 +39,30 @@ extension HostedTests {
             #expect(probe.disappearances(of: "surface") == 0)
             #expect(probe.appearances(of: "light") == 1, "the light's frame moves with the shape in every phase")
         }
+
+        /// Reduce Motion: a resize does not travel, but the open panel stays the same view, so keyboard focus, a
+        /// handle drag and the VoiceOver cursor survive every ⌥⇧← / ⌥⇧→, tab of another width and Notes focus.
+        @Test(arguments: [false, true]) func theOpenPanelSurvivesResizes(reduceMotion: Bool) {
+            let (model, registry) = previewScene(.open)
+            var theme = model.theme
+            theme.reduceMotion = reduceMotion
+            model.theme = theme
+            let (hosted, probe) = hostedCanvas(model, registry)
+            defer { hosted.tearDown() }
+            #expect(probe.appearances(of: "nook") == 1)
+            model.open?.mode = .editLayout
+            hosted.settle()
+            for columns in [11, 12, 9, 10] {
+                model.openColumns = columns                                   // the owner follows commitLayout
+                hosted.settle()
+            }
+            model.open?.mode = .focus(.notes)
+            hosted.settle()
+            model.open?.mode = .grid
+            hosted.settle()
+            #expect(probe.appearances(of: "nook") == 1, "the open panel was re-created by a resize")
+            #expect(probe.appearances(of: "surface") == 1)
+        }
     }
 
     @MainActor @Suite("Morph frames (hosted, off-screen)") struct MorphFrameTests {
