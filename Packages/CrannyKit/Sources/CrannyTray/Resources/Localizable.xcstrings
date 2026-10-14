@@ -1,6 +1,1552 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ finished" : {
+      "comment" : "VoiceOver announcement: a tray pipeline finished; the argument is the pipeline name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: готово"
+          }
+        }
+      }
+    },
+    "%@ px" : {
+      "comment" : "Settings ▸ Tray ▸ Resize to: pixels on the longer side; the argument is a number of pixels",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ пикс."
+          }
+        }
+      }
+    },
+    "%@, %@" : {
+      "comment" : "Tray tile: VoiceOver value while a pipeline runs; pipeline name and percent done",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@, %@"
+          }
+        }
+      }
+    },
+    "%lld items" : {
+      "comment" : "Settings ▸ Tray ▸ Keep at most: number of items",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld item"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld items"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld объекта"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld объектов"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld объект"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld объекта"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld items · %@" : {
+      "comment" : "Tray chip row with nothing selected: number of items and their total size",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld item · %@"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld items · %@"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld объекта · %@"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld объектов · %@"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld объект · %@"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld объекта · %@"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld selected" : {
+      "comment" : "Tray chip row: number of selected files",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld selected"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld selected"
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Выбрано %lld"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Выбрано %lld"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Выбран %lld"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Выбрано %lld"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "Add Step" : {
+      "comment" : "Pipeline editor: menu that adds a step",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить шаг"
+          }
+        }
+      }
+    },
+    "Add a step to begin." : {
+      "comment" : "Pipeline editor: empty chain",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавьте первый шаг."
+          }
+        }
+      }
+    },
+    "After one day" : {
+      "comment" : "Settings ▸ Tray ▸ Remove items: 24 hours after each was added",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Через сутки"
+          }
+        }
+      }
+    },
+    "AirDrop zone" : {
+      "comment" : "Settings ▸ Tray: toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зона AirDrop"
+          }
+        }
+      }
+    },
+    "Already as small as it gets" : {
+      "comment" : "Tray error (tile tooltip): compressing would not make the file smaller",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Меньше уже не сделать"
+          }
+        }
+      }
+    },
+    "Archive" : {
+      "comment" : "Tray pipelines: base name of a dated zip archive, \"Archive 2026-10-14.zip\"",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Архив"
+          }
+        }
+      }
+    },
+    "Cancel" : {
+      "comment" : "Pipeline editor: button",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отменить"
+          }
+        }
+      }
+    },
+    "Chain steps into one action, for example Resize → Convert to JPEG → Copy paths. They appear as chips when they fit the selected files." : {
+      "comment" : "Settings ▸ Tray: footnote under Your pipelines",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Объедините шаги в одно действие, например «Уменьшить → Конвертировать в JPEG → Скопировать пути». Конвейер появляется кнопкой, когда подходит к выбранным файлам."
+          }
+        }
+      }
+    },
+    "Changed" : {
+      "comment" : "Settings ▸ Tray: VoiceOver value of a row whose value is not the default",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменено"
+          }
+        }
+      }
+    },
+    "Clear" : {
+      "comment" : "Tray chip: remove every item from the Tray (⌥⌘⌫)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Очистить"
+          }
+        }
+      }
+    },
+    "Clear Tray" : {
+      "comment" : "Settings ▸ Tray: Clear confirmation button",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Очистить лоток"
+          }
+        }
+      }
+    },
+    "Clear Tray…" : {
+      "comment" : "Settings ▸ Tray: button that removes every item",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Очистить лоток…"
+          }
+        }
+      }
+    },
+    "Clear the Tray (⌥⌘⌫)" : {
+      "comment" : "Tray chip: tooltip of Clear",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Очистить лоток (⌥⌘⌫)"
+          }
+        }
+      }
+    },
+    "Clear tray" : {
+      "comment" : "Command palette: remove every item from the Tray",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Очистить лоток"
+          }
+        }
+      }
+    },
+    "Compress" : {
+      "comment" : "Tray pipeline: compress images (chip, drop zone, editor step)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сжать"
+          }
+        }
+      }
+    },
+    "Compress video" : {
+      "comment" : "Tray pipeline: make a video file smaller",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сжать видео"
+          }
+        }
+      }
+    },
+    "Convert" : {
+      "comment" : "Tray pipeline: convert images (menu chip and editor step, before choosing a format)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Конвертировать"
+          }
+        }
+      }
+    },
+    "Convert to %@" : {
+      "comment" : "Tray pipeline: convert images; the argument is a format name such as PNG",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Конвертировать в %@"
+          }
+        }
+      }
+    },
+    "Copies" : {
+      "comment" : "Settings ▸ Tray: keep dropped files as copies (default)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Копии"
+          }
+        }
+      }
+    },
+    "Copies kept by the Tray are deleted. Your own files are not touched." : {
+      "comment" : "Settings ▸ Tray: Clear confirmation message",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Копии, которые хранит лоток, будут удалены. Ваши собственные файлы останутся на месте."
+          }
+        }
+      }
+    },
+    "Copies stay even if the original is moved or deleted. Links take no space; screenshots and other temporary files are always copied." : {
+      "comment" : "Settings ▸ Tray: footnote under Keep dropped files as",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Копии сохраняются, даже если оригинал переместят или удалят. Ссылки не занимают места; снимки экрана и другие временные файлы всегда копируются."
+          }
+        }
+      }
+    },
+    "Copy Path" : {
+      "comment" : "Tray tile: context menu item and VoiceOver action",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопировать путь"
+          }
+        }
+      }
+    },
+    "Copy paths" : {
+      "comment" : "Tray pipeline: copy the files' paths as text",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопировать пути"
+          }
+        }
+      }
+    },
+    "Copy text" : {
+      "comment" : "Tray pipeline: recognize the text in images and copy it",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопировать текст"
+          }
+        }
+      }
+    },
+    "Couldn’t compress the video" : {
+      "comment" : "Tray error (tile tooltip): video export failed",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось сжать видео"
+          }
+        }
+      }
+    },
+    "Couldn’t create the archive" : {
+      "comment" : "Tray error (tile tooltip): zip failed",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось создать архив"
+          }
+        }
+      }
+    },
+    "Couldn’t keep “%@”" : {
+      "comment" : "Tray error (tile tooltip): a dropped file could not be copied into the Tray, for example because the disk is full",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось сохранить «%@» в лотке"
+          }
+        }
+      }
+    },
+    "Couldn’t make the PDF" : {
+      "comment" : "Tray error (tile tooltip): Make PDF failed",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось создать PDF"
+          }
+        }
+      }
+    },
+    "Couldn’t open the archive" : {
+      "comment" : "Tray error (tile tooltip): unzip failed",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось открыть архив"
+          }
+        }
+      }
+    },
+    "Couldn’t read “%@”" : {
+      "comment" : "Tray error (tile tooltip): a file could not be read",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось прочитать «%@»"
+          }
+        }
+      }
+    },
+    "Couldn’t save the result" : {
+      "comment" : "Tray error (tile tooltip): the result file could not be written",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось сохранить результат"
+          }
+        }
+      }
+    },
+    "Date (%@.zip)" : {
+      "comment" : "Settings ▸ Tray ▸ Name zip archives: dated option; the argument is an example name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дата (%@.zip)"
+          }
+        }
+      }
+    },
+    "Defaults" : {
+      "comment" : "Settings ▸ Tray: section header",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "По умолчанию"
+          }
+        }
+      }
+    },
+    "Delete" : {
+      "comment" : "Settings ▸ Tray ▸ your pipelines: delete a pipeline",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить"
+          }
+        }
+      }
+    },
+    "Dismiss" : {
+      "comment" : "Tray tile: hide a failed run of dropped files",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скрыть"
+          }
+        }
+      }
+    },
+    "Downloads" : {
+      "comment" : "Settings ▸ Tray ▸ Save results: the Downloads folder",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Загрузки"
+          }
+        }
+      }
+    },
+    "Drop files here to keep them" : {
+      "comment" : "Files widget: empty state",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перетащите сюда файлы, чтобы сохранить их"
+          }
+        }
+      }
+    },
+    "Drop files here to send them with AirDrop" : {
+      "comment" : "AirDrop widget: shown on click with nothing to send, and as tooltip",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перетащите сюда файлы, чтобы отправить их через AirDrop"
+          }
+        }
+      }
+    },
+    "Drop files on the notch to keep them here" : {
+      "comment" : "Tray page: empty state",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перетащите файлы на вырез, чтобы хранить их здесь"
+          }
+        }
+      }
+    },
+    "Drop files to send them to devices nearby" : {
+      "comment" : "Widget library: AirDrop description",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перетащите файлы, чтобы отправить их на устройства поблизости"
+          }
+        }
+      }
+    },
+    "Drop zone %lld" : {
+      "comment" : "Settings ▸ Tray ▸ pinned pipelines: row label",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зона %lld"
+          }
+        }
+      }
+    },
+    "Drop zones" : {
+      "comment" : "Drag catch state: VoiceOver label of the row of drop zones",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зоны для файлов"
+          }
+        }
+      }
+    },
+    "Dropping" : {
+      "comment" : "Settings ▸ Tray: section header",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Перетаскивание"
+          }
+        }
+      }
+    },
+    "Edit…" : {
+      "comment" : "Settings ▸ Tray ▸ your pipelines: edit button",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Изменить…"
+          }
+        }
+      }
+    },
+    "Example: %@" : {
+      "comment" : "Pipeline editor: VoiceOver label of the output-name preview",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пример: %@"
+          }
+        }
+      }
+    },
+    "Files" : {
+      "comment" : "Tray page: VoiceOver label of the row of files; also the Files widget's name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файлы"
+          }
+        }
+      }
+    },
+    "First item’s name (Brief.zip)" : {
+      "comment" : "Settings ▸ Tray ▸ Name zip archives: example uses an English file name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Имя первого объекта (Brief.zip)"
+          }
+        }
+      }
+    },
+    "JPEG and HEIC quality" : {
+      "comment" : "Settings ▸ Tray: slider label",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Качество JPEG и HEIC"
+          }
+        }
+      }
+    },
+    "Keep at most" : {
+      "comment" : "Settings ▸ Tray: row label (item cap)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Хранить не более"
+          }
+        }
+      }
+    },
+    "Keep dropped files as" : {
+      "comment" : "Settings ▸ Tray: row label",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Хранить файлы как"
+          }
+        }
+      }
+    },
+    "Keep in Tray" : {
+      "comment" : "Drag catch state: drop zone that keeps the files",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оставить в лотке"
+          }
+        }
+      }
+    },
+    "Links to the originals" : {
+      "comment" : "Settings ▸ Tray: keep dropped files as links",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ссылки на оригиналы"
+          }
+        }
+      }
+    },
+    "Make PDF" : {
+      "comment" : "Tray pipeline: combine images and PDFs into one PDF",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Создать PDF"
+          }
+        }
+      }
+    },
+    "More actions" : {
+      "comment" : "Tray chip: the … menu (VoiceOver label, tooltip)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Другие действия"
+          }
+        }
+      }
+    },
+    "Move Down" : {
+      "comment" : "Pipeline editor: step menu",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переместить вниз"
+          }
+        }
+      }
+    },
+    "Move Up" : {
+      "comment" : "Pipeline editor: step menu",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Переместить вверх"
+          }
+        }
+      }
+    },
+    "Name" : {
+      "comment" : "Pipeline editor: name field label",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Название"
+          }
+        }
+      }
+    },
+    "Name zip archives" : {
+      "comment" : "Settings ▸ Tray: row label (zip naming)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Имена zip-архивов"
+          }
+        }
+      }
+    },
+    "Needs %@, but the step before makes %@." : {
+      "comment" : "Settings ▸ Tray ▸ pipeline editor: warning under a step that cannot run; arguments are kinds of files",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Needs %1$@, but the step before makes %2$@."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нужны %@, а предыдущий шаг создаёт %@."
+          }
+        }
+      }
+    },
+    "New Pipeline…" : {
+      "comment" : "Settings ▸ Tray ▸ your pipelines: button that opens the editor",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Новый конвейер…"
+          }
+        }
+      }
+    },
+    "Next to the original" : {
+      "comment" : "Settings ▸ Tray ▸ Save results: next to the source file",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Рядом с оригиналом"
+          }
+        }
+      }
+    },
+    "No subject found" : {
+      "comment" : "Tray error (tile tooltip): Remove background found nothing in front",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Объект не найден"
+          }
+        }
+      }
+    },
+    "No text found" : {
+      "comment" : "Tray error (tile tooltip): Copy text recognized nothing",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Текст не найден"
+          }
+        }
+      }
+    },
+    "None" : {
+      "comment" : "Settings ▸ Tray ▸ pinned pipelines: empty slot",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет"
+          }
+        }
+      }
+    },
+    "Open" : {
+      "comment" : "Tray tile: context menu item and VoiceOver action",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть"
+          }
+        }
+      }
+    },
+    "Open Tray" : {
+      "comment" : "Files widget button, ⌘K command and Settings ▸ Keyboard shortcut: show the Tray page",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть лоток"
+          }
+        }
+      }
+    },
+    "PDFs" : {
+      "comment" : "Settings ▸ Tray ▸ pipeline editor: kind of file a step needs or makes",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PDF"
+          }
+        }
+      }
+    },
+    "Path copied" : {
+      "comment" : "Notch flash: Copy paths confirmation (one file); at most 12 characters",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопировано"
+          }
+        }
+      }
+    },
+    "Paths copied" : {
+      "comment" : "Notch flash: Copy paths confirmation (several files); at most 12 characters",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопировано"
+          }
+        }
+      }
+    },
+    "Pinned pipelines" : {
+      "comment" : "Settings ▸ Tray: section header",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закреплённые конвейеры"
+          }
+        }
+      }
+    },
+    "Quick Look" : {
+      "comment" : "Tray tile: context menu item and VoiceOver action (Apple's feature name)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Быстрый просмотр"
+          }
+        }
+      }
+    },
+    "Remove Step" : {
+      "comment" : "Pipeline editor: step menu",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить шаг"
+          }
+        }
+      }
+    },
+    "Remove background" : {
+      "comment" : "Tray pipeline: cut the subject out of a photo",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить фон"
+          }
+        }
+      }
+    },
+    "Remove every item from the Tray?" : {
+      "comment" : "Settings ▸ Tray: Clear confirmation",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить все объекты из лотка?"
+          }
+        }
+      }
+    },
+    "Remove from Tray" : {
+      "comment" : "Tray tile: hover button and menu item that removes the file from the Tray",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Убрать из лотка"
+          }
+        }
+      }
+    },
+    "Remove items" : {
+      "comment" : "Settings ▸ Tray: row label (retention)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалять объекты"
+          }
+        }
+      }
+    },
+    "Reset to Default" : {
+      "comment" : "Settings ▸ Tray: row context menu",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Вернуть значение по умолчанию"
+          }
+        }
+      }
+    },
+    "Resize" : {
+      "comment" : "Tray pipeline: resize images (menu chip and editor step, before choosing a size)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уменьшить"
+          }
+        }
+      }
+    },
+    "Resize to" : {
+      "comment" : "Settings ▸ Tray: row label (maximum dimension)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уменьшать до"
+          }
+        }
+      }
+    },
+    "Resize to %@" : {
+      "comment" : "Tray pipeline: resize images by a percentage, \"Resize to 50 %\"",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уменьшить до %@"
+          }
+        }
+      }
+    },
+    "Resize to %@ px" : {
+      "comment" : "Tray pipeline: resize images so the longer side is at most N pixels; the argument is a number of pixels",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Уменьшить до %@ пикс."
+          }
+        }
+      }
+    },
+    "Results of files the Tray keeps a copy of go to Downloads." : {
+      "comment" : "Settings ▸ Tray: footnote under Save results",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Результаты для копий из лотка сохраняются в «Загрузки»."
+          }
+        }
+      }
+    },
+    "Reveal in Finder" : {
+      "comment" : "Tray action and pipeline step: show the files in Finder",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать в Finder"
+          }
+        }
+      }
+    },
+    "Save" : {
+      "comment" : "Pipeline editor: button",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранить"
+          }
+        }
+      }
+    },
+    "Save results" : {
+      "comment" : "Settings ▸ Tray: row label (output location)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Сохранять результаты"
+          }
+        }
+      }
+    },
+    "Selected" : {
+      "comment" : "Tray tile: VoiceOver value",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выбрано"
+          }
+        }
+      }
+    },
+    "Share…" : {
+      "comment" : "Tray tile: context menu item and VoiceOver action; opens the share picker",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Поделиться…"
+          }
+        }
+      }
+    },
+    "Show the Tray after dropping files" : {
+      "comment" : "Settings ▸ Tray: toggle",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывать лоток после перетаскивания"
+          }
+        }
+      }
+    },
+    "Step options" : {
+      "comment" : "Pipeline editor: VoiceOver label of a step's menu",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Параметры шага"
+          }
+        }
+      }
+    },
+    "Steps" : {
+      "comment" : "Pipeline editor: section header",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Шаги"
+          }
+        }
+      }
+    },
+    "Stop" : {
+      "comment" : "Tray: stop a running pipeline (tile button, chip, context menu item, VoiceOver action)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Остановить"
+          }
+        }
+      }
+    },
+    "Stop (⌘.)" : {
+      "comment" : "Tray chip: tooltip of Stop, which cancels running pipelines",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Остановить (⌘.)"
+          }
+        }
+      }
+    },
+    "Storage" : {
+      "comment" : "Settings ▸ Tray: section header",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Хранение"
+          }
+        }
+      }
+    },
+    "Strip metadata" : {
+      "comment" : "Tray pipeline: remove location and camera data from images",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить метаданные"
+          }
+        }
+      }
+    },
+    "Text copied" : {
+      "comment" : "Notch flash: Copy text confirmation; at most 12 characters",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Скопировано"
+          }
+        }
+      }
+    },
+    "The file is no longer there" : {
+      "comment" : "Tray error (tile tooltip): a linked file was moved or deleted",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файла больше нет на месте"
+          }
+        }
+      }
+    },
+    "The longer side of images resized to the maximum." : {
+      "comment" : "Settings ▸ Tray: footnote under Resize to",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Длинная сторона изображений при уменьшении до максимума."
+          }
+        }
+      }
+    },
+    "The oldest items leave first." : {
+      "comment" : "Settings ▸ Tray: footnote under Keep at most",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Первыми уходят самые старые."
+          }
+        }
+      }
+    },
+    "This Mac can’t write %@ files" : {
+      "comment" : "Tray error (tile tooltip): image format not supported for writing; the argument is a format name such as AVIF",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Этот Mac не умеет сохранять файлы %@"
+          }
+        }
+      }
+    },
+    "This doesn’t work with “%@”" : {
+      "comment" : "Tray error (tile tooltip): the action does not apply to this kind of file",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не подходит для «%@»"
+          }
+        }
+      }
+    },
+    "Tray" : {
+      "comment" : "Tray: module name (page tab, Settings pane, ⌘K result kind)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Лоток"
+          }
+        }
+      }
+    },
+    "Undo" : {
+      "comment" : "Tray chip: undo the last pipeline for 5 seconds",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отменить"
+          }
+        }
+      }
+    },
+    "Undo %@" : {
+      "comment" : "Tray chip: VoiceOver label of Undo; the argument is the pipeline name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отменить «%@»"
+          }
+        }
+      }
+    },
+    "Until I remove them" : {
+      "comment" : "Settings ▸ Tray ▸ Remove items: never automatically (default)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пока я их не уберу"
+          }
+        }
+      }
+    },
+    "Untitled pipeline" : {
+      "comment" : "Settings ▸ Tray: name of a user pipeline that has none",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Конвейер без названия"
+          }
+        }
+      }
+    },
+    "Unzip" : {
+      "comment" : "Tray pipeline: extract a zip archive",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Распаковать"
+          }
+        }
+      }
+    },
+    "Web export" : {
+      "comment" : "Pipeline editor: example name in the empty name field",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Для веба"
+          }
+        }
+      }
+    },
+    "When Cranny quits" : {
+      "comment" : "Settings ▸ Tray ▸ Remove items: clear on quit",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "При выходе из Cranny"
+          }
+        }
+      }
+    },
+    "While you drag files to the notch, and on the Tray page." : {
+      "comment" : "Settings ▸ Tray: footnote under AirDrop zone",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пока вы перетаскиваете файлы к вырезу, и на странице лотка."
+          }
+        }
+      }
+    },
+    "While you drag files to the notch, pinned pipelines appear next to Keep in Tray and AirDrop. Drop files on one to run it." : {
+      "comment" : "Settings ▸ Tray: footnote under Pinned pipelines",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пока вы перетаскиваете файлы к вырезу, закреплённые конвейеры появляются рядом с «Оставить в лотке» и AirDrop. Бросьте файлы на конвейер, чтобы запустить его."
+          }
+        }
+      }
+    },
+    "Your latest Tray files, ready to drag" : {
+      "comment" : "Widget library: Files description",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Последние файлы из лотка — можно сразу перетащить"
+          }
+        }
+      }
+    },
+    "Your pipelines" : {
+      "comment" : "Settings ▸ Tray: section header",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ваши конвейеры"
+          }
+        }
+      }
+    },
+    "Zip" : {
+      "comment" : "Tray pipeline: make a zip archive",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Архивировать"
+          }
+        }
+      }
+    },
+    "any files" : {
+      "comment" : "Settings ▸ Tray ▸ pipeline editor: kind of file a step needs or makes",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "любые файлы"
+          }
+        }
+      }
+    },
+    "compressed" : {
+      "comment" : "Tray pipelines: suffix of a compressed file's name, \"photo (compressed).jpg\"",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "сжатый"
+          }
+        }
+      }
+    },
+    "files" : {
+      "comment" : "Settings search and ⌘K keyword: files",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "файлы"
+          }
+        }
+      }
+    },
+    "images" : {
+      "comment" : "Settings ▸ Tray ▸ pipeline editor: kind of file a step needs or makes",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "изображения"
+          }
+        }
+      }
+    },
+    "images or PDFs" : {
+      "comment" : "Settings ▸ Tray ▸ pipeline editor: kind of file a step needs or makes",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "изображения или PDF"
+          }
+        }
+      }
+    },
+    "no background" : {
+      "comment" : "Tray pipelines: suffix of a file's name after Remove background, \"photo (no background).png\"",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "без фона"
+          }
+        }
+      }
+    },
+    "no metadata" : {
+      "comment" : "Tray pipelines: suffix of a file's name after Strip metadata, \"photo (no metadata).jpg\"",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "без метаданных"
+          }
+        }
+      }
+    },
+    "videos" : {
+      "comment" : "Settings ▸ Tray ▸ pipeline editor: kind of file a step needs or makes",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "видео"
+          }
+        }
+      }
+    },
+    "zip archives" : {
+      "comment" : "Settings ▸ Tray ▸ pipeline editor: kind of file a step needs or makes",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "zip-архивы"
+          }
+        }
+      }
+    }
   },
   "version" : "1.0"
 }
