@@ -177,7 +177,7 @@ private let log = Log.logger(.onboarding)
         case .preset:
             stage.show(.open, reduceMotion: reduceMotion)
         case .permissions:
-            permissions.refresh()
+            refreshPermissions()
             watchActivation()
             stage.show(.open, reduceMotion: reduceMotion)
         case .done:
@@ -316,8 +316,10 @@ private let log = Log.logger(.onboarding)
                                    })
     }
 
+    /// `.checking` while an Automation answer is still on its way (`knownStatus` is nil): never "Allow" for a player
+    /// that may already be allowed.
     func state(of row: PermissionRow) -> PermissionRowState {
-        PermissionRowState.combining(row.kinds.map { permissions.status($0) }, requested: requested.contains(row.group))
+        PermissionRowState.combining(row.kinds.map { permissions.knownStatus($0) }, requested: requested.contains(row.group))
     }
 
     /// "Allow": the system prompt, then and there (one kind after the other).
@@ -333,11 +335,18 @@ private let log = Log.logger(.onboarding)
         permissions.openSystemSettings(kind)
     }
 
+    /// Statuses and installed apps again: a player installed (or removed) since its first lookup gains (or loses) its
+    /// Automation kind, and a permission changed in System Settings shows its new state.
+    private func refreshPermissions() {
+        permissions.refresh()
+        identities.refresh()
+    }
+
     private func watchActivation() {
         guard activationObserver == nil else { return }
         activationObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.permissions.refresh() }                  // queue: .main
+            MainActor.assumeIsolated { self?.refreshPermissions() }                   // queue: .main
         }
     }
 

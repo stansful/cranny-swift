@@ -58,13 +58,30 @@ import Testing
 /// A resolver for which exactly `bundleIDs` are installed (an injected lookup, never Launch Services), with those
 /// apps already looked up.
 @MainActor func installedApps(_ bundleIDs: Set<String>) async -> AppIdentityResolver {
-    let identities = AppIdentityResolver(locate: { id in
-        bundleIDs.contains(id) ? AppIdentity.Location(url: URL(fileURLWithPath: "/Applications/\(id).app"), name: id,
-                                                      isSafeToRead: false) : nil
-    }, icon: { _ in nil })
-    for id in bundleIDs { _ = identities.identity(of: id) }
-    for _ in 0..<3000 where identities.isLookingUp { try? await Task.sleep(for: .milliseconds(10)) }
-    return identities
+    await FakeInstalls(bundleIDs).resolver(lookingUp: bundleIDs)
+}
+
+/// Installed apps a test can change while a flow runs (a player installed meanwhile). `@unchecked Sendable`: the set
+/// is behind a lock.
+nonisolated final class FakeInstalls: @unchecked Sendable {
+    private let lock = NSLock()
+    private var installed: Set<String>
+
+    init(_ installed: Set<String> = []) { self.installed = installed }
+
+    func install(_ bundleID: String) { lock.withLock { _ = installed.insert(bundleID) } }
+    func contains(_ bundleID: String) -> Bool { lock.withLock { installed.contains(bundleID) } }
+
+    /// A resolver that answers from this set (never Launch Services), with `bundleIDs` already looked up.
+    @MainActor func resolver(lookingUp bundleIDs: Set<String>) async -> AppIdentityResolver {
+        let identities = AppIdentityResolver(locate: { [self] id in
+            contains(id) ? AppIdentity.Location(url: URL(fileURLWithPath: "/Applications/\(id).app"), name: id,
+                                                isSafeToRead: false) : nil
+        }, icon: { _ in nil })
+        for id in bundleIDs { _ = identities.identity(of: id) }
+        for _ in 0..<3000 where identities.isLookingUp { try? await Task.sleep(for: .milliseconds(10)) }
+        return identities
+    }
 }
 
 /// Lets follow-up `Task`s on the main actor run, until `condition` holds (or about a second passed).

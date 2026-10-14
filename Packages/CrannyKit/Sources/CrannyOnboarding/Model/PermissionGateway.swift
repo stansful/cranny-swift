@@ -5,8 +5,10 @@ import CrannyCore
 import Foundation
 
 @MainActor protocol PermissionGateway: AnyObject {
-    /// Never prompts.
+    /// Never prompts. Automation reads `.unknown` until its first answer lands.
     func status(_ kind: PermissionKind) -> PermissionStatus
+    /// Never prompts or blocks; nil while an Automation answer is still on its way (rows show a spinner).
+    func knownStatus(_ kind: PermissionKind) -> PermissionStatus?
     /// Shows the system prompt where one exists; called only from an "Allow" button.
     @discardableResult func request(_ kind: PermissionKind) async -> PermissionStatus
     func openSystemSettings(_ kind: PermissionKind)

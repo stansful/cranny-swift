@@ -96,6 +96,8 @@ private struct PermissionRowView: View {
         case .deferred:
             Text("Asks when needed", bundle: .module, comment: "Welcome step 5: status when the system could not ask yet (e.g. the music app is not running)")
                 .font(.callout).foregroundStyle(.secondary)
+        case .checking:
+            ProgressView().controlSize(.small)                // the first Automation answer runs (as in Settings)
         }
     }
 }

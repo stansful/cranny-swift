@@ -85,10 +85,16 @@ nonisolated enum PermissionRowState: Equatable, Sendable {
     /// Asked, but the system could not decide yet (an Automation target that is not running): Cranny asks
     /// again when the feature needs it.
     case deferred
+    /// A status is still on its way (an app's first Automation answer, read off the main actor): a spinner, no
+    /// action, so "Allow" never shows for a player that is already allowed.
+    case checking
 
-    /// `requested`: the person already pressed Allow on this row.
-    static func combining(_ statuses: [PermissionStatus], requested: Bool) -> Self {
-        guard !statuses.isEmpty else { return .askable }
+    /// `known`: the known status of each kind, nil while one is on its way. `requested`: the person already
+    /// pressed Allow on this row.
+    static func combining(_ known: [PermissionStatus?], requested: Bool) -> Self {
+        guard !known.isEmpty else { return .askable }
+        let statuses = known.compactMap(\.self)
+        guard statuses.count == known.count else { return .checking }
         if statuses.allSatisfy({ $0 == .granted }) { return .granted }
         if statuses.contains(.notDetermined) { return .askable }
         if statuses.contains(.denied) { return .denied }

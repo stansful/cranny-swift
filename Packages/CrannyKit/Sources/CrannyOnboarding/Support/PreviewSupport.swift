@@ -11,15 +11,21 @@ import SwiftUI
 @MainActor @Observable final class StaticPermissionGateway: PermissionGateway {
     var statuses: [PermissionKind: PermissionStatus]
     var answers: [PermissionKind: PermissionStatus] = [:]
+    /// Kinds whose first answer is still on its way (`knownStatus` nil), until a request answers them.
+    var checking: Set<PermissionKind> = []
     private(set) var requested: [PermissionKind] = []
     private(set) var openedSettings: [PermissionKind] = []
     private(set) var refreshCount = 0
 
     init(_ statuses: [PermissionKind: PermissionStatus] = [:]) { self.statuses = statuses }
 
-    func status(_ kind: PermissionKind) -> PermissionStatus { statuses[kind] ?? .notDetermined }
+    func status(_ kind: PermissionKind) -> PermissionStatus { knownStatus(kind) ?? .unknown }
+    func knownStatus(_ kind: PermissionKind) -> PermissionStatus? {
+        checking.contains(kind) ? nil : statuses[kind] ?? .notDetermined
+    }
     func request(_ kind: PermissionKind) async -> PermissionStatus {
         requested.append(kind)
+        checking.remove(kind)
         let answer = answers[kind] ?? .granted
         statuses[kind] = answer
         return answer

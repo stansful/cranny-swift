@@ -160,5 +160,8 @@ import Testing
         #expect(PermissionRowState.combining([.restricted], requested: false) == .restricted)
         #expect(PermissionRowState.combining([.unknown], requested: false) == .askable)
         #expect(PermissionRowState.combining([.unknown, .granted], requested: true) == .deferred)
+        // An Automation answer still on its way: a spinner, never "Allow" for a player that may be allowed already.
+        #expect(PermissionRowState.combining([.granted, nil], requested: false) == .checking)
+        #expect(PermissionRowState.combining([nil, .notDetermined], requested: true) == .checking)
     }
 }
