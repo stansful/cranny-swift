@@ -1,6 +1,7 @@
 // CrannySettingsUI/SettingsRootView.swift — the Settings window content (DESIGN.md §11): a `NavigationSplitView` with
 // the searchable sidebar of shell and module panes, the live preview stage pinned above every pane that has one,
-// the pane itself and its "Reset ‹Pane›…" footer, and the 10-s Undo banner after Reset All.
+// the pane itself and its "Reset ‹Pane›…" footer, and the 10-s Undo banner after Reset All. Its state lives in a
+// `SettingsSession`, which the window controller keeps and navigates.
 import CrannyCore
 import CrannyNotchUI
 import Foundation
@@ -8,29 +9,31 @@ import SwiftUI
 
 /// The Settings window's content (DESIGN.md §11): sidebar of shell and module panes, search, preview stage, pane.
 public struct SettingsRootView: View {
-    private let registry: ModuleRegistry
     private let onPageChange: (@MainActor (SettingsPageID) -> Void)?
-    @State private var navigator: SettingsNavigator
-    @State private var resetAll: ResetAllController
-    @State private var stage: StageController
+    @State private var session: SettingsSession
     @State private var query = ""
     @State private var sidebarSelection: SidebarItem?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Opens on `initialPage` (General when nil). A deep link "pane#row" (e.g. `general#hoverDelay`) also scrolls to
     /// and highlights that row. `onPageChange` reports the pane shown, so the window can restore it next time.
     public init(registry: ModuleRegistry, initialPage: SettingsPageID? = nil,
                 onPageChange: (@MainActor (SettingsPageID) -> Void)? = nil) {
-        self.registry = registry
+        self.init(session: SettingsSession(registry: registry, initialPage: initialPage), onPageChange: onPageChange)
+    }
+
+    /// Shows `session`, which the caller keeps to navigate the open window (`SettingsSession.open(_:)`).
+    public init(session: SettingsSession, onPageChange: (@MainActor (SettingsPageID) -> Void)? = nil) {
         self.onPageChange = onPageChange
-        let navigator = SettingsNavigator(target: initialPage)
-        let pages = Self.pages(registry: registry)
-        _navigator = State(initialValue: navigator)
-        _resetAll = State(initialValue: ResetAllController(settings: registry.services.settings, app: registry.services.app))
-        _stage = State(initialValue: StageController(
-            registry: registry, state: Self.stageState(for: pages.first { $0.id == navigator.selection })))
-        _sidebarSelection = State(initialValue: .pane(navigator.selection))
+        _session = State(initialValue: session)
+        _sidebarSelection = State(initialValue: .pane(session.navigator.selection))
         _query = State(initialValue: SettingsQAOptions.search ?? "")
     }
+
+    private var registry: ModuleRegistry { session.registry }
+    private var navigator: SettingsNavigator { session.navigator }
+    private var resetAll: ResetAllController { session.resetAll }
+    private var stage: StageController { session.stage }
 
     /// Shell panes + module panes, ordered by group then order (§11.1).
     var pages: [SettingsPage] { Self.pages(registry: registry) }
@@ -41,10 +44,9 @@ public struct SettingsRootView: View {
 
     public var body: some View {
         let pages = self.pages
-        let index = SettingsSearchIndex(pages: pages, rows: ShellPanes.rows(registry: registry), aliases: KnownPaneKeywords.all)
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         NavigationSplitView {
-            SettingsSidebar(pages: pages, results: trimmed.isEmpty ? nil : index.search(trimmed), selection: $sidebarSelection)
+            SettingsSidebar(pages: pages, results: trimmed.isEmpty ? nil : searchIndex(pages).search(trimmed), selection: $sidebarSelection)
                 .searchable(text: $query, placement: .sidebar,
                             prompt: Text("Search", bundle: .module, comment: "Settings sidebar: search field placeholder"))
                 .navigationSplitViewColumnWidth(min: SettingsMetrics.sidebarWidth.min, ideal: SettingsMetrics.sidebarWidth.ideal,
@@ -59,10 +61,10 @@ public struct SettingsRootView: View {
             if resetAll.canUndo {
                 UndoBanner(controller: resetAll)
                     .padding(.bottom, 60)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))   // no slide (DESIGN §16)
             }
         }
-        .animation(.smooth(duration: 0.3), value: resetAll.canUndo)
+        .animation(CrannyMotion.animation(.contentSwap, reduceMotion: reduceMotion), value: resetAll.canUndo)
         .environment(navigator)
         .environment(resetAll)
         .environment(stage)
@@ -84,8 +86,16 @@ public struct SettingsRootView: View {
         }
     }
 
+    /// The index for a query: rebuilt only when the panes, the registered rows or a resolved app name change.
+    private func searchIndex(_ pages: [SettingsPage]) -> SettingsSearchIndex {
+        let signature = pages.map(\.id.rawValue)
+            + [registry.shortcuts.count, registry.widgets.count, registry.activities.count, registry.permissionUses.count,
+               AppIdentities.shared.resolvedCount].map(String.init)
+        return session.searchIndex.index(pages: pages, signature: signature) { ShellPanes.rows(registry: registry) }
+    }
+
     /// The state the stage auto-selects for a pane (Debug QA may pin one, `SettingsQAOptions`).
-    private static func stageState(for page: SettingsPage?) -> PreviewStageState {
+    static func stageState(for page: SettingsPage?) -> PreviewStageState {
         SettingsQAOptions.stageState ?? StageScript.initialState(for: page)
     }
 
@@ -124,6 +134,12 @@ private struct PaneContainer: View {
 
 #Preview("Settings") {
     SettingsRootView(registry: ModuleRegistry(services: .preview()))
+        .frame(width: 860, height: 620)
+}
+
+#Preview("Settings · session") {
+    let session = SettingsSession(registry: ModuleRegistry(services: .preview()), initialPage: .appearance)
+    SettingsRootView(session: session)
         .frame(width: 860, height: 620)
 }
 

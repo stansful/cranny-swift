@@ -2,7 +2,9 @@
 // An AppKit-managed NSWindow hosting `SettingsRootView`, so any pane (or row: "general#hoverDelay") can be opened
 // programmatically from an agent app (no SwiftUI `Settings` scene). 860 × 620 by default, 780 × 560 minimum; the frame
 // is autosaved and the last pane is restored. SwiftUI drives the toolbar and title (`sceneBridgingOptions`), so the
-// sidebar and toolbar get the system's Liquid Glass on macOS 26+ and Cranny adds none of its own.
+// sidebar and toolbar get the system's Liquid Glass on macOS 26+ and Cranny adds none of its own. The window keeps one
+// `SettingsSession` for its lifetime: opening a pane navigates it, so the Reset All Undo offer, the search and the
+// preview stage survive.
 import AppKit
 import CrannyCore
 import CrannySettingsUI
@@ -15,13 +17,10 @@ import SwiftUI
     private let registry: ModuleRegistry
     private let defaults: UserDefaults
     private var window: NSWindow?
-    private var host: NSHostingController<AnyView>?
-    /// The pane on screen (reported by the root view).
-    private var currentPage: SettingsPageID?
+    /// The window's state; `show(page:)` navigates it.
+    private var session: SettingsSession?
     /// The app that was frontmost before Settings opened gets activation back on close.
     private var previousApp: NSRunningApplication?
-    /// Bumped on every rebuild, so a new initial page (or the same pane with another row) resets the root's state.
-    private var rootSerial = 0
 
     init(registry: ModuleRegistry, defaults: UserDefaults = .standard) {
         self.registry = registry
@@ -33,14 +32,17 @@ import SwiftUI
     func show(page: SettingsPageID?) {
         let front = NSWorkspace.shared.frontmostApplication
         if front?.processIdentifier != ProcessInfo.processInfo.processIdentifier { previousApp = front }
-        if let window, let host {
-            // Rebuild only to go somewhere else; an open window keeps its search and scroll state otherwise.
-            if let page, page != currentPage || page.rawValue.contains("#") { host.rootView = root(page) }
+        if let window, let session {
+            // Navigate, never rebuild: the Undo offer, the search and the stage stay.
+            if let page { session.open(page) }
             NSApp.activate()
             window.makeKeyAndOrderFront(nil)
             return
         }
-        let host = NSHostingController(rootView: root(page ?? lastPage))
+        let session = SettingsSession(registry: registry, initialPage: page ?? lastPage)
+        let host = NSHostingController(rootView: SettingsRootView(session: session) { [weak self] shown in
+            self?.defaults.set(shown.rawValue, forKey: Self.lastPaneKey)
+        })
         host.sizingOptions = []
         host.sceneBridgingOptions = [.title, .toolbars]
         let window = NSWindow(contentRect: CGRect(x: 0, y: 0, width: 860, height: 620),
@@ -58,7 +60,7 @@ import SwiftUI
         window.center()
         window.setFrameAutosaveName("CrannySettings")
         self.window = window
-        self.host = host
+        self.session = session
         NSApp.activate()
         window.makeKeyAndOrderFront(nil)
         #if DEBUG
@@ -86,13 +88,32 @@ import SwiftUI
 
     /// Visual QA (Debug only): `-CrannyQASnapshot <file.png>` renders the window's own view hierarchy to a PNG after
     /// `-CrannyQASnapshotDelay` seconds (default 3). Unlike `screencapture`, it works while the displays sleep.
+    /// `-CrannyQAViewReport <file.txt>` writes, at the same moment, the window's table views with their row counts and
+    /// registered drag types (evidence that a list's `onMove` reordering is wired, without synthesizing a drag).
     private func scheduleQASnapshot() {
-        guard let path = defaults.string(forKey: "CrannyQASnapshot") else { return }
+        let snapshot = defaults.string(forKey: "CrannyQASnapshot")
+        let report = defaults.string(forKey: "CrannyQAViewReport")
+        guard snapshot != nil || report != nil else { return }
         let delay = defaults.double(forKey: "CrannyQASnapshotDelay")
         Task { [weak self] in
             try? await Task.sleep(for: .seconds(delay > 0 ? delay : 3))
-            self?.writeSnapshot(to: URL(fileURLWithPath: path))
+            if let report { self?.writeViewReport(to: URL(fileURLWithPath: report)) }
+            if let snapshot { self?.writeSnapshot(to: URL(fileURLWithPath: snapshot)) }
         }
+    }
+
+    private func writeViewReport(to url: URL) {
+        guard let root = window?.contentView?.superview ?? window?.contentView else { return }
+        var lines: [String] = []
+        func visit(_ view: NSView) {
+            if let table = view as? NSTableView {
+                let types = table.registeredDraggedTypes.map(\.rawValue).sorted()
+                lines.append("\(type(of: table)) rows=\(table.numberOfRows) dragTypes=\(types)")
+            }
+            view.subviews.forEach(visit)
+        }
+        visit(root)
+        try? (lines.joined(separator: "\n") + "\n").write(to: url, atomically: true, encoding: .utf8)
     }
 
     private func writeSnapshot(to url: URL) {
@@ -105,15 +126,5 @@ import SwiftUI
 
     private var lastPage: SettingsPageID? {
         defaults.string(forKey: Self.lastPaneKey).map(SettingsPageID.init(rawValue:))
-    }
-
-    private func root(_ page: SettingsPageID?) -> AnyView {
-        let view = SettingsRootView(registry: registry, initialPage: page) { [weak self] shown in
-            guard let self else { return }
-            self.currentPage = shown
-            self.defaults.set(shown.rawValue, forKey: Self.lastPaneKey)
-        }
-        rootSerial += 1
-        return AnyView(view.id(rootSerial))
     }
 }
