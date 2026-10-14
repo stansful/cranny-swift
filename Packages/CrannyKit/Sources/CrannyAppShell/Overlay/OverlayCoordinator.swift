@@ -1,7 +1,8 @@
 // CrannyAppShell/Overlay/OverlayCoordinator.swift — owns one `NotchPanelController` per eligible display, rebuilds
 // them on display changes, routes the pointer and file drags, keeps at most one open panel and forwards every event
 // to `NotchControl` observers (ARCHITECTURE.md §4.9, §5.4–§5.5). Arbitration lives in `+Activities`, the
-// `NotchControl` backing and "Show on Notch" in `+Control`. Intra-shell interface fixed by the foundation (§10.0):
+// `NotchControl` backing and "Show on Notch" in `+Control`, the pointer and file drags in `+Pointer`. Intra-shell
+// interface fixed by the foundation (§10.0):
 // `init(registry:environment:)`, `start()`, `notchControl`, `hotKeys`, `play(_:for:)`, `toggleOpen()`, `setPinned(_:)`.
 import AppKit
 import CrannyCore
@@ -120,8 +121,13 @@ private let log = Log.logger(.overlay)
 
     /// Eligible displays and their style (`--diagnostics` lists them; `DisplayCatalog.placements` decides).
     static func panelScreens(settings: SettingsStore) -> [(screen: NSScreen, key: DisplayKey, style: NoNotchStyle)] {
+        panelScreens(settings: settings, descriptors: DisplayCatalog.descriptors())
+    }
+
+    /// The eligible displays among `all` (a rebuild passes the descriptors it read already: one read per rebuild).
+    static func panelScreens(settings: SettingsStore, descriptors all: [(screen: NSScreen, descriptor: DisplayDescriptor)])
+        -> [(screen: NSScreen, key: DisplayKey, style: NoNotchStyle)] {
         let policy = displayPolicy(settings)
-        let all = DisplayCatalog.descriptors()
         let placements = DisplayCatalog.placements(for: all.map(\.descriptor), selection: policy.selection,
                                                    perDisplay: policy.perDisplay, noNotchStyle: policy.noNotchStyle)
         return placements.compactMap { placement in
@@ -132,7 +138,7 @@ private let log = Log.logger(.overlay)
     func rebuildPanels() {
         let all = DisplayCatalog.descriptors()
         screens = all.map { ($0.descriptor.key, $0.descriptor.displayID, $0.screen.frame) }
-        let wanted = Self.panelScreens(settings: registry.services.settings)
+        let wanted = Self.panelScreens(settings: registry.services.settings, descriptors: all)
         let keys = Set(wanted.map(\.key))
         for key in controllers.keys where !keys.contains(key) { retirePanel(key) }
         for entry in wanted {
@@ -198,44 +204,7 @@ private let log = Log.logger(.overlay)
     /// A panel is open on some display (the menu's "Open Cranny" reopens instead of toggling then).
     var isOpen: Bool { openController != nil }
 
-    // MARK: Pointer and file drags (§5.5)
-
-    private func pointerEvent(_ point: CGPoint, kind: PointerMonitor.Kind) {
-        updatePointerDisplay(point)
-        if let change = drags.update(kind), change == nil {
-            for controller in controllers.values { controller.dragEnded() }
-        }
-        for controller in controllers.values {
-            controller.pointerMoved(to: point)
-            if let contents = drags.current { controller.dragMoved(to: point, contents: contents) }
-        }
-    }
-
-    /// A drop on `source` ends the drag everywhere. The detector may never see the source's mouse-up, so it would
-    /// never report the end: every other panel the drag passed (its catch state, `drag` hold and enlarged drop zone)
-    /// lets go now. The dropping panel keeps its zones until the drop router has delivered the payload.
-    func dropFinished(on source: NotchPanelController?) {
-        drags.reset()
-        for controller in controllers.values {
-            if controller === source { controller.dropFinished() } else { controller.dragEnded() }
-        }
-    }
-
-    /// O(displays), no allocation: the cached frames, the top row included (y == maxY, R1 §2.5).
-    private func updatePointerDisplay(_ point: CGPoint) {
-        var found: (key: DisplayKey, id: CGDirectDisplayID)?
-        for screen in screens where point.x >= screen.frame.minX && point.x < screen.frame.maxX
-            && point.y >= screen.frame.minY && point.y <= screen.frame.maxY {
-            found = (screen.key, screen.id)
-            break
-        }
-        guard let found, found.key != pointerDisplay else { return }
-        pointerDisplay = found.key
-        environment.setPointerDisplay(found.id)
-        // Now, not on the next observation hop: sliding along the menu bar onto the other display's notch must
-        // find its panel already shown (`.pointer` selection) and its alerts already moved.
-        if !controllers.isEmpty { applyDisplayFacts() }
-    }
+    // MARK: Menus (§4.5)
 
     /// A menu of `size` began or ended tracking. Menus nest (submenus): hold while any tracking session is open. The
     /// panels learn where the pointer is when the first one begins and the last one ends, before the hold changes

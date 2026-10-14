@@ -1,7 +1,10 @@
 // CrannyAppShell/Overlay/DragDetector.swift — notices file drags from any app (ARCHITECTURE.md §5.5, R1 §5.1).
-// On mouse drags it reads the drag pasteboard's `changeCount`; when it changes it inspects the `types` for file
-// URLs or file promises. Reading the drag pasteboard never shows the macOS 15.4+ paste alert (only `.general`
-// asks). Every drag bumps the count (text, tabs…), so the types decide. No timers: mouse events drive it.
+// On mouse drags near a panel (the coordinator says which: within some panel's drag zone) it reads the drag
+// pasteboard's `changeCount`; when it changes it inspects the `types` for file URLs or file promises. A file drag acts
+// only where it enters a drag zone, so a drag elsewhere (selecting text, moving a window, a slider) costs no
+// pasteboard query per event: one `changeCount` read when it ends keeps the baseline, so what it wrote is never taken
+// for a later drag's. Reading the drag pasteboard never shows the macOS 15.4+ paste alert (only `.general` asks).
+// Every drag bumps the count (text, tabs…), so the types decide. No timers: mouse events drive it.
 import AppKit
 import Foundation
 import UniformTypeIdentifiers
@@ -20,6 +23,8 @@ import UniformTypeIdentifiers
     private var lastChangeCount: Int
     /// The pasteboard was inspected for this mouse-down already (a drag session writes it once).
     private var inspected = false
+    /// A mouse button is down and the pointer moved since the last up or move (a drag, inspected or not).
+    private var sawDrag = false
 
     init(pasteboard: NSPasteboard = NSPasteboard(name: .drag)) {
         self.pasteboard = pasteboard
@@ -27,10 +32,12 @@ import UniformTypeIdentifiers
     }
 
     /// Feeds a pointer event; returns the new drag state when it changed (`.some(nil)` = the drag ended).
-    func update(_ kind: PointerMonitor.Kind) -> Contents?? {
+    /// `nearPanel`: the pointer is within some panel's drag zone (`HoverZones.dragZone`), where a file drag acts.
+    func update(_ kind: PointerMonitor.Kind, nearPanel: Bool) -> Contents?? {
         switch kind {
         case .dragged:
-            guard !inspected else { return nil }                                // one drag session per mouse-down
+            sawDrag = true
+            guard !inspected, nearPanel else { return nil }                    // one drag session per mouse-down
             let count = pasteboard.changeCount
             guard count != lastChangeCount else { return nil }               // the source has not written it yet
             lastChangeCount = count
@@ -40,7 +47,11 @@ import UniformTypeIdentifiers
             current = contents
             return .some(contents)
         case .up, .moved:
+            // A drag that never came near a panel was not inspected: what its source wrote joins the baseline now,
+            // once, so the next drag near a panel is judged by its own write.
+            if sawDrag && !inspected { lastChangeCount = pasteboard.changeCount }
             // A plain move means the button is up again: the drag is over even if the up event was missed.
+            sawDrag = false
             inspected = false
             guard current != nil else { return nil }
             current = nil
@@ -48,17 +59,35 @@ import UniformTypeIdentifiers
         }
     }
 
-    /// The drag ended through our own drop destination (the global up event may follow, or not).
+    /// The drag ended through our own drop destination (the global up event may follow, or not). The next up or
+    /// move still settles the baseline.
     func reset() {
         current = nil
         inspected = false
     }
 
+    // MARK: Paused pointer (OverlayCoordinator+Pointer)
+
+    /// A mouse button went down while pointer events were paused (no drag in progress when they paused): every drag
+    /// before it is over, so what they wrote joins the baseline, as their ends would have done.
+    func pressedWhilePaused() {
+        lastChangeCount = pasteboard.changeCount
+    }
+
+    /// Pointer events resume. With every button up, the drags made meanwhile are over: the baseline takes what they
+    /// wrote. With a button down, a drag is in progress; its press set the baseline (`pressedWhilePaused`), and its end
+    /// settles it like any drag's.
+    func resumed(buttonsDown: Bool) {
+        if buttonsDown { sawDrag = true } else { lastChangeCount = pasteboard.changeCount }
+    }
+
     // MARK: Pasteboard
+
+    /// The pasteboard types of file promises (built once, not per drag update).
+    static let promiseTypes = Set(NSFilePromiseReceiver.readableDraggedTypes)
 
     /// File URLs or file promises (Photos, Mail, Safari images) make a file drag.
     static func contents(types: [NSPasteboard.PasteboardType], pasteboard: NSPasteboard?) -> Contents {
-        let promiseTypes = Set(NSFilePromiseReceiver.readableDraggedTypes)
         let hasURLs = types.contains(.fileURL)
         let hasPromises = types.contains { promiseTypes.contains($0.rawValue) }
         guard hasURLs || hasPromises else { return Contents(hasFiles: false, types: []) }

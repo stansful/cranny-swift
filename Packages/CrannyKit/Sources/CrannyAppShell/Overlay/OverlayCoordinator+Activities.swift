@@ -102,8 +102,8 @@ extension OverlayCoordinator {
         return facts
     }
 
-    /// Pushes every display's environment and lineup (after arbitration, a rebuild or a facts change), and tells the
-    /// HUD whether it would be drawn.
+    /// Pushes every display's environment and lineup (after arbitration, a rebuild or a facts change), tells the
+    /// HUD whether it would be drawn, and resumes a paused pointer once a panel could take it again (`+Pointer`).
     func applyDisplayFacts() {
         let satellite = registry.services.settings[CoreSettings.satellite]
         for controller in controllers.values {
@@ -111,6 +111,7 @@ extension OverlayCoordinator {
             controller.viewModel.setLineup(arbiter.lineup(ranked, on: displayFilter(for: controller.key), satellite: satellite))
         }
         environment.setCanPresentHUD(canPresentHUD())
+        resumePointerIfNeeded()
     }
 
     /// `SystemEnvironment.canPresentHUD`: the HUD goes to the alert display (the pointer's, else the primary one).
