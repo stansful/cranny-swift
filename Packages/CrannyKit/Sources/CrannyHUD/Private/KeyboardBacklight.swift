@@ -1,6 +1,7 @@
 // CrannyHUD/Private/KeyboardBacklight.swift — the built-in keyboard backlight through the PRIVATE
 // `CoreBrightness.KeyboardBrightnessClient` (ARCHITECTURE.md §7.1, §7.12; R3 §1.6). Read [VERIFIED],
-// write [UNVERIFIED]. Low priority: Apple Silicon keyboards have no illumination keys.
+// write [UNVERIFIED], so `HUDSettings.keyboardBacklight` defaults to off until the hardware checklist confirms it.
+// Low priority: Apple Silicon keyboards have no illumination keys.
 //
 // Resolved at runtime (NSClassFromString + responds(to:)); every call is guarded and a missing piece makes
 // `readLevel()` nil, so the illumination keys go to macOS. A write that reports failure also passes the key

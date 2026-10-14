@@ -61,7 +61,7 @@ import Testing
         #expect(settings[HUDSettings.replaceSystemHUD] == false)   // never asks for Accessibility by itself
         #expect(settings[HUDSettings.volume])
         #expect(!settings[HUDSettings.brightness])                 // until the hardware checklist (§10.10)
-        #expect(settings[HUDSettings.keyboardBacklight])
+        #expect(!settings[HUDSettings.keyboardBacklight])          // until the hardware checklist (unverified write)
         #expect(settings[HUDSettings.colors] == .mono)
         #expect(!settings[HUDSettings.showsValue])
         #expect(settings[HUDSettings.showsOutputDevice])

@@ -91,6 +91,7 @@ import Testing
     @Test func noVolumeListenerWhenVolumeIsOff() {
         settings[HUDSettings.replaceSystemHUD] = true
         settings[HUDSettings.volume] = false
+        settings[HUDSettings.keyboardBacklight] = true
         controller.start()
         defer { controller.stop() }
         #expect(fake.taps.count == 1)                               // brightness / keyboard still need the tap

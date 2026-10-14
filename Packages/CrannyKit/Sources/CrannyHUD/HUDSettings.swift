@@ -13,7 +13,8 @@ public nonisolated enum HUDColors: String, Codable, CaseIterable, Sendable {
     case semantic
 }
 
-/// Keys of the HUD module. Defaults follow ARCHITECTURE.md §10.10, except `brightness` (see its comment).
+/// Keys of the HUD module. Defaults follow ARCHITECTURE.md §10.10, except `brightness` and `keyboardBacklight`,
+/// which stay off until the hardware checklist verifies their private write paths (see their comments).
 public nonisolated enum HUDSettings {
     /// Replace the system volume/brightness HUD. Needs Accessibility (the key tap); off by default, and without
     /// it Cranny draws no HUD at all — never two HUDs (ARCHITECTURE.md D10).
@@ -24,8 +25,11 @@ public nonisolated enum HUDSettings {
     /// that real brightness keys on Apple Silicon arrive as `NX_KEYTYPE_BRIGHTNESS_*` and DisplayServices sets
     /// the built-in panel (ARCHITECTURE.md §7.1, §10.10 acceptance, §11.2 item 6). Flip the default then.
     public static let brightness = SettingKey<Bool>(.hud, "brightness", default: false)
-    /// Handle the keyboard backlight keys (older and external keyboards; Apple Silicon keyboards have none).
-    public static let keyboardBacklight = SettingKey<Bool>(.hud, "keyboardBacklight", default: true)
+    /// Handle the keyboard backlight keys (Intel MacBooks; Apple Silicon keyboards have none). Off by default: the
+    /// CoreBrightness write (`setBrightness:forKeyboard:`) is unverified (R3 §1.6), and a write that reports success
+    /// without changing the backlight would swallow the key — no change and no macOS HUD. Flip the default once
+    /// the hardware checklist (ARCHITECTURE.md §11.2) has seen the illumination keys work on such a Mac.
+    public static let keyboardBacklight = SettingKey<Bool>(.hud, "keyboardBacklight", default: false)
     /// The level bar's fill.
     public static let colors = SettingKey<HUDColors>(.hud, "colors", default: .mono)
     /// Show the level as a number ("62") before the glyph. Always shown under Differentiate Without Color.
