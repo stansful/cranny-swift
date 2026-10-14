@@ -13,6 +13,21 @@ nonisolated struct TipContent: Equatable, Sendable {
         case symbol(String)
         /// The step was really done: ✓ with a bounce.
         case done
+
+        /// The SF Symbol drawn for the mark; nil draws none.
+        var symbolName: String? {
+            switch self {
+            case .none: nil
+            case .symbol(let name): name
+            case .done: "checkmark.circle.fill"
+            }
+        }
+
+        /// The ✓ bounces once when a step becomes done, never when the next step's glyph replaces it and never
+        /// under Reduce Motion (DESIGN.md §14.1: symbols animate only on a state change).
+        static func bounces(from old: Mark, to new: Mark, reduceMotion: Bool) -> Bool {
+            new == .done && old != .done && !reduceMotion
+        }
     }
 
     var text: String

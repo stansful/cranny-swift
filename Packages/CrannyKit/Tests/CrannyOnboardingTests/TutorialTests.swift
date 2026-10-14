@@ -225,3 +225,15 @@ import Testing
     #expect(presenter.anchors.last == open)
     tutorial.stop()
 }
+
+@Suite struct TipMarkTests {
+    @Test func theMarkKeepsOneImageAndBouncesOnlyIntoDone() {
+        #expect(TipContent.Mark.none.symbolName == nil)
+        #expect(TipContent.Mark.symbol("keyboard").symbolName == "keyboard")
+        #expect(TipContent.Mark.done.symbolName == "checkmark.circle.fill")
+        #expect(TipContent.Mark.bounces(from: .symbol("keyboard"), to: .done, reduceMotion: false))
+        #expect(!TipContent.Mark.bounces(from: .symbol("keyboard"), to: .done, reduceMotion: true))
+        #expect(!TipContent.Mark.bounces(from: .done, to: .symbol("pin.fill"), reduceMotion: false))  // next step: no bounce
+        #expect(!TipContent.Mark.bounces(from: .done, to: .done, reduceMotion: false))
+    }
+}

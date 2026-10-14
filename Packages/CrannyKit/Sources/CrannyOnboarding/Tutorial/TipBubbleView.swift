@@ -26,6 +26,8 @@ struct TipBubbleView: View {
 struct TipBubble: View {
     @Environment(\.cranny) private var theme
     @Environment(\.displayScale) private var displayScale
+    /// Counts the steps that became done while shown: the ✓'s bounce trigger (an inserted view never bounces).
+    @State private var completions = 0
     let content: TipContent
     let onAction: () -> Void
 
@@ -78,24 +80,22 @@ struct TipBubble: View {
         .crannyElevation(Elevation.peek)
         .environment(\.colorScheme, .dark)
         .animation(theme.animation(.contentSwap), value: content)
+        .onChange(of: content.mark) { old, new in
+            if TipContent.Mark.bounces(from: old, to: new, reduceMotion: theme.reduceMotion) { completions += 1 }
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(Text(verbatim: content.text))
     }
 
+    /// One persistent image: the step's glyph is replaced by the ✓ (`.replace`), and the ✓ bounces on the change,
+    /// as `CheckBadge` does in the window.
     @ViewBuilder private var mark: some View {
-        switch content.mark {
-        case .none:
-            EmptyView()
-        case .symbol(let symbol):
+        if let symbol = content.mark.symbolName {
             Image(systemName: symbol)
                 .font(.system(size: CrannyTextStyle.headline.spec.size, weight: .semibold))
-                .foregroundStyle(theme.accentColor)
-                .accessibilityHidden(true)
-        case .done:
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: CrannyTextStyle.headline.spec.size, weight: .semibold))
-                .foregroundStyle(theme.palette.success)
-                .symbolEffect(.bounce, value: content.mark == .done && !theme.reduceMotion)
+                .foregroundStyle(content.mark == .done ? theme.palette.success : theme.accentColor)
+                .contentTransition(.symbolEffect(.replace))
+                .symbolEffect(.bounce, value: completions)
                 .accessibilityHidden(true)
         }
     }
