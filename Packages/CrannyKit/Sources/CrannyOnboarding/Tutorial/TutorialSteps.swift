@@ -13,7 +13,7 @@ nonisolated enum TutorialStep: String, CaseIterable, Sendable {
     case swipeTrack
     /// "Hold ⌘ to see every shortcut" — the hints appeared.
     case holdCommand
-    /// "Pin it with 📌, then press Esc" — pinned, then closed.
+    /// "Pin it with 📌, then press Esc" — the panel closes while pinned.
     case pinAndClose
 }
 
@@ -21,12 +21,15 @@ nonisolated enum TutorialStep: String, CaseIterable, Sendable {
 nonisolated struct TutorialRun: Equatable, Sendable {
     private(set) var steps: [TutorialStep]
     private(set) var index = 0
-    /// `pinAndClose` is two actions: the pin seen during this step.
-    private(set) var hasPinned = false
+    /// The pin as the run last saw it, whatever the step (the person may pin before step 5 asks). The shell
+    /// emits `.closed` before the `.pinned(false)` of a close that ends the pin, so the close still counts.
+    private(set) var isPinned: Bool
 
-    /// `includesTrackSwipe`: something plays and a trackpad is present (else step 3 is left out).
-    init(includesTrackSwipe: Bool) {
+    /// `includesTrackSwipe`: something plays and a trackpad is present (else step 3 is left out). `isPinned`: the
+    /// pin when the tour starts, if known.
+    init(includesTrackSwipe: Bool, isPinned: Bool = false) {
         steps = TutorialStep.allCases.filter { $0 != .swipeTrack || includesTrackSwipe }
+        self.isPinned = isPinned
     }
 
     var current: TutorialStep? { index < steps.count ? steps[index] : nil }
@@ -37,6 +40,7 @@ nonisolated struct TutorialRun: Equatable, Sendable {
 
     /// True when `event` completes the current step.
     mutating func handle(_ event: NotchEvent) -> Bool {
+        if case .pinned(let pinned) = event { isPinned = pinned }
         guard let step = current else { return false }
         switch (step, event) {
         case (.reachNotch, .opened(let reason)):
@@ -47,11 +51,8 @@ nonisolated struct TutorialRun: Equatable, Sendable {
             return gesture == .swipeLeft || gesture == .swipeRight
         case (.holdCommand, .commandHintsShown):
             return true
-        case (.pinAndClose, .pinned(let pinned)):
-            hasPinned = pinned
-            return false
         case (.pinAndClose, .closed):
-            return hasPinned
+            return isPinned
         default:
             return false
         }
@@ -61,7 +62,6 @@ nonisolated struct TutorialRun: Equatable, Sendable {
     mutating func advance(isPlaying: Bool) {
         guard !isFinished else { return }
         index += 1
-        hasPinned = false
         if current == .swipeTrack, !isPlaying {
             steps.remove(at: index)
         }
@@ -70,7 +70,6 @@ nonisolated struct TutorialRun: Equatable, Sendable {
     /// Starts at `step` (visual QA); out-of-range values clamp.
     mutating func jump(to step: Int) {
         index = min(max(step, 0), max(steps.count - 1, 0))
-        hasPinned = false
     }
 
     /// Openings the person made themselves (not code, not the tutorial).

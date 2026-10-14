@@ -70,6 +70,31 @@ import Testing
         #expect(run.number == 4)
     }
 
+    @Test func aPinFromAnEarlierStepCounts() {
+        var run = TutorialRun(includesTrackSwipe: false)
+        run.jump(to: 2)                                       // "Hold ⌘": the person pins on the way
+        let r1 = run.handle(.pinned(true))
+        #expect(!r1)
+        let r2 = run.handle(.commandHintsShown)
+        #expect(r2)
+        run.advance(isPlaying: false)
+        #expect(run.current == .pinAndClose)
+        #expect(run.isPinned)                                 // not forgotten when the step changes
+        let r3 = run.handle(.closed)                          // Esc while pinned
+        #expect(r3)
+    }
+
+    @Test func theCloseThatEndsThePinStillCounts() {
+        // The shell emits `.closed`, then the `.pinned(false)` of the pin that close ended.
+        var run = TutorialRun(includesTrackSwipe: false, isPinned: true)
+        run.jump(to: 3)
+        let closed = run.handle(.closed)
+        #expect(closed)
+        let unpinned = run.handle(.pinned(false))
+        #expect(!unpinned)
+        #expect(!run.isPinned)
+    }
+
     @Test func theTrackStepIsDroppedWhenMusicStopped() {
         var run = TutorialRun(includesTrackSwipe: true)
         run.jump(to: 1)
