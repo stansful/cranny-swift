@@ -2,40 +2,40 @@
 
 **A calm, keyboard-friendly home for the notch on your Mac.** Cranny turns the camera housing into a
 small panel that grows out of the hardware: what's playing, your next meeting, a running timer, files
-you're moving, volume and brightness — glanceable when closed, a full set of widgets when you open it.
+you're moving, the volume — glanceable when closed, a full set of widgets when you open it.
 Free and open source (MIT), no account, no analytics.
 
-> **Status: 0.1.0, the first complete build.** Every feature below is implemented and covered by about
-> 1,500 unit tests, and `make dist` produces a universal app. So far it has run only on macOS 27 with an
-> external display. **Not verified yet:** a MacBook with a notch (the cutout fit), macOS 14 and 15, Intel
-> Macs, real permission prompts and grants (Accessibility, Calendars, Camera, System Audio Recording,
-> Automation), controlling a real player, real keyboard and trackpad input (hover, the volume and brightness
-> keys, swipes), and energy use on a 120-Hz MacBook. The builds so far are ad-hoc signed and not notarized,
-> and the update check stays off until releases are published. The checklist for those runs is in
-> [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §11.2 and [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)
-> ("Manual checks").
+> **Status: 0.1.0, the first complete build.** Every feature below is implemented, reviewed and covered by about
+> 1,700 unit tests, and `make dist` produces a universal app. So far it has run only on macOS 27 on an external
+> display, and nobody has used it with real input yet — see [Known limitations](#known-limitations).
 
 ## Features
 
-- **Live activities in the notch** — now playing (with an honest visualizer), timers, meetings with a
-  Join button, charging and low battery, AirPods and other Bluetooth accessories. Two at once: the
-  second becomes a small satellite beside the notch.
-- **Widgets** when you open it — Media, Calendar, Quick Apps & Shortcuts, Mirror (camera preview), Notes
-  (with code mode), To-dos, Timer, AirDrop and a Files shelf, in pages you arrange yourself.
-- **Tray** — drop files on the notch to keep them, AirDrop them, or run them through pipelines
-  (compress, convert, resize, zip…).
-- **One HUD, not two** — optional replacement for the system volume and brightness overlay.
-- **Keyboard first** — ⌃⌥N opens Cranny from anywhere, ⌘K finds any action, hold ⌘ to see every shortcut.
-- **Made for every Mac** — hardware-exact on notched MacBooks, a floating island on external displays,
-  per-display settings, an optional ambient light layer drawn with Metal.
-- **Respectful** — Reduce Motion, Increase Contrast, VoiceOver and keyboard-only use throughout;
-  zero work while closed; English and Russian.
+- **Live activities in the notch** — now playing (with an honest visualizer), timers, upcoming and running meetings
+  with a Join button, charging and low battery, AirPods and other Bluetooth accessories. Two at once: the second
+  becomes a small satellite beside the notch. Hover for a peek, swipe up to dismiss, pause them all from the menu bar.
+- **Widgets** when you open it — Media, Calendar, Quick Apps & Shortcuts, Mirror (camera preview), Notes (with code
+  mode), To-dos, Timer, AirDrop and a Files shelf, in up to four pages you arrange yourself (⌘E).
+- **Tray** — drop files on the notch to keep them, AirDrop them, or run them through pipelines (compress, convert,
+  resize, zip, remove background, copy text…), including chains you build yourself, with Undo.
+- **One HUD, not two** — an optional replacement for the system volume overlay. Brightness and keyboard-backlight
+  support is included but off by default until it has been tested on a MacBook.
+- **Keyboard first** — ⌃⌥N opens Cranny from anywhere, ⌘K finds any action, hold ⌘ to see every shortcut, start typing
+  to capture a note or to-do.
+- **For notched MacBooks and external displays** — a shape built to match the notch, a floating island on displays
+  without one, per-display settings, an optional ambient light layer drawn with Metal.
+- **Settings you can see** — a live preview of the real notch views, search, per-row reset, and a Welcome window with a
+  one-minute tutorial.
+- **Respectful** — Reduce Motion, Reduce Transparency, Increase Contrast, keyboard-only use and VoiceOver labels and
+  actions throughout; zero work while closed; English and Russian.
 
 ## Install
 
-Requires **macOS 14 Sonoma or later** (Apple silicon or Intel).
+Requires **macOS 14 Sonoma or later** (Apple silicon or Intel; so far it has only run on macOS 27 on Apple silicon,
+see [Known limitations](#known-limitations)).
 
-1. Download `Cranny-<version>.dmg` (or `.zip`) from the GitHub Releases page.
+1. Download `Cranny-<version>.dmg` (or `.zip`) from the GitHub Releases page (no release is published yet; until
+   then, build from source below).
 2. Drag **Cranny** to **Applications** and open it. It lives in the menu bar; there is no Dock icon.
 
 **"Cranny can't be opened" / "unidentified developer".** Builds that are not notarized by Apple are
@@ -85,14 +85,17 @@ of them. You can review everything in **Settings ▸ Permissions**.
 
 | Permission | Asked when | Used for |
 |---|---|---|
-| Accessibility | You enable "Replace the system HUD" | Intercepting the volume and brightness keys so only Cranny's HUD shows |
-| Calendars | You click "Show your events" in the Calendar widget | Showing upcoming events and meeting links (read-only) |
+| Accessibility | You enable "Replace the system HUD", or allow it in the Welcome window | Intercepting the volume (and, if you turn them on, brightness) keys so only Cranny's HUD shows |
+| Calendars | You click "Show your events" in the Calendar widget, or allow it in the Welcome window | Showing upcoming events and meeting links (read-only) |
 | Camera | You first click the Mirror widget | The camera preview; video is never recorded |
 | Automation (Music, Spotify) | You enable the Apple Events fallback for media | Controlling those apps when the system media source is unavailable |
 | System Audio Recording | You choose the "Live" visualizer | Animating the visualizer from audio levels; audio is never recorded or stored |
 | Bluetooth | You enable "Show all Bluetooth devices" | Listing every connected device with its battery |
+| Files and Folders | Possibly, when the Tray is set to link to originals instead of copying them, or saves a pipeline result next to a file in Desktop, Documents or Downloads (by default it keeps copies) | Reading the originals and writing results there |
 
-Global shortcuts, gestures and hovering need no permission.
+Global shortcuts, gestures and hovering need no permission. The Welcome window only offers the permissions your chosen
+layout needs (Automation and Bluetooth only once you turn on the switch that uses them). Cranny never asks for the
+microphone.
 
 **Why is there a process called "perl" in Activity Monitor?** That is Cranny's media helper. Since
 macOS 15.4 only Apple's own system tools may read what is playing, so Cranny loads its small,
@@ -103,6 +106,28 @@ and exits when Cranny quits. Nothing is installed system-wide. On builds that ar
 quarantines the downloaded app and perl would refuse the bridge, so Cranny copies it to
 `~/Library/Application Support/app.cranny.Cranny/media/` and loads that copy; deleting that folder
 removes it.
+
+## Known limitations
+
+Cranny 0.1.0 was built and tested on one Mac (macOS 27, Apple silicon, lid closed, external display, screen locked
+for most of the automated QA). So far:
+
+- **No hardware-notch testing.** The closed shape, Notch fit and full-screen detection have never been checked
+  against a real notch on a 13″, 14″ or 16″ MacBook.
+- **macOS 14 and 15 are untested**, and so are **Intel Macs** (the universal binary's x86_64 half has never run) and
+  Macs with two GPUs.
+- **No real input yet:** hover, clicks, the ⌃⌥N hot key, keyboard focus, two-finger swipes, haptics and drags from
+  other apps are covered by unit tests only.
+- **No real permission grants yet:** Accessibility (HUD keys), Calendars, Camera, System Audio Recording (Live
+  visualizer), Automation and Bluetooth paths, and Launch at login, have not been exercised with a granted
+  permission. Brightness and keyboard-backlight HUDs stay off by default for this reason.
+- **No real player control** was tried, and **VoiceOver** has not been run through the app.
+- **Energy** was measured only on a Debug build (about 2–3 % CPU with the light running); the Instruments check on a
+  120-Hz MacBook is still to do.
+- Builds are **ad-hoc signed and not notarized**; the **update check is off** until releases are published.
+
+The checklists for these runs are [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §11.2 and
+[docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) ("Manual checks"); open issues are in ARCHITECTURE.md §10.20.
 
 ## Privacy
 

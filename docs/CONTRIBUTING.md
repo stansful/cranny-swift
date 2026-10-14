@@ -19,9 +19,9 @@ are normative.
 - **Core change requests are additive only:** a new type, a new case with a default, a new protocol
   requirement with a default implementation, a new well-known ID. No renames, removals or signature
   changes. Adding a public CrannyCore type? Run `make probe` (see below) and commit the result.
-- **Branches:** one per work package (`wp/07-timer`), PRs into `main`, rebase daily. `main` is always
-  green: CI runs `check-modules` + tests + `strings-check` + the name probe + a universal build + the
-  smoke test + packaging.
+- **Branches:** one per work package or review fix (`wp/07-timer`, `fix/crannytray`), PRs into `main`, rebase
+  daily. `main` is always green: CI runs the copy rules + `check-modules` + tests + `strings-check` + the name
+  probe + a universal build + the smoke test + packaging.
 
 ## Toolchain
 
@@ -62,8 +62,10 @@ self-signed "Cranny Dev" code-signing certificate (Keychain Access ▸ Certifica
 Debug builds accept launch arguments that force a state without any input, so you can capture every
 presentation from a script. No hook posts input, touches the user's data or asks for a permission, and they are
 compiled out of Release builds (`#if DEBUG`) except the two effect switches marked "also Release". Arguments
-that start with `--qa-` are read from the command line; `-Cranny…` switches are `UserDefaults` arguments
-(`-Key value`). Each owner documents its hooks at the top of the file named in its heading.
+that start with `--qa-` are read from the command line (parsed by CrannyCore's `LaunchArguments`); `-Cranny…`
+switches are `UserDefaults` arguments (`-Key value`). Each owner documents its hooks at the top of the file named in
+its heading. Run the app for QA with an isolated home (`CFFIXED_USER_HOME=<temp dir>`), so a run never writes your
+real `~/Library` (preferences, timer state, tray files).
 
 ```sh
 scripts/run.sh -- --qa-state open --qa-page nook --qa-exit-after 8
@@ -98,7 +100,7 @@ scripts/run.sh -- --qa-state open --qa-page nook --qa-calendar sample --qa-snaps
 | `--qa-capture <dir>` [`--qa-capture-after <s>`] | Writes a PNG of each visible window (the panel, Settings) after that many seconds (default 3). |
 | `--qa-snapshot <file.png>` | 3 s after launch, renders the primary panel's canvas offscreen (final state, on mid-grey) to that PNG (CrannyNotchUI). |
 | `--qa-snapshot <dir>` [`--qa-snapshot-at 1,3.5`] | Renders every window of the app (menus, Settings, the status item) into `<dir>` at those seconds; with `--qa-welcome` or `--qa-tutorial`, the welcome windows after 3 s. A path ending in `.png` is the canvas snapshot above. |
-| `--qa-menu main\|pause\|showOn` | Opens the menu bar item's menu, or one of its submenus, after 1.5 s. |
+| `--qa-menu main\|pause\|showOn` | Opens the menu bar item's menu, or one of its submenus, after 1.5 s. A menu cannot be rendered by code, so its rows (title, ✓, disabled) are written to `qa-trace.txt` in the `--qa-snapshot` folder. |
 | `--qa-demo on\|off` | Turns Demo mode on or off after 1 s. |
 | `--qa-update-check` | Runs "Check for Updates…" as the menu does. |
 | `--qa-open-cranny <seconds>` | Runs the menu's "Open Cranny" after that many seconds. |
@@ -162,22 +164,40 @@ CRANNY_INTEGRATION=1 swift test --scratch-path .build-test --filter panelOnScree
 CRANNY_SNAPSHOT_DIR=/tmp/notchui swift test --scratch-path .build-test --filter CrannyNotchUITests.SnapshotGallery
 ```
 
+**`CRANNY_INTEGRATION=1`** (tests that show a window, need hardware or the media helper):
+
+| Suite | What it does |
+|---|---|
+| `CrannyAppShellTests` `panelOnScreenMatchesR1`, `aLayoutChangeDuringAPeekIsAppliedAfterIt`, `aDropOnOnePanelEndsTheDragOnTheOthers` (`PanelSelfTests.swift`) | Shows real panels for a few seconds and checks R1's facts (layer 26, per-pixel pass-through, no activation) through window-server queries, without posting input; also that a layout change during a peek is applied after it and that a drop on one panel ends the drag on the others. Run them after touching `Overlay/`. |
+| `keyboardFocusIsTakenAndHandedBack` (same file) | Also needs an **unlocked** session: the panel takes key focus from the hot key and hands it back on Esc. |
+| `aPanelRemovedWhileOpenClosesFirst` (`LifecycleTests.swift`) | A pinned open panel whose display goes away closes through its machine first. |
+| `chipTakesClicksOutsideItsCapsule` (`CrannyCoreTests/DesignSystemTests.swift`) | Clicks a chip just outside its capsule in an offscreen window (in-process events only). |
+| Effects GPU time and resize cost (`ShaderRenderTests`, `AmbientMetalViewTests`) | Measured on every run; the limits (≤ 1.5 ms per frame, median resize < 2 ms) are asserted only here, because they depend on the GPU. |
+| `BridgeIntegrationTests`, `BridgeLifetimeIntegrationTests` (CrannyMedia), with `CRANNY_MEDIA_BRIDGE=<path to libCrannyMediaBridge.dylib>` | The real helper under `/usr/bin/perl`: one answer per command (only invalid commands are sent, no player is touched), and the helper exits within 2 s of its host or of stdin closing. |
+| `HUDKeyIntegrationTests`, with `CRANNY_HUD_KEYS=1` | **Changes the output volume by one step for about a second and posts synthetic key events**; the test runner needs Accessibility. Only on your own machine, on purpose. |
+
+**Snapshot galleries** (PNG files for review; nothing is asserted against them):
+
 | Variable | Suites |
 |---|---|
-| `CRANNY_INTEGRATION=1` | Tests that need a window, hardware or the media helper (`panelOnScreen`; with `CRANNY_HUD_KEYS=1` the HUD key tap; with `CRANNY_MEDIA_BRIDGE=<dylib>` the bridge). |
-| `CRANNY_SNAPSHOT_DIR=<dir>` | Snapshot PNGs: NotchUI gallery, Quick Apps launcher, Calendar. |
-| `CRANNY_SNAPSHOTS=<dir>` [`CRANNY_SNAPSHOT_LANGUAGE=ru`] | Snapshot PNGs: system activities, To-dos. |
-| `CRANNY_TRAY_SNAPSHOTS=<dir>` [`CRANNY_TRAY_SNAPSHOT_LANGUAGE=ru`] | Snapshot PNGs: Tray. |
+| `CRANNY_SNAPSHOT_DIR=<dir>` | NotchUI gallery, Quick Apps launcher, Calendar (including the Russian Join layouts). |
+| `CRANNY_SNAPSHOTS=<dir>` [`CRANNY_SNAPSHOT_LANGUAGE=ru`] | System activities (the language switch applies to them), To-dos. |
+| `CRANNY_TRAY_SNAPSHOTS=<dir>` [`CRANNY_TRAY_SNAPSHOT_LANGUAGE=ru`] | Tray (run the Russian set in its own process with the `SnapshotTests` filter). |
 | `CRANNY_HUD_SNAPSHOTS`, `CRANNY_MEDIA_SNAPSHOTS`, `CRANNY_MIRROR_SNAPSHOTS`, `CRANNY_NOTES_SNAPSHOTS`, `CRANNY_TIMER_SNAPSHOTS` `=<dir>` | Snapshot PNGs of that module. |
-| `CRANNY_RENDER_DIR=<dir>` | Onboarding's rendered surfaces. |
-| `CRANNY_NOTES_BENCH=<file>` | The Notes keystroke benchmark (release configuration; see the file). |
+| `CRANNY_RENDER_DIR=<dir>` | Onboarding's rendered surfaces (Welcome steps, the longest Russian tutorial bubble). |
+
+The variables are not unified yet (ARCHITECTURE.md §10.20). Package test processes resolve English for
+`String(localized:)`; the suites that render Russian say so above.
+
+**Benchmarks:** `CRANNY_NOTES_BENCH=<file>` runs the Notes keystroke benchmark (release configuration; see the file).
 
 `CRANNY_MEDIA_BRIDGE=<dylib>` also tells a Debug build of the app which media bridge to load (Release ignores it).
 
 ## Manual checks (each release)
 
 Some things only a person at a Mac can check: real input, a hardware notch, permission prompts. The hardware
-checklist is ARCHITECTURE.md §11.2. Also check:
+checklist is ARCHITECTURE.md §11.2 (items 11–12 cover permissions and the Tray's selection focus), and what is still
+unverified is listed in ARCHITECTURE.md §10.20. Also check:
 
 - **Live visualizer permission.** The app ships no microphone entitlement (`device.audio-input`) and no
   `NSMicrophoneUsageDescription`: the Core Audio process tap is "System Audio Recording", which needs only
@@ -265,7 +285,7 @@ with `CrannyServices.preview()` and the public doubles (`PreviewNotchControl.cal
 need hardware or prompts are opt-in (`CRANNY_INTEGRATION=1`) and never run in CI. After touching the panel
 (`Overlay/`), run `CRANNY_INTEGRATION=1 swift test --scratch-path .build-test --filter panelOnScreen`: it
 shows a panel for a few seconds and re-checks R1's facts (layer 26, per-pixel pass-through, no activation)
-through window-server queries, without posting input.
+through window-server queries, without posting input. The other opt-in suites are listed under Opt-in tests.
 
 **Settings in tests and previews.** `CrannyServices.preview()` keeps its settings in memory; anything else that
 needs a `UserDefaults` takes `InMemoryDefaults()` (CrannyCore). Never create a `UserDefaults(suiteName:)` in a test,
