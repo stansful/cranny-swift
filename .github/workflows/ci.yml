@@ -32,6 +32,9 @@ jobs:
           xcodebuild -showComponent MetalToolchain
           xcrun metal -v
 
+      - name: Copy rules (American spelling, typographic punctuation, competitor denylist)
+        run: /usr/bin/python3 -I scripts/lint-copy.py
+
       - name: Every CrannyKit module builds on its own (zero warnings) + unit tests
         run: JOBS=3 TEST=1 scripts/check-modules.sh
 
@@ -90,6 +93,9 @@ jobs:
           xcodebuild -showComponent MetalToolchain | grep -q 'Status: installed' || xcodebuild -downloadComponent MetalToolchain
           xcodebuild -showComponent MetalToolchain
           xcrun metal -v
+
+      - name: Copy rules (American spelling, typographic punctuation, competitor denylist)
+        run: /usr/bin/python3 -I scripts/lint-copy.py
 
       - name: Every CrannyKit module builds on its own (zero warnings) + unit tests
         run: JOBS=3 TEST=1 scripts/check-modules.sh

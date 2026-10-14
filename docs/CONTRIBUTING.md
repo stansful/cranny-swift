@@ -45,7 +45,8 @@ make check                                   # every CrannyKit target builds alo
 scripts/check-modules.sh CrannyTimer         # just your module (logs in build/logs/)
 make test                                    # swift test (all test targets)
 cd Packages/CrannyKit && swift test --scratch-path .build-test --filter CrannyTimerTests
-make strings && make strings-check           # sync String Catalogs, then verify (add Russian first)
+make strings && make strings-check           # sync String Catalogs, then verify + copy rules (add Russian first)
+make copy-check                              # just the copy rules (scripts/lint-copy.py, no build)
 make probe-check                             # SDK name-collision probe is current
 make build && make smoke                     # universal Release app + launch smoke test (--diagnostics)
 make run                                     # Debug build + launch through LaunchServices
@@ -218,9 +219,10 @@ exports (`make probe` keeps a compile-time check of every public CrannyCore name
 
 **Strings.** One String Catalog per target (`Sources/<Target>/Resources/Localizable.xcstrings`). Always
 pass the module bundle (`Text("…", bundle: .module, comment: "…")`, `String(localized:bundle:comment:)`);
-never bare `LocalizedStringKey` initializers inside the package. Keys are the English text in sentence
-case, every key has a comment `"<Surface>: <purpose>"` (one comment per key), Russian follows the
-glossary in ARCHITECTURE.md §8.7 with state `translated`. Formatting through `FormatStyle` only.
+never bare `LocalizedStringKey` initializers inside the package. Keys are the English text, written to
+the copy rules below; every key has a comment `"<Surface>: <purpose>"` (one comment per key; a key used in
+two places shares one), Russian follows the glossary in ARCHITECTURE.md §8.7 with state `translated`.
+Formatting through `FormatStyle` only.
 Catalogs are JSON, so parallel branches conflict line by line; `.gitattributes` routes them to a
 per-key merge driver. Enable it once per clone:
 
@@ -228,6 +230,31 @@ per-key merge driver. Enable it once per clone:
 git config merge.xcstrings.name "String Catalog union merge"
 git config merge.xcstrings.driver "python3 scripts/merge-xcstrings.py %O %A %B"
 ```
+
+**Copy.** These rules apply to every key and Info.plist string (the docs keep their own spelling):
+
+- **American English**, because macOS's `en` is: color, gray, customize, behavior, license, organization,
+  favorite, acknowledgment, canceled. The system's own setting names are American too ("Differentiate
+  without color").
+- **Sentence case** is the default: everything on the notch (buttons, chips, tooltips, its context and ⋯
+  menus, ⌘K commands, live activities, confirmations inside a card), the Welcome window and the tutorial, and
+  everywhere labels, switches, picker options, section headers, footnotes and VoiceOver text.
+- **Title case** (macOS HIG) only in standard AppKit chrome: the menu bar item's menu, and the menu items and
+  push buttons of the Settings window, its sheets, popovers and alerts. So one action can be written twice:
+  "Keep Cranny Open" in the menu bar and "Keep Cranny open" on the notch; "Try Again" in a Settings sheet
+  and "Try again" in a widget; "Check for Updates" (a Settings button) and "Check for updates" (a Welcome
+  switch). When one key is both a menu item and a VoiceOver action, the menu decides.
+- **Names keep their capitals** in either case: Cranny, Home, Tray, Quick Apps, Live Activities, Layout &
+  Widgets, Settings (Cranny's window), and Apple's Quick Look, Finder, Shortcuts, System Settings, Login
+  Items, Low Power Mode.
+- **Typography:** ’ for apostrophes and “ ” for quotes in English (never `'` or `"`), « » in Russian; `…` as
+  one character, on a command that asks for more before it acts.
+- **System Settings by pane name, not by path:** "allow Cranny under Login Items in System Settings". Paths and
+  pane names change between macOS versions (macOS 15 renamed General ▸ Login Items to "Login Items &
+  Extensions"). Cranny's own panes may use paths: "Settings ▸ Keyboard".
+
+`make strings-check` also runs `scripts/lint-copy.py`, which checks spelling, punctuation, System Settings
+paths and the competitor denylist (ARCHITECTURE.md D20) in every catalog; case needs a reviewer.
 
 **Accessibility.** Every control has a localized label, every widget is a VoiceOver container, every
 live activity is one element with label, value and named actions. Nothing is hover-only. Honour Reduce
@@ -241,7 +268,7 @@ shows a panel for a few seconds and re-checks R1's facts (layer 26, per-pixel pa
 through window-server queries, without posting input.
 
 **Definition of done.** `scripts/check-modules.sh <YourTarget>` with zero warnings; your tests pass;
-`make strings-check` with Russian for every new key; `make build && make smoke`; previews, accessibility
+`make strings-check` (Russian for every new key, copy rules); `make build && make smoke`; previews, accessibility
 labels and Reduce Motion behaviour for every view; energy rules respected; settings keys documented in
 your `<Module>Settings` enum; permissions declared; the package's acceptance criteria demonstrated in the
 PR (a screen recording for UI).
