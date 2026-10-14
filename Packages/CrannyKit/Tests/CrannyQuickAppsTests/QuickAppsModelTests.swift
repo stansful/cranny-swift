@@ -30,18 +30,20 @@ private let resize = ShortcutEntry(id: "5C1B1E0B-2B7A-4E59-8D3B-7A0C1F3E2D02", n
     await h.model.start()
     let tile = h.model.tiles[0]
     h.model.activate(tile)
-    #expect(await waitUntil { h.notch.calls.contains("close") })
-    #expect(h.launcher.opened == [FakeResolver.app("a").url])
+    #expect(h.notch.calls == ["close"])
+    #expect(await waitUntil { h.launcher.opened == [FakeResolver.app("a").url] })
+    #expect(!h.notch.calls.contains { $0.hasPrefix("flash") })
     h.model.stop()
 }
 
-@Test func anAppThatFailsToOpenIsLookedUpAgain() async {
+@Test func anAppThatFailsToOpenSaysSoInTheNotch() async {
     let h = ModelHarness(installed: ["a"], apps: ["a"])
     await h.model.start()
     h.launcher.failing = true
     h.model.activate(h.model.tiles[0])
-    try? await Task.sleep(for: .milliseconds(50))
-    #expect(!h.notch.calls.contains("close"))
+    #expect(h.notch.calls.first == "close")                                // closes at once, like a menu
+    #expect(await waitUntil { h.notch.calls.contains("flash(exclamationmark)") })
+    #expect(h.launcher.opened.isEmpty)
     h.model.stop()
 }
 

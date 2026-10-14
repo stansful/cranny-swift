@@ -277,7 +277,7 @@
       }
     },
     "Failed" : {
-      "comment" : "Notch flash after a shortcut failed (≤ 12 characters)",
+      "comment" : "Notch flash after a shortcut or an app failed (≤ 12 characters)",
       "localizations" : {
         "ru" : {
           "stringUnit" : {

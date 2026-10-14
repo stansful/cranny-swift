@@ -135,16 +135,24 @@ nonisolated private let log = Log.logger(.quickApps)
         }
     }
 
+    /// Opens the app and closes the panel at once, like a menu: a cold launch can take a second and the panel
+    /// should not sit there meanwhile. A failure flashes in the notch and re-checks which apps are installed.
     func open(_ app: ResolvedApp) {
+        notch.close()
         Task {
             do {
                 try await launcher.open(app.url)
-                notch.close()                     // the app comes forward; the panel gets out of its way
             } catch {
                 log.error("could not open \(app.bundleID, privacy: .public)")
+                notch.flash(symbol: "exclamationmark", label: Self.failedLabel)
                 await catalog.refresh(appEntries.map(\.bundleID))
             }
         }
+    }
+
+    /// The notch flash after a failure (≤ 12 characters).
+    static var failedLabel: String {
+        String(localized: "Failed", bundle: .module, comment: "Notch flash after a shortcut or an app failed (≤ 12 characters)")
     }
 
     func toggleRun(_ entry: ShortcutEntry) {
@@ -168,8 +176,7 @@ nonisolated private let log = Log.logger(.quickApps)
             announce(String(localized: "\(entry.displayName) failed", bundle: .module,
                             comment: "Quick Apps: VoiceOver announcement after a shortcut failed (shortcut name)"))
             if showsResultInNotch(entry) {
-                notch.flash(symbol: "exclamationmark",
-                            label: String(localized: "Failed", bundle: .module, comment: "Notch flash after a shortcut failed (≤ 12 characters)"))
+                notch.flash(symbol: "exclamationmark", label: Self.failedLabel)
             }
             // A deleted shortcut fails too: re-read the list once to say so.
             Task {
