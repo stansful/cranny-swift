@@ -679,17 +679,6 @@
         }
       }
     },
-    "Calendar" : {
-      "comment" : "Settings: the Calendar feature (glossary: Календарь)",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Календарь"
-          }
-        }
-      }
-    },
     "Calm" : {
       "comment" : "Settings ▸ Appearance ▸ Motion: option (no bounce)",
       "localizations" : {
@@ -730,18 +719,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Карточки"
-          }
-        }
-      }
-    },
-    "Changed from the default." : {
-      "comment" : "Settings: VoiceOver hint of a row whose value differs from its default",
-      "extractionState" : "stale",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Изменено по сравнению со значением по умолчанию."
           }
         }
       }
@@ -1032,18 +1009,6 @@
         }
       }
     },
-    "Denied" : {
-      "comment" : "Settings ▸ Permissions: status pill",
-      "extractionState" : "stale",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Отказано"
-          }
-        }
-      }
-    },
     "Density" : {
       "comment" : "Settings ▸ Appearance: picker Compact / Standard / Roomy",
       "localizations" : {
@@ -1253,17 +1218,6 @@
         }
       }
     },
-    "Files" : {
-      "comment" : "Settings: the Files widget (mini shelf of the Tray)",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Файлы"
-          }
-        }
-      }
-    },
     "Finder search window" : {
       "comment" : "Settings ▸ Keyboard: macOS shortcut a Cranny shortcut collides with",
       "localizations" : {
@@ -1425,18 +1379,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Перейти на страницу 1–5"
-          }
-        }
-      }
-    },
-    "Granted" : {
-      "comment" : "Settings ▸ Permissions: status pill",
-      "extractionState" : "stale",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Разрешено"
           }
         }
       }
@@ -1947,17 +1889,6 @@
         }
       }
     },
-    "Media" : {
-      "comment" : "Settings: the Media feature (widget, pane)",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Медиа"
-          }
-        }
-      }
-    },
     "Medium" : {
       "comment" : "Settings ▸ Appearance ▸ Text size: option (the default)",
       "localizations" : {
@@ -1987,17 +1918,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Скоро встреча: %@"
-          }
-        }
-      }
-    },
-    "Mirror" : {
-      "comment" : "Settings: the Mirror widget (glossary: Зеркало)",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Зеркало"
           }
         }
       }
@@ -2229,18 +2149,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ещё не проверялось"
-          }
-        }
-      }
-    },
-    "Not yet" : {
-      "comment" : "Settings ▸ Permissions: status pill (never asked)",
-      "extractionState" : "stale",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ещё нет"
           }
         }
       }
@@ -2691,17 +2599,6 @@
         }
       }
     },
-    "Quick Apps" : {
-      "comment" : "Settings: the Quick Apps widget (glossary: Быстрые приложения)",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Быстрые приложения"
-          }
-        }
-      }
-    },
     "Quick peek on hover" : {
       "comment" : "Settings ▸ Live Activities: toggle",
       "localizations" : {
@@ -2878,18 +2775,6 @@
         }
       }
     },
-    "Reset to Default" : {
-      "comment" : "Settings: row context menu and VoiceOver action",
-      "extractionState" : "stale",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Вернуть по умолчанию"
-          }
-        }
-      }
-    },
     "Rest the pointer on an activity to see its details." : {
       "comment" : "Settings ▸ Live Activities: footnote of Quick peek on hover",
       "localizations" : {
@@ -2897,18 +2782,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Задержите указатель на активности, чтобы увидеть подробности."
-          }
-        }
-      }
-    },
-    "Restricted" : {
-      "comment" : "Settings ▸ Permissions: status pill (blocked by a profile)",
-      "extractionState" : "stale",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ограничено"
           }
         }
       }
@@ -3217,18 +3090,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Стандартно"
-          }
-        }
-      }
-    },
-    "Status: %@" : {
-      "comment" : "Settings ▸ Permissions: VoiceOver label of the status pill; the argument is the status",
-      "extractionState" : "stale",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Статус: %@"
           }
         }
       }
@@ -3598,18 +3459,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Отменить"
-          }
-        }
-      }
-    },
-    "Unknown" : {
-      "comment" : "Settings ▸ Permissions: status pill (macOS cannot tell yet)",
-      "extractionState" : "stale",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Неизвестно"
           }
         }
       }

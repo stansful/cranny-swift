@@ -95,12 +95,13 @@ private func editor(maxColumns: Int = 12) -> LayoutEditor {
     #expect(e.canAddPage)
 }
 
-@Test func unknownWidgetsGetTheDesignsSizes() {
+@Test func unregisteredWidgetsShowTheirIdentifierAndRegisteredOnesTheirOwnValues() {
     let registry = ModuleRegistry(services: .preview())
-    let media = KnownWidgets.info(.media, registry: registry)
-    #expect(media.sizes == WidgetSizes(minimum: 4, preferred: 5, maximum: 6) && !media.isRegistered && !media.hasOptions)
     let other = KnownWidgets.info("module.thing", registry: registry)
-    #expect(other.title == "module.thing" && other.symbol == "app.dashed")
+    #expect(other.title == "module.thing" && other.symbol == "app.dashed" && !other.isRegistered && !other.hasOptions)
+    registry.addPreviewStandIns()                                    // Core's stand-ins: the widgets' own values
+    let media = KnownWidgets.info(.media, registry: registry)
+    #expect(media.sizes == WidgetSizes(minimum: 4, preferred: 5, maximum: 6) && media.isRegistered && media.title == "Media")
 }
 
 // MARK: - Live Activities (DESIGN.md §9.4)
