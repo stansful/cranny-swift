@@ -56,6 +56,83 @@
         }
       }
     },
+    "Changed from the default" : {
+      "comment" : "Settings: VoiceOver hint of a row whose value differs from its default, and the tooltip of its dot",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Отличается от значения по умолчанию"
+          }
+        }
+      }
+    },
+    "Denied" : {
+      "comment" : "Settings: permission status pill",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запрещено"
+          }
+        }
+      }
+    },
+    "Granted" : {
+      "comment" : "Settings: permission status pill",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешено"
+          }
+        }
+      }
+    },
+    "Not yet" : {
+      "comment" : "Settings: permission status pill (never asked)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ещё нет"
+          }
+        }
+      }
+    },
+    "Reset to Default" : {
+      "comment" : "Settings: row context menu item and VoiceOver action",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Восстановить значение по умолчанию"
+          }
+        }
+      }
+    },
+    "Restricted" : {
+      "comment" : "Settings: permission status pill (blocked by a configuration profile)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ограничено"
+          }
+        }
+      }
+    },
+    "Status: %@" : {
+      "comment" : "Settings: VoiceOver label of a permission status pill; the argument is the status",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Статус: %@"
+          }
+        }
+      }
+    },
     "System Audio Recording" : {
       "comment" : "Permission name",
       "localizations" : {
@@ -63,6 +140,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Запись системного звука"
+          }
+        }
+      }
+    },
+    "Unknown" : {
+      "comment" : "Settings: permission status pill (macOS cannot tell yet)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Неизвестно"
           }
         }
       }
