@@ -77,8 +77,10 @@ import Testing
 
     let pin = try #require(commands.commands(matching: "").first { $0.id == "shell.pin" })
     #expect(pin.shortcut?.display == "⌘P" && pin.symbol == "pin")
-    pin.perform()
-    #expect(overlay.isPinned && commands.commands(matching: "").first { $0.id == "shell.pin" }?.symbol == "pin.fill")
+    pin.perform()                    // no panel on screen in this test: WP13's coordinator has nothing to pin
+    #expect(!overlay.isPinned)
+    overlay.isPinned = true          // what an open panel's `.pinned(true)` event sets
+    #expect(commands.commands(matching: "").first { $0.id == "shell.pin" }?.symbol == "pin.fill")
 
     try #require(commands.commands(matching: "").first { $0.id == "shell.tutorial" }).perform()
     #expect(app.calls == ["tutorial"])

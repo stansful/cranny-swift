@@ -15,8 +15,7 @@ public struct CrannyScenes: Scene {
         MenuBarExtra(isInserted: Binding(get: { appControl.showsMenuBarIcon }, set: { appControl.showsMenuBarIcon = $0 })) {
             MenuBarContent(appControl: appControl)
         } label: {
-            Image(nsImage: MenuBarIcon.image)
-                .accessibilityLabel(Text(verbatim: "Cranny"))
+            MenuBarLabel()                     // the icon (badged in Demo mode) and "Cranny, demo mode" for VoiceOver
         }
         .menuBarExtraStyle(.menu)
     }
