@@ -2,7 +2,7 @@
 // snapshots. Event-driven only (§9.2): a power-source notification → one off-main read (utility priority) →
 // the pure `PowerTransitions` reducer → activity changes. Nothing runs while nothing changes.
 //
-// Energy: the observer reports every change of any power source only while the details matter
+// Energy: the observer reports every percent and estimate change only while the details matter
 // (`wantsDetail`). A Mac with a battery on power, with nothing on screen that shows a percent or an estimate,
 // hears only the switch to battery (and Low Power Mode): the thresholds re-arm while plugged in anyway, and
 // the switch is what starts following again. The model runs only while Charging, Low battery or Bluetooth
@@ -19,7 +19,7 @@ private let log = Log.logger(.system)
     let lowBattery: LowBatteryActivity
     /// Called after every power-source notification (the accessory model refreshes visible batteries).
     var onSourcesChanged: (@MainActor () -> Void)?
-    /// Whether `onSourcesChanged` needs every change of any power source right now (the accessory model: while
+    /// Whether `onSourcesChanged` needs every percent and estimate change right now (the accessory model: while
     /// its activity shows batteries). Read through Observation: a change re-decides what the observer follows.
     var wantsSourcesChanged: (@MainActor () -> Bool)?
     private(set) var state: BatteryState?
@@ -50,10 +50,10 @@ private let log = Log.logger(.system)
     /// How long a transient activity stays: the user's peek duration (time limits are adjustable, WCAG 2.2.1).
     var transientDuration: TimeInterval { max(settings[CoreSettings.peekDuration], 1) }
 
-    /// Whether the observer must report every change of any power source, or only the switches between AC and
+    /// Whether the observer must report every percent and estimate change, or only the switches between AC and
     /// battery. On battery the thresholds need every percent. On power they re-arm whatever the level, so only
     /// what is on screen needs the details. A Mac without a battery keeps them all: IOKit can find the internal
-    /// battery seconds into boot, and only the any-source notification reports that.
+    /// battery seconds into boot, and the switch notification does not report that.
     var wantsDetail: Bool {
         guard let state, state.hasBattery, state.isPluggedIn else { return true }
         return isShowingDetail

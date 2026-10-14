@@ -33,8 +33,11 @@ import Testing
         let observer = PowerObserver()
         observer.setFollowsDetail(true)                    // stopped: ignored
         #expect(!observer.isFollowingDetail)
+        #expect(observer.sourcesCreated == 0)              // nothing touches IOKit before the first start
         observer.start {}
         #expect(observer.isFollowingDetail)                // until the model knows better
+        let created = observer.sourcesCreated
+        #expect(created <= 2)
         observer.setFollowsDetail(false)
         #expect(!observer.isFollowingDetail)
         observer.setFollowsDetail(true)
@@ -44,6 +47,10 @@ import Testing
         #expect(observer.isFollowingDetail)
         observer.stop()
         #expect(!observer.isFollowingDetail)
+        observer.setFollowsDetail(true)                    // stopped again: ignored
+        #expect(!observer.isFollowingDetail)
         observer.stop()
+        // IOPS never frees a source's registration: following and restarting reuse the first two sources.
+        #expect(observer.sourcesCreated == created)
     }
 }

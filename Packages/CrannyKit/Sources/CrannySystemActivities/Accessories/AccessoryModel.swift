@@ -99,8 +99,8 @@ private let log = Log.logger(.bluetooth)
         endIfGone()
     }
 
-    /// Power-source notifications matter only while the activity shows batteries. The power model follows every
-    /// change of any power source only while this holds (read through Observation).
+    /// Power-source notifications matter only while the activity shows batteries. While this holds, the power model
+    /// follows every battery percent and estimate change, even on AC power (read through Observation).
     var wantsPowerSourceChanges: Bool { activity.isActive }
 
     /// A power-source notification: accessory levels may have changed. Read them only while they are shown,

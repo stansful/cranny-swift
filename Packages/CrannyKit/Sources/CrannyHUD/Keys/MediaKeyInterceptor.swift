@@ -151,10 +151,12 @@ nonisolated final class MediaKeyInterceptor: KeyInterceptor {
         log.info("event tap \(on ? "enabled" : "disabled", privacy: .public): the HUD \(on ? "can" : "cannot", privacy: .public) be shown")
     }
 
-    /// After each event while the controller wants none: the key-up of a consumed key turns the tap off.
+    /// After each event while the controller wants none: the key-up of a consumed key turns the tap off. On this
+    /// run loop once the callback has returned, so the window server has the answer for that key-up (consumed)
+    /// before it hears that the tap is off.
     private func eventHandled() {
         guard !loop.withLockUnchecked({ $0.wantsEvents }) else { return }
-        applyEnabled()
+        CFRunLoopPerformBlock(CFRunLoopGetCurrent(), CFRunLoopMode.commonModes.rawValue) { [self] in applyEnabled() }
     }
 
     private func reenable() {
