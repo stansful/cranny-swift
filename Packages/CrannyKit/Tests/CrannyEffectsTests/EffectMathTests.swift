@@ -89,7 +89,7 @@ import Testing
 @Test func firstLightRevealsEverythingByTheEnd() {
     let size = CGSize(width: 880, height: 260)
     let diagonal = (880.0 * 880 + 260 * 260).squareRoot()
-    #expect(FirstLightMath.reveal(elapsed: 0, size: size).radius == 0)
+    #expect(abs(FirstLightMath.reveal(elapsed: 0, size: size).radius - 0.4 * 260) < 1e-9)   // starts at the band's edge
     let end = FirstLightMath.reveal(elapsed: 1, size: size)
     #expect(abs(end.radius - diagonal * 1.6) < 1e-6)
     #expect(end.mask(atDistance: diagonal) == 1)                         // the far corners are lit when it lands

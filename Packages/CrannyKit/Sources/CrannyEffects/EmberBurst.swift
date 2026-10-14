@@ -63,13 +63,13 @@ public struct EmberBurst: View {
 nonisolated enum EmberMath {
     static let count = 18
 
-    /// Ember `i`'s position `t` seconds after the burst (drag + 22 pt/s² of gravity).
+    /// Ember `i`'s position `t` seconds after the burst (120–260 pt/s, drag, 60 pt/s² of gravity).
     static func position(_ i: Int, origin: CGPoint, time t: Double) -> CGPoint {
         let n = UInt32(i)
         let angle = (-75 + 150 * StatelessHash.hash(n + 18)) * .pi / 180
-        let speed = 70 + 90 * StatelessHash.hash(n + 36)
-        let travel = speed * (1 - exp(-3 * t)) / 3
-        return CGPoint(x: origin.x + sin(angle) * travel, y: origin.y + cos(angle) * travel + 11 * t * t)
+        let speed = 120 + 140 * StatelessHash.hash(n + 36)
+        let travel = speed * (1 - exp(-2.6 * t)) / 2.6
+        return CGPoint(x: origin.x + sin(angle) * travel, y: origin.y + cos(angle) * travel + 30 * t * t)
     }
 
     static func life(_ i: Int) -> Double { 0.55 + 0.35 * StatelessHash.hash(UInt32(i) + 72) }

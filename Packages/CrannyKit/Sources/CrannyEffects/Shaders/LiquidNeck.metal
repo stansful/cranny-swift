@@ -11,7 +11,7 @@ using namespace metal;
 ///  * The bridge, the largest min(alpha) over the 6 pairs of opposite taps, is 1 only for a point that has a body on
 ///    both sides within the reach: bodies closer than about 2 · reach merge with a concave neck that thins as they
 ///    part, and a lone body never swells.
-/// alpha = smoothstep(0.42, 0.58, max(mean, bridge)). Swift: `.float(reach), .float(progress), .color(.black)`.
+/// alpha = smoothstep(0.42, 0.58, max(mean, (bridge + mean) / 2)). Swift: `.float(reach), .float(progress), .color(.black)`.
 [[ stitchable ]] half4 liquidNeck(float2 position, SwiftUI::Layer layer, float reach, float progress, half4 fill) {
     float r = reach * (1.0 - smoothstep(0.7, 1.0, clamp(progress, 0.0, 1.0)));    // gone at the end of the split
     float field = float(layer.sample(position).a);
@@ -28,7 +28,8 @@ using namespace metal;
             sum += inner * (n1 + n2) + outer * (f1 + f2);
             bridge = max(bridge, max(min(n1, n2), min(f1, f2)));
         }
-        field = max(sum / norm, bridge);
+        float mean = sum / norm;
+        field = max(mean, 0.5 * (bridge + mean));          // the mean smooths the bridge's six facets
     }
     return fill * half(smoothstep(0.42, 0.58, field));
 }

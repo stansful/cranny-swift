@@ -49,8 +49,16 @@ public struct FirstLight<Content: View>: View {
         .onGeometryChange(for: CGSize.self) { $0.size } action: { size = $0 }
     }
 
-    /// A haloGlow in glow1 at 0.5 · cap that grows with the reveal and fades as it lands (no pop on removal).
-    @ViewBuilder private func crest(reveal: AmbientReveal, elapsed: Double) -> some View {
+    /// A haloGlow in glow1 at 0.5 · cap that grows with the reveal and fades as it lands (no pop on removal). Like the
+    /// light it rides, it keeps the band (the top 40 %) black.
+    private func crest(reveal: AmbientReveal, elapsed: Double) -> some View {
+        crestGlow(reveal: reveal, elapsed: elapsed)
+            .mask { BandMask() }
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+    }
+
+    @ViewBuilder private func crestGlow(reveal: AmbientReveal, elapsed: Double) -> some View {
         let fade = 1 - Easing.easeInOut(elapsed / Self.duration)
         let cap = Glow.ambientAlphaCap(max(level, .subtle)) * 0.5 * fade
         let placement = HaloPlacement(center: .top, radius: max(reveal.radius * 0.6, 1))
@@ -58,13 +66,9 @@ public struct FirstLight<Content: View>: View {
             Rectangle()
                 .colorEffect(ShaderEffects.library.haloGlow(.boundingRect, .float2(0.5, 0), .float(placement.radius),
                                                             .color(palette.glow1.color(1)), .float(cap)))
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
         } else {
             RadialGradient(gradient: HaloFallback.gradient(glow: palette.glow1, cap: cap), center: .top,
                            startRadius: 0, endRadius: placement.radius * 1.5)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
         }
     }
 }
@@ -72,11 +76,13 @@ public struct FirstLight<Content: View>: View {
 // MARK: - Math
 
 nonisolated enum FirstLightMath {
-    /// The reveal at `elapsed` seconds: the radius eases out from 0 to 1.6 × the diagonal over 1.0 s with a soft edge
-    /// of 35 % of the radius, so the fully lit inside has passed the far corners when it lands (no pop at the end).
+    /// The reveal at `elapsed` seconds: the radius grows from the band's edge (40 % of the height, where the light
+    /// begins) to 1.6 × the diagonal over 1.0 s (ease in and out, so the light visibly spreads for the whole second)
+    /// with a soft edge of 35 % of the radius; the fully lit inside has passed the far corners when it lands (no pop).
     static func reveal(elapsed: Double, size: CGSize) -> AmbientReveal {
         let diagonal = (size.width * size.width + size.height * size.height).squareRoot()
-        let radius = Easing.easeOut(elapsed / 1.0) * diagonal * 1.6
+        let start = 0.4 * size.height, end = 1.6 * diagonal
+        let radius = start + Easing.easeInOut(elapsed / 1.0) * (end - start)
         return AmbientReveal(center: .top, radius: radius, feather: radius * 0.35)
     }
 }

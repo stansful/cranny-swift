@@ -7,13 +7,14 @@ using namespace metal;
 
 namespace cranny {
 
-/// Where ember `i` is `t` seconds after the burst: a direction within ±75° of straight down, 70–160 pt/s,
-/// drag (distance v · (1 − e^(−3t)) / 3) and 22 pt/s² of gravity. Mirrors `EmberMath.position`.
+/// Where ember `i` is `t` seconds after the burst: a direction within ±75° of straight down, 120–260 pt/s,
+/// drag (distance v · (1 − e^(−2.6t)) / 2.6) and 60 pt/s² of gravity, so the burst fans out ≈ 90 pt and droops.
+/// Mirrors `EmberMath.position`.
 static inline float2 emberPosition(uint i, float2 origin, float t) {
     float angle = (-75.0 + 150.0 * hash(i + 18U)) * M_PI_F / 180.0;
-    float speed = 70.0 + 90.0 * hash(i + 36U);
-    float travel = speed * (1.0 - exp(-3.0 * t)) / 3.0;
-    return origin + float2(sin(angle), cos(angle)) * travel + float2(0.0, 11.0 * t * t);
+    float speed = 120.0 + 140.0 * hash(i + 36U);
+    float travel = speed * (1.0 - exp(-2.6 * t)) / 2.6;
+    return origin + float2(sin(angle), cos(angle)) * travel + float2(0.0, 30.0 * t * t);
 }
 
 /// Distance from `p` to the segment a–b.
