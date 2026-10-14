@@ -88,29 +88,6 @@ func ambientLightNeverPassesTheCap(_ effect: AmbientEffect) throws {
     #expect(try frame(0.6).meanDifference(still) < 0.01, "the ripple is over at 0.6 s")
 }
 
-/// `liquidNeck` joins two bodies across a small gap early in the split and lets go at the end.
-@Test(.enabled(if: shadersRun)) func liquidNeckJoinsThenSnaps() throws {
-    let budget = runningBudget
-    func gapAlpha(_ progress: Double, shader: Bool) throws -> Double {
-        let bodies = HStack(spacing: 6) {
-            Rectangle().fill(.black).frame(width: 40, height: 30)
-            Rectangle().fill(.black).frame(width: 40, height: 30)
-        }
-        .frame(width: 100, height: 50)
-        let view: AnyView = shader
-            ? AnyView(LiquidNeck(progress: progress, budget: budget) { bodies })
-            : AnyView(LiquidNeck(progress: progress, budget: EffectBudget(isOpen: true, onScreen: true, lowPower: true,
-                                                                          fullScreenFront: false, reduceMotion: false,
-                                                                          onBattery: false)) { bodies })
-        let r = try rasterize(view, size: CGSize(width: 100, height: 50))
-        return r.alpha(50, 25)                                          // the middle of the 6-pt gap
-    }
-    for shader in [true, false] {
-        #expect(try gapAlpha(0.1, shader: shader) > 0.9, "\(shader ? "shader" : "Canvas"): no neck early on")
-        #expect(try gapAlpha(1.0, shader: shader) < 0.1, "\(shader ? "shader" : "Canvas"): the neck did not snap")
-    }
-}
-
 /// `emberBurst` draws embers near the notch while they burn, under the cap, and nothing once they are out.
 @Test(.enabled(if: shadersRun)) func emberBurstBurnsOutUnderTheCap() throws {
     let origin = CGPoint(x: EmberBurst.size.width / 2, y: 0)

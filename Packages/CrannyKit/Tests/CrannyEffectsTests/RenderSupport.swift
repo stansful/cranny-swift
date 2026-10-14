@@ -80,12 +80,46 @@ struct Raster {
         return shares.indices.max { shares[$0] < shares[$1] } ?? 0
     }
 
-    /// Mean absolute difference per channel (0…255) against another raster of the same size.
-    func meanDifference(_ other: Raster) -> Double {
+    /// Number of 4-connected regions of pixels with alpha ≥ `threshold` (the liquid neck's bodies).
+    func components(alphaAtLeast threshold: Double = 0.5) -> Int {
+        let solid = alphas.map { $0 >= threshold }
+        var label = [Bool](repeating: false, count: solid.count)
+        var count = 0
+        for seed in solid.indices where solid[seed] && !label[seed] {
+            count += 1
+            var stack = [seed]
+            label[seed] = true
+            while let p = stack.popLast() {
+                let x = p % width, y = p / width
+                for (nx, ny) in [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
+                where nx >= 0 && ny >= 0 && nx < width && ny < height {
+                    let q = ny * width + nx
+                    if solid[q] && !label[q] { label[q] = true; stack.append(q) }
+                }
+            }
+        }
+        return count
+    }
+
+    /// Row (sub-pixel) where column `x` first reaches alpha 0.5 from the top, or the height when it never does.
+    func topEdge(column x: Int) -> Double {
+        var previous = 0.0
+        for y in 0..<height {
+            let a = alpha(x, y)
+            if a >= 0.5 { return Double(y) - (a - 0.5) / max(a - previous, 1e-3) }
+            previous = a
+        }
+        return Double(height)
+    }
+
+    /// Mean absolute difference per channel (0…255) against another raster of the same size, over the top
+    /// `topRows` fraction of the rows (all of them by default).
+    func meanDifference(_ other: Raster, topRows: Double = 1) -> Double {
         guard rgba.count == other.rgba.count else { return .infinity }
+        let count = Int(Double(height) * topRows) * width * 4
         var sum = 0
-        for i in rgba.indices { sum += abs(Int(rgba[i]) - Int(other.rgba[i])) }
-        return Double(sum) / Double(rgba.count)
+        for i in 0..<count { sum += abs(Int(rgba[i]) - Int(other.rgba[i])) }
+        return Double(sum) / Double(max(count, 1))
     }
 }
 
