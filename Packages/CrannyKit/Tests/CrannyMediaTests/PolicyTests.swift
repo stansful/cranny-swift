@@ -1,5 +1,6 @@
 // Pure policies of the media service: restart/failover (ProviderSupervisor), track-change debounce rules
-// (TrackChangeDetector), session filters (MediaFilter) and the widget's time labels (PlaybackTime, PlaybackTick).
+// (TrackChangeDetector), session filters (MediaFilter), the widget's time labels (PlaybackTime, PlaybackTick) and
+// scroll-to-seek over the scrubber (ScrollSeek).
 import CrannyCore
 import Foundation
 import Testing
@@ -167,5 +168,48 @@ private let t0 = Date(timeIntervalSince1970: 1_000_000)
         #expect(PlaybackTick.delay(position: 84.6, rate: 1, isPlaying: false, duration: 215) == nil)   // paused
         #expect(PlaybackTick.delay(position: 215, rate: 1, isPlaying: true, duration: 215) == nil)     // at the end
         #expect(PlaybackTick.delay(position: .nan, rate: 1, isPlaying: true, duration: 215) == nil)
+    }
+}
+
+@Suite("Scroll to seek") struct ScrollSeekTests {
+    @Test func aLongScrollPreviewsAllOfItsTravelAndSeeksOnRelease() throws {
+        // 120 pt over a 180-pt scrubber from 10 %: the preview follows every point (a committing zone would have
+        // stopped at 40 pt), and the release seeks once.
+        var seek = ScrollSeek()
+        var preview = 0.0
+        for step in 1...12 { preview = seek.track(translation: CGFloat(step * 10), width: 180, current: 0.1) }
+        #expect(abs(preview - (0.1 + 120.0 / 180)) < 1e-9)
+        let ended = seek.end(.released, preview: preview, duration: 300)
+        let target = try #require(ended)
+        #expect(abs(target - preview * 300) < 1e-9)
+        #expect(seek.start == nil)
+    }
+
+    @Test func aSystemCancelSeeksNowhere() {
+        var seek = ScrollSeek()
+        let preview = seek.track(translation: 30, width: 180, current: 0.5)
+        #expect(seek.end(.cancelled, preview: preview, duration: 300) == nil)
+        #expect(seek.start == nil)                                         // the next touch starts afresh
+    }
+
+    @Test func theTouchStartsWhereTheTrackWas() {
+        var seek = ScrollSeek()
+        #expect(seek.track(translation: 0, width: 200, current: 0.25) == 0.25)
+        // Playback moves on during the touch: the preview stays relative to where the touch began.
+        #expect(seek.track(translation: 20, width: 200, current: 0.3) == 0.35)
+        _ = seek.end(.released, preview: 0.35, duration: 100)
+        #expect(seek.track(translation: 0, width: 200, current: 0.3) == 0.3)
+    }
+
+    @Test func previewAndTargetStayOnTheTrack() {
+        var seek = ScrollSeek()
+        #expect(seek.track(translation: -500, width: 180, current: 0.1) == 0)
+        #expect(seek.track(translation: 500, width: 180, current: 0.1) == 1)
+        #expect(seek.end(.released, preview: 1.4, duration: 200) == 200)
+        #expect(seek.end(.released, preview: nil, duration: 200) == nil)  // nothing previewed
+        #expect(seek.end(.released, preview: 0.5, duration: nil) == nil)  // a live stream
+        #expect(seek.end(.released, preview: 0.5, duration: .infinity) == nil)
+        var zeroWidth = ScrollSeek()
+        #expect(zeroWidth.track(translation: 10, width: 0, current: 0.5) == 1)    // a zero width never divides by 0
     }
 }
