@@ -62,6 +62,7 @@ import Testing
         #expect(settings[HUDSettings.volume])
         #expect(!settings[HUDSettings.brightness])                 // until the hardware checklist (§10.10)
         #expect(!settings[HUDSettings.keyboardBacklight])          // until the hardware checklist (unverified write)
+        #expect(!settings[HUDSettings.turnedOffByUser])
         #expect(settings[HUDSettings.colors] == .mono)
         #expect(!settings[HUDSettings.showsValue])
         #expect(settings[HUDSettings.showsOutputDevice])
@@ -71,6 +72,7 @@ import Testing
         #expect(ids == ["hud.replaceSystemHUD", "hud.volume", "hud.brightness", "hud.keyboardBacklight", "hud.showsValue",
                         "hud.showsOutputDevice"])
         #expect(HUDSettings.colors.id == "hud.colors")
+        #expect(HUDSettings.turnedOffByUser.id == "hud.turnedOffByUser")
         #expect(HUDSettings.duration.id == "hud.duration")
     }
 

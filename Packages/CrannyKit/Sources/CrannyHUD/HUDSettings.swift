@@ -38,6 +38,10 @@ public nonisolated enum HUDSettings {
     public static let showsOutputDevice = SettingKey<Bool>(.hud, "showsOutputDevice", default: true)
     /// Seconds the HUD stays after the last change (0.8–3, DESIGN.md §10).
     public static let duration = SettingKey<Double>(.hud, "duration", default: HoverIntent.hudAutoDismiss)
+    /// The user switched "Replace the system HUD" off in Settings ▸ HUD. A new Accessibility grant turns the HUD on
+    /// (Cranny asks for Accessibility only for it) — except after this explicit off, so re-granting after a TCC
+    /// reset does not undo the user's choice. Not a row of its own; switching the HUD on or "Reset HUD…" clears it.
+    static let turnedOffByUser = SettingKey<Bool>(.hud, "turnedOffByUser", default: false)
 
     /// The range of `duration` offered in Settings ▸ HUD.
     public static let durationRange: ClosedRange<Double> = 0.8...3

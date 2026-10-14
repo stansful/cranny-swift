@@ -83,7 +83,7 @@ struct HUDSettingsPane: View {
     // MARK: Rows
 
     private var replaceRow: some View {
-        Toggle(isOn: Binding(get: { settings[HUDSettings.replaceSystemHUD] }, set: setReplacing)) {
+        Toggle(isOn: Binding(get: { settings[HUDSettings.replaceSystemHUD] }, set: { setReplacing($0) })) {
             FootnotedLabel(title: Text("Replace the system HUD", bundle: .module, comment: "Settings ▸ HUD: main toggle"),
                            footnote: Text("Volume, brightness and keyboard backlight levels appear in the notch.", bundle: .module,
                                           comment: "Settings ▸ HUD: footnote under Replace the system HUD"))
@@ -175,9 +175,16 @@ struct HUDSettingsPane: View {
     }
 
     private func setReplacing(_ on: Bool) {
-        settings[HUDSettings.replaceSystemHUD] = on
+        Self.userSetReplacing(on, settings: settings)
         guard on, permissions.status(.accessibility) != .granted else { return }
         Task { await permissions.request(.accessibility) }     // the system prompt, then 1.5-s polling for 2 min
+    }
+
+    /// The user's own switch. An explicit off is remembered, so a later Accessibility grant (which otherwise turns
+    /// the HUD on, `HUDController`) keeps it off; switching it on clears that.
+    static func userSetReplacing(_ on: Bool, settings: SettingsStore) {
+        settings[HUDSettings.replaceSystemHUD] = on
+        settings[HUDSettings.turnedOffByUser] = !on
     }
 
     /// "1.5 s" in the user's locale.

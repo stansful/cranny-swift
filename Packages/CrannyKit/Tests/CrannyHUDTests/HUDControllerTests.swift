@@ -84,6 +84,21 @@ import Testing
         #expect(await eventually { settings[HUDSettings.replaceSystemHUD] && fake.taps.count == 1 })
     }
 
+    @Test func aNewGrantDoesNotUndoAnExplicitOff() async throws {
+        HUDSettingsPane.userSetReplacing(true, settings: settings)
+        HUDSettingsPane.userSetReplacing(false, settings: settings)    // the user turned the HUD off …
+        grant.granted = false                                         // … a TCC reset dropped the grant …
+        controller.start()
+        defer { controller.stop() }
+        grant.granted = true                                          // … and it is granted again
+        try await Task.sleep(for: .milliseconds(100))
+        #expect(!settings[HUDSettings.replaceSystemHUD])
+        #expect(fake.taps.isEmpty)
+        HUDSettingsPane.userSetReplacing(true, settings: settings)     // switching it on clears the memory
+        #expect(settings.isDefault(HUDSettings.turnedOffByUser))
+        #expect(await eventually { fake.taps.count == 1 })
+    }
+
     @Test func comingBackPicksUpAGrantFromSystemSettings() async {
         grant.granted = false
         grant.trusted = false

@@ -105,11 +105,13 @@ private let log = Log.logger(.hud)
 
     private func apply(_ inputs: HUDTapConfig.Inputs) {
         var inputs = inputs
-        if lastAccessibilityGranted == false, inputs.accessibilityGranted, !inputs.replaceSystemHUD {
+        if lastAccessibilityGranted == false, inputs.accessibilityGranted, !inputs.replaceSystemHUD,
+           !services.settings[HUDSettings.turnedOffByUser] {
             // Accessibility arrived while Cranny runs (onboarding's "Allow", or System Settings after Settings ▸ HUD).
-            // Cranny asks for it only for the HUD, so the grant means "replace the system HUD". A grant that already
-            // existed at launch changes nothing. (Applied here too: a write inside the observer's callback is not
-            // reported back to it.)
+            // Cranny asks for it only for the HUD, so the grant means "replace the system HUD" — unless the user
+            // turned the HUD off in Settings ▸ HUD: then a later grant (e.g. re-granting after a TCC reset, §11.1
+            // risk 5) keeps it off. A grant that already existed at launch changes nothing. (Applied here too: a
+            // write inside the observer's callback is not reported back to it.)
             log.info("Accessibility granted: turning on the HUD replacement")
             services.settings[HUDSettings.replaceSystemHUD] = true
             inputs.replaceSystemHUD = true
