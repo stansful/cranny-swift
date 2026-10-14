@@ -17,7 +17,7 @@ import SwiftUI
     let revision = 1
     let label: String
 
-    /// `label` is already localized (≤ 12 characters, like every flash).
+    /// `label` is already localized (it must fit the compact wing, measured like every flash label — `NotchControl.flash`).
     init(label: String) { self.label = label }
 
     var slot: SlotWidth { label.count <= 4 ? .medium : .wide }

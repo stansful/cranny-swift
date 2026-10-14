@@ -111,10 +111,12 @@ import Testing
         exec /bin/sleep 30
         """)
     defer { try? FileManager.default.removeItem(at: directory) }
-    let cli = ShortcutsCLI(executable: script.path, listTimeout: .milliseconds(500))
+    // A generous bound: under full-suite load the shell may need well over 500 ms just to start
+    // and write its pid (§9.6: no short real-time bounds). Still far below the script's 30 s.
+    let cli = ShortcutsCLI(executable: script.path, listTimeout: .seconds(4))
     let started = ContinuousClock.now
     await #expect(throws: QuickAppsError.listFailed) { _ = try await cli.list() }
-    #expect(ContinuousClock.now - started < .seconds(10))         // not the script's 30 s
+    #expect(ContinuousClock.now - started < .seconds(20))         // not the script's 30 s
     let pid = try #require(Int32(String(contentsOf: directory.appending(path: "pid"), encoding: .utf8)
         .trimmingCharacters(in: .whitespacesAndNewlines)))
     #expect(await waitUntil { kill(pid, 0) != 0 })                 // the CLI was stopped, not left running

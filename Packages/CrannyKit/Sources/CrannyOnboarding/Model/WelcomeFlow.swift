@@ -195,8 +195,8 @@ private let log = Log.logger(.onboarding)
 
     // MARK: Step 1 · Hello
 
-    /// The label of the real notch's "Hi" (≤ 12 characters, `NotchControl.flash`).
-    static var greeting: String { String(localized: "Hi", bundle: .module, comment: "Welcome step 1: the greeting the real notch shows (12 characters at most)") }
+    /// The label of the real notch's "Hi" (must fit the compact wing, measured — `NotchControl.flash`).
+    static var greeting: String { String(localized: "Hi", bundle: .module, comment: "Welcome step 1: the greeting the real notch shows (keep it short: it must fit the compact wing)") }
 
     /// "Wave again": the real notch and the stage say hi once more.
     func greetAgain() {

@@ -305,7 +305,7 @@
       }
     },
     "Hi" : {
-      "comment" : "Welcome step 1: the greeting the real notch shows (12 characters at most)",
+      "comment" : "Welcome step 1: the greeting the real notch shows (keep it short: it must fit the compact wing)",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
