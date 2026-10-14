@@ -3,9 +3,9 @@
 // filters the content. Instead:
 //  • digits use `CountdownClock`: one sleep to the exact moment the shown second changes (1 Hz, aligned to the
 //    deadline, so "4:59" never lags), and no wake-up at all while paused, idle or done;
-//  • rings use `RingClock` (Core's `EffectClock` technique) at `RingCadence`: as often as the arc moves about one
-//    device pixel, at most 4 × per second (a 1-minute timer in the widget), every 15–30 s for a long timer in the
-//    band, and not at all unless running;
+//  • rings use Core's `EffectClock` (restarted when the deadline moves) at `RingCadence`: as often as the arc moves
+//    about one device pixel, at most 4 × per second (a 1-minute timer in the widget), every 15–30 s for a long timer
+//    in the band, and not at all unless running;
 //  • VoiceOver's "time left" (`refreshesSpokenTime`): the countdown's 1-Hz tick, only while VoiceOver runs.
 // All stop as soon as their view leaves the screen.
 import CrannyCore
@@ -93,30 +93,6 @@ nonisolated enum RingCadence {
     }
 }
 
-/// Calls `content` with the current date every `interval` seconds (nil = frozen, no wake-ups). Like Core's
-/// `EffectClock`, but it also restarts when `deadline` changes, so "+1 min" or a resume redraws at once instead of
-/// waiting for the next (possibly 30-s) tick.
-struct RingClock<Content: View>: View {
-    let interval: Double?
-    let deadline: Date?
-    @ViewBuilder let content: (Date) -> Content
-    @State private var now = Date()
-
-    private struct Key: Hashable { var interval: Double?; var deadline: Date? }
-
-    var body: some View {
-        content(now)
-            .task(id: Key(interval: interval, deadline: deadline)) {
-                now = Date()
-                guard let interval, interval > 0 else { return }
-                while !Task.isCancelled {
-                    do { try await Task.sleep(for: .seconds(interval), tolerance: .seconds(interval / 8)) } catch { return }
-                    now = Date()
-                }
-            }
-    }
-}
-
 /// A countdown ring (Core's `ProgressRing` in `warning`) that redraws only at `RingCadence`, and not at all unless
 /// the timer runs. Phase changes animate (it fills on start and on done, drains on stop); ticks never do.
 struct TimerRing: View {
@@ -129,7 +105,8 @@ struct TimerRing: View {
     var body: some View {
         let cadence = state.isRunning
             ? RingCadence.interval(total: state.total, diameter: diameter, displayScale: displayScale) : nil
-        RingClock(interval: cadence, deadline: state.endDate) { date in
+        // Restarts (and redraws at once) when the deadline moves: "+1 min" or a resume never waits for a 30-s tick.
+        EffectClock(minimumInterval: cadence, restartKey: AnyHashable(state.endDate)) { date in
             ProgressRing(progress: state.progress(at: date), color: theme.palette.warning, lineWidth: lineWidth)
         }
         .frame(width: diameter, height: diameter)
