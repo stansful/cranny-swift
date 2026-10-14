@@ -8,6 +8,14 @@
 // waits, a newer notification of the same player replaces the one still waiting (each is a full snapshot), and a
 // command that waited longer than the scripts' own 2-s timeout is not sent at all (it answers false, so the service
 // shows the player's state again).
+//
+// Automation: `isPermitted` is a synchronous TCC query on the main actor (`PermissionsCenter.status`, which never
+// prompts and does not keep Automation answers). A granted answer is used for `grantLifetime`, so a burst of
+// scripts (position + artwork, a command + its refresh) asks once instead of once per script. Any failed script
+// forgets it (a −1743 denial included), and a player that is not granted is asked again before each script, so a
+// grant from Settings ▸ Media counts at once. No script runs for a player last found not granted. A grant turned
+// off in System Settings within the window costs one script that fails with −1743 (no prompt; reported as usual);
+// only a reset of the decision (`tccutil reset AppleEvents`) within those 30 s could let macOS ask.
 import AppKit
 import CrannyCore
 import Foundation
@@ -20,6 +28,8 @@ private nonisolated let log = Log.logger(.media)
     static let notPermitted = -1743
     /// A command still waiting after this long is dropped instead of sent late (the scripts' Apple Event timeout).
     static let commandDeadline: Duration = .seconds(2)
+    /// How long a granted Automation answer is used before `isPermitted` is asked again (see the file header).
+    static let grantLifetime: Duration = .seconds(30)
 
     private enum Job {
         case notification(ScriptablePlayer, [String: String], received: Date)
@@ -40,6 +50,8 @@ private nonisolated let log = Log.logger(.media)
     private var lastArtworkKey: String?
     /// Players already reported as denied (one event each).
     private var reportedDenied: Set<String> = []
+    /// When each player's Automation was last found granted (`isAllowed`); a failed script removes its entry.
+    private var grantedAt: [String: Date] = [:]
     private var continuation: AsyncStream<ProviderEvent>.Continuation?
     private var jobs: [Job] = []
     /// Performs `jobs` one at a time; nil while there is nothing to do.
@@ -201,7 +213,7 @@ private nonisolated let log = Log.logger(.media)
     /// Runs `body` for a player whose Automation is granted, off the main actor. nil = not run, failed, or the
     /// session stopped meanwhile.
     private func run(_ body: String, in player: ScriptablePlayer) async -> ScriptValue? {
-        guard !isStopped, isPermitted(player.bundleID) else { return nil }
+        guard !isStopped, isAllowed(player) else { return nil }
         let outcome = await runner.run(PlayerScript(bundleID: player.bundleID, body: body))
         guard !isStopped else { return nil }
         switch outcome {
@@ -210,6 +222,7 @@ private nonisolated let log = Log.logger(.media)
         case .notRunning:
             return nil
         case .failed(let code):
+            grantedAt[player.bundleID] = nil                             // the next script asks again
             log.error("Apple Events to \(player.bundleID, privacy: .public) failed: \(code, privacy: .public)")
             // The service records a denial (Settings ▸ Media and Permissions show it), and no further script runs
             // for that player.
@@ -218,6 +231,18 @@ private nonisolated let log = Log.logger(.media)
             }
             return nil
         }
+    }
+
+    /// Automation is granted for `player`: a grant found less than `grantLifetime` ago, else `isPermitted` (a TCC
+    /// query on the main actor). A clock that went backwards does not stretch a grant.
+    private func isAllowed(_ player: ScriptablePlayer) -> Bool {
+        let id = player.bundleID
+        if let since = grantedAt[id], (0..<Self.grantLifetime.timeInterval).contains(clock.now.timeIntervalSince(since)) {
+            return true
+        }
+        guard isPermitted(id) else { grantedAt[id] = nil; return false }
+        grantedAt[id] = clock.now
+        return true
     }
 
     private func yield(_ event: ProviderEvent) {

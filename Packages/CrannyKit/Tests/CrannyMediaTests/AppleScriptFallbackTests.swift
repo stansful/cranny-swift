@@ -43,7 +43,7 @@ nonisolated final class FakeScriptRunner: AppleScriptRunning, @unchecked Sendabl
 
     init() {
         let permitted = permitted
-        session = AppleScriptSession(isPermitted: { permitted.ids.contains($0) }, runner: runner, clock: clock,
+        session = AppleScriptSession(isPermitted: { permitted.ask($0) }, runner: runner, clock: clock,
                                      observesPlayers: false)
         let (stream, continuation) = AsyncStream.makeStream(of: ProviderEvent.self)
         session.start(continuation)
@@ -68,8 +68,15 @@ nonisolated final class FakeScriptRunner: AppleScriptRunning, @unchecked Sendabl
     }
 }
 
+/// The Automation answers (`ids` = granted) and every query the session made (`asks`: the app's TCC queries).
 @MainActor final class PermittedPlayers {
     var ids: Set<String> = [ScriptablePlayer.music.bundleID, ScriptablePlayer.spotify.bundleID]
+    private(set) var asks: [String] = []
+
+    func ask(_ bundleID: String) -> Bool {
+        asks.append(bundleID)
+        return ids.contains(bundleID)
+    }
 }
 
 @MainActor final class Answer {
@@ -214,6 +221,41 @@ private enum Payload {
         let np = try #require(h.snapshots.first ?? nil)
         #expect(np.elapsed == 0)
         #expect(await h.session.send(.play) == false)
+    }
+
+    @Test func aGrantIsAskedForOncePerBurstNotPerScript() async {
+        let h = SessionHarness()
+        let music = ScriptablePlayer.music.bundleID
+        h.runner.answer = { script in
+            script.body == ScriptablePlayer.stateScript ? .value(ScriptValue(text: "Playing")) : .value(ScriptValue(number: 1))
+        }
+        h.session.receive(.music, Payload.music("A"))        // position + artwork
+        await settle()
+        #expect(await h.session.send(.pause) == true)
+        h.session.refresh()                                   // state + position
+        await settle()
+        #expect(h.runner.bodies == [position, artwork, "pause", ScriptablePlayer.stateScript, position])
+        #expect(h.permitted.asks == [music])                  // one main-actor TCC query for five scripts
+        await h.clock.advance(by: AppleScriptSession.grantLifetime)
+        #expect(await h.session.send(.play) == true)
+        #expect(h.permitted.asks == [music, music])           // a grant that old is asked for again
+    }
+
+    @Test func aMissingGrantOrAFailedScriptIsAskedForAgain() async {
+        let h = SessionHarness()
+        let spotify = ScriptablePlayer.spotify.bundleID
+        h.permitted.ids = []
+        h.session.receive(.spotify, Payload.spotify("S"))    // Spotify's payload needs no script
+        await settle()
+        #expect(await h.session.send(.play) == false)
+        h.permitted.ids = [spotify]                           // granted from Settings ▸ Media: counts at once
+        #expect(await h.session.send(.play) == true)
+        h.runner.answer = { _ in .failed(code: AppleScriptSession.notPermitted) }    // then turned off in System Settings
+        #expect(await h.session.send(.pause) == false)        // the cached grant costs this one script
+        h.permitted.ids = []
+        #expect(await h.session.send(.pause) == false)
+        #expect(h.runner.bodies == ["play", "pause"])         // nothing more is sent once the grant is gone
+        #expect(h.permitted.asks == [spotify, spotify, spotify])
     }
 
     @Test func refreshAsksStateAndPosition() async throws {

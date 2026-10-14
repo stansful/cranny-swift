@@ -3,7 +3,8 @@
 // notifications (no permission); position, artwork and commands need Apple Events (Automation, per app).
 //
 // Rules: never launches a player (checks `runningApplications` first, and every script re-checks), never prompts by
-// itself (scripts run only for players whose Automation status is granted), 2-s Apple Event timeout, no network
+// itself (scripts run only for players whose Automation was found granted, at most 30 s ago; see the session's
+// header), 2-s Apple Event timeout, no network
 // (Spotify's artwork URL is not fetched: the update check is Cranny's only network access, §7.11). A denial (−1743)
 // is reported as `.permissionDenied`, and the service records it in `PermissionsCenter`. Scripts per notification:
 // the position only when the payload lacks it (Music), the artwork only when the track changes.
