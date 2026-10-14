@@ -140,9 +140,11 @@ private let log = Log.logger(.mirror)
         #endif
     }
 
-    /// A widget view left the screen (panel closed, page changed, layout editing began).
+    /// A widget view left the screen (panel closed, page changed, layout editing began). It also stops using
+    /// the camera list, so changes while the panel is closed wait for the next appearance (`CameraCatalog`).
     func viewDisappeared(_ id: UUID) {
         guard visibleViews.remove(id) != nil else { return }
+        catalog.release()
         if visibleViews.isEmpty { halt(.hidden) }
     }
 

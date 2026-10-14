@@ -1,7 +1,9 @@
 // CrannyMirror/Camera/CameraCatalog.swift — the cameras the Mirror can use and which one it shows.
 // Lazy and event-driven: nothing is enumerated until the widget (or its options) first appears, then
-// hot-plug, preferred-camera, suspension (lid, privacy shutter) and display changes trigger a refresh. No polling
-// (ARCHITECTURE.md §9.2).
+// hot-plug, preferred-camera, suspension (lid, privacy shutter) and display changes trigger a refresh while a
+// user (a live widget or the options) is on screen. While none is, a change only marks the list stale and the
+// next appearance enumerates once, so a wake or display change never lists cameras for a closed panel. No
+// polling (ARCHITECTURE.md §9.2).
 import CrannyCore
 import Foundation
 import Observation
@@ -22,18 +24,30 @@ private let log = Log.logger(.mirror)
     /// Internal (not private) so tests can check which discovery the live module uses.
     @ObservationIgnored let discovery: any CameraDiscovering
     @ObservationIgnored private var isWatching = false
+    /// Views that show the list now (`activate` / `release` pairs): live widgets and the options popover.
+    @ObservationIgnored private var users = 0
+    /// A change arrived while no user was on screen: the next `activate` (or `ensureLoaded`) enumerates.
+    @ObservationIgnored private var isStale = false
     @ObservationIgnored private var refreshTask: Task<Void, Never>?
     @ObservationIgnored private var refreshAgain = false
 
     init(discovery: any CameraDiscovering) { self.discovery = discovery }
 
-    /// First use (widget or options appeared): start watching for changes and enumerate once.
+    /// A user appeared (live widget or options): on first use start watching for changes; enumerate when the
+    /// list was never loaded or changed while nobody showed it. Balance every call with `release()`.
     func activate() {
+        users += 1
         if !isWatching {
             isWatching = true
-            discovery.startWatching { [weak self] in self?.scheduleRefresh() }
+            discovery.startWatching { [weak self] in self?.changeObserved() }
         }
-        if !isLoaded { scheduleRefresh() }
+        refreshIfNeeded()
+    }
+
+    /// A user left the screen. The observers stay armed (they are passive); with no user left a change only
+    /// marks the list stale instead of enumerating.
+    func release() {
+        users = max(users - 1, 0)
     }
 
     /// App termination: remove the observers.
@@ -43,9 +57,10 @@ private let log = Log.logger(.mirror)
         discovery.stopWatching()
     }
 
-    /// Waits until the list is known (a click never acts on a list that has not loaded yet).
+    /// Waits until the list is known and current (a click never acts on a list that has not loaded yet, or that
+    /// missed a change while hidden).
     func ensureLoaded() async {
-        if !isLoaded { scheduleRefresh() }
+        refreshIfNeeded()
         await refreshTask?.value
     }
 
@@ -57,6 +72,18 @@ private let log = Log.logger(.mirror)
 
     /// Enumerates again soon (the camera reported a state the list may not know yet, e.g. suspended).
     func requestRefresh() { scheduleRefresh() }
+
+    /// The discovery reported a possible change: enumerate now while someone sees the list, else later.
+    private func changeObserved() {
+        if users > 0 { scheduleRefresh() } else { isStale = true }
+    }
+
+    /// Enumerates when the list was never loaded or a change arrived while nobody showed it.
+    private func refreshIfNeeded() {
+        guard !isLoaded || isStale else { return }
+        isStale = false
+        scheduleRefresh()
+    }
 
     /// Bursts of notifications (a dock with two cameras) collapse into one running and one queued refresh.
     private func scheduleRefresh() {

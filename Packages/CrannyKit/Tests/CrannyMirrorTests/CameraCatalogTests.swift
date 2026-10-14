@@ -110,6 +110,64 @@ import Testing
         #expect(changes == 2)
     }
 
+    @Test func aChangeWhileNobodyShowsTheListWaitsForTheNextAppearance() async {
+        // A wake, a display change or a hot-plug while the panel is closed must not enumerate: it marks the
+        // list stale, and the next appearance enumerates once.
+        let discovery = FakeDiscovery(Cameras.builtInOnly)
+        let catalog = CameraCatalog(discovery: discovery)
+        catalog.activate()
+        await catalog.ensureLoaded()
+        catalog.release()
+        #expect(discovery.isWatching)                     // the observers stay armed: they are passive
+        let enumerations = discovery.enumerations
+
+        discovery.change(Cameras.builtInAndUSB)
+        discovery.change(Cameras.builtInAndUSB)
+        try? await Task.sleep(for: .milliseconds(20))
+        #expect(discovery.enumerations == enumerations)
+        #expect(catalog.devices == [Cameras.builtIn])
+
+        catalog.activate()
+        await catalog.ensureLoaded()
+        #expect(discovery.enumerations == enumerations + 1)
+        #expect(catalog.devices.map(\.id) == [Cameras.builtIn.id, Cameras.usb.id])
+
+        // Nothing changed while hidden: the next appearance does not enumerate.
+        catalog.release()
+        catalog.activate()
+        await catalog.ensureLoaded()
+        #expect(discovery.enumerations == enumerations + 1)
+    }
+
+    @Test func aClickAfterAHiddenChangeWaitsForTheFreshList() async {
+        let discovery = FakeDiscovery(Cameras.two)
+        let catalog = CameraCatalog(discovery: discovery)
+        catalog.activate()
+        await catalog.ensureLoaded()
+        catalog.release()
+        discovery.change(Cameras.builtInOnly)
+        await catalog.ensureLoaded()
+        #expect(catalog.devices == [Cameras.builtIn])
+    }
+
+    @Test func aSecondUserKeepsChangesLive() async {
+        // The options popover and a live widget at once: closing one leaves the other refreshing at once.
+        let discovery = FakeDiscovery(Cameras.builtInOnly)
+        let catalog = CameraCatalog(discovery: discovery)
+        catalog.activate()
+        catalog.activate()
+        await catalog.ensureLoaded()
+        catalog.release()
+        discovery.change(Cameras.builtInAndUSB)
+        #expect(await eventually { catalog.devices.count == 2 })
+        // An extra release never makes the count negative.
+        catalog.release()
+        catalog.release()
+        catalog.activate()
+        discovery.change(Cameras.builtInOnly)
+        #expect(await eventually { catalog.devices.count == 1 })
+    }
+
     @Test func deactivateStopsWatching() async {
         let discovery = FakeDiscovery(Cameras.two)
         let catalog = CameraCatalog(discovery: discovery)

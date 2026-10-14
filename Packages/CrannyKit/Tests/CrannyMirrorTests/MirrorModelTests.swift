@@ -331,6 +331,20 @@ import Testing
         #expect(h.controller.starts.isEmpty)          // a new camera never starts anything
     }
 
+    @Test func aClosedPanelNeverListsTheCamerasUntilItOpens() async {
+        // A wake or hot-plug while the panel is closed only marks the list stale; the next opening re-reads it.
+        let h = MirrorHarness(cameras: Cameras.builtInOnly)
+        let id = await h.show()
+        h.model.viewDisappeared(id)
+        let enumerations = h.discovery.enumerations
+        h.discovery.change(Cameras.builtInAndUSB)
+        try? await Task.sleep(for: .milliseconds(20))
+        #expect(h.discovery.enumerations == enumerations)
+        await h.show()
+        #expect(h.discovery.enumerations == enumerations + 1)
+        #expect(h.model.catalog.devices.map(\.id) == [Cameras.builtIn.id, Cameras.usb.id])
+    }
+
     @Test func unpluggingTheRunningCameraStopsAndSaysSo() async {
         let h = MirrorHarness()
         h.settings[MirrorSettings.cameraID] = Cameras.iPhone.id

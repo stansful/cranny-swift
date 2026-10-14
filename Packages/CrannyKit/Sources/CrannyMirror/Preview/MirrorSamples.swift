@@ -72,7 +72,7 @@ extension MirrorModel {
         let model = MirrorModel(settings: services.settings, notch: services.notch, environment: services.environment,
                                 catalog: CameraCatalog(discovery: SampleCameraDiscovery(cameras)),
                                 controller: SampleCameraController(), authorization: SampleCameraAuthorization(authorization))
-        model.catalog.activate()
+        model.catalog.activate()                      // one user for the preview's life: the sample list loads
         model.showPreviewState(phase)
         return model
     }

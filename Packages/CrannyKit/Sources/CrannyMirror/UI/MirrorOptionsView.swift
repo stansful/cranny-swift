@@ -32,6 +32,7 @@ struct MirrorOptionsView: View {
         .frame(width: 320)
         .fixedSize(horizontal: false, vertical: true)
         .onAppear { model.catalog.activate() }
+        .onDisappear { model.catalog.release() }
     }
 }
 
