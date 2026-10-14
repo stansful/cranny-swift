@@ -63,6 +63,25 @@ import Testing
         #expect(comment?.alphaComponent ?? 1 < 0.9)                             // comments are tertiary
     }
 
+    /// Typing in an Automatic code note never runs detection; the model's coalesced result restyles it once.
+    @Test func automaticNotesAreColouredByTheModelsDetection() throws {
+        model.adoptLoadedNotes([Note(title: "Untitled", text: "", mode: .code)])
+        let entry = try #require(model.selectedEntry)
+        let (coordinator, textView) = try editor(showing: entry)
+        textView.insertText("import SwiftUI\nlet x = 1", replacementRange: textView.selectedRange())
+        #expect(coordinator.styler.language == nil)                             // generic until detection ran
+        #expect(model.languageDetection.isPending)
+        model.languageDetection.fireNow()
+        let detected = try #require(model.entry(entry.id))
+        #expect(detected.detectedLanguage == .swift)
+        coordinator.update(configuration(detected))                             // what SwiftUI does next
+        #expect(coordinator.styler.language == .swift)
+        let storage = try #require(textView.textStorage)
+        let keyword = (storage.attribute(.foregroundColor, at: 15, effectiveRange: nil) as? NSColor)?.usingColorSpace(.sRGB)
+        #expect(abs((keyword?.redComponent ?? 0) - SyntaxPalette.keyword.r) < 0.01)   // "let" on line 2
+        model.autosave.cancel()
+    }
+
     @Test func eachNoteHasItsOwnUndoHistoryAndCaret() throws {
         model.adoptLoadedNotes([Note(title: "A", text: "aaa", mode: .plain), Note(title: "B", text: "bbb", mode: .plain)])
         let a = try #require(model.entries.first), b = try #require(model.entries.last)

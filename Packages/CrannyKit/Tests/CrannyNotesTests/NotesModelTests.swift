@@ -83,8 +83,40 @@ import Testing
         #expect(model.effectiveLanguage(of: id) == .shell)
         model.setLanguage(.python, for: id)
         #expect(model.effectiveLanguage(of: id) == .python)
+        #expect(model.entry(id)?.detectedLanguage == .shell)                    // the menu still shows "Automatic (Shell)"
         model.toggleCodeMode()
         #expect(model.entry(id)?.mode == .plain)
+        #expect(model.entry(id)?.detectedLanguage == nil)
+    }
+
+    /// Typing never runs "Automatic": the entry keeps its language until the coalesced detection runs, and changes
+    /// (re-rendering the header and restyling the editor once) only when the result does.
+    @Test func automaticLanguageIsDetectedOffTheKeystroke() async {
+        services.settings[NotesSettings.defaultMode] = .code
+        let model = await loadedModel()
+        let id = model.newNote()
+        #expect(model.entry(id)?.detectedLanguage == nil)
+        model.setText("import SwiftUI\nstruct Card: View {", for: id)
+        #expect(model.entry(id)?.detectedLanguage == nil)                       // not on the keystroke
+        #expect(model.languageDetection.isPending)
+        model.languageDetection.fireNow()
+        #expect(model.entry(id)?.detectedLanguage == .swift)
+        let before = model.entries
+        model.setText("import SwiftUI\nstruct Card: View { }", for: id)
+        model.detectLanguages()
+        #expect(model.entries == before)                                        // same result: no change at all
+        model.setText("plain words", for: id)
+        model.detectLanguages()
+        #expect(model.entry(id)?.detectedLanguage == nil)
+        model.languageDetection.cancel()
+    }
+
+    @Test func plainNotesAreNotDetected() async {
+        let model = await loadedModel()
+        let id = model.newNote()
+        model.setText("import SwiftUI", for: id)
+        #expect(!model.languageDetection.isPending)
+        #expect(model.entry(id)?.detectedLanguage == nil)
     }
 
     /// Polls `condition` for up to 3 s (saves run off the main actor).

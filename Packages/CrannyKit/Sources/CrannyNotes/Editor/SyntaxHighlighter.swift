@@ -43,6 +43,10 @@ nonisolated enum SyntaxHighlighter {
     /// reports them. Tokens before the edit keep their place, tokens after it move by `delta`; the result
     /// covers the edit plus every token that is not the same in both lists. Outside it, the storage's
     /// existing attributes are already right, so only this range needs restyling.
+    static func changedRange(old: [SyntaxToken], new: [SyntaxToken], edit: TextEdit, length: Int) -> NSRange {
+        changedRange(old: old, new: new, edited: edit.range, delta: edit.delta, length: length)
+    }
+
     static func changedRange(old: [SyntaxToken], new: [SyntaxToken], edited: NSRange, delta: Int, length: Int) -> NSRange {
         let editStart = edited.location
         let oldEditEnd = edited.location + edited.length - delta              // end of the replaced range, old coords
@@ -82,5 +86,25 @@ nonisolated enum SyntaxHighlighter {
         lower = min(max(lower, 0), length)
         upper = min(max(upper, lower), length)
         return NSRange(location: lower, length: upper - lower)
+    }
+}
+
+// MARK: - Off the main actor
+
+/// A long note's restyle after `edit` (all edits since `old` was computed, merged): the snapshot to tokenize and
+/// what the storage shows now. `generation` tells the styler whether the text changed while this ran.
+nonisolated struct RestyleJob: Sendable {
+    var source: SourceText
+    var language: CodeLanguage?
+    var old: [SyntaxToken]
+    var edit: TextEdit
+    var generation: Int
+}
+
+extension SyntaxHighlighter {
+    /// The tokens of the snapshot and the range whose colours differ from `job.old`, computed off the main actor.
+    @concurrent static func restyle(_ job: RestyleJob) async -> (tokens: [SyntaxToken], changed: NSRange) {
+        let fresh = tokens(in: job.source, language: job.language)
+        return (fresh, changedRange(old: job.old, new: fresh, edit: job.edit, length: job.source.count))
     }
 }

@@ -36,6 +36,15 @@ nonisolated struct SourceText: Sendable {
 
     init(_ string: String) { units = Array(string.utf16) }
 
+    /// One `getCharacters` copy: much faster than walking a `String` bridged from the text storage.
+    init(_ string: NSString) {
+        let count = string.length
+        units = [UInt16](unsafeUninitializedCapacity: count) { buffer, initialized in
+            if let base = buffer.baseAddress { string.getCharacters(base, range: NSRange(location: 0, length: count)) }
+            initialized = count
+        }
+    }
+
     subscript(_ index: Int) -> UInt16 { index >= 0 && index < units.count ? units[index] : 0 }
 
     func string(_ range: Range<Int>) -> String {

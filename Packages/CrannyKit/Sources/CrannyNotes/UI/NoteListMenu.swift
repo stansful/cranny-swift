@@ -68,11 +68,9 @@ struct NoteListMenu: View {
         }
     }
 
-    /// "Automatic (Swift)" when detection found something, else "Automatic".
+    /// "Automatic (Swift)" when detection found something, else "Automatic" (the entry's cached result).
     private var automaticTitle: String {
-        guard let note = model.note(entry.id),
-              let detected = LanguageDetector.detect(title: note.title, text: note.text) else { return NotesStrings.automatic }
-        return NotesStrings.automatic(detected.displayName)
+        entry.detectedLanguage.map { NotesStrings.automatic($0.displayName) } ?? NotesStrings.automatic
     }
 }
 

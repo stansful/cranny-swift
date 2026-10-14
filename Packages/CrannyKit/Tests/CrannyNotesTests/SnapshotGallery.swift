@@ -21,6 +21,8 @@ struct SnapshotGallery {
         var rows = 2
         var select = 0
         var notes = true
+        /// Notes after the standard five (`select` counts them too).
+        var extra: [Note] = []
         var theme = CrannyTheme()
         var context: (inout WidgetContext) -> Void = { _ in }
         var prepare: (NotesModel) -> Void = { _ in }
@@ -33,6 +35,10 @@ struct SnapshotGallery {
         Note(title: "Список дел", text: "Позвонить в сервис до обеда\nКупить лимоны и базилик\nВернуть книги в библиотеку", mode: .plain),
         Note(title: "Untitled", text: "", mode: .plain),
     ]
+
+    private static let longNote = Note(title: "long.md", text: String(repeating: "## Section\nSome *emphasis* and "
+        + "**strong** text with `code` and [a link](https://example.com).\n```swift\nlet retries = 3 // flaky CI\n```\n> quote\n\n",
+        count: 1_300), mode: .code)
 
     @Test func renderGallery() async throws {
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -54,6 +60,8 @@ struct SnapshotGallery {
             Case(name: "13-high-contrast", select: 2, theme: highContrast),
             Case(name: "14-xl-text", select: 1, theme: large),
             Case(name: "15-typing-effect", select: 1, prepare: { _ in NotesQAHooks.actions = ["typing"] }),
+            // About 100 000 units: tokenized off the main actor and coloured in slices; the top must end up coloured.
+            Case(name: "16-long-note-8", cells: 8, select: 5, extra: [Self.longNote]),
         ]
         for item in cases {
             NotesQAHooks.actions = []
@@ -65,7 +73,7 @@ struct SnapshotGallery {
     private func render(_ item: Case) async throws {
         let services = CrannyServices.preview()
         let model = NotesModel(settings: services.settings, notch: services.notch, store: NotesStore(paths: services.paths))
-        model.adoptLoadedNotes(item.notes ? Self.notes : [])
+        model.adoptLoadedNotes(item.notes ? Self.notes + item.extra : [])
         if item.notes { model.select(model.entries[item.select].id) }
         item.prepare(model)
         var grid = item.theme.grid

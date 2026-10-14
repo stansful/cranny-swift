@@ -46,27 +46,46 @@ final class LineNumberRuler: NSRulerView {
         needsDisplay = true
     }
 
-    /// Recomputes the line starts after an edit (only while the ruler is shown).
-    func textDidChange() {
-        guard let text = textView?.textStorage?.string else { return }
-        lineStarts = Self.lineStarts(in: text)
+    /// Updates the line starts after `edit` (only while the ruler is shown): the edited stretch is scanned, the
+    /// other starts are kept or shifted, so typing in a long note never rescans its text. nil = recompute from the
+    /// whole text (a note loaded, the ruler shown again).
+    func textDidChange(_ edit: TextEdit? = nil) {
+        guard let text = textView?.textStorage?.string as NSString? else { return }
+        lineStarts = edit.map { Self.lineStarts(lineStarts, after: $0, in: text) } ?? Self.lineStarts(in: text)
         updateThickness()
         needsDisplay = true
     }
 
     /// Offsets where lines start: 0 and every index after a line break (CRLF counts once).
-    nonisolated static func lineStarts(in text: String) -> [Int] {
-        var starts = [0]
-        var previousWasCR = false
-        for (offset, unit) in text.utf16.enumerated() {
-            if unit == 0x0A {
-                if previousWasCR { starts[starts.count - 1] = offset + 1 } else { starts.append(offset + 1) }
-            } else if unit == 0x0D || unit == 0x2028 || unit == 0x2029 {
-                starts.append(offset + 1)
-            }
-            previousWasCR = unit == 0x0D
+    nonisolated static func lineStarts(in text: String) -> [Int] { lineStarts(in: text as NSString) }
+
+    nonisolated static func lineStarts(in text: NSString) -> [Int] {
+        let units = SourceText(text)
+        return [0] + (1..<(units.count + 1)).filter { startsLine(units, at: $0) }
+    }
+
+    /// `starts` (of the text before `edit`) for the text after it. A start depends only on the units just before
+    /// and at it, so starts before the edit stay, starts well after it move by `delta`, and the edited stretch
+    /// (plus two units, for a CR LF pair cut or joined by the edit) is scanned again.
+    nonisolated static func lineStarts(_ starts: [Int], after edit: TextEdit, in text: NSString) -> [Int] {
+        let start = edit.range.location
+        let scanEnd = min(NSMaxRange(edit.range) + 2, text.length + 1)          // new starts in start..<scanEnd
+        let keptBefore = starts.prefix { $0 < max(start, 1) }                   // always holds 0
+        let movedAfter = starts.drop { $0 < edit.oldEnd + 2 }.map { $0 + edit.delta }
+        var fresh: [Int] = []
+        if max(start, 1) < scanEnd {
+            let lower = max(start, 1) - 1
+            let window = SourceText(text.substring(with: NSRange(location: lower, length: min(scanEnd, text.length) - lower)) as NSString)
+            fresh = (max(start, 1)..<scanEnd).filter { startsLine(window, at: $0 - lower) }   // the window reaches past every s
         }
-        return starts
+        return Array(keptBefore) + fresh + movedAfter
+    }
+
+    /// A line starts at `offset` (≥ 1) when a break precedes it, except between the CR and LF of one CR LF
+    /// (`units` reads 0 past its end: the end of the text, or of a window that reaches the text's end).
+    private nonisolated static func startsLine(_ units: SourceText, at offset: Int) -> Bool {
+        let before = units[offset - 1]
+        return SourceText.isNewline(before) && !(before == 0x0D && units[offset] == 0x0A)
     }
 
     /// 1-based line number of the line containing `offset`.

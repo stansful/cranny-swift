@@ -22,9 +22,6 @@ nonisolated struct Note: Identifiable, Equatable, Sendable {
     var entry: NotesIndex.Entry {
         NotesIndex.Entry(id: id, title: title, mode: mode, language: language, createdAt: createdAt, modifiedAt: modifiedAt)
     }
-
-    /// The language code mode colours this note with.
-    var effectiveLanguage: CodeLanguage? { language ?? LanguageDetector.detect(title: title, text: text) }
 }
 
 /// `index.json`: the notes in display order (newest first) without their text.

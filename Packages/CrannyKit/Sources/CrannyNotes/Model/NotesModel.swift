@@ -1,7 +1,8 @@
 // CrannyNotes/Model/NotesModel.swift — the Notes widget's model (ARCHITECTURE.md §10.6): the list of notes, the
 // selection, rename/delete flows and the texts. Views observe the list (`entries`); the texts are kept outside
 // observation, so typing never re-renders the header or the list. Persistence: NotesModel+Saving.swift;
-// shell interaction (holds, focus mode, opening the panel): NotesModel+Shell.swift.
+// shell interaction (holds, focus mode, opening the panel): NotesModel+Shell.swift; the "Automatic" language:
+// NotesModel+Language.swift.
 import CrannyCore
 import Foundation
 import Observation
@@ -17,7 +18,14 @@ private let log = Log.logger(.notes)
         var id: UUID
         var title: String
         var mode: NoteMode
+        /// The language chosen in the menu; nil = Automatic.
         var language: CodeLanguage?
+        /// What Automatic finds for this note in code mode (nil in plain mode or when unsure). Refreshed at most
+        /// every 0.4 s while the note changes (`languageDetection`), never per keystroke.
+        var detectedLanguage: CodeLanguage? = nil
+
+        /// The language code mode colours the note with.
+        var effectiveLanguage: CodeLanguage? { language ?? detectedLanguage }
     }
 
     private(set) var phase: Phase = .idle
@@ -52,7 +60,12 @@ private let log = Log.logger(.notes)
     /// The caret/selection of each note, restored when it is shown again (this session only).
     @ObservationIgnored var selections: [UUID: NSRange] = [:]
     @ObservationIgnored var retryTask: Task<Void, Never>?
-    @ObservationIgnored lazy var autosave = AutosaveScheduler { [weak self] in self?.saveNow() }
+    @ObservationIgnored lazy var autosave = CoalescingScheduler { [weak self] in self?.saveNow() }
+    /// Notes whose text changed since "Automatic" last looked at them.
+    @ObservationIgnored var undetectedNotes = Set<UUID>()
+    @ObservationIgnored lazy var languageDetection = CoalescingScheduler(delay: Self.detectionDelay) { [weak self] in
+        self?.detectLanguages()
+    }
     @ObservationIgnored private let now: () -> Date
 
     init(settings: SettingsStore, notch: any NotchControl, store: NotesStore, now: @escaping () -> Date = Date.init) {
@@ -67,7 +80,7 @@ private let log = Log.logger(.notes)
     func entry(_ id: UUID) -> Entry? { entries.first { $0.id == id } }
 
     /// The language code mode colours a note with ("Automatic" resolved).
-    func effectiveLanguage(of id: UUID) -> CodeLanguage? { documents[id]?.effectiveLanguage }
+    func effectiveLanguage(of id: UUID) -> CodeLanguage? { entry(id)?.effectiveLanguage }
 
     // MARK: Loading
 
@@ -154,9 +167,10 @@ private let log = Log.logger(.notes)
         return note.id
     }
 
-    /// From the editor, on every change.
+    /// From the editor, after every change of its characters. O(1): no comparison with the previous text (the
+    /// editor reports only real changes, and comparing a long note on every keystroke cost milliseconds).
     func setText(_ text: String, for id: UUID) {
-        guard var note = documents[id], note.text != text else { return }
+        guard var note = documents[id] else { return }
         note.text = text
         note.modifiedAt = now()
         documents[id] = note
@@ -166,6 +180,16 @@ private let log = Log.logger(.notes)
         dirtyTexts.insert(id)
         indexDirty = true
         autosave.schedule()
+        if note.mode == .code {
+            undetectedNotes.insert(id)
+            languageDetection.schedule()
+        }
+    }
+
+    /// A new "Automatic" result (NotesModel+Language.swift): the entry changes only if it differs.
+    func setDetectedLanguage(_ language: CodeLanguage?, of id: UUID) {
+        guard let index = entries.firstIndex(where: { $0.id == id }), entries[index].detectedLanguage != language else { return }
+        entries[index].detectedLanguage = language
     }
 
     func beginRename() {
@@ -245,6 +269,6 @@ private let log = Log.logger(.notes)
     }
 
     static func entry(_ note: Note) -> Entry {
-        Entry(id: note.id, title: note.title, mode: note.mode, language: note.language)
+        Entry(id: note.id, title: note.title, mode: note.mode, language: note.language, detectedLanguage: detectedLanguage(of: note))
     }
 }

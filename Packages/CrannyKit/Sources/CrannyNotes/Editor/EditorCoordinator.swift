@@ -1,6 +1,7 @@
 // CrannyNotes/Editor/EditorCoordinator.swift — owns the editor's AppKit side: builds the scroll view and the TextKit 2
-// text view, loads the selected note into the storage, restyles only what an edit changed (code mode), keeps one
-// undo history per note, reports text and focus to the model and drives the typing effect and line numbers.
+// text view, loads the selected note into the storage, keeps one undo history per note, reports text and focus to
+// the model and drives the syntax styler (code mode), the typing effect and line numbers. Per keystroke it does
+// O(edit) work only: no language detection (the model's entry carries it) and no full-text scans.
 import AppKit
 import CrannyCore
 import Foundation
@@ -23,9 +24,7 @@ struct EditorConfiguration: Equatable {
     private var ruler: LineNumberRuler?
     private(set) var configuration: EditorConfiguration?
     private var attributes: EditorAttributes?
-    /// Tokens currently applied to the storage (code mode), for incremental restyling.
-    private(set) var tokens: [SyntaxToken] = []
-    private var language: CodeLanguage?
+    let styler = SyntaxStyler()
     private var seenExternalRevision = Int.min
     private var isLoadingText = false
     private var undoManagers: [UUID: UndoManager] = [:]
@@ -65,6 +64,7 @@ struct EditorConfiguration: Equatable {
         textView.onTyped = { [weak self] in self?.typingEffect.typed($0) }
         textView.onWindowChange = { [weak self] in self?.windowChanged() }
         typingEffect.attach(to: textView)
+        if let storage = textView.textStorage { styler.attach(to: storage) }
 
         let scroll = NSScrollView()
         scroll.clipsToBounds = true                                              // macOS 14+ views draw outside by default
@@ -93,6 +93,7 @@ struct EditorConfiguration: Equatable {
     /// The view left the hierarchy: no hold, display link or observer may outlive it.
     func dismantle() {
         if let id = configuration?.noteID, let textView { model.selections[id] = textView.selectedRange() }
+        styler.cancel()
         typingEffect.stop()
         model.editorEditingChanged(false)
         if let clipObserver { NotificationCenter.default.removeObserver(clipObserver) }
@@ -162,7 +163,6 @@ struct EditorConfiguration: Equatable {
         storage.setAttributes(attributes.base, range: NSRange(location: 0, length: storage.length))
         storage.endEditing()
         isLoadingText = false
-        tokens = []
         let length = storage.length
         // Where the caret was in this session, else the start, so a note opens showing its first lines.
         let saved = model.selections[id] ?? NSRange(location: 0, length: 0)
@@ -172,33 +172,12 @@ struct EditorConfiguration: Equatable {
         ruler?.textDidChange()
     }
 
-    /// Restyles the whole note (note switch, mode/language/title change, theme change).
+    /// Restyles the whole note (note switch, mode/language/title change, theme change, a new Automatic result).
     func restyleAll() {
-        guard let configuration, let storage = textView?.textStorage, let attributes else { return }
-        let text = storage.string
-        language = configuration.entry.mode == .code
-            ? configuration.entry.language ?? LanguageDetector.detect(title: configuration.entry.title, text: text) : nil
-        tokens = configuration.entry.mode == .code ? SyntaxHighlighter.tokens(in: text, language: language) : []
-        storage.beginEditing()
-        apply(tokens, in: NSRange(location: 0, length: storage.length), to: storage, attributes)
-        storage.endEditing()
+        guard let configuration, let attributes else { return }
+        let entry = configuration.entry
+        styler.restyleAll(code: entry.mode == .code, language: entry.effectiveLanguage, attributes: attributes)
         textView?.typingAttributes = attributes.base
-    }
-
-    private func apply(_ tokens: [SyntaxToken], in span: NSRange, to storage: NSTextStorage, _ attributes: EditorAttributes) {
-        guard span.length > 0 else { return }
-        storage.setAttributes(attributes.base, range: span)
-        var low = 0, high = tokens.count                                         // first token ending after span start
-        while low < high {
-            let mid = (low + high) / 2
-            if NSMaxRange(tokens[mid].range) <= span.location { low = mid + 1 } else { high = mid }
-        }
-        var i = low
-        while i < tokens.count && tokens[i].range.location < NSMaxRange(span) {
-            let range = NSIntersectionRange(tokens[i].range, span)
-            if range.length > 0 { storage.addAttributes(attributes.attributes(for: tokens[i].kind), range: range) }
-            i += 1
-        }
     }
 
     // MARK: Line numbers
@@ -211,9 +190,10 @@ struct EditorConfiguration: Equatable {
             scrollView.hasVerticalRuler = true
             self.ruler = ruler
             if let style = configuration?.style { ruler.apply(style: style) }
-            ruler.textDidChange()
         }
-        if scrollView.rulersVisible != visible { scrollView.rulersVisible = visible }
+        guard scrollView.rulersVisible != visible else { return }
+        scrollView.rulersVisible = visible
+        if visible { ruler?.textDidChange() }                                    // edits while hidden were not tracked
     }
 
     // MARK: Focus
@@ -261,27 +241,12 @@ struct EditorConfiguration: Equatable {
 
     func textStorage(_ textStorage: NSTextStorage, didProcessEditing editedMask: NSTextStorageEditActions,
                      range editedRange: NSRange, changeInLength delta: Int) {
-        guard editedMask.contains(.editedCharacters), !isLoadingText, let configuration, let attributes else { return }
+        guard editedMask.contains(.editedCharacters), !isLoadingText, let configuration else { return }
         // Every change of the characters lands here — typing, paste, drop, undo and redo alike.
-        let text = textStorage.string
-        model.setText(text, for: configuration.noteID)
-        if scrollView?.rulersVisible == true { ruler?.textDidChange() }
+        let edit = TextEdit(range: editedRange, delta: delta)
+        model.setText(textStorage.string, for: configuration.noteID)           // never compared with the old text
+        if scrollView?.rulersVisible == true { ruler?.textDidChange(edit) }
         typingEffect.textChanged(edited: editedRange, delta: delta)
-        guard configuration.entry.mode == .code else {
-            textStorage.setAttributes(attributes.base, range: editedRange)
-            return
-        }
-        // Detection reads only the start of the note (characters; ×2 covers UTF-16 surrogate pairs): an edit
-        // further down keeps the language it had.
-        let detected = configuration.entry.language
-            ?? (editedRange.location >= 2 * LanguageDetector.sampleLength && !tokens.isEmpty
-                ? language : LanguageDetector.detect(title: configuration.entry.title, text: text))
-        let fresh = SyntaxHighlighter.tokens(in: text, language: detected)
-        let span = detected == language
-            ? SyntaxHighlighter.changedRange(old: tokens, new: fresh, edited: editedRange, delta: delta, length: textStorage.length)
-            : NSRange(location: 0, length: textStorage.length)
-        language = detected
-        tokens = fresh
-        apply(fresh, in: span, to: textStorage, attributes)
+        styler.textChanged(edit)
     }
 }

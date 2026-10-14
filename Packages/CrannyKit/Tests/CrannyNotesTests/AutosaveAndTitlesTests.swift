@@ -1,4 +1,4 @@
-// AutosaveScheduler with a hand-driven clock ("autosave 0.5 s", bounded loss), title rules and line numbering.
+// CoalescingScheduler with a hand-driven clock ("autosave 0.5 s", bounded loss), title rules and line numbering.
 import Foundation
 import os
 import Testing
@@ -33,7 +33,7 @@ private final class ManualClock: Sendable {
     @Test func oneWaitPerBurstThenOneSave() async {
         let clock = ManualClock()
         var saves = 0
-        let scheduler = AutosaveScheduler(sleep: clock.sleep) { saves += 1 }
+        let scheduler = CoalescingScheduler(sleep: clock.sleep) { saves += 1 }
         scheduler.schedule()
         scheduler.schedule()                                                    // typing on: no restart
         scheduler.schedule()
@@ -52,7 +52,7 @@ private final class ManualClock: Sendable {
     @Test func fireNowSavesAtOnceAndDropsTheWait() async {
         let clock = ManualClock()
         var saves = 0
-        let scheduler = AutosaveScheduler(sleep: clock.sleep) { saves += 1 }
+        let scheduler = CoalescingScheduler(sleep: clock.sleep) { saves += 1 }
         scheduler.schedule()
         await settle { clock.requested.count == 1 }
         scheduler.fireNow()

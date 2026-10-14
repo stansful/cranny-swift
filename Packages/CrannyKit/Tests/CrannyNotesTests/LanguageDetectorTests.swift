@@ -55,6 +55,21 @@ import Testing
         #expect(LanguageDetector.detect(title: "Untitled", text: "let") == nil)
     }
 
+    /// Detection reads the first 2 000 UTF-16 units only, in one pass, so it costs the same for any note length.
+    @Test func onlyTheStartIsRead() {
+        let filler = String(repeating: "plain words here ", count: 200)         // 3 400 units, nothing convincing
+        #expect(LanguageDetector.detect(title: "Untitled", text: filler + "import SwiftUI\nguard let x else {}") == nil)
+        #expect(LanguageDetector.detect(title: "Untitled", text: "import SwiftUI\nguard let x else {}\n" + filler) == .swift)
+        #expect(LanguageDetector.sample(String(repeating: "й", count: 5_000)).count == LanguageDetector.sampleLength)
+        #expect(LanguageDetector.sample("ab") == Array("ab".utf16))
+    }
+
+    @Test func windowsAndClassicMacLineEndings() {
+        #expect(LanguageDetector.detect(title: "Untitled", text: "Intro\r\n\r\n## Steps\r\n1. a") == .markdown)
+        #expect(LanguageDetector.detect(title: "Untitled", text: "name: cranny\r\nversion: 1\r\nitems:\r\n  - a") == .yaml)
+        #expect(LanguageDetector.detect(title: "Untitled", text: "#!/bin/zsh\r\necho hi") == .shell)
+    }
+
     @Test func fenceAliases() {
         #expect(CodeLanguage(alias: "Swift") == .swift)
         #expect(CodeLanguage(alias: "c++") == .cpp)

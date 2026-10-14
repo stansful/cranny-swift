@@ -1,10 +1,11 @@
-// CrannyNotes/Model/AutosaveScheduler.swift — "autosave debounced 0.5 s" with a ceiling (ARCHITECTURE.md §10.6):
-// the first change after a save starts ONE 0.5-s wait and later changes ride along instead of restarting it.
-// A pure trailing debounce would never save during continuous typing; this bounds what a `kill -9` can lose
-// to the last 0.5 s of typing. One sleeping task at most; nothing runs while nothing changed.
+// CrannyNotes/Model/CoalescingScheduler.swift — "debounced" with a ceiling: the first request starts ONE wait and
+// later requests ride along instead of restarting it. Autosave (ARCHITECTURE.md §10.6, 0.5 s) uses it so that a
+// `kill -9` loses at most the last 0.5 s of typing (a pure trailing debounce would never save during continuous
+// typing); "Automatic" language detection uses it to stay off the keystroke path. One sleeping task at most;
+// nothing runs while nothing changed.
 import Foundation
 
-@MainActor final class AutosaveScheduler {
+@MainActor final class CoalescingScheduler {
     typealias Sleep = @Sendable (Duration) async throws -> Void
 
     private let delay: Duration
@@ -18,7 +19,7 @@ import Foundation
         self.delay = delay; self.sleep = sleep; self.action = action
     }
 
-    /// A save is waiting.
+    /// The action is waiting to run.
     var isPending: Bool { task != nil }
 
     /// Starts the wait unless one is already running.
@@ -32,7 +33,7 @@ import Foundation
         }
     }
 
-    /// Runs the action now (terminate, note switch) and forgets the pending wait.
+    /// Runs the action now (a delete, terminate) and forgets the pending wait.
     func fireNow() {
         cancel()
         action()
