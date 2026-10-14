@@ -77,7 +77,7 @@ private let log = Log.logger(.onboarding)
             NSApp.activate()
             window.makeKeyAndOrderFront(nil)
         }
-        log.info("welcome shown at \(step.rawValue, privacy: .public)")
+        log.info("welcome shown at \(step.rawValue, privacy: .public), frame \(NSStringFromRect(window.frame), privacy: .public)")
     }
 
     /// The welcome ended (Done, tour or Skip setup): close, then act.

@@ -32,7 +32,8 @@ struct TipBubble: View {
     /// Room around the bubble for its shadow (the panel is transparent there and passes clicks through).
     static let shadowMargin = Space.xxl
     static let caretSize = CGSize(width: Space.l + Space.xs, height: Space.s)
-    static let maximumWidth: CGFloat = 340
+    /// Tutorial bubbles share one width, so the tip does not jump from step to step; the coach mark hugs its line.
+    static let width: CGFloat = 320
 
     var body: some View {
         let shape = BubbleShape(radius: Radius.peek - Space.s, caret: Self.caretSize)
@@ -43,7 +44,7 @@ struct TipBubble: View {
                     .crannyFont(.headline)
                     .foregroundStyle(theme.palette.label)
                     .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                if content.isInteractive { Spacer(minLength: 0) }
                 if let keys = content.keys { KeyCap(keys) }
             }
             if content.progress != nil || content.actionTitle != nil {
@@ -68,8 +69,10 @@ struct TipBubble: View {
         .padding(.horizontal, Space.l + Space.xxs)
         .padding(.top, Space.l + Self.caretSize.height)
         .padding(.bottom, Space.l)
-        .frame(maxWidth: Self.maximumWidth, alignment: .leading)
-        .fixedSize(horizontal: false, vertical: true)
+        // Fixed width for the tour (the text wraps), ideal width for the one-line coach mark: either way the
+        // hosting panel's fitting size is the bubble's real size.
+        .frame(width: content.isInteractive ? Self.width : nil, alignment: .leading)
+        .fixedSize(horizontal: !content.isInteractive, vertical: true)
         .background { background(shape) }
         .overlay(shape.stroke(theme.palette.hairline, lineWidth: theme.increaseContrast ? 1 : StrokeWidth.hairline(displayScale)))
         .crannyElevation(Elevation.peek)

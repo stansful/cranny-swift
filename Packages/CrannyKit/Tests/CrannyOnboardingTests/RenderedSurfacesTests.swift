@@ -63,7 +63,27 @@ import Testing
         .background(BrandColor.graphite.color)
         .crannyThemeRoot(CrannyTheme())
         let image = render(tips, name: "tips")
-        #expect((image?.size.width ?? 0) <= TipBubble.maximumWidth + 2 * Space.huge + 1)
+        #expect(image?.size.width == TipBubble.width + 2 * Space.huge)
+    }
+
+    @Test func theTipPanelTakesTheBubblesSize() {
+        let model = TipModel(content: TipContent(text: "Swipe sideways with two fingers to change the track and more words to wrap",
+                                                 progress: "3 of 5", mark: .symbol("hand.draw.fill"), actionTitle: "Skip tour"))
+        let hosting = TipHostingView(rootView: TipBubbleView(model: model))
+        hosting.sizingOptions = [.intrinsicContentSize]
+        let tour = hosting.intrinsicContentSize
+        #expect(tour.width == TipBubble.width + 2 * TipBubble.shadowMargin)
+        #expect(tour.height > 80 && tour.height < 200)               // wrapped onto two lines, not one word per line
+
+        model.content = TipContent(text: "Click here, or press", keys: "⌃⌥N")
+        hosting.layoutSubtreeIfNeeded()
+        let coach = hosting.intrinsicContentSize
+        #expect(coach.width < tour.width)                            // the coach mark hugs its single line
+        #expect(coach.height < tour.height)
+
+        let frame = TipPanelPresenter.frame(size: coach, under: CGRect(x: 1000, y: 1400, width: 200, height: 32))
+        #expect(abs(frame.midX - 1100) <= 0.5)
+        #expect(frame.maxY == 1400 - (WelcomeMetrics.tipGap - TipBubble.caretSize.height) + TipBubble.shadowMargin)
     }
 
     @Test func stepsRender() {

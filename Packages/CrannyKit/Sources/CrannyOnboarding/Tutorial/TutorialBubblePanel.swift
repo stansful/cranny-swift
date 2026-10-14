@@ -29,7 +29,7 @@ import SwiftUI
         model.content = content
         panel.ignoresMouseEvents = !content.isInteractive
         hosting.layoutSubtreeIfNeeded()
-        let size = hosting.fittingSize
+        let size = hosting.intrinsicContentSize               // the bubble's own size (see TipBubble's frame)
         let frame = Self.frame(size: size, under: anchor ?? Self.fallbackAnchor())
         if isNew {
             panel.setFrame(frame, display: false)
@@ -56,6 +56,7 @@ import SwiftUI
 
     /// The caret's tip sits `tipGap − caret` under the shape, centred on it, clamped inside its screen.
     static func frame(size: CGSize, under anchor: CGRect) -> CGRect {
+        let size = CGSize(width: size.width.rounded(.up), height: size.height.rounded(.up))     // whole points
         let margin = TipBubble.shadowMargin
         let caretTipGap = WelcomeMetrics.tipGap - TipBubble.caretSize.height
         var frame = CGRect(x: (anchor.midX - size.width / 2).rounded(), y: (anchor.minY - caretTipGap + margin - size.height).rounded(),
@@ -79,7 +80,7 @@ import SwiftUI
         if let panel, let hosting { return (panel, hosting) }
         let panel = TutorialBubblePanel()
         let hosting = TipHostingView(rootView: TipBubbleView(model: model))
-        hosting.sizingOptions = []
+        hosting.sizingOptions = [.intrinsicContentSize]       // measured, never resizes the panel by itself
         panel.contentView = hosting
         self.panel = panel
         self.hosting = hosting
