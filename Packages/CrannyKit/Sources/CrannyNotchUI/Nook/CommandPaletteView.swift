@@ -46,8 +46,10 @@ struct CommandPaletteView: View {
             selection.clamp(count: self.results.count, visible: visible)
         }
         .onAppear {
-            fieldFocused = true
-            if !context.isPreview { registry.services.notch.requestKeyboardFocus() }   // typing goes to the panel
+            // Typing goes to the panel: make it key first (without activating the app), then focus the field on the
+            // next turn of the run loop, once the window can hold a first responder.
+            if !context.isPreview { registry.services.notch.requestKeyboardFocus() }
+            Task { @MainActor in fieldFocused = true }
         }
     }
 

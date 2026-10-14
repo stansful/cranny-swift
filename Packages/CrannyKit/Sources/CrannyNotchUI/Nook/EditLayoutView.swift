@@ -112,7 +112,8 @@ struct EditLayoutView: View {
     // MARK: Gestures
 
     private func reorderGesture(_ widget: WidgetID, index: Int, items: [NookItem]) -> some Gesture {
-        DragGesture(minimumDistance: 4, coordinateSpace: .local)
+        // Measured in the canvas: the card itself moves (and reorders) under the pointer while it is dragged.
+        DragGesture(minimumDistance: 4, coordinateSpace: .named(NotchCoordinateSpace.name))
             .onChanged { value in
                 var current = drag ?? CardDrag(widget: widget, startX: rowX(of: index, in: items), translation: 0, draft: items)
                 current.translation = value.translation.width
@@ -141,7 +142,8 @@ struct EditLayoutView: View {
     }
 
     private func resizeGesture(_ widget: WidgetID, cells: Int) -> some Gesture {
-        DragGesture(minimumDistance: 1, coordinateSpace: .local)
+        // Measured in the canvas: the handle follows the card's trailing edge as it grows.
+        DragGesture(minimumDistance: 1, coordinateSpace: .named(NotchCoordinateSpace.name))
             .onChanged { value in
                 var current = resize ?? HandleDrag(widget: widget, startCells: cells, cells: cells)
                 let target = current.startCells + LayoutEditing.cellDelta(translation: value.translation.width,

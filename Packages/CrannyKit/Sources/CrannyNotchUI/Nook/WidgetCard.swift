@@ -38,7 +38,10 @@ struct WidgetCard: View {
             .allowsHitTesting(!isEditing)
             .cardChrome(cells: cells, rows: rows, hovered: hovered && !isEditing, frameless: widget?.isFrameless ?? false)
             .overlay(alignment: .topTrailing) {
-                if !isEditing && (hovered || showsKeyboardMenu) {
+                if !isEditing {
+                    // Always in the hierarchy (its NSMenu must survive the pointer leaving the card for the menu);
+                    // visible on hover, while its ⌘. list is open, or with keyboard focus on the card.
+                    let visible = hovered || showsKeyboardMenu || (isFocused && context.keyboardNavigation)
                     CardOverflowMenu(widget: item.widget, hasOptions: widget?.hasOptions ?? false, cells: cells,
                                      commands: commands, showOptions: { showsOptions = true })
                         .popover(isPresented: $showsKeyboardMenu, arrowEdge: .bottom) {
@@ -47,7 +50,8 @@ struct WidgetCard: View {
                                             done: { showsKeyboardMenu = false })
                         }
                         .padding(Space.xs)
-                        .transition(.opacity.animation(theme.animation(.hover)))
+                        .opacity(visible ? 1 : 0)
+                        .animation(theme.animation(.hover), value: visible)
                 }
             }
             .popover(isPresented: $showsOptions, arrowEdge: .bottom) {
