@@ -95,3 +95,12 @@ struct NookHeader: View {
         }
     }
 }
+
+#Preview("Header · Home selected") {
+    let (model, registry) = previewScene(.open)
+    NookHeader(model: model, registry: registry, actions: NotchUIActions())
+        .frame(width: model.layout.open(columns: model.openColumns).bodyWidth - 2 * Space.l, height: model.layout.headerHeight)
+        .padding(.horizontal, Space.l)
+        .background(.black)
+        .crannyThemeRoot(CrannyTheme())
+}

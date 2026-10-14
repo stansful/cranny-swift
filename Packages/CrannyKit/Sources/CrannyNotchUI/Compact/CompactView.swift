@@ -38,3 +38,11 @@ struct CompactRow: View {
             .foregroundStyle(theme.palette.label)
     }
 }
+
+#Preview("Compact · sample activity") {
+    let (model, registry) = previewScene(.compact)
+    CompactView(model: model, registry: registry, actions: NotchUIActions())
+        .frame(width: model.layout.compact(model.primarySlot).outerWidth)
+        .background(.black)
+        .crannyThemeRoot(CrannyTheme())
+}

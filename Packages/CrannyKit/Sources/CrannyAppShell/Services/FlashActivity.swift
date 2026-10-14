@@ -86,3 +86,15 @@ private struct FlashLabel: View {
         Text(verbatim: label).crannyFont(style).lineLimit(1).foregroundStyle(theme.palette.label)
     }
 }
+
+#Preview("Flash · compact and peek row") {
+    let flash = FlashActivity()
+    flash.show(symbol: "doc.on.doc", label: "Path copied", duration: 3600)
+    return VStack(spacing: 16) {
+        HStack(spacing: 12) { flash.compactLeading(); flash.compactTrailing() }
+        flash.peekRow().frame(width: 360)
+    }
+    .padding()
+    .background(.black)
+    .crannyThemeRoot(CrannyTheme())
+}

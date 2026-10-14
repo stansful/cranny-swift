@@ -3,9 +3,11 @@
 import AppKit
 import SwiftUI
 
+/// Every SwiftUI scene of the app: `CrannyApp.body` returns it (the menu bar extra; windows are AppKit).
 public struct CrannyScenes: Scene {
     private let appDelegate: AppDelegate
 
+    /// `appDelegate` is the app's `@NSApplicationDelegateAdaptor` instance, which owns the services.
     public init(appDelegate: AppDelegate) { self.appDelegate = appDelegate }
 
     public var body: some Scene {

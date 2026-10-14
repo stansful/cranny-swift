@@ -9,12 +9,15 @@ import CrannyEffects
 import Foundation
 import SwiftUI
 
+/// Renders one `NotchSceneModel`: the notch shape and the presentation of its phase (idle, compact, peek,
+/// open). Used by the shell's panels and by the Settings and onboarding stages.
 public struct NotchCanvasView: View {
     @Namespace private var namespace
     private let model: NotchSceneModel
     private let registry: ModuleRegistry
     private let actions: NotchUIActions
 
+    /// `actions` route taps and keys back to the scene's owner (the only writer of `model`).
     public init(model: NotchSceneModel, registry: ModuleRegistry, actions: NotchUIActions = NotchUIActions()) {
         self.model = model; self.registry = registry; self.actions = actions
     }
@@ -94,26 +97,28 @@ private struct CanvasBody: View {
     }
 }
 
-// MARK: - Previews
-
-@MainActor private func previewScene(_ phase: NotchPhase, metrics: NotchMetrics = .reference) -> (NotchSceneModel, ModuleRegistry) {
-    let registry = ModuleRegistry(services: .preview())
-    let model = NotchSceneModel(layout: NotchLayout(metrics: metrics), theme: CrannyTheme())
-    model.phase = phase
-    if phase == .open { model.open = OpenState(page: .nook, reason: .click) }
-    return (model, registry)
-}
+// MARK: - Previews (sample scenes: PreviewSupport.swift)
 
 #Preview("Open · 14″ notch") {
     let (model, registry) = previewScene(.open)
     NotchCanvasView(model: model, registry: registry)
         .frame(width: model.layout.canvasSize.width, height: model.layout.canvasSize.height)
-        .background(.gray)
+        .background(.black)
+        .crannyThemeRoot(CrannyTheme())
+}
+
+#Preview("Compact · 14″ notch") {
+    let (model, registry) = previewScene(.compact)
+    NotchCanvasView(model: model, registry: registry)
+        .frame(width: model.layout.canvasSize.width, height: 80)
+        .background(.black)
+        .crannyThemeRoot(CrannyTheme())
 }
 
 #Preview("Closed · floating island") {
     let (model, registry) = previewScene(.idle, metrics: NotchMetrics(hasNotch: false, notchWidth: 0, bandHeight: 30, screenWidth: 1920))
     NotchCanvasView(model: model, registry: registry)
         .frame(width: model.layout.canvasSize.width, height: 80)
-        .background(.gray)
+        .background(.black)
+        .crannyThemeRoot(CrannyTheme())
 }

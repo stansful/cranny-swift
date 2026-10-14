@@ -44,3 +44,12 @@ struct SidebarIcon: View {
             .accessibilityHidden(true)
     }
 }
+
+#Preview("Sidebar · shell panes") {
+    @Previewable @State var selection: SettingsPageID? = .general
+    SettingsSidebar(pages: ShellPanes.all(registry: ModuleRegistry(services: .preview())), selection: $selection)
+        .frame(width: 210, height: 420)
+        .background(.black)
+        .preferredColorScheme(.dark)
+        .crannyThemeRoot(CrannyTheme())
+}

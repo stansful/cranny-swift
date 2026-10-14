@@ -35,3 +35,10 @@ struct PeekView: View {
         .frame(width: shape.bodyWidth, height: shape.bottom, alignment: .top)
     }
 }
+
+#Preview("Peek · one row") {
+    let (model, registry) = previewScene(.peek)
+    PeekView(model: model, registry: registry, actions: NotchUIActions())
+        .background(.black)
+        .crannyThemeRoot(CrannyTheme())
+}

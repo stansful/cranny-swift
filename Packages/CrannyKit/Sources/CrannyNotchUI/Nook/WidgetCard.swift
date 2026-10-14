@@ -61,3 +61,14 @@ struct WidgetPlaceholder {
         }
     }
 }
+
+#Preview("Placeholder cards") {
+    let (model, registry) = previewScene(.open)
+    HStack(spacing: Space.s) {
+        WidgetCard(item: NookItem(.media, cells: 4), registry: registry, context: model.context)
+        WidgetCard(item: NookItem(.timer, cells: 2), registry: registry, context: model.context)
+    }
+    .padding(Space.l)
+    .background(.black)
+    .crannyThemeRoot(CrannyTheme())
+}

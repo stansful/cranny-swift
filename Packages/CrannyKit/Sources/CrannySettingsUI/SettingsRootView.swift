@@ -6,11 +6,13 @@ import CrannyNotchUI
 import Foundation
 import SwiftUI
 
+/// The Settings window's content (DESIGN.md §11): sidebar of shell and module panes, search, detail pane.
 public struct SettingsRootView: View {
     private let registry: ModuleRegistry
     @State private var selection: SettingsPageID?
     @State private var query = ""
 
+    /// Opens on `initialPage` (General when nil).
     public init(registry: ModuleRegistry, initialPage: SettingsPageID? = nil) {
         self.registry = registry
         _selection = State(initialValue: initialPage ?? .general)
@@ -51,4 +53,7 @@ enum SettingsSearch {
 #Preview("Settings") {
     SettingsRootView(registry: ModuleRegistry(services: .preview()))
         .frame(width: 860, height: 620)
+        .background(.black)
+        .preferredColorScheme(.dark)
+        .crannyThemeRoot(CrannyTheme())
 }

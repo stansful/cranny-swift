@@ -3,6 +3,7 @@
 // placeholder cards for widgets whose module is not built yet. WP12 adds palette, edit mode, focus, catch.
 import CrannyCore
 import CrannyEffects
+import Foundation
 import SwiftUI
 
 struct NookView: View {
@@ -86,4 +87,13 @@ private struct PlaceholderPage: View {
                         message: String(localized: "Nothing here yet", bundle: .module, comment: "Open panel: page placeholder"))
             .frame(height: theme.grid.height)
     }
+}
+
+#Preview("Open panel · Home") {
+    let (model, registry) = previewScene(.open)
+    let shape = model.layout.open(columns: model.openColumns)
+    NookView(model: model, registry: registry, actions: NotchUIActions())
+        .frame(width: shape.bodyWidth, height: shape.height + shape.topInset)
+        .background(.black)
+        .crannyThemeRoot(CrannyTheme())
 }

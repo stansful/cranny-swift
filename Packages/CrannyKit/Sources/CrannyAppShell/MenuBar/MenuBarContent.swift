@@ -24,3 +24,11 @@ struct MenuBarContent: View {
             .keyboardShortcut("q")
     }
 }
+
+#Preview("Menu bar menu") {
+    VStack(alignment: .leading, spacing: 4) { MenuBarContent(appControl: ShellAppControl()) }
+        .padding()
+        .background(.black)
+        .preferredColorScheme(.dark)
+        .crannyThemeRoot(CrannyTheme())
+}

@@ -6,11 +6,13 @@ import CrannyEffects
 import CrannyNotchUI
 import SwiftUI
 
+/// The Welcome window's content (DESIGN.md §12.1); hosted by the shell's `WelcomeWindowController`.
 public struct WelcomeView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let registry: ModuleRegistry
     private let onFinish: @MainActor () -> Void
 
+    /// `onFinish` runs when the person finishes or skips the welcome (the window closes).
     public init(registry: ModuleRegistry, onFinish: @escaping @MainActor () -> Void) {
         self.registry = registry; self.onFinish = onFinish
     }
@@ -43,4 +45,7 @@ public struct WelcomeView: View {
 
 #Preview("Welcome") {
     WelcomeView(registry: ModuleRegistry(services: .preview())) {}
+        .background(.black)
+        .preferredColorScheme(.dark)
+        .crannyThemeRoot(CrannyTheme())
 }

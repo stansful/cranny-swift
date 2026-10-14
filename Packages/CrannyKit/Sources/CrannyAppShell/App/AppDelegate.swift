@@ -19,8 +19,10 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     private var welcomeWindow: WelcomeWindowController?
     private var appServices: ShellAppServices?
 
+    /// Created by `@NSApplicationDelegateAdaptor`; everything starts in `applicationDidFinishLaunching`.
     public override init() { super.init() }
 
+    /// Builds the registry, then starts the overlay, windows and app services (or writes `--diagnostics` and quits).
     public func applicationDidFinishLaunching(_ notification: Notification) {
         let registry = CompositionRoot.makeRegistry(notch: notchControl, environment: environment, app: appControl)
         self.registry = registry
@@ -49,6 +51,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         Task { await registry.runLaunchHooks() }
     }
 
+    /// Runs the modules' terminate hooks (stop helpers, flush stores).
     public func applicationWillTerminate(_ notification: Notification) {
         registry?.runTerminateHooks()
     }

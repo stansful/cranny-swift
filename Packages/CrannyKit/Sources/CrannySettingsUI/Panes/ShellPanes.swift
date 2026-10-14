@@ -80,3 +80,19 @@ struct AboutPane: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
+
+#Preview("General") {
+    GeneralPane(settings: ModuleRegistry(services: .preview()).services.settings)
+        .frame(width: 600, height: 300)
+        .background(.black)
+        .preferredColorScheme(.dark)
+        .crannyThemeRoot(CrannyTheme())
+}
+
+#Preview("About") {
+    AboutPane()
+        .frame(width: 600, height: 400)
+        .background(.black)
+        .preferredColorScheme(.dark)
+        .crannyThemeRoot(CrannyTheme())
+}
