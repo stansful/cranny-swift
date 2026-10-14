@@ -39,10 +39,15 @@ private let log = Log.logger(.tray)
     @ObservationIgnored let directories: TrayDirectories
     @ObservationIgnored let thumbnails = ThumbnailCache()
     @ObservationIgnored var now: @MainActor () -> Date = { Date() }
-    /// Writes `index.json` (reads go through `TrayStorage.readIndex`, which tells a damaged index from a missing one).
-    @ObservationIgnored private let index: JSONFileStore<TrayIndex>
     @ObservationIgnored private let saver = Debouncer(delay: .milliseconds(300))
-    @ObservationIgnored private var hasUnsavedChanges = false
+    /// Bumped by every change to the index; `savedRevision` is the newest one known to be on disk. A save is
+    /// counted only once its write finished, so the terminate hook also writes while a background save is in flight
+    /// (`TrayIndexFile` drops that save if it lands afterwards).
+    @ObservationIgnored private var revision = 0
+    @ObservationIgnored private var savedRevision = 0
+    /// Writes `index.json` off the main actor (tests put a slow writer here). Reads go through
+    /// `TrayStorage.readIndex`, which tells a damaged index from a missing one.
+    @ObservationIgnored var writeIndex: @Sendable (TrayIndex, _ revision: Int) async throws -> Bool
     @ObservationIgnored private var loading: Task<Void, Never>?
     @ObservationIgnored private var expiryTask: Task<Void, Never>?
     @ObservationIgnored private var settingTokens: [ObservationToken] = []
@@ -54,8 +59,10 @@ private let log = Log.logger(.tray)
          directories: TrayDirectories) {
         self.settings = settings; self.notch = notch; self.haptics = haptics; self.system = system
         self.directories = directories
-        storage = TrayStorage(root: directories.root, temporaryRoots: directories.temporaryRoots)
-        index = JSONFileStore(url: directories.root.appending(path: "index.json"), defaultValue: TrayIndex())
+        let storage = TrayStorage(root: directories.root, temporaryRoots: directories.temporaryRoots)
+        self.storage = storage
+        let file = storage.indexFile
+        writeIndex = { index, revision in try await file.writeInBackground(index, revision: revision) }
     }
 
     // MARK: Derived
@@ -84,13 +91,14 @@ private let log = Log.logger(.tray)
     private func performLoad() async {
         let read = await storage.readIndex()
         var loaded: [TrayItem]
+        var changed = false
         if case .loaded(let index) = read {
             loaded = index.items
         } else {
             // No usable index: the copies are found again from their folders, never deleted for want of an index.
             loaded = await storage.recoverCopies(now: now())
             if !loaded.isEmpty {
-                hasUnsavedChanges = true
+                changed = true
                 log.info("tray index rebuilt: \(loaded.count, privacy: .public) kept copies found")
             }
         }
@@ -100,16 +108,16 @@ private let log = Log.logger(.tray)
         if !gone.isEmpty {
             await storage.deleteOwned(loaded.filter { gone.contains($0.id) })
             loaded.removeAll { gone.contains($0.id) }
-            hasUnsavedChanges = true
+            changed = true
         }
         let resolved = await storage.resolve(loaded)
         for fresh in resolved.refreshed {
-            if let i = loaded.firstIndex(where: { $0.id == fresh.id }) { loaded[i] = fresh; hasUnsavedChanges = true }
+            if let i = loaded.firstIndex(where: { $0.id == fresh.id }) { loaded[i] = fresh; changed = true }
         }
         items = loaded
         urls = resolved.urls
         isLoaded = true
-        if hasUnsavedChanges { persist() }
+        if changed { persist() }
         if case .loaded = read { await storage.removeOrphans(keeping: loaded) }
         enforceCap(keeping: [])
         scheduleExpiry()
@@ -303,31 +311,43 @@ private let log = Log.logger(.tray)
 
     /// Saves the index shortly after a change (coalesced).
     func persist() {
-        hasUnsavedChanges = true
+        revision += 1
         saver.schedule { [weak self] in await self?.saveNow() }
     }
 
+    /// Writes the current revision off the main actor (no-op when it is on disk already). A failed write is retried
+    /// by the next change or at quit.
     func saveNow() async {
-        guard hasUnsavedChanges else { return }
-        hasUnsavedChanges = false
-        do { try await index.save(TrayIndex(items: items)) } catch {
-            hasUnsavedChanges = true
+        guard revision > savedRevision else { return }
+        let target = revision
+        do {
+            // false: a newer revision was written meanwhile, which covers this one.
+            _ = try await writeIndex(TrayIndex(items: items), target)
+            savedRevision = max(savedRevision, target)
+        } catch {
             log.error("could not save the tray index: \(TrayLogCode.of(error), privacy: .public) \(error.localizedDescription, privacy: .private)")
         }
     }
 
     /// `applicationWillTerminate`: Clear on quit, flush the index, stop running pipelines. Synchronous and quick.
+    /// Writes whenever the newest revision is not known to be on disk, also while a background save is in flight:
+    /// that save may not finish before the process exits, and if it does, it is older and is dropped.
     func terminate() {
         for task in tasks.values { task.cancel() }
         saver.cancel()
         if Retention.clearsOnQuit(settings[TraySettings.retention]) {
             storage.deleteOwnedNow(items)
             items = []
-            storage.writeIndexNow(TrayIndex())
-        } else if hasUnsavedChanges {
-            storage.writeIndexNow(TrayIndex(items: items))
+            revision += 1
         }
-        hasUnsavedChanges = false
+        if revision > savedRevision {
+            do {
+                try storage.indexFile.write(TrayIndex(items: items), revision: revision)
+                savedRevision = revision
+            } catch {
+                log.error("could not write the tray index: \(TrayLogCode.of(error), privacy: .public) \(error.localizedDescription, privacy: .private)")
+            }
+        }
         try? FileManager.default.removeItem(at: directories.work)
     }
 }

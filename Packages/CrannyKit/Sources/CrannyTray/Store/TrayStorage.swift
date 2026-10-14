@@ -1,5 +1,6 @@
 // CrannyTray/Store/TrayStorage.swift — the Tray's files on disk (ARCHITECTURE.md §7.8): copies under
-// `AppPaths.directory(for: .tray)/<uuid>/<name>`, plain (non-sandboxed) bookmarks for links, the JSON index.
+// `AppPaths.directory(for: .tray)/<uuid>/<name>`, plain (non-sandboxed) bookmarks for links, the JSON index
+// (written by `TrayIndexFile`).
 // All file work is `@concurrent` (never on the main actor, §9.2). Only items the Tray OWNS are ever deleted, and a
 // missing or damaged index never costs a kept copy: the copies are found again from their folders.
 import CrannyCore
@@ -24,8 +25,16 @@ nonisolated struct TrayStorage: Sendable {
     /// Files under these folders are temporary (resolved file promises, `NSTemporaryDirectory`): always copied, and
     /// results are never written next to them.
     let temporaryRoots: [URL]
+    /// Writes `index.json` (every write, background or at quit, goes through it in revision order).
+    let indexFile: TrayIndexFile
 
-    var indexURL: URL { root.appending(path: "index.json", directoryHint: .notDirectory) }
+    init(root: URL, temporaryRoots: [URL]) {
+        self.root = root
+        self.temporaryRoots = temporaryRoots
+        indexFile = TrayIndexFile(url: root.appending(path: "index.json", directoryHint: .notDirectory))
+    }
+
+    var indexURL: URL { indexFile.url }
 
     /// The URL of an owned copy (no I/O). Linked items resolve through `resolve(_:)`.
     func ownedURL(_ item: TrayItem) -> URL? {
@@ -217,18 +226,6 @@ nonisolated struct TrayStorage: Sendable {
             try? FileManager.default.moveItem(at: indexURL, to: aside)
             log.error("unreadable tray index, rebuilding it from the kept copies: \(TrayLogCode.of(error), privacy: .public)")
             return .unreadable
-        }
-    }
-
-    /// Writes the index right away (terminate hook; everything else goes through `JSONFileStore`).
-    func writeIndexNow(_ index: TrayIndex) {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        do {
-            try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
-            try encoder.encode(index).write(to: indexURL, options: .atomic)
-        } catch {
-            log.error("could not write the tray index: \(TrayLogCode.of(error), privacy: .public) \(error.localizedDescription, privacy: .private)")
         }
     }
 

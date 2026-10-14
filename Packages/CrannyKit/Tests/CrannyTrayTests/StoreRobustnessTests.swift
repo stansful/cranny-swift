@@ -59,6 +59,77 @@ import UniformTypeIdentifiers
         #expect(next.items.map(\.name) == ["a.txt"])
     }
 
+    // MARK: Index writes at quit
+
+    /// The names in `index.json` as it is on disk now.
+    func indexedNames() throws -> [String] {
+        let data = try Data(contentsOf: directories.root.appending(path: "index.json"))
+        return try JSONDecoder().decode(TrayIndex.self, from: data).items.map(\.name)
+    }
+
+    /// Gives `store` a slow index writer: each save is staged, then waits for `release` before it is published (a
+    /// background save still in flight). `started` yields once a save is staged.
+    func slowSaves(_ store: TrayStore) -> (started: AsyncStream<Void>, release: AsyncStream<Void>.Continuation) {
+        let file = store.storage.indexFile
+        let (started, didStart) = AsyncStream<Void>.makeStream()
+        let (gate, release) = AsyncStream<Void>.makeStream()
+        store.writeIndex = { index, revision in
+            let staged = try file.stage(index, revision: revision)
+            didStart.yield()
+            for await _ in gate { break }
+            return try staged.map { try file.publish($0) } ?? false
+        }
+        return (started, release)
+    }
+
+    @Test func aSaveInFlightAtQuitNeverReplacesTheQuitWrite() async throws {
+        let store = makeStore()
+        let source = Fixtures.folder("src")
+        await store.keep([Fixtures.text("a.txt", in: source), Fixtures.text("b.txt", in: source)], opensTray: false)
+        let (started, release) = slowSaves(store)
+        store.persist()
+        let save = Task { await store.saveNow() }
+        for await _ in started { break }                                    // save N: both files, still in flight
+        store.remove([try #require(store.items.first { $0.name == "a.txt" }).id])   // change N+1
+        store.terminate()
+        #expect(try indexedNames() == ["b.txt"])
+        release.finish()
+        await save.value                                                    // N lands after the quit write: dropped
+        #expect(try indexedNames() == ["b.txt"])
+        let names = try FileManager.default.contentsOfDirectory(atPath: directories.root.path)
+        #expect(!names.contains { $0.hasSuffix(".tmp") })
+    }
+
+    @Test func quitWritesTheIndexWhileASaveIsStillInFlight() async throws {
+        let store = makeStore()
+        await store.keep([Fixtures.text("a.txt", in: Fixtures.folder("src"))], opensTray: false)
+        let (started, release) = slowSaves(store)
+        store.remove(Set(store.order))                                      // the last change before quitting
+        let save = Task { await store.saveNow() }
+        for await _ in started { break }
+        store.terminate()                                                   // the save may never finish: write now
+        #expect(try indexedNames().isEmpty)
+        release.finish()
+        await save.value
+        #expect(try indexedNames().isEmpty)
+    }
+
+    @Test func clearOnQuitIsNotUndoneByASaveInFlight() async throws {
+        let store = makeStore()
+        await store.keep([Fixtures.text("a.txt", in: Fixtures.folder("src"))], opensTray: false)
+        let copy = try #require(store.url(store.items[0].id))
+        services.settings[TraySettings.retention] = .clearOnQuit
+        let (started, release) = slowSaves(store)
+        store.persist()
+        let save = Task { await store.saveNow() }
+        for await _ in started { break }                                    // still lists the copy
+        store.terminate()
+        release.finish()
+        await save.value
+        #expect(try indexedNames().isEmpty)
+        #expect(!FileManager.default.fileExists(atPath: copy.path))
+    }
+
     // MARK: Repeat drops
 
     @Test func reDroppingAnEditedFileKeepsTheNewVersion() async throws {

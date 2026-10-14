@@ -121,7 +121,7 @@ import UniformTypeIdentifiers
 
     @Test func aMissingOrDamagedIndexIsToldApart() async throws {
         #expect(await storage.readIndex() == .missing)
-        storage.writeIndexNow(TrayIndex())
+        try storage.indexFile.write(TrayIndex(), revision: 1)
         #expect(await storage.readIndex() == .loaded(TrayIndex()))
         try Data("{\"items\":[{\"id\":".utf8).write(to: storage.indexURL)
         #expect(await storage.readIndex() == .unreadable)
@@ -147,9 +147,27 @@ import UniformTypeIdentifiers
     @Test func indexRoundTrips() async throws {
         let source = Fixtures.folder("user-index")
         let items = await storage.ingest([Fixtures.text("a.txt", in: source), Fixtures.text("b.txt", in: source)], mode: .copy, now: Date())
-        storage.writeIndexNow(TrayIndex(items: items))
+        try storage.indexFile.write(TrayIndex(items: items), revision: 1)
         let loaded = await JSONFileStore(url: storage.indexURL, defaultValue: TrayIndex()).load()
         #expect(loaded.items == items)
         #expect(loaded.version == 1)
+    }
+
+    /// Index writes land in revision order: an older one never replaces a newer one, also when it was already
+    /// staged when the newer one was written (a background save in flight at quit), and it leaves no file behind.
+    @Test func anOlderIndexNeverReplacesANewerOne() async throws {
+        let file = storage.indexFile
+        let one = TrayItem(id: UUID(), name: "a.txt", location: .owned(path: "x/a.txt"), size: 1, addedAt: Date(),
+                           typeIdentifier: "public.plain-text", originalPath: nil)
+        let staged = try #require(try file.stage(TrayIndex(items: [one]), revision: 1))
+        #expect(try file.write(TrayIndex(), revision: 2))
+        #expect(try file.publish(staged) == false)
+        #expect(await storage.readIndex() == .loaded(TrayIndex()))
+        #expect(try file.write(TrayIndex(items: [one]), revision: 2) == false)        // same revision: dropped
+        #expect(try file.stage(TrayIndex(items: [one]), revision: 1) == nil)          // superseded: no I/O at all
+        #expect(try file.write(TrayIndex(items: [one]), revision: 3))
+        #expect(await storage.readIndex() == .loaded(TrayIndex(items: [one])))
+        let names = try FileManager.default.contentsOfDirectory(atPath: storage.root.path)
+        #expect(names == ["index.json"])
     }
 }
