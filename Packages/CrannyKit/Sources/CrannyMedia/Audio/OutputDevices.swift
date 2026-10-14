@@ -1,6 +1,6 @@
 // CrannyMedia/Audio/OutputDevices.swift — the Mac's audio outputs for the widget's ⌁ route menu (DESIGN.md §7.1).
 // Reading the list needs no permission; switching sets the system default output device, and only on the user's
-// choice in the menu. Read when the menu is built (no listeners, no polling).
+// choice in the menu. Read when the menu is built (no listeners, no polling), off the main actor (`read`).
 import CoreAudio
 import CrannyCore
 import Foundation
@@ -22,6 +22,11 @@ nonisolated enum OutputDevices {
     }
 
     static var defaultOutput: AudioObjectID? { AudioHAL.defaultOutputDevice() }
+
+    /// `all()` and `defaultOutput` off the main actor: Core Audio property reads are IPC to coreaudiod.
+    @concurrent static func read() async -> (devices: [OutputDevice], current: AudioObjectID?) {
+        (all(), defaultOutput)
+    }
 
     /// The user picked a device in the ⌁ menu.
     static func setDefaultOutput(_ id: AudioObjectID) {

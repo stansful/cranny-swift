@@ -23,6 +23,10 @@ enum SampleMedia {
         return np
     }
 
+    /// `artwork()`, drawn and its palette extracted once per process: every sample service shows the same picture
+    /// (each Settings stage, Simulate chip and onboarding page used to redraw it).
+    static let sharedArtwork: DecodedArtwork? = artwork()
+
     /// A dusk scene: an iris-to-rose sky, an ember sun and a lit window grid. 256 × 256, sRGB.
     static func artwork() -> DecodedArtwork? {
         let side = 256
@@ -63,7 +67,7 @@ enum SampleMedia {
     @MainActor static func service(settings: SettingsStore, environment: any SystemEnvironment,
                                    permissions: PermissionsCenter, playing: Bool = true) -> MediaService {
         let service = MediaService(settings: settings, environment: environment, permissions: permissions, providers: [])
-        service.seed(nowPlaying(playing: playing), artwork: artwork())
+        service.seed(nowPlaying(playing: playing), artwork: sharedArtwork)
         return service
     }
 

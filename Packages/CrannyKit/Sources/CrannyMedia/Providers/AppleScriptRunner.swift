@@ -7,6 +7,9 @@
 // a time, in submission order. Each NSAppleScript is created, run and released inside one block on that queue, and
 // no other code in Cranny uses NSAppleScript, so no instance is ever used by two threads (the AppleScript component
 // itself reports `OSALanguage.isThreadSafe`). Results cross back as Sendable values (`ScriptOutcome`).
+// Priority: the queue runs at utility (efficiency cores): notification scripts (position, artwork) and refreshes are
+// background work. A transport command the user waits for is submitted at user-initiated with `enforceQoS`, which
+// also lifts a script still running before it.
 import AppKit
 import Foundation
 
@@ -66,8 +69,14 @@ nonisolated enum ScriptOutcome: Sendable, Equatable {
 /// Runs player scripts off the main actor. Scripts submitted one after another run in that order.
 nonisolated protocol AppleScriptRunning: Sendable {
     /// Runs `script` after every script submitted before it and returns its outcome. Never blocks the caller's
-    /// thread; the wait is a suspension.
-    func run(_ script: PlayerScript) async -> ScriptOutcome
+    /// thread; the wait is a suspension. `urgent`: a command the user waits for (user-initiated priority instead of
+    /// utility).
+    func run(_ script: PlayerScript, urgent: Bool) async -> ScriptOutcome
+}
+
+extension AppleScriptRunning {
+    /// A background script (a notification's position or artwork, a refresh).
+    func run(_ script: PlayerScript) async -> ScriptOutcome { await run(script, urgent: false) }
 }
 
 /// The app's runner: NSAppleScript on one serial queue (see the file header).
@@ -81,14 +90,18 @@ nonisolated final class SerialAppleScriptRunner: AppleScriptRunning {   // Senda
     /// `execute` runs on the runner's queue (tests pass a fake; the app runs NSAppleScript).
     init(label: String = "app.cranny.media.applescript",
          execute: @escaping @Sendable (PlayerScript) -> ScriptOutcome = SerialAppleScriptRunner.runAppleScript) {
-        queue = DispatchQueue(label: label, qos: .userInitiated)
+        queue = DispatchQueue(label: label, qos: .utility)
         self.execute = execute
     }
 
-    func run(_ script: PlayerScript) async -> ScriptOutcome {
+    func run(_ script: PlayerScript, urgent: Bool) async -> ScriptOutcome {
         let execute = execute
         return await withCheckedContinuation { continuation in
-            queue.async { continuation.resume(returning: execute(script)) }
+            if urgent {
+                queue.async(qos: .userInitiated, flags: .enforceQoS) { continuation.resume(returning: execute(script)) }
+            } else {
+                queue.async { continuation.resume(returning: execute(script)) }
+            }
         }
     }
 

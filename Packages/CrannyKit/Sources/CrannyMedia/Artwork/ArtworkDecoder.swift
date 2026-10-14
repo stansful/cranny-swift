@@ -91,8 +91,9 @@ nonisolated struct ArtworkCache: Sendable {
     }
 }
 
-/// The service's artwork pipeline: fingerprint and decode off the main actor, cache, and drop a decode that a
-/// newer picture for the same track overtook.
+/// The service's artwork pipeline: fingerprint and decode off the main actor at utility priority (background work on
+/// efficiency cores: the 600-ms artwork grace covers it), cache, and drop a decode that a newer picture for the same
+/// track overtook.
 @MainActor final class ArtworkStore {
     private var cache = ArtworkCache()
     private var requests = 0
@@ -110,7 +111,7 @@ nonisolated struct ArtworkCache: Sendable {
         requests += 1
         let request = requests
         latest[key] = request
-        Task { [weak self] in
+        Task(priority: .utility) { [weak self] in
             let fingerprint = await ArtworkFingerprint.of(data)
             guard let self, self.latest[key] == request else { return }
             if let cached = self.cache.entry(for: key), cached.fingerprint == fingerprint {

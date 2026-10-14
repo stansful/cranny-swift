@@ -1,6 +1,8 @@
 // CrannyMedia/UI/OutputDeviceMenu.swift — the ⌁ route menu in the widget's title row (DESIGN.md §7.1:
 // `airplayaudio`, tertiary, 12): lists the Mac's outputs with a check on the current one. The list is read when
-// the menu opens (an NSMenu tracking session also holds the panel open, ARCHITECTURE.md §4.5).
+// the widget appears and when the pointer enters the icon, so it is current when the menu opens (an NSMenu tracking
+// session also holds the panel open, ARCHITECTURE.md §4.5). The reads (Core Audio IPC, ≈ 3 per device) run off the
+// main actor, one at a time: a request during a read reads once more after it.
 import AppKit
 import CoreAudio
 import CrannyCore
@@ -10,6 +12,10 @@ struct OutputDeviceMenu: View {
     @Environment(\.cranny) private var theme
     @State private var devices: [OutputDevice] = []
     @State private var current: AudioObjectID?
+    /// A read is on its way …
+    @State private var isReading = false
+    /// … and another was asked for meanwhile (the list may have changed since that read began).
+    @State private var readsAgain = false
 
     var body: some View {
         Menu {
@@ -37,8 +43,17 @@ struct OutputDeviceMenu: View {
     }
 
     private func reload() {
-        devices = OutputDevices.all()
-        current = OutputDevices.defaultOutput
+        guard !isReading else { readsAgain = true; return }
+        isReading = true
+        Task {
+            repeat {
+                readsAgain = false
+                let read = await OutputDevices.read()
+                if devices != read.devices { devices = read.devices }
+                if current != read.current { current = read.current }
+            } while readsAgain
+            isReading = false
+        }
     }
 
     static var title: String {

@@ -187,7 +187,7 @@ private nonisolated let log = Log.logger(.media)
             log.info("Apple Events: a command waited too long behind a slow player; not sent")
             return false
         }
-        return await run(player.script(for: command), in: player) != nil
+        return await run(player.script(for: command), in: player, urgent: true) != nil
     }
 
     private func refreshState() async {
@@ -210,11 +210,11 @@ private nonisolated let log = Log.logger(.media)
 
     // MARK: Scripts
 
-    /// Runs `body` for a player whose Automation is granted, off the main actor. nil = not run, failed, or the
-    /// session stopped meanwhile.
-    private func run(_ body: String, in player: ScriptablePlayer) async -> ScriptValue? {
+    /// Runs `body` for a player whose Automation is granted, off the main actor (`urgent`: a command the user waits
+    /// for). nil = not run, failed, or the session stopped meanwhile.
+    private func run(_ body: String, in player: ScriptablePlayer, urgent: Bool = false) async -> ScriptValue? {
         guard !isStopped, await isAllowed(player), !isStopped else { return nil }
-        let outcome = await runner.run(PlayerScript(bundleID: player.bundleID, body: body))
+        let outcome = await runner.run(PlayerScript(bundleID: player.bundleID, body: body), urgent: urgent)
         guard !isStopped else { return nil }
         switch outcome {
         case .value(let value):

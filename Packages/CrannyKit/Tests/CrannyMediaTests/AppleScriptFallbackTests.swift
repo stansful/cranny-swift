@@ -11,6 +11,8 @@ import Testing
 /// waiting until `release` — a player that does not answer.
 nonisolated final class FakeScriptRunner: AppleScriptRunning, @unchecked Sendable {   // test-only; used on the main actor
     private(set) var scripts: [PlayerScript] = []
+    /// The bodies submitted as urgent (commands the user waits for).
+    private(set) var urgentBodies: [String] = []
     var answer: (PlayerScript) -> ScriptOutcome = { _ in .value(ScriptValue()) }
     var holds = false
     private var held: [(script: PlayerScript, reply: CheckedContinuation<ScriptOutcome, Never>)] = []
@@ -18,8 +20,9 @@ nonisolated final class FakeScriptRunner: AppleScriptRunning, @unchecked Sendabl
     var bodies: [String] { scripts.map(\.body) }
     var heldCount: Int { held.count }
 
-    func run(_ script: PlayerScript) async -> ScriptOutcome {
+    func run(_ script: PlayerScript, urgent: Bool) async -> ScriptOutcome {
         scripts.append(script)
+        if urgent { urgentBodies.append(script.body) }
         guard holds else { return answer(script) }
         return await withCheckedContinuation { held.append((script, $0)) }
     }
@@ -235,6 +238,7 @@ private enum Payload {
         h.session.refresh()                                   // state + position
         await settle()
         #expect(h.runner.bodies == [position, artwork, "pause", ScriptablePlayer.stateScript, position])
+        #expect(h.runner.urgentBodies == ["pause"])           // only the command runs at user-initiated priority
         #expect(h.permitted.asks == [music])                  // one main-actor TCC query for five scripts
         await h.clock.advance(by: AppleScriptSession.grantLifetime)
         #expect(await h.session.send(.play) == true)
@@ -316,6 +320,21 @@ private enum Payload {
         #expect(entries.map(\.body) == (0..<20).map(String.init))
         #expect(entries.allSatisfy { !$0.onMain })
         #expect(answers == (0..<20).map { .value(ScriptValue(text: "\($0)")) })
+    }
+
+    @Test func commandsRunAtUserInitiatedPriorityAndTheRestAtUtility() async {
+        // Notification scripts and refreshes are background work (efficiency cores); a command the user waits for
+        // is not. One at a time, so no priority override blurs what each script ran at.
+        let log = OSAllocatedUnfairLock(initialState: [UInt32]())
+        let runner = SerialAppleScriptRunner(label: "test.applescript.qos") { script in
+            log.withLock { $0.append(qos_class_self().rawValue) }
+            return .value(ScriptValue(text: script.body))
+        }
+        for urgent in [false, true, false, true] {
+            _ = await runner.run(PlayerScript(bundleID: "x", body: "player position"), urgent: urgent)
+        }
+        let utility = QOS_CLASS_UTILITY.rawValue, userInitiated = QOS_CLASS_USER_INITIATED.rawValue
+        #expect(log.withLock { $0 } == [utility, userInitiated, utility, userInitiated])
     }
 
     /// No real-time bound depends on the main actor (it can be busy for seconds while the suite starts): the test
