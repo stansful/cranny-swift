@@ -26,16 +26,17 @@ are normative.
 ## Toolchain
 
 - Xcode 26+ (27 recommended; `make strings`/`strings-check` need Xcode 27's SwiftPM), Swift 6.2+.
+- If `xcode-select` points at the Command Line Tools, start every manual command (including the Metal
+  Toolchain install below) with `export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer`; the
+  scripts do it themselves. If your shell profile prints errors, run important commands one by one and
+  check each exit status instead of chaining them with `&&`.
 - **Metal Toolchain** component: CrannyEffects compiles `Sources/CrannyEffects/Shaders/*.metal` into
   `default.metallib`. Install once with `xcodebuild -downloadComponent MetalToolchain` (check:
-  `xcodebuild -showComponent MetalToolchain` says `Status: installed`). The scripts stop with that exact
-  command when it is missing. Shaders live only in CrannyEffects, are SwiftUI stitchable functions reached
-  through `ShaderEffects.library`, are listed in `ShaderEffects.requiredFunctions` with a render test, end
-  with `cranny::light(…, cap)` and keep a SwiftUI fallback (ARCHITECTURE.md D13, DESIGN.md §5.6).
-- If `xcode-select` points at the Command Line Tools, start every manual command with
-  `export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer` (the scripts do it themselves).
-  If your shell profile prints errors, run important commands one by one and check each exit status
-  instead of chaining them with `&&`.
+  `xcodebuild -showComponent MetalToolchain` says `Status: installed`). The scripts stop with that
+  command when it is missing, prefixed with the `DEVELOPER_DIR` they use. Shaders live only in
+  CrannyEffects, are SwiftUI stitchable functions reached through `ShaderEffects.library`, are listed in
+  `ShaderEffects.requiredFunctions` with a render test, end with `cranny::light(…, cap)` and keep a SwiftUI
+  fallback (ARCHITECTURE.md D13, DESIGN.md §5.6).
 
 ## Everyday commands
 

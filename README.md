@@ -44,10 +44,19 @@ xattr -dr com.apple.quarantine /Applications/Cranny.app
 ## Build from source
 
 You need **Xcode 26 or later** (Xcode 27 recommended; the string-catalog tooling needs 27) with its
-**Metal Toolchain** component — Cranny's light effects are Metal shaders compiled at build time:
+**Metal Toolchain** component — Cranny's light effects are Metal shaders compiled at build time.
+
+If `xcode-select -p` points at the Command Line Tools rather than Xcode, select Xcode for the commands
+you type yourself (the `make` targets find Xcode in `/Applications` on their own):
 
 ```sh
-xcodebuild -downloadComponent MetalToolchain     # once; check: xcodebuild -showComponent MetalToolchain
+export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
+```
+
+Install the Metal Toolchain once (the build stops with this command if it is missing):
+
+```sh
+xcodebuild -downloadComponent MetalToolchain     # check: xcodebuild -showComponent MetalToolchain
 ```
 
 Then:
@@ -59,13 +68,6 @@ make run        # Debug build + launch
 make test       # unit tests (Swift Testing)
 make check      # every CrannyKit module builds on its own, with zero warnings
 make help       # everything else (strings, smoke test, dist, …)
-```
-
-If `xcode-select -p` points at the Command Line Tools, the scripts find Xcode in `/Applications`
-themselves. For manual `swift`, `xcodebuild` or `xcrun` commands, select it per command:
-
-```sh
-export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 ```
 
 Every rebuild of an ad-hoc signed app looks like a new app to macOS privacy controls, so granted
@@ -91,8 +93,11 @@ Global shortcuts, gestures and hovering need no permission.
 macOS 15.4 only Apple's own system tools may read what is playing, so Cranny loads its small,
 open-source bridge (`Contents/Frameworks/libCrannyMediaBridge.dylib`, source in
 `Packages/CrannyKit/Sources/CrannyMediaBridge`) into the system's own `/usr/bin/perl`. The helper only
-reads and controls Now Playing, talks to Cranny over a pipe, uses almost no CPU and exits when Cranny
-quits. It is never installed anywhere and needs no permission.
+reads and controls Now Playing, talks to Cranny over a pipe, uses almost no CPU, needs no permission
+and exits when Cranny quits. Nothing is installed system-wide. On builds that are not notarized, macOS
+quarantines the downloaded app and perl would refuse the bridge, so Cranny copies it to
+`~/Library/Application Support/app.cranny.Cranny/media/` and loads that copy; deleting that folder
+removes it.
 
 ## Privacy
 

@@ -49,7 +49,14 @@ ensure_metal_toolchain() {
   if [[ "$status" == installed ]] && xcrun metal -v >/dev/null 2>&1; then
     return 0
   fi
-  die "Metal Toolchain missing — run: xcodebuild -downloadComponent MetalToolchain
+  # Print the fix with the Xcode this script uses: when ensure_xcode chose it through DEVELOPER_DIR (xcode-select
+  # points at the Command Line Tools), a bare `xcodebuild` in the user's shell fails with "requires Xcode".
+  local fix="xcodebuild -downloadComponent MetalToolchain" developer_dir
+  if [[ -n "${DEVELOPER_DIR:-}" ]]; then
+    printf -v developer_dir '%q' "$DEVELOPER_DIR"
+    fix="DEVELOPER_DIR=$developer_dir $fix"
+  fi
+  die "Metal Toolchain missing — run: $fix
        (CrannyEffects compiles Metal shaders; \`xcodebuild -showComponent MetalToolchain\` reports: ${status:-unknown})"
 }
 
