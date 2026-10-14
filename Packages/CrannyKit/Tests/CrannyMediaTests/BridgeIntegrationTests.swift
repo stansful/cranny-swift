@@ -12,7 +12,7 @@ struct BridgeIntegrationTests {
     @Test func everyCommandLineGetsItsOwnAnswer() async throws {
         let path = try #require(ProcessInfo.processInfo.environment["CRANNY_MEDIA_BRIDGE"])
         let connection = BridgeConnection(host: .perl, dylib: URL(fileURLWithPath: path), onMessage: { _ in }, onEnd: { _ in })
-        try connection.start()
+        connection.start()
         defer { connection.terminateNow() }
         #expect(await connection.ping() != nil)
         // Sent back to back: each `error` lands on its own command, in order.

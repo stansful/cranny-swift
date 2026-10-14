@@ -1,6 +1,7 @@
 // MediaService with scripted providers and a manual clock: restart backoff 0.5/2/8 s, failover after 3 failures in
 // 60 s, optimistic commands and their confirmation (refresh, then the player's state again), track-change debounce,
-// filters, the elected player before filters, Automation denials, artwork cache (ARCHITECTURE.md §6.5, §10.2).
+// filters, the elected player before filters, Automation denials, artwork cache (ARCHITECTURE.md §6.5, §10.2), and
+// states that only re-anchor the snapshot on screen.
 import CoreGraphics
 import CrannyCore
 import Foundation
@@ -21,6 +22,62 @@ import Testing
         #expect(service.nowPlaying?.title == "A")
         #expect(service.lastSourceBundleID == "com.apple.Music")
         #expect(service.recentSources == ["com.apple.Music"])
+    }
+
+    @Test func aStateThatOnlyReanchorsTheSamePositionLeavesNowPlayingAlone() async {
+        let clock = ManualClock(), perl = ScriptedProvider(kind: .perl)
+        let service = Fixtures.service([perl], clock: clock)
+        service.start()
+        await settle()
+        let start = clock.now
+        perl.emit(.nowPlaying(Fixtures.track("A", elapsed: 10, timestamp: start)))
+        await settle()
+        var writes = 0
+        let token = observe({ service.nowPlaying }) { _ in writes += 1 }
+
+        await clock.advance(by: .seconds(3))                              // the player re-publishes its info
+        perl.emit(.nowPlaying(Fixtures.track("A", elapsed: 13.04, timestamp: clock.now)))
+        await settle()
+        #expect(writes == 0)
+        #expect(service.nowPlaying?.timestamp == start)                   // the anchor on screen stays
+        #expect(abs((service.nowPlaying?.position(at: clock.now) ?? 0) - 13) < 1e-9)
+
+        perl.emit(.nowPlaying(Fixtures.track("A", elapsed: 14, timestamp: clock.now)))   // a 1-s seek is shown
+        await settle()
+        #expect(writes == 1)
+        #expect(service.nowPlaying?.elapsed == 14)
+        perl.emit(.nowPlaying(Fixtures.track("A", artist: "Other", elapsed: 14, timestamp: clock.now)))   // so is any other change
+        await settle()
+        #expect(writes == 2)
+
+        perl.emit(.nowPlaying(Fixtures.track("A", artist: "Other", playing: false, elapsed: 14, timestamp: clock.now)))
+        await settle()
+        #expect(writes == 3)
+        await clock.advance(by: .seconds(5))                              // paused: the same elapsed, a new timestamp
+        perl.emit(.nowPlaying(Fixtures.track("A", artist: "Other", playing: false, elapsed: 14, timestamp: clock.now)))
+        await settle()
+        #expect(writes == 3)
+        #expect(service.nowPlaying?.isPlaying == false)
+        withExtendedLifetime(token) {}
+    }
+
+    @Test func aReanchoringStateStillConfirmsACommand() async {
+        let clock = ManualClock(), perl = ScriptedProvider(kind: .perl)
+        let service = Fixtures.service([perl], clock: clock)
+        service.start()
+        await settle()
+        perl.emit(.nowPlaying(Fixtures.track("A", playing: false, elapsed: 30, timestamp: clock.now)))
+        await settle()
+        await clock.advance(by: .seconds(2))
+        #expect(await service.send(.play))
+        let optimistic = service.nowPlaying
+        #expect(optimistic?.isPlaying == true)
+        perl.emit(.nowPlaying(Fixtures.track("A", playing: true, elapsed: 30.01, timestamp: clock.now)))   // the player's state
+        await settle()
+        #expect(service.nowPlaying == optimistic)                         // the same timeline: nothing to redraw …
+        await clock.advance(by: MediaService.confirmationWindow + MediaService.rollbackWindow)
+        #expect(perl.refreshes == 0)                                      // … but the command is confirmed
+        #expect(service.nowPlaying?.isPlaying == true)
     }
 
     @Test func restartsWithBackoffThenFailsOver() async {

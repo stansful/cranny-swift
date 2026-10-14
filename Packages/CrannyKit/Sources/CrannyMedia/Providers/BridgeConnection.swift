@@ -4,7 +4,8 @@
 //
 // Threading: the process, the pipes, the line buffer, the ping waiters and the command waiters are confined to
 // `queue` (a private serial queue). Pipe and termination callbacks hop onto it. Callers may use the public methods
-// from any thread; `onMessage`/`onEnd` are called on `queue`.
+// from any thread; `onMessage`/`onEnd` are called on `queue`. The interpreter is spawned on `queue` too (`start`
+// returns at once: posix_spawn and Process's setup never run on the caller's thread, the main thread at launch).
 import CrannyCore
 import Foundation
 import os
@@ -65,8 +66,9 @@ nonisolated final class BridgeConnection: @unchecked Sendable {   // every mutab
         process.standardError = errors
     }
 
-    /// Launches the helper. Throws when the interpreter cannot be spawned.
-    func start() throws {
+    /// Launches the helper on `queue`; an interpreter that cannot be spawned ends the connection with
+    /// `.launchFailed` (`onEnd`). Commands, pings and `close` sent meanwhile are queued after the launch.
+    func start() {
         output.fileHandleForReading.readabilityHandler = { [weak self] handle in
             let chunk = handle.availableData
             guard let self else { return }
@@ -83,11 +85,19 @@ nonisolated final class BridgeConnection: @unchecked Sendable {   // every mutab
             guard let self else { return }
             self.queue.async { self.ended(status: status) }
         }
-        try queue.sync { try process.run() }
-        queue.asyncAfter(deadline: .now() + Self.handshakeTimeout) { [weak self] in
-            guard let self, !self.gotHello, !self.closedByUs, self.process.isRunning else { return }
-            log.error("bridge: no hello within \(Self.handshakeTimeout, privacy: .public) s; terminating")
-            self.process.terminate()
+        queue.async { [self] in
+            guard !closedByUs else { return }
+            do { try process.run() } catch {
+                output.fileHandleForReading.readabilityHandler = nil
+                errors.fileHandleForReading.readabilityHandler = nil
+                onEnd(.launchFailed(error.localizedDescription))
+                return
+            }
+            queue.asyncAfter(deadline: .now() + Self.handshakeTimeout) { [weak self] in
+                guard let self, !self.gotHello, !self.closedByUs, self.process.isRunning else { return }
+                log.error("bridge: no hello within \(Self.handshakeTimeout, privacy: .public) s; terminating")
+                self.process.terminate()
+            }
         }
     }
 

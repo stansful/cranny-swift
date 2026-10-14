@@ -2,7 +2,8 @@
 // §6.5): runs the provider chain with backoff and failover, filters sessions, debounces track changes, decodes
 // artwork + palette off the main actor (LRU of 16) and applies commands optimistically, then makes sure a provider
 // state confirms them (else it asks once and shows the player's last state again). Event-driven: nothing polls;
-// every delay is one sleep on the injected `MediaClock`.
+// every delay is one sleep on the injected `MediaClock`. A state that only re-anchors the snapshot on screen to the
+// same position leaves `nowPlaying` alone (`NowPlaying.hasSameTimeline`): no observer is invalidated for it.
 import CoreGraphics
 import CrannyCore
 import Foundation
@@ -288,10 +289,16 @@ private nonisolated let log = Log.logger(.media)
 
     private func publish(_ np: NowPlaying?) {
         let previousKey = nowPlaying?.trackKey
-        if nowPlaying != np { nowPlaying = np }
+        if nowPlaying != np, !Self.isReanchored(nowPlaying, np, at: clock.now) { nowPlaying = np }
         if let np, let source = np.bundleID ?? np.parentBundleID, lastSourceBundleID != source { lastSourceBundleID = source }
         if detector.observe(np) { scheduleTrackChangeDebounce() }
         if np?.trackKey != previousKey { trackDidChange(to: np?.trackKey) }
+    }
+
+    /// `new` only moves the anchor of `current` to a position within 50 ms of it.
+    private nonisolated static func isReanchored(_ current: NowPlaying?, _ new: NowPlaying?, at now: Date) -> Bool {
+        guard let current, let new else { return false }
+        return current.hasSameTimeline(as: new, at: now)
     }
 
     private func scheduleTrackChangeDebounce() {

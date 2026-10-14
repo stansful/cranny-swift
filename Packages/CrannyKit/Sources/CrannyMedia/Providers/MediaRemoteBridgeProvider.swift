@@ -41,12 +41,7 @@ nonisolated final class MediaRemoteBridgeProvider: MediaProvider, @unchecked Sen
             })
         lock.withLock { $0.connection = connection; $0.lastTrackKey = nil }
         continuation.onTermination = { [weak self] _ in self?.stop() }
-        do {
-            try connection.start()
-        } catch {
-            continuation.yield(.unavailable(.launchFailed(error.localizedDescription)))
-            continuation.finish()
-        }
+        connection.start()                      // spawns off the caller's thread; a failed spawn ends via `onEnd`
         return stream
     }
 

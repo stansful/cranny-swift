@@ -61,7 +61,7 @@ let package = Package(
         // L0
         .target(name: "CrannyCore", resources: [.process("Resources")], swiftSettings: nonisolatedByDefault),
         .target(name: "CrannyMediaBridge",                       // Objective-C, ARC (SwiftPM default)
-                linkerSettings: [.linkedFramework("Foundation"), .linkedFramework("AppKit")]),
+                linkerSettings: [.linkedFramework("Foundation")]),     // AppKit is loaded lazily, if ever
         // L1
     ] + featureModules.map(feature) + [
         // L2

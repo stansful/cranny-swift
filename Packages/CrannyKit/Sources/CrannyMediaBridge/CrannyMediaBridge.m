@@ -7,7 +7,8 @@
 // Process model: ONE long-lived /usr/bin/perl child per Cranny instance.
 //   stdout  newline-delimited JSON events:
 //           {"t":"hello","v":1,"pid":N}
-//           {"t":"state", ...}            (full snapshot, de-duplicated)
+//           {"t":"state", ...}            (full snapshot, de-duplicated: not re-sent when identical, or when it
+//                                         only re-anchors elapsed/timestamp to a position within 50 ms)
 //           {"t":"artwork","itemID":..,"mime":..,"data":base64}  (only on change; artwork over
 //                                                     1 MB is re-encoded as a 1024-px JPEG, or skipped)
 //           {"t":"ack"|"error"|"pong", ...}           (exactly one ack or error per cmd/seek/shuffle/repeat line)
@@ -17,17 +18,20 @@
 //           ("refresh" re-sends the state and the artwork, "refresh state" only the state)
 //   lifetime: exits on stdin EOF, SIGPIPE, or when the host process exits (re-parented to launchd).
 //           Event-driven only: no periodic timer, no polling (the debounce is one-shot per notification).
+//   images:  Foundation and ImageIO only. AppKit (≈ 40 more images) is loaded only for the rare session whose
+//           MediaRemote client names no bundle (NSRunningApplication, `bundleIDOfProcess`).
 //
 // Build (arm64 + x86_64, ad-hoc signed by the linker on arm64):
-//   clang -dynamiclib -fobjc-arc -fvisibility=hidden -arch arm64 -arch x86_64 \
-//     -mmacosx-version-min=14.0 -framework Foundation -framework AppKit \
+//   clang -dynamiclib -fobjc-arc -fmodules -fvisibility=hidden -arch arm64 -arch x86_64 \
+//     -mmacosx-version-min=14.0 -framework Foundation -framework ImageIO \
 //     -o libCrannyMediaBridge.dylib CrannyMediaBridge.m
-#import <AppKit/AppKit.h>
 #import <Foundation/Foundation.h>
 #import <ImageIO/ImageIO.h>
 #include <dlfcn.h>
 #include <math.h>
+#include <pthread.h>
 #include <signal.h>
+#include <stdio.h>
 #include <unistd.h>
 
 #if !__has_feature(objc_arc)
@@ -50,17 +54,26 @@ static struct {
 
 static dispatch_queue_t gQ;          // all MediaRemote calls + state on one serial queue
 static dispatch_source_t gDebounce;  // trailing debounce for notification bursts
-static NSString *gLastState;         // de-dup identical consecutive snapshots
+static NSString *gLastState;         // the last state line sent: identical snapshots are not re-sent
+static NSString *gLastTimeline;      // ... that state without its position anchor (elapsed, timestamp)
+static double gLastElapsed, gLastTimestamp;  // ... and the anchor
+static BOOL gLastAnchored;           // ... which had a timestamp (comparable by position)
 static NSString *gLastArtKey;        // artwork is re-sent only when this changes
 
-static void emit(NSDictionary *obj) {
-    NSData *d = [NSJSONSerialization dataWithJSONObject:obj options:0 error:nil];
-    if (!d) return;
-    // One write per line keeps lines atomic for the reader.
-    NSMutableData *line = [d mutableCopy];
-    [line appendBytes:"\n" length:1];
-    fwrite(line.bytes, 1, line.length, stdout);
+// One line: the JSON and its newline under stdout's lock, so lines stay atomic for the reader (`hello` is written
+// on the main thread while gQ may already answer a `ping`). No copy of the JSON to append the newline.
+static void writeLine(NSData *json) {
+    flockfile(stdout);
+    fwrite(json.bytes, 1, json.length, stdout);
+    putc_unlocked('\n', stdout);
     fflush(stdout);
+    funlockfile(stdout);
+}
+
+// Slashes stay unescaped: JSON does not need `\/`, and base64 artwork is one sixty-fourth slashes.
+static void emit(NSDictionary *obj) {
+    NSData *d = [NSJSONSerialization dataWithJSONObject:obj options:NSJSONWritingWithoutEscapingSlashes error:nil];
+    if (d) writeLine(d);
 }
 
 // JSON-safe scalar: strings, finite numbers, dates (as epoch seconds).
@@ -76,6 +89,97 @@ static id plain(id v) {
 }
 
 static NSString *K(NSString *suffix) { return [@"kMRMediaRemoteNowPlayingInfo" stringByAppendingString:suffix]; }
+
+// The bundle id of `pid`'s app as NSRunningApplication reports it: only for a MediaRemote client that names none.
+// AppKit is loaded the first time (on the main thread, which runs the run loop), so the resident helper does not map
+// AppKit and the ≈ 40 images it pulls in for a fallback that most sessions never need.
+@protocol CrannyRunningApplicationClass
++ (nullable id)runningApplicationWithProcessIdentifier:(pid_t)pid;
+@end
+
+static NSString *bundleIDOfProcess(pid_t pid) {
+    static Class runningApplication;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        void (^load)(void) = ^{ dlopen("/System/Library/Frameworks/AppKit.framework/AppKit", RTLD_LAZY | RTLD_LOCAL); };
+        if (pthread_main_np()) load(); else dispatch_sync(dispatch_get_main_queue(), load);
+        runningApplication = NSClassFromString(@"NSRunningApplication");
+    });
+    if (!runningApplication) return nil;
+    id app = [(Class<CrannyRunningApplicationClass>)runningApplication runningApplicationWithProcessIdentifier:pid];
+    id bundleID = [app valueForKey:@"bundleIdentifier"];
+    return [bundleID isKindOfClass:NSString.class] ? bundleID : nil;
+}
+
+// MediaRemote's info keys of the state line (out key → kMRMediaRemoteNowPlayingInfo<suffix>), built once.
+static NSDictionary<NSString *, NSString *> *stateKeys(void) {
+    static NSDictionary<NSString *, NSString *> *keys;
+    static dispatch_once_t once;
+    dispatch_once(&once, ^{
+        NSDictionary *suffixes = @{ @"title": @"Title", @"artist": @"Artist", @"album": @"Album",
+                                    @"duration": @"Duration", @"elapsed": @"ElapsedTime",
+                                    @"timestamp": @"Timestamp", @"rate": @"PlaybackRate",
+                                    @"itemID": @"ContentItemIdentifier", @"artworkID": @"ArtworkIdentifier",
+                                    @"shuffle": @"ShuffleMode", @"repeat": @"RepeatMode",
+                                    @"mediaType": @"MediaType", @"isMusicApp": @"IsMusicApp",
+                                    @"prohibitsSkip": @"ProhibitsSkip", @"isAd": @"IsAdvertisement" };
+        NSMutableDictionary *full = [NSMutableDictionary dictionaryWithCapacity:suffixes.count];
+        for (NSString *outKey in suffixes) full[outKey] = K(suffixes[outKey]);
+        keys = [full copy];
+    });
+    return keys;
+}
+
+// Re-anchoring: a state equal to the last one sent except for elapsed/timestamp that predict the same position is
+// not sent (players re-publish their info when late artwork arrives, while buffering, some every few seconds; Cranny
+// would parse it and change nothing). Cranny anchors a state without a timestamp at its arrival, so only states
+// with one are compared by position; the position is Cranny's (`NowPlaying.position(at:)`).
+static const double kSamePosition = 0.05;
+
+static BOOL anchorOf(NSDictionary *s, double *elapsed, double *timestamp) {
+    *elapsed = MAX([s[@"elapsed"] doubleValue], 0);
+    *timestamp = [s[@"timestamp"] doubleValue];
+    return *timestamp > 0;
+}
+
+static double positionAt(NSDictionary *s, double elapsed, double timestamp, double now) {
+    BOOL playing = [s[@"playing"] boolValue];
+    double rate = s[@"rate"] ? [s[@"rate"] doubleValue] : (playing ? 1 : 0);
+    double p = playing ? elapsed + (now - timestamp) * (rate > 0 ? rate : 1) : elapsed;
+    double duration = [s[@"duration"] doubleValue];
+    if (duration > 0) p = MIN(p, duration);
+    return MAX(p, 0);
+}
+
+static NSString *sortedJSON(NSDictionary *obj, NSData **data) {
+    NSData *json = [NSJSONSerialization dataWithJSONObject:obj
+                                                   options:NSJSONWritingSortedKeys | NSJSONWritingWithoutEscapingSlashes
+                                                     error:nil];
+    if (data) *data = json;
+    return json ? [[NSString alloc] initWithData:json encoding:NSUTF8StringEncoding] : nil;
+}
+
+// Sends the state `s` unless it is the last one again, or only re-anchors it (see `kSamePosition`).
+static void sendState(NSDictionary *s) {
+    NSData *json = nil;
+    NSString *str = sortedJSON(s, &json);
+    if (!str || [str isEqualToString:gLastState]) return;
+    NSMutableDictionary *timeline = [s mutableCopy];
+    [timeline removeObjectsForKeys:@[ @"elapsed", @"timestamp" ]];
+    NSString *timelineKey = sortedJSON(timeline, NULL);
+    double elapsed, timestamp;
+    BOOL anchored = anchorOf(s, &elapsed, &timestamp);
+    if (anchored && gLastAnchored && timelineKey && [timelineKey isEqualToString:gLastTimeline]) {
+        double now = NSDate.date.timeIntervalSince1970;
+        if (fabs(positionAt(s, elapsed, timestamp, now) - positionAt(s, gLastElapsed, gLastTimestamp, now)) < kSamePosition) return;
+    }
+    gLastState = str;
+    gLastTimeline = timelineKey;
+    gLastElapsed = elapsed;
+    gLastTimestamp = timestamp;
+    gLastAnchored = anchored;
+    writeLine(json);
+}
 
 // Artwork travels base64-encoded in one JSON line, and Cranny drops lines over 8 MB. Large artwork (3000-px
 // podcast PNGs) is re-encoded here as a 1024-px JPEG; Cranny shows at most 512 px. nil = could not shrink it.
@@ -122,23 +226,15 @@ static void snapshot(void) {
                 }
             }
             if (!s[@"bundleIdentifier"] && pid > 0) {
-                NSRunningApplication *app = [NSRunningApplication runningApplicationWithProcessIdentifier:pid];
-                if (app.bundleIdentifier) s[@"bundleIdentifier"] = app.bundleIdentifier;
+                NSString *bundleID = bundleIDOfProcess(pid);
+                if (bundleID) s[@"bundleIdentifier"] = bundleID;
             }
-            NSDictionary *map = @{ @"title": @"Title", @"artist": @"Artist", @"album": @"Album",
-                                   @"duration": @"Duration", @"elapsed": @"ElapsedTime",
-                                   @"timestamp": @"Timestamp", @"rate": @"PlaybackRate",
-                                   @"itemID": @"ContentItemIdentifier", @"artworkID": @"ArtworkIdentifier",
-                                   @"shuffle": @"ShuffleMode", @"repeat": @"RepeatMode",
-                                   @"mediaType": @"MediaType", @"isMusicApp": @"IsMusicApp",
-                                   @"prohibitsSkip": @"ProhibitsSkip", @"isAd": @"IsAdvertisement" };
-            for (NSString *outKey in map) {
-                id v = plain(info[K(map[outKey])]);
+            NSDictionary<NSString *, NSString *> *keys = stateKeys();
+            for (NSString *outKey in keys) {
+                id v = plain(info[keys[outKey]]);
                 if (v) s[outKey] = v;
             }
-            NSData *json = [NSJSONSerialization dataWithJSONObject:s options:NSJSONWritingSortedKeys error:nil];
-            NSString *str = json ? [[NSString alloc] initWithData:json encoding:NSUTF8StringEncoding] : nil;
-            if (str && ![str isEqualToString:gLastState]) { gLastState = str; emit(s); }
+            sendState(s);
 
             NSData *art = info[K(@"ArtworkData")];
             if ([art isKindOfClass:NSData.class] && art.length > 0) {
@@ -187,6 +283,7 @@ static void handleLine(NSString *line) {
     if ([verb isEqualToString:@"refresh"]) {
         // "refresh state" (Cranny's check after an unconfirmed command) leaves the artwork alone.
         gLastState = nil;
+        gLastTimeline = nil;
         if (!(p.count >= 2 && [p[1] isEqualToString:@"state"])) gLastArtKey = nil;
         snapshot();
         return;
