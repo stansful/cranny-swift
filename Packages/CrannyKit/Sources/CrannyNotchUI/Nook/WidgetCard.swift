@@ -1,13 +1,21 @@
 // CrannyNotchUI/Nook/WidgetCard.swift — the card chrome around a widget's content (DESIGN.md §6.8): the
 // smoked card (or flat), hover fill, the ⋯ overflow menu (on hover, ⌘. on a focused card, VoiceOver actions),
 // the keyboard focus ring, a VoiceOver container named after the widget, and a placeholder for widgets whose
-// module is not registered. Widgets draw content only (ARCHITECTURE.md §3.5).
+// module is not registered. Widgets draw content only (ARCHITECTURE.md §3.5). The widget's content is built only
+// when what it draws changes: the hover and popover state live in the chrome (`CardHoverChrome`), so a pointer
+// passing over a card redraws the chrome alone, and a card whose inputs are unchanged is skipped (`WidgetCard:
+// Equatable`, used with `.equatable()`), so a grid update or a drag in the layout editor rebuilds no other widget.
 import CrannyCore
 import Foundation
 import SwiftUI
 
-/// What a card can ask the layout for (from its ⋯ menu or VoiceOver actions).
+/// What a card can ask the layout for (from its ⋯ menu or VoiceOver actions). The closures capture only references
+/// that stay the same while the card is on screen (the scene, the registry, the owner's actions) and the page they
+/// edit, and read the layout when they run; so a card keeps the set it was drawn with while nothing else changes.
 struct CardCommands {
+    /// The page these commands edit (nil: none). Part of a card's identity for redraws (`WidgetCard ==`): a card
+    /// that shows another page gets that page's commands.
+    var page: PageID?
     var remove: @MainActor (WidgetID) -> Void = { _ in }
     var resize: @MainActor (WidgetID, Int) -> Void = { _, _ in }
     var editLayout: @MainActor () -> Void = {}
@@ -18,9 +26,6 @@ struct CardCommands {
 struct WidgetCard: View {
     @Environment(\.cranny) private var theme
     @Environment(\.notchContext) private var context
-    @State private var hovered = false
-    @State private var showsOptions = false
-    @State private var showsKeyboardMenu = false
     let item: NookItem
     let registry: ModuleRegistry
     var rows: Int = 2
@@ -36,44 +41,8 @@ struct WidgetCard: View {
         let title = widget?.title ?? WidgetPlaceholder(item.widget).title
         content(widget: widget, cells: cells)
             .allowsHitTesting(!isEditing)
-            .cardChrome(cells: cells, rows: rows, hovered: hovered && !isEditing, frameless: widget?.isFrameless ?? false)
-            .overlay(alignment: .topTrailing) {
-                if !isEditing {
-                    // Always in the hierarchy (its NSMenu must survive the pointer leaving the card for the menu);
-                    // visible on hover, while its ⌘. list is open, or with keyboard focus on the card.
-                    let visible = hovered || showsKeyboardMenu || (isFocused && context.keyboardNavigation)
-                    CardOverflowMenu(widget: item.widget, hasOptions: widget?.hasOptions ?? false, cells: cells,
-                                     commands: commands, showOptions: { showsOptions = true })
-                        .popover(isPresented: $showsKeyboardMenu, arrowEdge: .bottom) {
-                            CardActionsList(widget: item.widget, hasOptions: widget?.hasOptions ?? false, cells: cells,
-                                            commands: commands, showOptions: { showsKeyboardMenu = false; showsOptions = true },
-                                            done: { showsKeyboardMenu = false })
-                        }
-                        .padding(Space.xs)
-                        .opacity(visible ? 1 : 0)
-                        .animation(theme.animation(.hover), value: visible)
-                }
-            }
-            .popover(isPresented: $showsOptions, arrowEdge: .bottom) {
-                if let widget { WidgetOptionsPopover(widget: widget) }
-            }
-            .crannyFocusRing(isFocused && (context.keyboardNavigation || context.openReason == .keyboard),
-                             radius: theme.grid.cardRadius)
-            .onHover { hovered = $0 }
-            .background {
-                // ⌘. on the focused card opens its actions (the ⋯ menu cannot be opened from the keyboard).
-                if isFocused {
-                    Button { showsKeyboardMenu = true } label: { EmptyView() }
-                        .keyboardShortcut(".", modifiers: .command)
-                        .buttonStyle(.plain).opacity(0).accessibilityHidden(true)
-                }
-            }
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel(Text(verbatim: title))
-            .accessibilityActions {
-                CardAccessibilityActions(widget: item.widget, hasOptions: widget?.hasOptions ?? false, cells: cells,
-                                         isEditing: isEditing, commands: commands, showOptions: { showsOptions = true })
-            }
+            .modifier(CardHoverChrome(id: item.widget, widget: widget, title: title, cells: cells, rows: rows,
+                                      isEditing: isEditing, isFocused: isFocused, commands: commands))
     }
 
     @ViewBuilder private func content(widget: AnyNookWidget?, cells: Int) -> some View {
@@ -99,7 +68,79 @@ struct WidgetCard: View {
     }
 }
 
+// MARK: - Redraws
+
+extension WidgetCard: Equatable {
+    /// Equal when the card draws the same: its item, rows, mode, focus, size clamping and registry, and commands for
+    /// the same page. The command closures themselves are left out: every parent update builds new ones that do the
+    /// same (`CardCommands`). The theme, the context and observed widget state still update a card as usual.
+    static func == (a: WidgetCard, b: WidgetCard) -> Bool {
+        a.item == b.item && a.registry === b.registry && a.rows == b.rows && a.isEditing == b.isEditing
+            && a.isFocused == b.isFocused && a.clampsToSizes == b.clampsToSizes && a.commands.page == b.commands.page
+    }
+}
+
 // MARK: - Chrome
+
+/// Everything the card draws around the widget, with the state only it uses: hover, the options popover and the ⌘.
+/// list. A modifier, so a change of that state re-evaluates the chrome, not the widget it wraps (`content`).
+private struct CardHoverChrome: ViewModifier {
+    @Environment(\.cranny) private var theme
+    @Environment(\.notchContext) private var context
+    @State private var hovered = false
+    @State private var showsOptions = false
+    @State private var showsKeyboardMenu = false
+    let id: WidgetID
+    let widget: AnyNookWidget?
+    let title: String
+    let cells: Int
+    let rows: Int
+    let isEditing: Bool
+    let isFocused: Bool
+    let commands: CardCommands
+
+    func body(content: Content) -> some View {
+        content
+            .cardChrome(cells: cells, rows: rows, hovered: hovered && !isEditing, frameless: widget?.isFrameless ?? false)
+            .overlay(alignment: .topTrailing) {
+                if !isEditing {
+                    // Always in the hierarchy (its NSMenu must survive the pointer leaving the card for the menu);
+                    // visible on hover, while its ⌘. list is open, or with keyboard focus on the card.
+                    let visible = hovered || showsKeyboardMenu || (isFocused && context.keyboardNavigation)
+                    CardOverflowMenu(widget: id, hasOptions: widget?.hasOptions ?? false, cells: cells,
+                                     commands: commands, showOptions: { showsOptions = true })
+                        .popover(isPresented: $showsKeyboardMenu, arrowEdge: .bottom) {
+                            CardActionsList(widget: id, hasOptions: widget?.hasOptions ?? false, cells: cells,
+                                            commands: commands, showOptions: { showsKeyboardMenu = false; showsOptions = true },
+                                            done: { showsKeyboardMenu = false })
+                        }
+                        .padding(Space.xs)
+                        .opacity(visible ? 1 : 0)
+                        .animation(theme.animation(.hover), value: visible)
+                }
+            }
+            .popover(isPresented: $showsOptions, arrowEdge: .bottom) {
+                if let widget { WidgetOptionsPopover(widget: widget) }
+            }
+            .crannyFocusRing(isFocused && (context.keyboardNavigation || context.openReason == .keyboard),
+                             radius: theme.grid.cardRadius)
+            .onHover { hovered = $0 }
+            .background {
+                // ⌘. on the focused card opens its actions (the ⋯ menu cannot be opened from the keyboard).
+                if isFocused {
+                    Button { showsKeyboardMenu = true } label: { EmptyView() }
+                        .keyboardShortcut(".", modifiers: .command)
+                        .buttonStyle(.plain).opacity(0).accessibilityHidden(true)
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(Text(verbatim: title))
+            .accessibilityActions {
+                CardAccessibilityActions(widget: id, hasOptions: widget?.hasOptions ?? false, cells: cells,
+                                         isEditing: isEditing, commands: commands, showOptions: { showsOptions = true })
+            }
+    }
+}
 
 /// `crannyCard` for any number of rows: Core's card modifier is 2 rows tall; Notes focus needs 3.
 struct CardChrome: ViewModifier {

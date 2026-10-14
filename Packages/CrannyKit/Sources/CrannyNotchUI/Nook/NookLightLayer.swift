@@ -6,6 +6,8 @@
 // `FirstLight` (the first open per session, 1.0 s) and `songChangeRipple` (0.6 s), each started by the scene's
 // delight serial, which the shell has already capped (DESIGN.md §5.5). Energy budget: ≤ 30 fps on AC, ≤ 20 on
 // battery, paused while closed, hidden, occluded or behind a full-screen app, a resting frame under Reduce Motion.
+// Live audio energy changes up to 30 times a second: only the leaf that hands it to the light (`EnergizedLight`)
+// reads it, so those changes never re-evaluate this layer, the first light or the ripple around it.
 import CrannyCore
 import CrannyEffects
 import SwiftUI
@@ -51,8 +53,8 @@ struct NookLightLayer: View {
     }
 
     private func light(level: AmbienceLevel, budget: EffectBudget) -> some View {
-        AmbientLayer(palette: model.ambient, level: level, effect: theme.effect,
-                     energy: min(max(registry.services.nowPlaying?.audioEnergy ?? 0, 0), 1), budget: budget)
+        EnergizedLight(palette: model.ambient, level: level, effect: theme.effect, budget: budget,
+                       source: registry.services.nowPlaying)
     }
 
     /// The light's moments; the others (ember burst, charge sweep, gulp) are drawn elsewhere on the canvas.
@@ -63,6 +65,21 @@ struct NookLightLayer: View {
         case .songRipple: songChange = playback.serial
         case .emberBurst, .chargeSweep, .gulp: break
         }
+    }
+}
+
+/// The light with the live audio energy (0…1, 0 without a source). Its own view, so the energy's Observation
+/// dependency belongs to this leaf: an energy change re-evaluates only it, not `NookLightLayer`.
+private struct EnergizedLight: View {
+    let palette: AmbientPalette
+    let level: AmbienceLevel
+    let effect: AmbientEffect
+    let budget: EffectBudget
+    let source: (any NowPlayingSource)?
+
+    var body: some View {
+        AmbientLayer(palette: palette, level: level, effect: effect,
+                     energy: min(max(source?.audioEnergy ?? 0, 0), 1), budget: budget)
     }
 }
 

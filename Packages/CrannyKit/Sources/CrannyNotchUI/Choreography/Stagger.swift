@@ -1,5 +1,6 @@
 // CrannyNotchUI/Choreography/Stagger.swift — widgets enter radiating outward from the camera, peek rows top
-// to bottom (DESIGN.md §4.3, §4.5). Ring math is pure (unit-tested); `StaggeredReveal` plays it once on appear.
+// to bottom (DESIGN.md §4.3, §4.5). Ring math is pure (unit-tested); `StaggeredReveal` plays it once on appear,
+// only during an entrance (`NotchEntrance`, which ends without re-evaluating anything).
 import CrannyCore
 import SwiftUI
 
@@ -39,7 +40,7 @@ nonisolated enum Stagger {
 /// stagger of its children (the open panel's header and widgets, peek rows). Only during an entrance
 /// (`notchEntrance`): the open panel's widgets radiate out of the camera when the panel opens, not again on
 /// every tab switch or return from the palette or the editor (those use the `crannyTab` slide or `contentSwap`,
-/// DESIGN.md §4.3).
+/// DESIGN.md §4.3). The entrance is read when the view is built, and its appearance uses that same reading.
 struct StaggeredReveal: ViewModifier {
     @Environment(\.cranny) private var theme
     @Environment(\.notchRendersFinalState) private var rendersFinalState
@@ -51,13 +52,14 @@ struct StaggeredReveal: ViewModifier {
     func body(content: Content) -> some View {
         let reduce = theme.reduceMotion
         let animation = theme.contentIn(after: reduce ? 0 : delay)
-        let revealed = StaggeredReveal.isShown(revealed: revealed, rendersFinalState: rendersFinalState, entrance: entrance)
+        let entering = NotchEntrance.isEntering(entrance)
+        let revealed = StaggeredReveal.isShown(revealed: revealed, rendersFinalState: rendersFinalState, entrance: entering)
         content
             .blur(radius: revealed || reduce ? 0 : 6)
             .scaleEffect(revealed || reduce ? 1 : 0.96, anchor: anchor)
             .opacity(revealed ? 1 : 0)
             .onAppear {
-                guard !self.revealed, entrance else { return }
+                guard !self.revealed, entering else { return }
                 if let animation { withAnimation(animation) { self.revealed = true } } else { self.revealed = true }
             }
     }
@@ -76,11 +78,24 @@ extension View {
     }
 }
 
+/// The open panel's entrance: true until its first content has appeared, so later pages appear without a stagger.
+/// A reference that the panel (`NookView`) clears in place, rather than a value in the environment: clearing it
+/// re-evaluates nothing (a value would re-run the panel, its header, every staggered view and the whole grid in the
+/// first frames of the open spring). Views read it when they are built, so a view built after it was cleared (a tab
+/// switch, the palette, the editor) appears at once, exactly as with a value.
+final class NotchEntrance {
+    /// True while the panel makes its entrance.
+    var isEntering = true
+
+    /// Whether a view built now is part of an entrance: `entrance`'s state, and always without one (peek rows).
+    static func isEntering(_ entrance: NotchEntrance?) -> Bool { entrance?.isEntering ?? true }
+}
+
 extension EnvironmentValues {
     /// Snapshot rendering (`ImageRenderer` in tests): one-shot entrances render their final state, because a
     /// single rasterized frame never runs `onAppear` animations.
     @Entry var notchRendersFinalState = false
-    /// True while a presentation makes its entrance (the open panel's first appearance; peek rows always).
-    /// The open panel clears it once its first content has appeared, so later pages appear without a stagger.
-    @Entry var notchEntrance = true
+    /// The entrance of the open panel (`NotchEntrance`); nil outside it, where every presentation makes its
+    /// entrance (peek rows always).
+    @Entry var notchEntrance: NotchEntrance? = nil
 }

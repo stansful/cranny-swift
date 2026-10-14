@@ -4,7 +4,9 @@
 // final size, revealed by the animated clip (DESIGN.md §3, R1 §7.2). One spring moves the shape per change of
 // presentation (`ShapeMotion`: grows with bounce, lands without); under Reduce Motion, open/close/resize
 // cross-fade at their final sizes instead of travelling. Only the scene's owner writes the model; taps, keys
-// and VoiceOver actions go back through `NotchUIActions`.
+// and VoiceOver actions go back through `NotchUIActions`. What the next change needs to know about this one (the
+// presentation and shape it starts from) is kept in a box that writes invalidate nothing (`MotionMemory`), so a
+// change of presentation evaluates the canvas once, not a second time just to remember it.
 import CrannyCore
 import CrannyEffects
 import Foundation
@@ -58,9 +60,8 @@ public struct NotchCanvasView: View {
 private struct CanvasBody: View {
     @Environment(\.cranny) private var theme
     @Environment(\.notchDelight) private var delight
-    @State private var previous: ShapeMotionState?
-    /// The shape before the current change (a swipe-down open measures the travel its velocity is carried over).
-    @State private var previousBase: NotchGeometry?
+    /// The presentation and shape the next change starts from.
+    @State private var memory = MotionMemory()
     @State private var gulp: CGFloat = 0
     @State private var resizeFade: ResizeFade?
     let model: NotchSceneModel
@@ -69,7 +70,7 @@ private struct CanvasBody: View {
 
     var body: some View {
         let current = ShapeMotionState(phase: model.phase, isHUD: primaryIsHUD)
-        let kind = ShapeMotion.kind(from: previous ?? current, to: current)
+        let kind = ShapeMotion.kind(from: memory.previous ?? current, to: current)
         let base = CanvasGeometry.base(model)
         let shown = CanvasGeometry.adjusted(base, phase: model.phase, gesture: model.gestureTranslation, gulp: gulp)
         let key = ShapeMotion.crossFadeKey(phase: model.phase, reduceMotion: theme.reduceMotion)
@@ -100,16 +101,16 @@ private struct CanvasBody: View {
         .animation(theme.animation(.contentSwap), value: surfaceOpacity)
         .modifier(GulpModifier(depth: $gulp))
         .environment(\.notchSlotRevealDelay, ContentTiming.slotDelay(after: kind))
-        .onChange(of: current) { _, new in previous = new }
-        .onChange(of: base, initial: true) { _, new in previousBase = new }
+        .onChange(of: current) { _, new in memory.previous = new }
+        .onChange(of: base, initial: true) { _, new in memory.previousBase = new }
         .onChange(of: ShapeTarget(phase: model.phase, geometry: base)) { old, new in crossFadeResize(from: old, to: new) }
     }
 
     /// The spring for this change of shape. A swipe-down open starts with the fingers' speed (DESIGN.md §4.4).
     private func shapeAnimation(_ kind: CrannyMotion.Kind, to target: NotchGeometry) -> Animation? {
         if kind == .open, let velocity = model.open?.gestureVelocity, velocity > 0 {
-            return ShapeMotion.openAnimation(velocity: velocity, from: previousBase ?? model.layout.closed, to: target,
-                                             theme: theme)
+            return ShapeMotion.openAnimation(velocity: velocity, from: memory.previousBase ?? model.layout.closed,
+                                             to: target, theme: theme)
         }
         return ShapeMotion.animation(kind, theme: theme)
     }
@@ -221,6 +222,16 @@ private struct CanvasBody: View {
             && registry.services.settings[CoreSettings.handleVisibility] == .hiddenUntilHover
         return hiddenHandle ? 0 : 1
     }
+}
+
+/// What the canvas remembers between changes of presentation. Read when the canvas is evaluated and written right
+/// after (`onChange`); a reference, so the writes schedule no evaluation of their own: the next change reads them,
+/// exactly what a second evaluation would have computed.
+private final class MotionMemory {
+    /// The presentation last drawn (nil until the first change): the next change's spring goes from it.
+    var previous: ShapeMotionState?
+    /// The shape last drawn: a swipe-down open measures from it the travel its velocity is carried over.
+    var previousBase: NotchGeometry?
 }
 
 /// The closed notch for VoiceOver: "Cranny, collapsed" with the action Open (DESIGN.md §16).

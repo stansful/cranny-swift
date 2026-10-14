@@ -11,6 +11,14 @@ public enum ThemeResolver {
     /// The theme of one surface. `albumAccent` = `services.nowPlaying?.palette?.accent` while media plays.
     public static func theme(settings: SettingsStore, albumAccent: RGB?, notchUnit: CGFloat,
                              isFloatingDisplay: Bool) -> CrannyTheme {
+        theme(settings: settings, albumAccent: albumAccent, notchUnit: notchUnit, isFloatingDisplay: isFloatingDisplay,
+              systemAccent: AccentResolver.systemAccent())
+    }
+
+    /// The theme of one surface with the system accent already read (`AccentResolver.systemAccent()`), so a caller
+    /// that also needs it for the light palette (`ambientPalette`) reads the appearance once per evaluation.
+    public static func theme(settings: SettingsStore, albumAccent: RGB?, notchUnit: CGFloat,
+                             isFloatingDisplay: Bool, systemAccent: RGB) -> CrannyTheme {
         var t = CrannyTheme()
         t.textSize = settings[CoreSettings.textSize]
         t.density = settings[CoreSettings.density]
@@ -25,8 +33,7 @@ public enum ThemeResolver {
         t.hapticsEnabled = settings[CoreSettings.haptics]
         t.notchUnit = notchUnit
         t.accent = AccentResolver.resolve(settings[CoreSettings.accent], albumAccent: albumAccent,
-                                          systemAccent: AccentResolver.systemAccent(),
-                                          palette: t.palette.spec, increaseContrast: false)
+                                          systemAccent: systemAccent, palette: t.palette.spec, increaseContrast: false)
         return t
     }
 

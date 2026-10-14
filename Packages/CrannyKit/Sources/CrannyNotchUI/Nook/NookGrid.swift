@@ -21,10 +21,12 @@ struct WidgetGridPage: View {
     var body: some View {
         let items = page.items
         let rings = Stagger.rings(cells: items.map { cells(of: $0) })
+        let entering = NotchEntrance.isEntering(entrance)
         HStack(spacing: theme.grid.gutter) {
             ForEach(Array(items.enumerated()), id: \.element.widget) { index, item in
                 WidgetCard(item: item, registry: registry, isFocused: focused == item.widget,
                            commands: GridCommands.make(page: page, model: model, registry: registry, actions: actions))
+                    .equatable()                                      // a grid update rebuilds only changed cards
                     .modifier(VoiceOverLanding(focus: $voiceOverFocus, widget: item.widget))
                     .notchMatched("card.\(item.widget.rawValue)")
                     .focusable()
@@ -46,7 +48,7 @@ struct WidgetGridPage: View {
             focused = model.open?.focus
             // Opening puts VoiceOver on the widget the panel opened for, else the first one (DESIGN.md §16). Only
             // when the panel opens: after a tab switch VoiceOver stays on the tab the user chose.
-            if let target = WidgetGridPage.voiceOverTarget(entrance: entrance, focus: model.open?.focus, items: items) {
+            if let target = WidgetGridPage.voiceOverTarget(entrance: entering, focus: model.open?.focus, items: items) {
                 Task { @MainActor in voiceOverFocus = target }
             }
         }
@@ -118,7 +120,8 @@ struct FocusedWidgetPage: View {
     }
 }
 
-/// The ⋯ menu's commands on a grid page, written through `commitLayout` / `setMode`.
+/// The ⋯ menu's commands on a grid page, written through `commitLayout` / `setMode`. They capture the page's id,
+/// the scene, the registry and the actions, and read the pages when they run (`CardCommands`).
 enum GridCommands {
     @MainActor static func make(page: NookPage, model: NotchSceneModel, registry: ModuleRegistry,
                                 actions: NotchUIActions) -> CardCommands {
@@ -127,7 +130,7 @@ enum GridCommands {
                           maxColumns: model.layout.maxColumns, registry: registry)
         }
         func title(_ widget: WidgetID) -> String { registry.widget(widget)?.title ?? WidgetPlaceholder(widget).title }
-        var c = CardCommands()
+        var c = CardCommands(page: page.id)
         c.remove = { widget in
             guard let next = editing().removing(widget) else { return }
             actions.commitLayout(next.pages)

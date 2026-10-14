@@ -4,7 +4,8 @@
 // tooltip per cell), ⌥← / ⌥→ move the focused card, ⌥⇧← / ⌥⇧→ resize it; every change is announced to
 // VoiceOver and written through `NotchUIActions.commitLayout`. ↩ or Esc finishes (the header's Done). One
 // `WiggleClock` drives every card's wiggle at the effect budget's rate. Right to left the row is mirrored: the pointer's
-// travel is turned into travel along the row, and ⌥← / ⌥→ and Move left / right go the way they point.
+// travel is turned into travel along the row, and ⌥← / ⌥→ and Move left / right go the way they point. A drag event
+// moves the dragged card's offset; the widgets inside the cards are not rebuilt (`WidgetCard.equatable()`).
 import AppKit
 import CrannyCore
 import Foundation
@@ -75,6 +76,7 @@ struct EditLayoutView: View {
         let cells = registry.widget(item.widget)?.sizes.clamp(item.cells) ?? max(item.cells, 1)
         return WidgetCard(item: item, registry: registry, isEditing: true, isFocused: focused == item.widget,
                           commands: cardCommands)
+            .equatable()                                      // a drag event moves the card, it does not rebuild it
             .overlay {
                 RoundedRectangle(cornerRadius: theme.grid.cardRadius, style: .continuous)
                     .strokeBorder(theme.palette.stroke, style: StrokeStyle(lineWidth: StrokeWidth.emphasis, dash: StrokeWidth.dash))
@@ -240,9 +242,10 @@ struct EditLayoutView: View {
 
     // MARK: Helpers
 
-    /// The card's ⋯ commands while editing (VoiceOver actions; the hover menu is hidden in the editor).
+    /// The card's ⋯ commands while editing (VoiceOver actions; the hover menu is hidden in the editor). They use only
+    /// the page's id, the scene, the registry and the actions, and read the pages when they run (`CardCommands`).
     private var cardCommands: CardCommands {
-        var c = CardCommands()
+        var c = CardCommands(page: page.id)
         c.remove = { remove($0) }
         c.resize = { widget, cells in resize(widget, to: cells) }
         c.allowedSizes = { editing().allowedSizes(for: $0) }

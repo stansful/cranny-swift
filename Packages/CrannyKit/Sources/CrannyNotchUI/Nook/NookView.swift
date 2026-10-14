@@ -2,7 +2,8 @@
 // then the grid area — a grid page, a module page (the Tray), the ⌘K palette, the layout editor, Notes focus or
 // the drag catch zones — inside the panel padding. Content is laid out at the FINAL open size and revealed by
 // the clip (no reflow during the morph); the header enters first (`contentIn`), then the widgets radiate out
-// from the camera — once per open (`notchEntrance`). The light layer behind it is drawn by the canvas.
+// from the camera — once per open (`NotchEntrance`, ended in place so it re-evaluates nothing). The light layer
+// behind it is drawn by the canvas.
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -13,8 +14,9 @@ struct NookView: View {
     /// Direction of the last tab change, set one update BEFORE the page changes so the leaving page and the
     /// arriving page slide the same way (a removed view keeps the transition of its last update).
     @State private var forward = true
-    /// The panel's entrance: true until its first content has appeared (`notchEntrance`).
-    @State private var isEntering = true
+    /// The panel's entrance: entering until its first content has appeared (`notchEntrance`). Ended in place, so
+    /// the end re-runs neither this view nor the header, the staggered views or the grid.
+    @State private var entrance = NotchEntrance()
     let model: NotchSceneModel
     let registry: ModuleRegistry
     let actions: NotchUIActions
@@ -32,7 +34,7 @@ struct NookView: View {
         }
         .padding(.horizontal, grid.padding)
         .padding(.bottom, grid.padding)
-        .environment(\.notchEntrance, isEntering)
+        .environment(\.notchEntrance, entrance)
         .frame(width: shape.bodyWidth, height: shape.height, alignment: .top)
         .padding(.top, shape.topInset)
         .foregroundStyle(theme.palette.label)
@@ -43,7 +45,7 @@ struct NookView: View {
         .onAppear {
             AccessibilityNotification.LayoutChanged().post()                // VoiceOver lands in the opened panel
             // The header and the widgets started their entrance in this update; what appears later doesn't stagger.
-            Task { @MainActor in isEntering = false }
+            Task { @MainActor in entrance.isEntering = false }
             if let qa = NotchUIQAHooks.mode, !NotchUIQAHooks.didApplyMode, !context.isPreview {   // DEBUG-only visual QA
                 NotchUIQAHooks.didApplyMode = true
                 Task { @MainActor in actions.setMode(qa) }
