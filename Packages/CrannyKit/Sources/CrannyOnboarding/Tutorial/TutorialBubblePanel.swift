@@ -1,8 +1,9 @@
 // CrannyOnboarding/Tutorial/TutorialBubblePanel.swift — the window behind the tip (ARCHITECTURE.md §5.9): a
 // small non-activating panel at the notch's level (26) whose caret sits 10 pt under
 // `NotchControl.shapeFrameOnScreen()`. Clicking "Skip tour" never activates Cranny; a coach mark without a
-// button is click-through. The panel follows the shape when it opens or closes and fades in and out
-// (instantly under Reduce Motion).
+// button is click-through. The panel fades in and out, and when the shape opens or closes it fades out, moves
+// and fades back in under the new shape (instantly under Reduce Motion). It is never moved with an animated
+// frame: AppKit's window-frame animation stalls while the displays sleep and would leave it behind.
 import AppKit
 import CrannyCore
 import SwiftUI
@@ -18,6 +19,8 @@ import SwiftUI
     private var hosting: TipHostingView?
     /// Orders the panel out once its fade has finished (one sleep, cancelled by the next `show`).
     private var orderOut: Task<Void, Never>?
+    /// A move under a new shape: fade out, jump, fade in (one sleep, superseded by the next `show`).
+    private var move: Task<Void, Never>?
 
     init() {}
 
@@ -31,17 +34,29 @@ import SwiftUI
         hosting.layoutSubtreeIfNeeded()
         let size = hosting.intrinsicContentSize               // the bubble's own size (see TipBubble's frame)
         let frame = Self.frame(size: size, under: anchor ?? Self.fallbackAnchor())
+        move?.cancel()
+        move = nil
         if isNew {
             panel.setFrame(frame, display: false)
             panel.alphaValue = 0
             panel.orderFrontRegardless()                         // never activates the app
             animate { panel.animator().alphaValue = 1 }
+        } else if abs(panel.frame.maxY - frame.maxY) > 1 || abs(panel.frame.midX - frame.midX) > 1 {
+            let duration = animate { panel.animator().alphaValue = 0 }
+            move = Task { [weak self, weak panel] in
+                try? await Task.sleep(for: .seconds(duration))
+                guard !Task.isCancelled, let panel else { return }
+                panel.setFrame(frame, display: true)
+                self?.animate { panel.animator().alphaValue = 1 }
+            }
         } else if panel.frame != frame {
-            animate { panel.animator().setFrame(frame, display: true) }
+            panel.setFrame(frame, display: true)                 // same place, new content size
         }
     }
 
     func hide() {
+        move?.cancel()
+        move = nil
         guard let panel, panel.isVisible, orderOut == nil else { return }
         let duration = animate { panel.animator().alphaValue = 0 }
         orderOut = Task { [weak self] in

@@ -54,15 +54,19 @@ private let log = Log.logger(.onboarding)
         previousApp = front?.processIdentifier == ProcessInfo.processInfo.processIdentifier ? nil : front
         hasFinished = false
         let view = WelcomeView(registry: registry, initialStep: step) { [weak self] outcome in self?.finish(outcome) }
-        let host = NSHostingController(rootView: view)
+        // The FRAME is 640 x 480 and the SwiftUI content covers all of it, title bar included. A hosting view
+        // that IS the window's content view resizes the window to its content plus the hidden title bar on
+        // every layout (NSHostingView.windowDidLayout; 32 pt on macOS 27, even with no sizing options), so it
+        // sits inside a plain container instead.
+        let host = NSHostingView(rootView: view)
         host.sizingOptions = []
+        let container = NSView(frame: CGRect(origin: .zero, size: WelcomeView.windowSize))
+        host.frame = container.bounds
+        host.autoresizingMask = [.width, .height]
+        container.addSubview(host)
         let window = NSWindow(contentRect: CGRect(origin: .zero, size: WelcomeView.windowSize),
                               styleMask: [.titled, .closable, .fullSizeContentView], backing: .buffered, defer: false)
-        window.contentViewController = host
-        // The FRAME is 640 x 480: with a full-size content view the content covers the hidden title bar, and
-        // setContentSize would add the title bar's height (32 pt on macOS 27) below the footer.
-        window.minSize = WelcomeView.windowSize
-        window.maxSize = WelcomeView.windowSize
+        window.contentView = container
         window.setFrame(CGRect(origin: window.frame.origin, size: WelcomeView.windowSize), display: false)
         window.title = WelcomeView.windowTitle
         window.titleVisibility = .hidden
