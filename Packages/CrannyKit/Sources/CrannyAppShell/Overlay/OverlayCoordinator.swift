@@ -208,6 +208,9 @@ private let log = Log.logger(.overlay)
         guard let found, found.key != pointerDisplay else { return }
         pointerDisplay = found.key
         environment.setPointerDisplay(found.id)
+        // Now, not on the next observation hop: sliding along the menu bar onto the other display's notch must
+        // find its panel already shown (`.pointer` selection) and its alerts already moved.
+        if !controllers.isEmpty { applyDisplayFacts() }
     }
 
     /// Menus nest (submenus): hold while any tracking session is open.
