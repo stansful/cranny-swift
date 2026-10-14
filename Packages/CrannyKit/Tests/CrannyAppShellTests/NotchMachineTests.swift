@@ -520,6 +520,19 @@ private let pdf: [UTType] = [.pdf]
     #expect(!run([.band(.courtesy)]).0.wingsRetracted)                         // nothing to retract
 }
 
+/// The HUD's config turns courtesy off (NotchViewModel): wings retracted for the previous primary come back when
+/// it takes over, so a consumed volume key always shows its HUD.
+@Test func wingsRetractedForTheMenuBarComeBackForTheHUD() {
+    var c = compact
+    c.menuBarCourtesy = true
+    let (retracted, _) = run([.band(.courtesy)], config: c)
+    var hud = c
+    hud.menuBarCourtesy = false
+    let (shown, _) = run([.activityChanged], from: retracted, config: hud)
+    #expect(!shown.wingsRetracted && phase(shown, hud) == .compact)
+    #expect(!run([.band(.courtesy)], from: shown, config: hud).0.wingsRetracted)
+}
+
 /// §4.7, DESIGN.md §9.2: the compact inactivity timeout collapses the wings but the satellite stays (and can be
 /// swiped away); it goes with the wings for the menu bar, while hidden and while open.
 @Test func theSatelliteStaysAfterTheCompactTimeout() {

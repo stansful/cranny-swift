@@ -132,6 +132,14 @@ nonisolated extension NotchReduction {
         }
     }
 
+    /// Courtesy turned off for the current primary (the HUD, whose key press Cranny consumed, never steps aside
+    /// for the menu bar): wings retracted earlier come back at once.
+    mutating func returnWingsUnlessCourteous() {
+        guard !config.menuBarCourtesy, s.wingsRetracted else { return }
+        s.wingsRetracted = false
+        cancel(.wingsReturn)
+    }
+
     // MARK: Idle timers (armed while their condition holds, cancelled when it stops)
 
     var idleCloseAllowed: Bool {

@@ -69,7 +69,10 @@ private struct CanvasBody: View {
                 .modifier(ResizeCrossFade(fade: resizeFade, isEnabled: theme.reduceMotion))
                 .id(key)
                 .transition(.opacity)
-            if model.phase == .compact, let id = model.satellite, let activity = model.activity(id, in: registry) {
+            // The shell writes `satellite` only while it shows (§4.7): beside the wings, or beside the closed shape
+            // once the compact inactivity timeout has collapsed them (`.idle`).
+            if model.phase == .compact || model.phase == .idle, let id = model.satellite,
+               let activity = model.activity(id, in: registry) {
                 SatelliteView(id: id, activity: activity, layout: model.layout, compact: shown, actions: actions)
                     .id(id)
                     .transition(.opacity.animation(theme.animation(.contentOut)))

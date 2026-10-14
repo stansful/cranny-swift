@@ -23,6 +23,7 @@ import SwiftUI
     private let gestures: GestureRouter
     private let drops: DropRouter
     private var tokens: [ObservationToken] = []
+    private var occlusionObserver: (any NSObjectProtocol)?
     /// A layout or canvas-size change that arrived while the surface was not closed (applied once it has been
     /// closed long enough for the morph to land).
     private var layoutIsPending = false
@@ -83,6 +84,25 @@ import SwiftUI
         }) { [weak self] appearance in
             if let appearance { self?.apply(appearance) }
         })
+        // The floating island's middle label (open issue 3): measured here, drawn by NotchUI, so the shape
+        // (`geometry`), the wings and the hit area agree on its width. Follows the primary, its label and the layout.
+        let labelWidth: @MainActor () -> CGFloat = { [weak self] in
+            guard let self else { return 0 }
+            let label = self.scene.primary.flatMap { self.viewModel.activity($0)?.middleLabel }
+            return MiddleLabelMetrics.width(of: label, layout: self.scene.layout)
+        }
+        scene.middleLabelWidth = labelWidth()
+        tokens.append(observe(labelWidth) { [weak self] width in
+            guard let self, self.scene.middleLabelWidth != width else { return }
+            self.scene.middleLabelWidth = width
+            self.viewModel.refresh()
+        })
+        // Effects pause while the panel is covered, the screen is locked or the displays sleep (§9.2).
+        updateVisibility()
+        occlusionObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didChangeOcclusionStateNotification, object: panel, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.updateVisibility() }
+        }
         // Timeouts and per-display toggles re-arm the machine's idle timers.
         let settings = registry.services.settings
         tokens.append(observe({ [key] in Self.timerSettings(settings, display: key) }) { [weak self] _ in
@@ -106,7 +126,14 @@ import SwiftUI
         if !panel.isVisible { panel.orderFrontRegardless() }
     }
 
+    private func updateVisibility() {
+        let visible = panel.occlusionState.contains(.visible)
+        if scene.isVisibleOnScreen != visible { scene.isVisibleOnScreen = visible }
+    }
+
     func close() {
+        if let occlusionObserver { NotificationCenter.default.removeObserver(occlusionObserver) }
+        occlusionObserver = nil
         pendingTask?.cancel()
         tokens.removeAll()
         keyboard.stop()

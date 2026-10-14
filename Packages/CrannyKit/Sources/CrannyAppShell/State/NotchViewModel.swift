@@ -142,17 +142,18 @@ import Foundation
         return state.blocksInput ? nil : scene.geometry
     }
 
-    /// The satellite bubble in canvas coordinates (top-left origin) while it shows, beside the shape as drawn
-    /// (the compact wings, or the closed notch once the inactivity timeout collapsed them).
+    /// The satellite's click target in canvas coordinates (top-left origin) while it shows, beside the shape as
+    /// drawn (the compact wings, or the closed notch once the inactivity timeout collapsed them): the bubble
+    /// padded to at least 32 × 24 (`SatelliteMetrics.hitFrame`, DESIGN.md §2.3).
     func satelliteFrame(in canvas: CGRect) -> CGRect? {
         guard scene.satellite != nil, state.isClosed, state.hidden == nil else { return nil }
-        return scene.layout.satelliteFrame(beside: scene.geometry, in: canvas)
+        return SatelliteMetrics.hitFrame(beside: scene.geometry, layout: scene.layout, in: canvas)
     }
 
     /// The compact wings for menu-bar courtesy (also while retracted): nil without a primary.
     var courtesyGeometry: NotchGeometry? {
         guard lineup.primary != nil, state.isClosed, !state.blocksInput else { return nil }
-        return scene.layout.compact(lineup.primarySlot)
+        return scene.layout.compact(lineup.primarySlot, label: scene.middleLabelWidth)
     }
 
     // MARK: Reduction

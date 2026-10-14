@@ -129,7 +129,8 @@ nonisolated struct NotchReduction {
             s.handleHidden = false
             cancel(.compactIdle)                                                 // re-armed for the new revision
             cancel(.handleIdle)
-        case .configChanged: break                                               // `syncIdleTimers` does the work
+            returnWingsUnlessCourteous()
+        case .configChanged: returnWingsUnlessCourteous()                        // `syncIdleTimers` does the rest
         case .band(let position): band(position)
         case .calibration(let on): s.calibrating = on
         }

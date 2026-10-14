@@ -53,6 +53,12 @@ extension NotchViewModel {
         c.trackSwipe = settings[CoreSettings.trackSwipe]
         c.acceptsFileDrags = registry.services.tray != nil
         c.menuBarCourtesy = settings[CoreSettings.menuBarCourtesy]
+        // The HUD answers a key press Cranny consumed (CrannyHUD): nothing may hide it, neither the menu-bar
+        // courtesy nor the compact inactivity timeout, or the user would see no HUD at all.
+        if let primary = lineup.primary, activity(primary)?.priority == .hud {
+            c.menuBarCourtesy = false
+            c.compactInactivityTimeout = 0
+        }
         return c
     }
 

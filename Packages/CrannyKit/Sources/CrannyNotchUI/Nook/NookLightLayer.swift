@@ -11,6 +11,9 @@ import SwiftUI
 struct NookLightLayer: View {
     @Environment(\.cranny) private var theme
     @Environment(\.notchDelight) private var delight
+    /// Snapshots (`ImageRenderer`: tests, the gallery, `--qa-snapshot`) cannot see CrannyEffects' Metal layer, so
+    /// they keep the light in SwiftUI (`ambientLightRendering(.inline)`); the live panel uses the cheaper layer.
+    @Environment(\.notchRendersFinalState) private var isSnapshot
     @State private var ripple: Double = 0
     @State private var firstLight: Double = 1
     let model: NotchSceneModel
@@ -27,6 +30,7 @@ struct NookLightLayer: View {
             .mask { if revealing { FirstLightMask(progress: firstLight) } else { Color.white } }
             .overlay { if revealing { FirstLightCrest(progress: firstLight, glow: model.ambient.glow1, cap: Glow.ambientAlphaCap(max(level, .subtle))) } }
             .animation(theme.animation(.colorShift), value: model.ambient)
+            .ambientLightRendering(isSnapshot ? .inline : .automatic)
             .allowsHitTesting(false)
             .accessibilityHidden(true)
             .onChange(of: delight?.serial) { _, _ in play(delight) }
