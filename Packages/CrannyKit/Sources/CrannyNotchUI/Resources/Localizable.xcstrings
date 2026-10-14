@@ -35,7 +35,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "%1$@ — не хватает %2$#@cells@; перенесите виджет на другую страницу"
+            "value" : "%1$@ — %2$#@cells@; перенесите виджет на другую страницу"
           },
           "substitutions" : {
             "cells" : {
@@ -46,25 +46,25 @@
                   "few" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg ячеек"
+                      "value" : "не помещаются %arg ячейки"
                     }
                   },
                   "many" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg ячеек"
+                      "value" : "не помещаются %arg ячеек"
                     }
                   },
                   "one" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg ячейки"
+                      "value" : "не помещается %arg ячейка"
                     }
                   },
                   "other" : {
                     "stringUnit" : {
                       "state" : "translated",
-                      "value" : "%arg ячейки"
+                      "value" : "не помещаются %arg ячейки"
                     }
                   }
                 }
@@ -244,25 +244,25 @@
               "few" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Осталось %lld ячейки"
+                  "value" : "Свободно %lld ячейки"
                 }
               },
               "many" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Осталось %lld ячеек"
+                  "value" : "Свободно %lld ячеек"
                 }
               },
               "one" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Осталась %lld ячейка"
+                  "value" : "Свободна %lld ячейка"
                 }
               },
               "other" : {
                 "stringUnit" : {
                   "state" : "translated",
-                  "value" : "Осталось %lld ячейки"
+                  "value" : "Свободно %lld ячейки"
                 }
               }
             }
@@ -527,7 +527,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Уже"
+            "value" : "Уменьшить ширину"
           }
         }
       }
@@ -703,7 +703,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Шире"
+            "value" : "Увеличить ширину"
           }
         }
       }
