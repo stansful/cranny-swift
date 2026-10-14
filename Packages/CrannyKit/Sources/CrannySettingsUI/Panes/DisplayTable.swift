@@ -176,7 +176,7 @@ private struct DisplayRow: View {
                     Text("Floating island", bundle: .module, comment: "Settings: no-notch style").tag(NoNotchStyle?.some(.floatingIsland))
                     Text("Attached", bundle: .module, comment: "Settings: no-notch style").tag(NoNotchStyle?.some(.attached))
                 }
-                Text("Off", bundle: .module, comment: "Settings: option that turns something off (a timeout, a display)").tag(NoNotchStyle?.some(.off))
+                Text("Off", bundle: .module, comment: "Settings: option that turns something off (ambient light, a display style, a shortcut)").tag(NoNotchStyle?.some(.off))
             } label: {
                 Text("Style of \(display.name)", bundle: .module, comment: "Settings ▸ General ▸ Displays: VoiceOver label; the argument is a display name")
             }

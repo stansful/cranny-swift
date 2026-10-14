@@ -227,7 +227,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Через сутки"
+            "value" : "Сутки"
           }
         }
       }
@@ -1036,7 +1036,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Удалять объекты"
+            "value" : "Хранить объекты"
           }
         }
       }
@@ -1388,7 +1388,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "При выходе из Cranny"
+            "value" : "До выхода из Cranny"
           }
         }
       }

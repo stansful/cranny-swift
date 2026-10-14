@@ -487,7 +487,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Все дисплеи"
+            "value" : "На всех дисплеях"
           }
         }
       }
@@ -663,7 +663,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Встроенный дисплей"
+            "value" : "На встроенном дисплее"
           }
         }
       }
@@ -806,7 +806,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Выбранные дисплеи"
+            "value" : "На выбранных дисплеях"
           }
         }
       }
@@ -1092,7 +1092,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Дисплей с указателем"
+            "value" : "На дисплее с указателем"
           }
         }
       }
@@ -1312,7 +1312,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Сворачивать через"
+            "value" : "Сворачивать при бездействии"
           }
         }
       }
@@ -2131,6 +2131,17 @@
         }
       }
     },
+    "Never" : {
+      "comment" : "Settings: the zero value of a timeout (Close after inactivity, Fold away after): it never happens",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Никогда"
+          }
+        }
+      }
+    },
     "New text in notes and to-dos appears with a short reveal." : {
       "comment" : "Settings ▸ Appearance: footnote of Typing effect",
       "localizations" : {
@@ -2214,7 +2225,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ни один из выбранных дисплеев не подключён, поэтому Cranny показывается на «%@»."
+            "value" : "Ни один из выбранных дисплеев не подключён, поэтому Cranny показывается на дисплее «%@»."
           }
         }
       }
@@ -2325,7 +2336,7 @@
       }
     },
     "Off" : {
-      "comment" : "Settings: option that turns something off (a timeout, a display)",
+      "comment" : "Settings: option that turns something off (ambient light, a display style, a shortcut)",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -3067,7 +3078,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Показывать на"
+            "value" : "Где показывать"
           }
         }
       }
@@ -3078,7 +3089,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Показывать на «%@»"
+            "value" : "Показывать на дисплее «%@»"
           }
         }
       }

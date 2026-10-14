@@ -95,7 +95,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Дисплей с указателем"
+            "value" : "На дисплее с указателем"
           }
         }
       }
@@ -403,7 +403,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Показывать на"
+            "value" : "Где показывать"
           }
         }
       }

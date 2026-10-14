@@ -154,7 +154,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Приложение"
+            "value" : "В приложении"
           }
         }
       }
@@ -176,7 +176,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Браузер"
+            "value" : "В браузере"
           }
         }
       }
@@ -633,7 +633,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Открывать встречи в"
+            "value" : "Открывать встречи"
           }
         }
       }
