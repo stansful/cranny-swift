@@ -103,6 +103,8 @@ import SwiftUI
             forName: NSWindow.didChangeOcclusionStateNotification, object: panel, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.updateVisibility() }
         }
+        // The open shape follows every layout change (⌘E, Settings, presets, Reset, Undo), not only the next input.
+        tokens.append(viewModel.observeLayout())
         // Timeouts and per-display toggles re-arm the machine's idle timers.
         let settings = registry.services.settings
         tokens.append(observe({ [key] in Self.timerSettings(settings, display: key) }) { [weak self] _ in

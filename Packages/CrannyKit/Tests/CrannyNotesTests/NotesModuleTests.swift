@@ -1,6 +1,7 @@
 // Registration (contributions, no side effects), ⌘K commands and the editor's key map.
 import CrannyCore
 import Foundation
+import Observation
 import Testing
 @testable import CrannyNotes
 
@@ -23,19 +24,47 @@ import Testing
     #expect(widget.title == NotesStrings.notes)
     #expect(widget.hasOptions)
     #expect(registry.captureTargets.map(\.id) == ["notes"])
+    #expect(registry.captureTargets.first?.widget == .notes)                    // typing goes there only while it is shown
     let shortcut = try #require(registry.shortcuts.first { $0.id == .newNote })
     #expect(shortcut.defaultCombo == nil)                                       // off until the user sets one
     #expect(registry.commandProviders.count == 1)
     #expect(registry.pages.isEmpty && registry.activities.isEmpty && registry.permissionUses.isEmpty)
 }
 
+/// Records the Settings panes the module opens (the preview double ignores them).
+@MainActor @Observable private final class SettingsRecorder: AppControl {
+    private(set) var opened: [SettingsPageID?] = []
+    var loginItem: LoginItemState = .disabled
+    var update: UpdateState = .idle
+    func setLaunchAtLogin(_ enabled: Bool) {}
+    func checkForUpdates() {}
+    func shortcutState(_ id: ShortcutID) -> ShortcutState { .off }
+    func setShortcut(_ id: ShortcutID, _ combo: KeyCombo?) -> ShortcutState { .off }
+    func openSettings(_ page: SettingsPageID?) { opened.append(page) }
+    func showWelcome() {}
+    func startTutorial() {}
+    func showOnNotch(_ state: PreviewStageState) {}
+    func resetAllSettings() {}
+    func quit() {}
+}
+
 @Test func theShortcutCreatesANoteAndOpensCranny() async throws {
-    let registry = ModuleRegistry(services: .preview())
+    let preview = CrannyServices.preview()
+    let app = SettingsRecorder()
+    let services = CrannyServices(settings: preview.settings, permissions: preview.permissions, haptics: preview.haptics,
+                                  paths: preview.paths, notch: preview.notch, environment: preview.environment, app: app)
+    let registry = ModuleRegistry(services: services)
     registry.register(NotesModule.self)
     await registry.runLaunchHooks()
     let notch = try #require(registry.services.notch as? PreviewNotchControl)
-    registry.shortcuts.first { $0.id == .newNote }?.perform()
-    #expect(notch.calls.last == "open(-,notes.editor,keyboard)")
+    let shortcut = try #require(registry.shortcuts.first { $0.id == .newNote })
+    // The default Home has no Notes: no hidden note, no panel without the widget; Layout & Widgets opens instead.
+    shortcut.perform()
+    #expect(notch.calls.isEmpty && app.opened == [.nookAndWidgets])
+    #expect(registry.commandProviders[0].commands(matching: "").isEmpty)
+    services.settings[CoreSettings.pages] = [NookPreset.maker.page]
+    shortcut.perform()
+    #expect(notch.calls.last == "open(nook,notes.editor,keyboard)" && app.opened.count == 1)
     let commands = registry.commandProviders[0].commands(matching: "")
     #expect(commands.count == 2)                                                // New note + the new note
     registry.runTerminateHooks()
@@ -45,6 +74,8 @@ import Testing
 @Suite("Command palette") struct NotesCommandsTests {
     @Test func listsNewAndEveryNoteAndFilters() {
         let services = CrannyServices.preview()
+        services.settings[CoreSettings.pages] = [NookPreset.listener.page,
+                                                 NookPage(id: "page.notes", symbol: "note.text", items: [.init(.notes, cells: 4)])]
         let model = NotesModel(settings: services.settings, notch: services.notch, store: NotesStore(paths: services.paths))
         model.adoptLoadedNotes([Note(title: "deploy.md", mode: .code), Note(title: "Groceries", mode: .plain)])
         let commands = NotesCommands(model: model)
@@ -57,7 +88,18 @@ import Testing
         commands.commands(matching: "Groceries").first?.perform()
         #expect(model.selectedEntry?.title == "Groceries")
         let notch = services.notch as? PreviewNotchControl
-        #expect(notch?.calls.last == "open(-,notes.editor,keyboard)")
+        #expect(notch?.calls.last == "open(page.notes,notes.editor,keyboard)")
+    }
+
+    /// Both commands show the note in the widget: while it is on no page (the default Home) none is offered.
+    @Test func offersNothingWhileNotesIsOnNoPage() {
+        let services = CrannyServices.preview()
+        let model = NotesModel(settings: services.settings, notch: services.notch, store: NotesStore(paths: services.paths))
+        model.adoptLoadedNotes([Note(title: "Groceries", mode: .plain)])
+        let commands = NotesCommands(model: model)
+        #expect(commands.commands(matching: "").isEmpty && commands.commands(matching: "groc").isEmpty)
+        services.settings[CoreSettings.pages] = [NookPreset.maker.page]
+        #expect(commands.commands(matching: "").count == 2)
     }
 }
 
@@ -69,6 +111,7 @@ import Testing
 
 @Test func demoRedactionKeepsNoteTitlesOutOfThePalette() {
     let services = CrannyServices.preview()
+    services.settings[CoreSettings.pages] = [NookPreset.maker.page]
     let model = NotesModel(settings: services.settings, notch: services.notch, store: NotesStore(paths: services.paths))
     model.adoptLoadedNotes([Note(title: "Salary review", mode: .plain)])
     let redacts = Flag(true)

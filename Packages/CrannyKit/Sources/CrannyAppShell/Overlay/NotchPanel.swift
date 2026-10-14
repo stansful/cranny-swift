@@ -58,6 +58,8 @@ final class NotchPanel: NSPanel {
     func dragUpdated(_ info: any NSDraggingInfo, in view: NSView) -> NSDragOperation
     func dragExited()
     func performDrop(_ info: any NSDraggingInfo, in view: NSView) -> Bool
+    /// The drag session ended, dropped here or not.
+    func dragEnded()
 }
 
 /// Root content view: hit-testing limited to the shape, AppKit drop destination for the Tray.
@@ -94,6 +96,9 @@ final class NotchRootView: NSView {
     override func prepareForDragOperation(_ sender: any NSDraggingInfo) -> Bool { dropTarget != nil }
     override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
         dropTarget?.performDrop(sender, in: self) ?? false
+    }
+    override func draggingEnded(_ sender: any NSDraggingInfo) {
+        dropTarget?.dragEnded()
     }
     override func wantsPeriodicDraggingUpdates() -> Bool { false }        // updates come with pointer moves only
 }

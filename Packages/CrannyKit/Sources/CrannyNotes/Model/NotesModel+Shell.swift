@@ -63,23 +63,32 @@ extension NotesModel {
     /// Makes the panel key without activating the app, so typing reaches the editor (new note from a button).
     func requestKeyboardFocus() { notch.requestKeyboardFocus() }
 
-    /// Opens the panel on the page that holds the Notes widget, focused on it, with keyboard focus.
+    /// The first grid page that shows the Notes widget; nil while it is on none (the default Home has no Notes).
+    var notesPage: PageID? {
+        settings[CoreSettings.pages].first { $0.items.contains { $0.widget == .notes } }?.id
+    }
+
+    /// Opens the panel on the page that holds the Notes widget, focused on it, with keyboard focus. Nothing while the
+    /// widget is on no page: the panel would open without it.
     func reveal() {
-        let page = settings[CoreSettings.pages].first { $0.items.contains { $0.widget == .notes } }?.id
+        guard let page = notesPage else { return }
         notch.open(page: page, focus: .notes, reason: .keyboard)
     }
 
-    /// ⌘K "Open ‹title›".
+    /// ⌘K "Open ‹title›" (offered only while the widget is on a page).
     func open(_ id: UUID) {
         select(id)
         requestFocus()
         reveal()
     }
 
-    /// The New note shortcut and ⌘K "New note".
-    func createAndReveal() {
+    /// The New note shortcut and ⌘K "New note". While the widget is on no page nothing is created (the note would be
+    /// hidden) and it returns false.
+    @discardableResult func createAndReveal() -> Bool {
+        guard notesPage != nil else { return false }
         newNote()
         reveal()
+        return true
     }
 
     private func setHold(_ hold: Bool, _ reason: String) {

@@ -141,6 +141,9 @@ public nonisolated enum ShortcutState: Sendable, Equatable { case off, registere
     func resetAllSettings()
     /// Quits Cranny (the modules' terminate hooks run first).
     func quit()
+    /// A shortcut recorder listens (true) or stopped (false): Cranny's own global shortcuts pause meanwhile, so the
+    /// keys of a bound one are recorded instead of running it. Default: no-op (Additions/PhaseC-ShortcutRecording.swift).
+    func setShortcutRecording(_ recording: Bool)
 }
 
 // MARK: - Media (implemented by CrannyMedia)

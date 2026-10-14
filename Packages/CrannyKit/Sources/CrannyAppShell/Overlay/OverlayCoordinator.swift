@@ -129,10 +129,7 @@ private let log = Log.logger(.overlay)
         screens = all.map { ($0.descriptor.key, $0.descriptor.displayID, $0.screen.frame) }
         let wanted = Self.panelScreens(settings: registry.services.settings)
         let keys = Set(wanted.map(\.key))
-        for (key, controller) in controllers where !keys.contains(key) {
-            controller.close()
-            controllers[key] = nil
-        }
+        for key in controllers.keys where !keys.contains(key) { retirePanel(key) }
         for entry in wanted {
             if let existing = controllers[entry.key] {
                 existing.update(screen: entry.screen, style: entry.style)
@@ -146,7 +143,18 @@ private let log = Log.logger(.overlay)
         log.info("panels on \(self.controllers.count, privacy: .public) of \(self.screens.count, privacy: .public) display(s)")
     }
 
-    private func makeController(screen: NSScreen, key: DisplayKey, style: NoNotchStyle) -> NotchPanelController {
+    /// Removes a display's panel (Show On changed, display unplugged). It is closed through its machine first, while
+    /// its events still reach the observers: `.closed` and `.pinned(false)` end "Keep Cranny Open", the menu's open
+    /// state and the modules' panel-closed cleanup (holds, edit modes, the camera) as for any other close.
+    func retirePanel(_ key: DisplayKey) {
+        guard let controller = controllers[key] else { return }
+        controller.viewModel.send(.close)
+        controllers[key] = nil
+        controller.close()
+        if !controllers.values.contains(where: { $0.viewModel.state.pinned }) { isPinned = false }
+    }
+
+    func makeController(screen: NSScreen, key: DisplayKey, style: NoNotchStyle) -> NotchPanelController {
         let controller = NotchPanelController(screen: screen, key: key, style: style, registry: registry)
         let viewModel = controller.viewModel
         viewModel.pointerSpeed = { [weak self] in self?.pointer.currentSpeed ?? 0 }
@@ -182,6 +190,8 @@ private let log = Log.logger(.overlay)
     var openController: NotchPanelController? {
         controllers.values.first { $0.viewModel.state.isOpen }
     }
+    /// A panel is open on some display (the menu's "Open Cranny" reopens instead of toggling then).
+    var isOpen: Bool { openController != nil }
 
     // MARK: Pointer and file drags (§5.5)
 

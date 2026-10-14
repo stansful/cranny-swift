@@ -225,11 +225,14 @@ private func phase(_ s: NotchMachineState, _ c: NotchMachineConfig = idle) -> No
 @Test func programmaticOpensKeepThePageAndOnlyNamedFocusTakesTheKeyboard() {
     let (open, fx) = run([.open(page: .tray, focus: nil, reason: .programmatic)])
     #expect(open.openState?.page == .tray && !fx.contains(.makeKey))
+    // The pointer is outside: every programmatic open re-arms the glance before it closes (C-SHELL-9).
+    let glance: [NotchEffect] = [.cancel(.grace), .schedule(.grace, after: NotchMachine.unattendedOpenGrace)]
     let (again, fx2) = run([.open(page: nil, focus: "timer.clock", reason: .programmatic)], from: open)
     #expect(again.openState == OpenState(page: .tray, focus: "timer.clock", reason: .programmatic))
-    #expect(fx2 == [.makeKey])                                                  // "gives it keyboard focus"; no 2nd `.opened`
+    #expect(fx2.filter { !glance.contains($0) } == [.makeKey])                 // "gives it keyboard focus"; no 2nd `.opened`
     let (moved, fx3) = run([.open(page: .nook, focus: nil, reason: .programmatic)], from: again)
-    #expect(moved.openState?.page == .nook && fx3 == [.emit(.pageChanged(.nook))])
+    #expect(moved.openState?.page == .nook && fx3.filter { !glance.contains($0) } == [.emit(.pageChanged(.nook))])
+    #expect(fx3.last == .schedule(.grace, after: NotchMachine.unattendedOpenGrace))
     let (paged, fx4) = run([.selectPage("page.focus"), .selectPage("page.focus")], from: open)
     #expect(paged.openState?.page == "page.focus" && fx4 == [.emit(.pageChanged("page.focus"))])
     let (focused, _) = run([.setFocus("notes.editor")], from: open)

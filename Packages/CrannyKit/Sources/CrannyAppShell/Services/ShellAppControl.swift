@@ -28,9 +28,9 @@ import SwiftUI
     @ObservationIgnored private var tutorial: TutorialController?
     /// Default combinations of the registered global shortcuts (the menu shows the effective binding).
     @ObservationIgnored private var defaultCombos: [ShortcutID: KeyCombo] = [:]
-    /// Whether a panel is open, followed through the notch events (the coordinator keeps at most one open).
-    @ObservationIgnored private(set) var isPanelOpen = false
-    @ObservationIgnored private var notchEvents: (control: ShellNotchControl, id: UUID)?
+    /// Whether a panel is open, read from the panels themselves (not inferred from events, which a panel removed
+    /// with its display would never send).
+    var isPanelOpen: Bool { overlay?.isOpen ?? false }
 
     init() {}
 
@@ -38,23 +38,6 @@ import SwiftUI
                  welcomeWindow: WelcomeWindowController, hotKeys: HotKeyCenter) {
         self.settings = settings; self.overlay = overlay; self.settingsWindow = settingsWindow
         self.welcomeWindow = welcomeWindow; self.hotKeys = hotKeys
-        if let notchEvents { notchEvents.control.removeEventObserver(notchEvents.id) }
-        let id = overlay.notchControl.addEventObserver { [weak self] event in self?.notchEvent(event) }
-        notchEvents = (overlay.notchControl, id)
-    }
-
-    /// Stops following the panel (`ShellAppServices.stop`).
-    func disconnect() {
-        if let notchEvents { notchEvents.control.removeEventObserver(notchEvents.id) }
-        notchEvents = nil
-    }
-
-    private func notchEvent(_ event: NotchEvent) {
-        switch event {
-        case .opened: isPanelOpen = true
-        case .closed: isPanelOpen = false
-        default: break
-        }
     }
 
     func attach(loginItems: LoginItemController, updates: UpdateChecker, pause: PauseController, demo: DemoMode,
@@ -90,6 +73,8 @@ import SwiftUI
     func showOnNotch(_ state: PreviewStageState) { overlay?.play(state, for: .seconds(5)) }
     func resetAllSettings() { settings?.resetAll() }
     func quit() { NSApp.terminate(nil) }
+    /// Settings ▸ Keyboard records a shortcut: the global hot keys pause, so pressing a bound one records it.
+    func setShortcutRecording(_ recording: Bool) { hotKeys?.setPaused(recording) }
 
     // MARK: Menu bar helpers (not part of the port)
 
@@ -103,8 +88,11 @@ import SwiftUI
     /// How "Open Cranny" in the menu opens the panel: like ⌃⌥N while nothing is open (the pointer's display,
     /// keyboard focus), otherwise by opening on the pointer's display again — never by closing, unlike the
     /// hot key, which toggles. (If the open panel's display went away, that opens a new one where the user is.)
-    enum OpenRequest: Equatable { case hotKey, reopen }
-    var openRequest: OpenRequest { isPanelOpen ? .reopen : .hotKey }
+    enum OpenRequest: Equatable {
+        case hotKey, reopen
+        init(isPanelOpen: Bool) { self = isPanelOpen ? .reopen : .hotKey }
+    }
+    var openRequest: OpenRequest { OpenRequest(isPanelOpen: isPanelOpen) }
 
     /// "Open Cranny" (menu bar): opens, never closes.
     func openPanel() {

@@ -1,7 +1,8 @@
 // CrannyAppShell/App/AppDelegate.swift — a thin orchestrator (ARCHITECTURE.md §3.4, §10.1).
 // Builds the ports and the registry (CompositionRoot), registers the shell's own contributions, then owns and
 // starts four components with final initializers: OverlayCoordinator (WP13), SettingsWindowController (WP14),
-// WelcomeWindowController (WP15) and ShellAppServices (WP16). `--diagnostics` exits before any window exists.
+// WelcomeWindowController (WP15) and ShellAppServices (WP16). `--diagnostics` exits before any window exists, and
+// before any module launched, so no terminate hook runs then either (`LaunchGate`).
 import AppKit
 import CrannyCore
 import Foundation
@@ -18,6 +19,8 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindow: SettingsWindowController?
     private var welcomeWindow: WelcomeWindowController?
     private var appServices: ShellAppServices?
+    /// Terminate hooks only after launch hooks; a quit during the launch waits for them.
+    private let launchGate = LaunchGate()
 
     /// Created by `@NSApplicationDelegateAdaptor`; everything starts in `applicationDidFinishLaunching`.
     public override init() { super.init() }
@@ -48,12 +51,24 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
         #if DEBUG
         QAHooks.apply(QAHooks.Options(arguments: CommandLine.arguments), to: overlay, appControl: appControl)
         #endif
-        Task { await registry.runLaunchHooks() }
+        // Drop folders of file promises a crash (or a quit mid-drop) left behind.
+        let paths = registry.services.paths
+        Task { await FilePromiseResolver.sweepIncoming(paths: paths) }
+        launchGate.launch { await registry.runLaunchHooks() }
     }
 
-    /// Runs the modules' terminate hooks (stop helpers, flush stores).
+    /// A quit while the modules are still launching waits for them (at most `LaunchGate.quitWait`), so no terminate
+    /// hook saves or deletes state that its launch hook has not restored yet.
+    public func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        launchGate.defersQuit { NSApp.reply(toApplicationShouldTerminate: true) } ? .terminateLater : .terminateNow
+    }
+
+    /// Runs the modules' terminate hooks (stop helpers, flush stores) — only if they launched (never in
+    /// `--diagnostics`, whose quit must not touch the user's data) — and deletes the drop folders still there.
     public func applicationWillTerminate(_ notification: Notification) {
-        registry?.runTerminateHooks()
+        guard launchGate.runsTerminateHooks, let registry else { return }
+        registry.runTerminateHooks()
+        FilePromiseResolver.sweepIncomingNow(paths: registry.services.paths)
     }
 
     /// Launching Cranny again (Finder, Spotlight) opens Settings, so a hidden menu bar icon never locks anyone out.

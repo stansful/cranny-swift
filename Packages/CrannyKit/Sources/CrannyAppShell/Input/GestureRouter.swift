@@ -2,7 +2,8 @@
 // Every scroll event reaches `NotchPanel.sendEvent` first, even while the panel is not key (R1 §6). Closed, compact
 // and peek: the shell's own `SwipeTracker(axis: .any)` drives open (down), dismiss (up; over the satellite it
 // dismisses the satellite) and track swipes (left/right), with live rubber-banding in `scene.gestureTranslation`.
-// Over a peek, the gesture acts on the row under the fingers (else on what the peek shows, §4.4).
+// Over a peek, the gesture acts on the row under the fingers (else on what the peek shows, §4.4). Horizontal swipes
+// reach activities as physical finger directions; the activity applies Gestures ▸ Invert itself.
 // Open: a scroll zone under the pointer takes the event; else a vertical swipe up over the header row closes;
 // else SwiftUI gets it (`ScrollView`s in widgets). Phase-less wheel events never form gestures.
 import AppKit
@@ -25,9 +26,13 @@ import Foundation
 
     /// `NotchPanel.scrollInterceptor`: true = consumed.
     func handle(_ event: NSEvent, in view: NSView) -> Bool {
-        let sample = Self.sample(event)
         let local = view.convert(event.locationInWindow, from: nil)
         let point = CGPoint(x: local.x, y: view.bounds.height - local.y)          // canvas: top-left origin
+        return handle(Self.sample(event), at: point, canvas: view.bounds)
+    }
+
+    /// One scroll sample at `point` (canvas, top-left origin): true = consumed.
+    func handle(_ sample: ScrollSample, at point: CGPoint, canvas: CGRect) -> Bool {
         switch scene.phase {
         case .hidden:
             return false
@@ -36,7 +41,7 @@ import Foundation
             return headerSwipe(sample, at: point)
         case .idle, .breath, .compact, .peek:
             guard sample.isPrecise, !sample.phase.isEmpty else { return false }   // a mouse wheel is not a swipe
-            return shapeSwipe(sample, at: point, canvas: view.bounds)
+            return shapeSwipe(sample, at: point, canvas: canvas)
         }
     }
 
@@ -53,9 +58,10 @@ import Foundation
                 target = .shape
             }
         }
-        let settings = registry.services.settings
-        tracker.sensitivity = CGFloat(settings[CoreSettings.gestureSensitivity])
-        tracker.invertHorizontal = settings[CoreSettings.invertTrackSwipe]
+        // Directions stay physical finger motion: Gestures ▸ Invert is applied once, by the activity that changes
+        // the track (`TrackSwipe`), exactly as the Media widget's own scroll zones do. Inverting here as well would
+        // cancel it out over compact and peek.
+        tracker.sensitivity = CGFloat(registry.services.settings[CoreSettings.gestureSensitivity])
         switch tracker.handle(sample) {
         case .tracking(let axis, let translation)?:
             viewModel.setGestureTranslation(rubberBand(axis, translation))

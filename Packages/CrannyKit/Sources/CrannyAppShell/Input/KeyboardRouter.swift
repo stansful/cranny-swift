@@ -4,8 +4,9 @@
 // `.keyboardShortcut(.cancelAction)`), gets it next as a key equivalent; only when nothing in the panel takes it
 // does the shell run the machine's chain (palette / edit / focus → grid, else close), so exactly one of them
 // handles each press and Esc works whatever NotchUI binds. Type-to-capture sends the first printable keys of a
-// keyboard-opened, unfocused panel to the chosen `CaptureTarget`; holding ⌘ for 0.5 s shows the key-cap hints;
-// keys and clicks switch the focus rings on and off. The rest of the keyboard map is NotchUI's.
+// keyboard-opened, unfocused panel to the chosen `CaptureTarget` while its widget is on a page (then shown there);
+// holding ⌘ for 0.5 s shows the key-cap hints; keys and clicks switch the focus rings on and off. The rest of the
+// keyboard map is NotchUI's.
 import AppKit
 import CrannyCore
 import CrannyNotchUI
@@ -96,9 +97,13 @@ import Foundation
         return Self.printable(event.characters, modifiers: event.modifierFlags)
     }
 
-    private func captureTarget() -> CaptureTarget? {
-        guard let id = registry.services.settings[CoreSettings.typeToCapture] else { return nil }
-        return registry.captureTargets.first { $0.id == id }
+    /// The chosen target, while what it creates would be seen: a target whose widget is on no page (the default Home
+    /// has no Notes) gets nothing, and the key stays with the panel instead of creating a hidden item.
+    func captureTarget() -> CaptureTarget? {
+        guard let id = registry.services.settings[CoreSettings.typeToCapture],
+              let target = registry.captureTargets.first(where: { $0.id == id }) else { return nil }
+        if let widget = target.widget, viewModel.page(containing: widget) == nil { return nil }
+        return target
     }
 
     // MARK: Hold ⌘ (DESIGN.md §6.5)

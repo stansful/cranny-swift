@@ -80,6 +80,13 @@ import Testing
         #expect(notch.calls == ["open(nook,calendar.agenda,keyboard)"])
         services.settings[CalendarSettings.joinProviders] = []
         #expect(commands.commands(matching: "").map(\.id.rawValue) == ["calendar.showToday"])
+        // The widget on a page of its own: that page opens. On no page: nothing to show, so no command.
+        services.settings[CoreSettings.pages] = [NookPreset.minimal.page,
+                                                 NookPage(id: "page.days", symbol: "calendar", items: [.init(.calendar, cells: 4)])]
+        try #require(commands.commands(matching: "").last).perform()
+        #expect(notch.calls.last == "open(page.days,calendar.agenda,keyboard)")
+        services.settings[CoreSettings.pages] = [NookPreset.minimal.page]
+        #expect(commands.commands(matching: "").isEmpty)
     }
 
     @Test func settingsNeverShowsThePrompt() async {

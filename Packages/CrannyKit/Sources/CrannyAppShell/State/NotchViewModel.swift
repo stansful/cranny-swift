@@ -135,6 +135,27 @@ import Foundation
     /// Re-derives the scene after settings or the layout changed.
     func refresh() { syncScene(config: currentConfig()) }
 
+    /// The open shape follows the layout whoever writes it: ⌘E (`commitLayout`), a card's ⋯ menu, Settings ▸ Layout &
+    /// Widgets, the Welcome presets, Reset All and Undo all write `CoreSettings.pages`, so the scene is re-derived
+    /// when the pages (or the last page) change. A grid page that was deleted while it showed gives way to the last
+    /// page. The controller keeps the token for as long as the panel lives.
+    func observeLayout() -> ObservationToken {
+        let settings = registry.services.settings
+        return observe({ LayoutFacts(pages: settings[CoreSettings.pages], lastPage: settings[CoreSettings.lastPage]) }) {
+            [weak self] _ in self?.layoutChanged()
+        }
+    }
+
+    private struct LayoutFacts: Equatable {
+        var pages: [NookPage]
+        var lastPage: PageID
+    }
+
+    private func layoutChanged() {
+        if let page = state.openState?.page, !pageExists(page) { send(.selectPage(currentConfig().lastPage)) }
+        refresh()
+    }
+
     /// The geometry hover zones use: the drawn shape, or the closed shape while the idle handle is hidden
     /// (hover is geometric and brings it back, DESIGN.md §3.5); nil while hidden for any other reason.
     var hoverGeometry: NotchGeometry? {
@@ -160,10 +181,8 @@ import Foundation
 
     private func reduce(_ input: NotchInput) {
         var input = input
-        // Only pages that exist are opened: a module page whose module is not registered, or a deleted user
-        // page, falls back to the last page (and that to the first grid page), so a tab is always selected.
         switch input {
-        case let .open(page?, focus, reason) where !pageExists(page): input = .open(page: nil, focus: focus, reason: reason)
+        case let .open(page, focus, reason): input = resolvedOpen(page: page, focus: focus, reason: reason)
         case .selectPage(let page) where !pageExists(page): return
         default: break
         }
@@ -175,6 +194,27 @@ import Foundation
         }
         for effect in effects { perform(effect) }
         syncScene(config: config)
+    }
+
+    /// What an open request shows. Only pages that exist are opened: a module page whose module is not registered,
+    /// or a deleted user page, falls back to the last page (and that to the first grid page), so a tab is always
+    /// selected. A focused widget is shown (`NotchControl.open(focus:)`): when the page that would open does not
+    /// hold it, the grid page that does opens instead, whatever page the caller named ("Show today's events" asks
+    /// for Home, the widget may be on another page). A widget that is on no page cannot take focus.
+    private func resolvedOpen(page: PageID?, focus: WidgetID?, reason: OpenReason) -> NotchInput {
+        var page = page.flatMap { pageExists($0) ? $0 : nil }
+        var focus = focus
+        if let widget = focus {
+            let shown = page ?? state.openState?.page ?? currentConfig().lastPage
+            if !self.page(shown, holds: widget) {
+                if let holder = self.page(containing: widget) {
+                    page = holder
+                } else if isGridPage(shown) {
+                    focus = nil
+                }
+            }
+        }
+        return .open(page: page, focus: focus, reason: reason)
     }
 
     private func applyLineup(_ next: Lineup) {

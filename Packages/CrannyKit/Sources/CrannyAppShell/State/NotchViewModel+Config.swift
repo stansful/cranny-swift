@@ -17,6 +17,11 @@ extension NotchViewModel {
         registry.services.settings[CoreSettings.pages].contains { $0.id == page } || registry.pages.contains { $0.id == page }
     }
 
+    /// A page of `CoreSettings.pages` (not a page a module contributes, such as the Tray).
+    func isGridPage(_ page: PageID) -> Bool {
+        registry.services.settings[CoreSettings.pages].contains { $0.id == page }
+    }
+
     /// The grid page that holds a widget (clicking an activity opens its widget there).
     func page(containing widget: WidgetID) -> PageID? {
         registry.services.settings[CoreSettings.pages].first { $0.items.contains { $0.widget == widget } }?.id

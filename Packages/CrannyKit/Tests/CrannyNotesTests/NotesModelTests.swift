@@ -406,7 +406,9 @@ import Testing
     @Test func revealOpensThePageThatHoldsNotes() async {
         let model = await loadedModel()
         model.reveal()
-        #expect(notch.calls.last == "open(-,notes.editor,keyboard)")            // not on any page: no page given
+        #expect(!notch.calls.contains { $0.hasPrefix("open(") })               // not on any page: nothing to show
+        let count = model.entries.count
+        #expect(!model.createAndReveal() && model.entries.count == count)      // and no hidden note
         services.settings[CoreSettings.pages] = [NookPreset.listener.page,
                                                  NookPage(id: "page.focus", symbol: "note.text", items: [.init(.notes, cells: 4)])]
         let id = model.newNote(focus: false)

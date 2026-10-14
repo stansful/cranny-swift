@@ -8,8 +8,16 @@ import CrannyCore
 import CrannyNotchUI
 import Foundation
 
+/// What the display-selection rule needs to know about a connected display (`DisplayCatalog.shown`): the panels
+/// (`DisplayDescriptor`) and the menu bar's Show On ▸ rows (`ConnectedDisplay`) answer it with one rule.
+nonisolated protocol DisplayFacts {
+    var key: DisplayKey { get }
+    var isBuiltIn: Bool { get }
+    var hasNotch: Bool { get }
+}
+
 /// One connected display, as the selection policy sees it.
-nonisolated struct DisplayDescriptor: Equatable, Sendable {
+nonisolated struct DisplayDescriptor: Equatable, Sendable, DisplayFacts {
     var key: DisplayKey
     var displayID: CGDirectDisplayID
     var isBuiltIn: Bool
@@ -30,8 +38,16 @@ nonisolated enum DisplayCatalog {
     /// Displays whose style resolves to `.off` get no panel; a hardware notch is always drawn.
     static func placements(for displays: [DisplayDescriptor], selection: DisplaySelection,
                            perDisplay: [DisplayKey: DisplayPreferences], noNotchStyle: NoNotchStyle) -> [PanelPlacement] {
-        let primary = displays.first(where: \.isPrimary) ?? displays.first
-        let chosen: [DisplayDescriptor]
+        shown(displays, primary: displays.first(where: \.isPrimary) ?? displays.first, selection: selection,
+              perDisplay: perDisplay, noNotchStyle: noNotchStyle)
+            .map { PanelPlacement(key: $0.key, style: perDisplay[$0.key]?.style ?? noNotchStyle) }
+    }
+
+    /// The displays that show Cranny, in `displays` order: the selection (with its fallbacks to the built-in display or
+    /// `primary`), minus the displays whose style hides it. The one rule behind the panels and the Show On ▸ checkmarks.
+    static func shown<D: DisplayFacts>(_ displays: [D], primary: D?, selection: DisplaySelection,
+                                       perDisplay: [DisplayKey: DisplayPreferences], noNotchStyle: NoNotchStyle) -> [D] {
+        let chosen: [D]
         switch selection {
         case .builtIn:
             chosen = [displays.first(where: \.isBuiltIn) ?? primary].compactMap { $0 }
@@ -41,13 +57,15 @@ nonisolated enum DisplayCatalog {
             let matching = displays.filter { keys.contains($0.key) }
             chosen = matching.isEmpty ? [primary].compactMap { $0 } : matching
         }
-        return chosen.compactMap { display in
-            // One rule with the Settings stage (Core, WP14): an explicit per-display Off hides Cranny on any display;
-            // the no-notch style applies only where there is no notch.
-            guard DisplayPreferences.showsCranny(perDisplay[display.key], noNotchStyle: noNotchStyle,
-                                                 hasNotch: display.hasNotch) else { return nil }
-            return PanelPlacement(key: display.key, style: perDisplay[display.key]?.style ?? noNotchStyle)
-        }
+        // One rule with the Settings stage (Core, WP14): an explicit per-display Off hides Cranny on any display;
+        // the no-notch style applies only where there is no notch.
+        return chosen.filter { showsCranny($0, perDisplay: perDisplay, noNotchStyle: noNotchStyle) }
+    }
+
+    /// Whether the display's style lets Cranny appear on it (`DisplayPreferences.showsCranny`).
+    static func showsCranny(_ display: some DisplayFacts, perDisplay: [DisplayKey: DisplayPreferences],
+                            noNotchStyle: NoNotchStyle) -> Bool {
+        DisplayPreferences.showsCranny(perDisplay[display.key], noNotchStyle: noNotchStyle, hasNotch: display.hasNotch)
     }
 
     /// `.pointer`: panels everywhere, only the pointer's display shows one (others are `notThisDisplay`).
