@@ -2,13 +2,15 @@
 # Build every CrannyKit library target on its own (`swift build --target`), each in
 # its own scratch path, so a module that accidentally relies on something it does not
 # import/depend on fails here instead of only inside the app build. Any compiler warning
-# fails the target too (zero-warning policy; warnings appear on a target's first/clean build).
+# fails the target too (zero-warning policy): warnings are built as errors, so a warned file
+# never produces an object and fails again on every run, warm scratch dir or clean.
 #
 #   scripts/check-modules.sh                 # all non-test targets, sequential
 #   scripts/check-modules.sh CrannyMedia     # just these targets
 #   JOBS=4 scripts/check-modules.sh          # build targets in parallel
 #   TEST=1 scripts/check-modules.sh          # also run `swift test`
-#   ALLOW_WARNINGS=1 scripts/check-modules.sh   # report warnings without failing
+#   ALLOW_WARNINGS=1 scripts/check-modules.sh   # report warnings without failing (only on a target's
+#                                               # first/clean build: plain warnings are not sticky)
 source "$(dirname "$0")/lib.sh"
 ensure_xcode   # SwiftPM from Xcode's toolchain (CLT's would work too, but keep one toolchain)
 ensure_metal_toolchain   # CrannyEffects (and everything above it) compiles Metal shaders
@@ -34,8 +36,14 @@ build_one() {
   local t="$1" lower scratch
   lower="$(printf '%s' "$t" | tr '[:upper:]' '[:lower:]')"
   scratch="$PACKAGE_DIR/.build-$lower"
-  local log_file="$BUILD_DIR/logs/module-$t.log" warnings
-  if swift build --target "$t" --scratch-path "$scratch" >"$log_file" 2>&1; then
+  local log_file="$BUILD_DIR/logs/module-$t.log" warnings flags=()
+  if [[ "${ALLOW_WARNINGS:-0}" != 1 ]]; then
+    # Sticky zero-warning gate: a warning is an error, so the file is recompiled (and fails) on every run.
+    # -Werror goes only to C/Objective-C targets: through swiftc it would also apply to SDK headers.
+    flags=(-Xswiftc -warnings-as-errors)
+    [[ -n "$(find "$PACKAGE_DIR/Sources/$t" -name '*.swift' -print -quit)" ]] || flags+=(-Xcc -Werror)
+  fi
+  if swift build --target "$t" --scratch-path "$scratch" ${flags[@]+"${flags[@]}"} >"$log_file" 2>&1; then
     warnings="$(grep -E 'warning:' "$log_file" | grep -vE "$BENIGN_WARNINGS" | sort -u || true)"
     if [[ -n "$warnings" ]]; then
       printf '  \033[33mWARN\033[0m  %s  (log: build/logs/module-%s.log)\n' "$t" "$t"
@@ -46,7 +54,9 @@ build_one() {
     fi
   else
     printf '  \033[31mFAIL\033[0m  %s  (log: build/logs/module-%s.log)\n' "$t" "$t"
-    grep -E 'error:' "$BUILD_DIR/logs/module-$t.log" | head -5 | sed 's/^/        /'
+    # The compiler's own diagnostics (a warning shows up here as an error), without colours or command lines.
+    sed -e $'s/\x1b\\[[0-9;]*m//g' -e $'s/\x1b]8;;[^\x1b]*\x1b\\\\//g' "$log_file" |
+      grep -E '^(/.*:[0-9]+(:[0-9]+)?: )?error:' | grep -v 'failed with a nonzero exit code' | head -5 | sed 's/^/        /'
     return 1
   fi
 }
