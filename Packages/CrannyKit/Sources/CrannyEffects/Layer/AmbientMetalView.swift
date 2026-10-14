@@ -2,7 +2,8 @@
 //
 // Why: drawing the light with a SwiftUI shader re-renders the panel's view tree on every frame, which cost
 // 5–10 % CPU at 30 fps (ARCHITECTURE.md §10.1, issue 1). This view owns a `CAMetalLayer` and its own frame loop,
-// so SwiftUI only hears about the light when an input changes (palette, energy, fill, reveal, budget).
+// so SwiftUI only hears about the light when an input changes (palette, fill, reveal, budget). Live audio energy
+// does not go through SwiftUI at all: each frame samples it from the `AmbientEnergySource`.
 //
 // Energy rules (ARCHITECTURE.md §9.2): frames come from a `Task.sleep` loop paced at the budget's interval
 // (30 fps on AC, 20 on battery); there is no loop while the budget is paused (closed, occluded, full screen),
@@ -31,14 +32,18 @@ import SwiftUI
 /// SwiftUI host of `AmbientMetalNSView`. Used by `AmbientFieldView` on the `.layer` path.
 struct AmbientMetalLayer: NSViewRepresentable {
     var state: AmbientLayerState
+    /// Live energy the view samples in each frame it draws (nil: `state.energy`).
+    var energySource: AmbientEnergySource? = nil
 
     func makeNSView(context: Context) -> AmbientMetalNSView {
         let view = AmbientMetalNSView()
+        view.energySource = energySource
         view.state = state
         return view
     }
 
     func updateNSView(_ view: AmbientMetalNSView, context: Context) {
+        view.energySource = energySource
         view.state = state
     }
 
@@ -58,6 +63,10 @@ final class AmbientMetalNSView: NSView {
     /// The drawable's frame or size changed: the next frame is presented with the Core Animation transaction, so the
     /// new frame and the new pixels appear together.
     private var needsSynchronizedFrame = false
+
+    /// Read in every frame drawn, so a running loop follows the energy without any SwiftUI update; a new source
+    /// draws nothing by itself (`AmbientEnergySource`).
+    var energySource: AmbientEnergySource?
 
     /// Set by SwiftUI on every update.
     var state: AmbientLayerState? {
@@ -289,7 +298,8 @@ final class AmbientMetalNSView: NSView {
     /// Draws one frame. `synchronized`: a resize frame, presented with the new bounds (its drawable may be larger than
     /// the band). Any other frame first returns the drawable to the band's exact size.
     private func draw(at date: Date, running: Bool, synchronized: Bool = false) {
-        guard let state, let renderer, hasSize, window != nil else { return }
+        guard var state, let renderer, hasSize, window != nil else { return }
+        if let energySource { state.energy = energySource.sample() }
         if !synchronized { updateDrawableSize() }
         guard let layout = drawableLayout else { return }
         let time: Double

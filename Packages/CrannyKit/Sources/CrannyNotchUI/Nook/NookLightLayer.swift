@@ -6,8 +6,8 @@
 // `FirstLight` (the first open per session, 1.0 s) and `songChangeRipple` (0.6 s), each started by the scene's
 // delight serial, which the shell has already capped (DESIGN.md §5.5). Energy budget: ≤ 30 fps on AC, ≤ 20 on
 // battery, paused while closed, hidden, occluded or behind a full-screen app, a resting frame under Reduce Motion.
-// Live audio energy changes up to 30 times a second: only the leaf that hands it to the light (`EnergizedLight`)
-// reads it, so those changes never re-evaluate this layer, the first light or the ripple around it.
+// Live audio energy changes up to 30 times a second: no view reads it. The light samples it in each frame it draws
+// (`EnergizedLight`, `AmbientEnergySource`), so those changes re-evaluate nothing, and a frozen light ignores them.
 import CrannyCore
 import CrannyEffects
 import SwiftUI
@@ -68,8 +68,10 @@ struct NookLightLayer: View {
     }
 }
 
-/// The light with the live audio energy (0…1, 0 without a source). Its own view, so the energy's Observation
-/// dependency belongs to this leaf: an energy change re-evaluates only it, not `NookLightLayer`.
+/// The light with the live audio energy (0…1, 0 without a source). The energy is not read here: the light samples it
+/// in each frame it draws (`AmbientEnergySource`), so an energy change re-evaluates no view, this one included.
+/// A frozen light (Reduce Motion, Motion ▸ Instant, snapshots, Low Power, a full-screen app in front) gets no source:
+/// it keeps its resting frame at energy 0 instead of being redrawn with every change of the music's loudness.
 private struct EnergizedLight: View {
     let palette: AmbientPalette
     let level: AmbienceLevel
@@ -78,8 +80,13 @@ private struct EnergizedLight: View {
     let source: (any NowPlayingSource)?
 
     var body: some View {
-        AmbientLayer(palette: palette, level: level, effect: effect,
-                     energy: min(max(source?.audioEnergy ?? 0, 0), 1), budget: budget)
+        AmbientLayer(palette: palette, level: level, effect: effect, energy: 0, budget: budget,
+                     energySource: energySource)
+    }
+
+    private var energySource: AmbientEnergySource? {
+        guard let source, !budget.reduceMotion, !budget.lowPower, !budget.fullScreenFront else { return nil }
+        return AmbientEnergySource { source.audioEnergy }
     }
 }
 

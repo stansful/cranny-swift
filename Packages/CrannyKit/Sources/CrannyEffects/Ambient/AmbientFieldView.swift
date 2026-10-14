@@ -18,6 +18,8 @@ struct AmbientFieldView: View, Animatable {
     var budget: EffectBudget
     var restingTime: Double
     var halo: HaloPlacement = .ambient
+    /// Live energy sampled per frame instead of `energy` (`AmbientEnergySource`).
+    var energySource: AmbientEnergySource? = nil
 
     @Environment(\.displayScale) private var displayScale
     @Environment(\.ambientReveal) private var reveal
@@ -36,7 +38,7 @@ struct AmbientFieldView: View, Animatable {
                                        layerAllowed: layerAllowed)
         Group {
             if path == .layer {
-                AmbientMetalLayer(state: layerState(budget))
+                AmbientMetalLayer(state: layerState(budget), energySource: energySource)
             } else if path == .staticHalo {
                 HaloFallback(glow: palette.glow1, level: level, placement: halo)
                     .modifier(AmbientMasks(fill: fill, reveal: reveal, reduceMotion: budget.reduceMotion))
@@ -60,7 +62,7 @@ struct AmbientFieldView: View, Animatable {
         EffectClock(minimumInterval: budget.minimumInterval) { date in
             let time = EffectTiming.ambientTime(date, budget: budget, restingTime: restingTime)
             let ripple = budget.reduceMotion ? nil : Ripple.elapsed(since: rippleStart, at: date)
-            let energy = Ripple.energy(energy, elapsed: ripple)
+            let energy = Ripple.energy(energySource?.sample() ?? energy, elapsed: ripple)
             if path == .shader {
                 AmbientShader(effect: effect, glows: palette.glows, level: level, energy: energy, time: time,
                               halo: halo, displayScale: displayScale)

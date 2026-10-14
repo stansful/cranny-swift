@@ -23,17 +23,22 @@ public struct AmbientLayer: View, Animatable {
     public var level: AmbienceLevel
     /// Settings ▸ Appearance ▸ Effect. Low Power / thermal turns it into the static halo.
     public var effect: AmbientEffect
-    /// 0…1: real audio RMS with permission, else 0.
+    /// 0…1: real audio RMS with permission, else 0. Unused while `energySource` is set.
     public var energy: Double
+    /// Live energy read once per frame (the Metal layer samples it outside SwiftUI); nil: `energy`.
+    public var energySource: AmbientEnergySource?
     /// Frame rate, pause and path. `isOpen` also drives the fill (true) and the drain (false).
     public var budget: EffectBudget
 
     @Environment(\.cranny) private var theme
     @State private var fill: Double = 0
 
-    /// The light layer for `effect` in `palette` at `level`.
-    public init(palette: AmbientPalette, level: AmbienceLevel, effect: AmbientEffect, energy: Double, budget: EffectBudget) {
+    /// The light layer for `effect` in `palette` at `level`. Pass a live `energySource` instead of a changing `energy`
+    /// value, so an energy change does not re-evaluate the caller's views.
+    public init(palette: AmbientPalette, level: AmbienceLevel, effect: AmbientEffect, energy: Double, budget: EffectBudget,
+                energySource: AmbientEnergySource? = nil) {
         self.palette = palette; self.level = level; self.effect = effect; self.energy = energy; self.budget = budget
+        self.energySource = energySource
     }
 
     /// Palette and energy, so a track change cross-fades the light.
@@ -46,7 +51,7 @@ public struct AmbientLayer: View, Animatable {
         if level != .off {
             let budget = EffectsQA.adjusted(budget)
             AmbientFieldView(effect: budget.effective(effect), palette: palette, level: level, energy: energy,
-                             fill: fill, budget: budget, restingTime: 7.3)
+                             fill: fill, budget: budget, restingTime: 7.3, energySource: energySource)
                 .onAppear { setFilled(budget.isOpen) }
                 .onChange(of: budget.isOpen) { _, isOpen in setFilled(isOpen) }
         }
