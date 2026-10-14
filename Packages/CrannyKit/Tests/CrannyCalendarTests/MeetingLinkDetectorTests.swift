@@ -137,6 +137,26 @@ import Testing
         }
     }
 
+    /// Invitation text is untrusted: a native scheme gets no more trust than a web link, so it must name the
+    /// service's own host (or none) — otherwise Join would rebuild `https://<that host>/j/…` or hand it to the app.
+    @Test func nativeSchemesNeedTheServicesOwnHost() throws {
+        for text in ["zoommtg://zoom-login.evil.example/join?action=join&confno=8125550100&pwd=x",
+                     "zoomus://evil.example/join?confno=123",
+                     "ZOOMMTG://Zoom.US.evil.example/join?confno=1",
+                     "zoommtg://zoom.us@evil.example/join?confno=1",
+                     "zoommtg://user@zoom.us/join?confno=1",
+                     "msteams://evil.example/l/meetup-join/19%3ameeting_Y%40thread.v2/0",
+                     "https://www.google.com/url?q=zoommtg%3A%2F%2Fevil.example%2Fjoin%3Fconfno%3D1"] {
+            #expect(first(notes: text) == nil, "\(text)")
+        }
+        #expect(first(notes: "zoommtg://us02web.zoom.us/join?action=join&confno=1")?.service == .zoom)
+        #expect(first(notes: "zoomus://acme.zoomgov.com/join?confno=1")?.service == .zoom)
+        #expect(first(notes: "msteams://teams.microsoft.com/l/meetup-join/19%3ameeting_Y%40thread.v2/0")?.service == .teams)
+        // Without a host (the form Teams writes, and a bare Zoom URL in the event's URL field).
+        #expect(first(notes: "msteams:/l/meetup-join/19%3ameeting_Y%40thread.v2/0")?.service == .teams)
+        #expect(MeetingLinkDetector.classify(try #require(URL(string: "zoommtg:join?confno=1")))?.service == .zoom)
+    }
+
     @Test func duplicatesAreDropped() {
         let links = MeetingLinkDetector.links(url: URL(string: "https://zoom.us/j/1"), location: "https://zoom.us/j/1",
                                               notes: "https://zoom.us/j/1 https://zoom.us/j/1")

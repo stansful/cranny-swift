@@ -2,6 +2,8 @@
 // §7.4). Search order: the event's URL, then its location, then its notes; within a field the earliest
 // meeting link wins (dial-in numbers and "learn more" links come later in invitations). Redirect wrappers
 // are unwrapped first. Pure and `nonisolated`; written from the services' public link formats.
+// Invitation text is untrusted: every scheme, web or native (`zoommtg://`, `msteams:`), must name the service's
+// own hosts, so a crafted invite cannot dress another site up as a green Join.
 import Foundation
 
 /// A recognised meeting link. `url` is the unwrapped destination, exactly as the invitation gives it.
@@ -33,9 +35,12 @@ nonisolated enum MeetingLinkDetector {
         guard let scheme = url.scheme?.lowercased() else { return nil }
         switch scheme {
         case "zoommtg", "zoomus":
-            return MeetingLink(service: .zoom, url: url)
+            // `zoommtg://zoom.us/join?confno=…` or `zoommtg:join?…`: no host, or a Zoom host (the web fallback and
+            // the app both use it).
+            return nativeHostIsAllowed(url, isZoomHost) ? MeetingLink(service: .zoom, url: url) : nil
         case "msteams":
-            return MeetingLink(service: .teams, url: url)
+            // `msteams:/l/meetup-join/…` has no host; one that names a host must name a Teams host.
+            return nativeHostIsAllowed(url, isTeamsHost) ? MeetingLink(service: .teams, url: url) : nil
         case "http", "https":
             break
         default:
@@ -53,14 +58,13 @@ nonisolated enum MeetingLinkDetector {
     // MARK: - Per-service rules
 
     private static func service(host: String, lowerPath: String, components: [String], url: URL) -> MeetingService? {
-        if matches(host, "zoom.us") || matches(host, "zoomgov.com") {
+        if isZoomHost(host) {
             return ["/j/", "/s/", "/w/", "/my/", "/wc/"].contains { lowerPath.hasPrefix($0) } ? .zoom : nil
         }
         if host == "meet.google.com" {
             return isMeetCode(components.first) || lowerPath.hasPrefix("/lookup/") ? .meet : nil
         }
-        if ["teams.microsoft.com", "teams.live.com", "teams.microsoft.us", "gov.teams.microsoft.us",
-            "dod.teams.microsoft.us", "teams.cloud.microsoft"].contains(host) {
+        if isTeamsHost(host) {
             let joins = lowerPath.hasPrefix("/l/meetup-join/") || lowerPath.hasPrefix("/meet/")
                 || lowerPath.hasPrefix("/l/meet/")
                 || (url.query?.lowercased().contains("meetingjoin=true") ?? false)
@@ -99,6 +103,27 @@ nonisolated enum MeetingLinkDetector {
             return lowerPath.hasPrefix("/meetings/") ? .chime : nil
         }
         return nil
+    }
+
+    // MARK: - Hosts
+
+    /// zoom.us, zoomgov.com and their subdomains (`acme.zoom.us`, `us02web.zoom.us`). `host` is lowercase.
+    static func isZoomHost(_ host: String) -> Bool {
+        matches(host, "zoom.us") || matches(host, "zoomgov.com")
+    }
+
+    /// The Teams join hosts (commercial, consumer, government and the new cloud.microsoft domain). `host` is lowercase.
+    static func isTeamsHost(_ host: String) -> Bool {
+        ["teams.microsoft.com", "teams.live.com", "teams.microsoft.us", "gov.teams.microsoft.us",
+         "dod.teams.microsoft.us", "teams.cloud.microsoft"].contains(host)
+    }
+
+    /// A native-scheme URL either has no host or names one the service owns. A user name or password in front of
+    /// the host (`zoommtg://zoom.us@evil.example`) is refused outright: it only exists to make the host look trusted.
+    private static func nativeHostIsAllowed(_ url: URL, _ allowed: (String) -> Bool) -> Bool {
+        guard url.user == nil, url.password == nil else { return false }
+        guard let host = url.host?.lowercased(), !host.isEmpty else { return true }
+        return allowed(host)
     }
 
     /// `host` is `domain` or one of its subdomains (`acme.zoom.us`, `us02web.zoom.us`).
