@@ -1,6 +1,89 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "%@ left" : {
+      "comment" : "Timer: VoiceOver value, time left, e.g. “4 minutes, 59 seconds left”",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Осталось %@"
+          }
+        }
+      }
+    },
+    "%@ left, ends %@" : {
+      "comment" : "Timer widget: VoiceOver value of a running timer, e.g. “4 minutes, 59 seconds left, ends 14:35”",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ left, ends %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Осталось %1$@, конец в %2$@"
+          }
+        }
+      }
+    },
+    "+1 min" : {
+      "comment" : "Timer: button that adds one minute (peek row, widget); keep it short",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+1 мин"
+          }
+        }
+      }
+    },
+    "25 or 90s" : {
+      "comment" : "Timer widget: example formats under a typed entry that is not a duration yet (fits under the digits)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "25 или 90с"
+          }
+        }
+      }
+    },
+    "Add 1 minute" : {
+      "comment" : "Timer: VoiceOver/⌘K action and tooltip of the +1 min button",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Добавить 1 минуту"
+          }
+        }
+      }
+    },
+    "Choose a duration" : {
+      "comment" : "Timer widget: VoiceOver value when the presets are shown",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выберите длительность"
+          }
+        }
+      }
+    },
+    "Countdown" : {
+      "comment" : "Command palette: search keyword for Timer commands",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обратный отсчёт"
+          }
+        }
+      }
+    },
     "Countdowns with presets" : {
       "comment" : "Widget library: Timer description",
       "localizations" : {
@@ -8,6 +91,72 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Обратный отсчёт с заготовками"
+          }
+        }
+      }
+    },
+    "Done" : {
+      "comment" : "Timer done: short label in the band next to the timer glyph (≤ 6 characters)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Готово"
+          }
+        }
+      }
+    },
+    "Ends %@" : {
+      "comment" : "Timer: end time of a running timer, e.g. “Ends 14:35” (widget ring, peek row)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "До %@"
+          }
+        }
+      }
+    },
+    "None" : {
+      "comment" : "Timer options: sound picker entry for no sound",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Нет"
+          }
+        }
+      }
+    },
+    "Pause timer" : {
+      "comment" : "Timer: pause button and VoiceOver/⌘K action",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приостановить таймер"
+          }
+        }
+      }
+    },
+    "Paused" : {
+      "comment" : "Timer: state of a paused timer (widget ring, peek row)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пауза"
+          }
+        }
+      }
+    },
+    "Paused, %@ left" : {
+      "comment" : "Timer: VoiceOver value of a paused timer, e.g. “Paused, 2 minutes left”",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пауза, осталось %@"
           }
         }
       }
@@ -23,13 +172,103 @@
         }
       }
     },
-    "Start 25-minute timer" : {
-      "comment" : "Command palette: Timer command",
+    "Preset %lld" : {
+      "comment" : "Timer options: row label of one preset, e.g. “Preset 1”",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Запустить таймер на 25 минут"
+            "value" : "Заготовка %lld"
+          }
+        }
+      }
+    },
+    "Presets" : {
+      "comment" : "Timer options: section title of the four preset durations",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заготовки"
+          }
+        }
+      }
+    },
+    "Resume timer" : {
+      "comment" : "Timer: resume button and VoiceOver/⌘K action",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Продолжить таймер"
+          }
+        }
+      }
+    },
+    "Set to %@" : {
+      "comment" : "Timer widget: VoiceOver value of the idle ring, the duration Return starts",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Установлено: %@"
+          }
+        }
+      }
+    },
+    "Sound when done" : {
+      "comment" : "Timer options: picker of the system alert sound",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Звук по окончании"
+          }
+        }
+      }
+    },
+    "Start" : {
+      "comment" : "Timer widget: button that starts the duration shown in the ring",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Старт"
+          }
+        }
+      }
+    },
+    "Start %lld-minute timer" : {
+      "comment" : "Command palette and preset chips (VoiceOver): starts a timer of whole minutes",
+      "localizations" : {
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Запустить таймер на %lld минуту"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Запустить таймер на %lld минуты"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Запустить таймер на %lld минут"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Запустить таймер на %lld минуты"
+                }
+              }
+            }
           }
         }
       }
@@ -45,8 +284,30 @@
         }
       }
     },
+    "Start timer for %@" : {
+      "comment" : "Command palette and preset chips (VoiceOver): starts a timer, e.g. “Start timer for 1m 30s”",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запустить таймер на %@"
+          }
+        }
+      }
+    },
+    "Stop" : {
+      "comment" : "Timer done: peek button that silences and clears the finished timer",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Стоп"
+          }
+        }
+      }
+    },
     "Stop timer" : {
-      "comment" : "Timer activity: VoiceOver action",
+      "comment" : "Timer: stop button and VoiceOver/⌘K action",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -67,6 +328,28 @@
         }
       }
     },
+    "Timer done" : {
+      "comment" : "Timer done: activity name and peek title (Live Activities pane, peek row, VoiceOver)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Таймер завершён"
+          }
+        }
+      }
+    },
+    "Timer paused" : {
+      "comment" : "Timer activity: VoiceOver label of a paused timer",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Таймер на паузе"
+          }
+        }
+      }
+    },
     "Timer running" : {
       "comment" : "Timer activity: VoiceOver label",
       "localizations" : {
@@ -74,6 +357,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Таймер запущен"
+          }
+        }
+      }
+    },
+    "hr" : {
+      "comment" : "Timer widget: unit under a preset number, hours (shown uppercase, ≤ 4 letters)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ч"
+          }
+        }
+      }
+    },
+    "min" : {
+      "comment" : "Timer widget: unit under a preset number, minutes (shown uppercase, ≤ 4 letters)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "мин"
+          }
+        }
+      }
+    },
+    "sec" : {
+      "comment" : "Timer widget: unit under a preset number, seconds (shown uppercase, ≤ 4 letters)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "сек"
           }
         }
       }
