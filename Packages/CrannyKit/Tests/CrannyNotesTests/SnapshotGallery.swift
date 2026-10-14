@@ -2,6 +2,8 @@
 // and writes PNGs. Run with
 //   CRANNY_NOTES_SNAPSHOTS=/path/to/dir swift test --scratch-path .build-test --filter SnapshotGallery
 // Nothing is shown on screen and nothing outside the given folder and temporary paths is written.
+// Debug builds only: the typing-effect case uses the DEBUG-only `NotesQAHooks`.
+#if DEBUG
 import AppKit
 import CrannyCore
 import Foundation
@@ -99,3 +101,4 @@ struct SnapshotGallery {
         try? FileManager.default.removeItem(at: services.paths.root.deletingLastPathComponent())
     }
 }
+#endif

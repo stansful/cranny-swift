@@ -61,15 +61,21 @@ import Testing
     }
 }
 
+/// A switch the palette's `redactsTitles` closure reads (a captured `var` is not Sendable).
+@MainActor private final class Flag {
+    var isOn: Bool
+    init(_ isOn: Bool) { self.isOn = isOn }
+}
+
 @Test func demoRedactionKeepsNoteTitlesOutOfThePalette() {
     let services = CrannyServices.preview()
     let model = NotesModel(settings: services.settings, notch: services.notch, store: NotesStore(paths: services.paths))
     model.adoptLoadedNotes([Note(title: "Salary review", mode: .plain)])
-    var redacts = true
-    let commands = NotesCommands(model: model) { redacts }
+    let redacts = Flag(true)
+    let commands = NotesCommands(model: model) { redacts.isOn }
     #expect(commands.commands(matching: "").map(\.title) == [NotesStrings.newNote])
     #expect(commands.commands(matching: "salary").isEmpty)
-    redacts = false
+    redacts.isOn = false
     #expect(commands.commands(matching: "salary").count == 1)
 }
 
