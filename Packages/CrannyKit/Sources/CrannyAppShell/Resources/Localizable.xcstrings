@@ -430,6 +430,17 @@
         }
       }
     },
+    "Skip Tutorial" : {
+      "comment" : "Menu bar: ends the interactive tutorial; shown only while it runs",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пропустить обучение"
+          }
+        }
+      }
+    },
     "The release information couldn’t be read." : {
       "comment" : "Update check: failure reason, unexpected response",
       "localizations" : {

@@ -2,6 +2,7 @@
 // `ShellAppServices` into the `AppControl` port, and the QA launch arguments of the menu.
 import AppKit
 import CrannyCore
+import CrannyOnboarding
 import Foundation
 import SwiftUI
 import Testing
@@ -130,6 +131,22 @@ private func policy(_ selection: DisplaySelection, _ perDisplay: [DisplayKey: Di
     #expect(control.loginItem == .enabled && login.calls == ["register"])
     #expect(control.pause === services.pause && control.demo === services.demo && control.displays === services.displays)
     #expect(control.updates?.isConfigured == true)
+}
+
+/// C-SHELL-12: while the tutorial runs, the menu offers Skip Tutorial after Show Tutorial (DESIGN.md §13), and it ends the
+/// tour like the bubble's Skip tutorial.
+@Test func theMenuSkipsARunningTutorial() {
+    let (services, _, _) = makeServices()
+    services.start()
+    defer { services.stop() }
+    let control = services.appControl
+    #expect(!control.isTutorialRunning)
+    control.startTutorial()
+    #expect(control.isTutorialRunning && services.tutorial.isRunning)
+    control.skipTutorial()
+    #expect(!control.isTutorialRunning && !services.tutorial.isRunning)
+    control.skipTutorial()                                                          // nothing running: nothing happens
+    #expect(!control.isTutorialRunning)
 }
 
 @Test func openCrannyInTheMenuNeverCloses() {

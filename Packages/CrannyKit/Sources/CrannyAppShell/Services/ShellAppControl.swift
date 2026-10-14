@@ -25,7 +25,8 @@ import SwiftUI
     private(set) var pause: PauseController?
     private(set) var demo: DemoMode?
     private(set) var displays: DisplayList?
-    @ObservationIgnored private var tutorial: TutorialController?
+    /// Observed: the menu offers Skip Tutorial while it runs (`TutorialController.isRunning`).
+    private var tutorial: TutorialController?
     /// Default combinations of the registered global shortcuts (the menu shows the effective binding).
     @ObservationIgnored private var defaultCombos: [ShortcutID: KeyCombo] = [:]
     /// Whether a panel is open, read from the panels themselves (not inferred from events, which a panel removed
@@ -70,6 +71,10 @@ import SwiftUI
     func openSettings(_ page: SettingsPageID?) { settingsWindow?.show(page: page) }
     func showWelcome() { welcomeWindow?.show() }
     func startTutorial() { tutorial?.start() }
+    /// The interactive tutorial is running: the menu bar offers Skip Tutorial (DESIGN.md §13).
+    var isTutorialRunning: Bool { tutorial?.isRunning ?? false }
+    /// "Skip Tutorial" (menu bar): ends the tour at once, like the bubble's Skip tutorial (no completion recorded).
+    func skipTutorial() { tutorial?.stop() }
     func showOnNotch(_ state: PreviewStageState) { overlay?.play(state, for: .seconds(5)) }
     func resetAllSettings() { settings?.resetAll() }
     func quit() { NSApp.terminate(nil) }
