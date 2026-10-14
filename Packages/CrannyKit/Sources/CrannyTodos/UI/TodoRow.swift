@@ -53,6 +53,7 @@ struct TodoRow: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
             .onTapGesture { if !isReadOnly { model.beginEditing(todo.id) } }
+            .modifier(TextPointer(isActive: !isReadOnly))
             .help(redacts ? "" : todo.title)
             .animation(checkStyle.animation, value: todo.isDone)
     }
@@ -75,6 +76,18 @@ struct TodoRow: View {
         Button(TodosStrings.moveDown) { model.move(todo.id, .down) }.disabled(!model.canMove(todo.id, .down))
         Divider()
         Button(TodosStrings.delete, role: .destructive) { onDelete(todo.id) }
+    }
+}
+
+/// The I-beam over an editable title (macOS 15+; on 14 the arrow stays, the title still edits on click).
+private struct TextPointer: ViewModifier {
+    let isActive: Bool
+    func body(content: Content) -> some View {
+        if #available(macOS 15.0, *), isActive {
+            content.pointerStyle(.horizontalText)
+        } else {
+            content
+        }
     }
 }
 
