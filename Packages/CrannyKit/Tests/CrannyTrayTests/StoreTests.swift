@@ -165,11 +165,15 @@ import UniformTypeIdentifiers
         let item = try #require(store.items.first)
         store.copyPaths(item.id)
         #expect(system.copiedText == store.url(item.id)?.path)
-        #expect(notch.calls.contains("flash(link)"))
+        // The copy glyph says it was copied (ruling E4); VoiceOver, which does not read the glyph, hears what was.
+        #expect(notch.calls.contains("flash(doc.on.doc)") && !notch.calls.contains("flash(link)"))
+        #expect(system.feedback == [TrayStore.pathsCopiedAnnouncement(count: 1)])
         store.run(BuiltinPipelines.copyPaths, on: [item.id])
         await waitForJobs(store)
-        #expect(notch.calls.filter { $0 == "flash(link)" }.count == 2)
+        #expect(notch.calls.filter { $0 == "flash(doc.on.doc)" }.count == 2)
+        #expect(system.feedback.count == 1 && system.calls.contains("announce"))   // the pipeline says it finished
         #expect(store.undoOffer == nil)                                     // nothing was written
+        #expect(TrayStore.pathsCopiedAnnouncement(count: 1) != TrayStore.pathsCopiedAnnouncement(count: 3))
     }
 
     @Test func droppedFilesRunAndTheResultIsKept() async throws {

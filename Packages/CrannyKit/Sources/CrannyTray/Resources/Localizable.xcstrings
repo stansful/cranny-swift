@@ -376,7 +376,7 @@
       }
     },
     "Copied" : {
-      "comment" : "Notch flash: confirms Copy paths or a copied text; the link or copy glyph beside it says what was copied; one short word that fits the compact wing",
+      "comment" : "Notch flash: confirms Copy paths or a copied text, beside the copy glyph that says it was copied; one short word that must fit the compact wing (measured, see NotchControl.flash)",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -927,6 +927,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "PDF"
+          }
+        }
+      }
+    },
+    "Path copied" : {
+      "comment" : "Tray: VoiceOver announcement after Copy paths (one file)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Путь скопирован"
+          }
+        }
+      }
+    },
+    "Paths copied" : {
+      "comment" : "Tray: VoiceOver announcement after Copy paths (several files)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пути скопированы"
           }
         }
       }

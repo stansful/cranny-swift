@@ -129,7 +129,7 @@ extension TrayStore {
         }
         if result.copiesPaths {
             system.copy(text: finalURLs.map(\.path).joined(separator: "\n"))
-            notch.flash(symbol: "link", label: Self.copiedLabel)
+            notch.flash(symbol: "doc.on.doc", label: Self.copiedLabel)
         }
         if let text = result.text {
             system.copy(text: text)
@@ -144,12 +144,12 @@ extension TrayStore {
         endJob(jobID)
     }
 
-    /// "Copied" in the band after Copy paths (the chip, the context menu, a pipeline ending in Copy paths; with the
-    /// `link` glyph) and after a pipeline copied text (with `doc.on.doc`): the glyph says what was copied, and the
-    /// word fits the wing in every language (`NotchControl.flash`, design ruling E4).
+    /// "Copied" / «Готово» in the band after Copy paths (the chip, the context menu, a pipeline ending in Copy paths)
+    /// and after a pipeline copied text, always beside the copy glyph (`doc.on.doc`), which says that something was
+    /// copied (design ruling E4); the word fits the wing in every language (`NotchControl.flash`).
     static var copiedLabel: String {
         String(localized: "Copied", bundle: .module,
-               comment: "Notch flash: confirms Copy paths or a copied text; the link or copy glyph beside it says what was copied; one short word that fits the compact wing")
+               comment: "Notch flash: confirms Copy paths or a copied text, beside the copy glyph that says it was copied; one short word that must fit the compact wing (measured, see NotchControl.flash)")
     }
 
     private func fail(_ jobID: UUID, _ error: any Error) {
