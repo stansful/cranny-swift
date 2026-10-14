@@ -33,13 +33,25 @@ enum CalendarFormat {
         (start..<max(end, start)).formatted(.interval.hour().minute())
     }
     /// "Tue" (drawn uppercase by the `micro` style).
-    static func weekday(_ date: Date) -> String { date.formatted(.dateTime.weekday(.abbreviated)) }
+    static func weekday(_ date: Date, locale: Locale = .autoupdatingCurrent) -> String {
+        date.formatted(.dateTime.weekday(.abbreviated).locale(locale))
+    }
+    /// "Tu" / pt-PT "qua." where the abbreviation is a whole word ("quarta"): the header's last resort.
+    static func weekdayShort(_ date: Date, locale: Locale = .autoupdatingCurrent) -> String {
+        date.formatted(.dateTime.weekday(.short).locale(locale))
+    }
     /// "14 October" / "October 14" / "14 октября".
-    static func dayMonth(_ date: Date) -> String { date.formatted(.dateTime.day().month(.wide)) }
+    static func dayMonth(_ date: Date, locale: Locale = .autoupdatingCurrent) -> String {
+        date.formatted(.dateTime.day().month(.wide).locale(locale))
+    }
     /// "14 Oct" / "Oct 14" / "14 окт." (narrow headers).
-    static func dayMonthShort(_ date: Date) -> String { date.formatted(.dateTime.day().month(.abbreviated)) }
+    static func dayMonthShort(_ date: Date, locale: Locale = .autoupdatingCurrent) -> String {
+        date.formatted(.dateTime.day().month(.abbreviated).locale(locale))
+    }
     /// "14" (the day strip and the 2-cell date).
-    static func dayNumber(_ date: Date) -> String { date.formatted(.dateTime.day()) }
+    static func dayNumber(_ date: Date, locale: Locale = .autoupdatingCurrent) -> String {
+        date.formatted(.dateTime.day().locale(locale))
+    }
     /// "Wednesday, 15 October" (VoiceOver, tooltips).
     static func fullDate(_ date: Date) -> String { date.formatted(.dateTime.weekday(.wide).day().month(.wide)) }
 

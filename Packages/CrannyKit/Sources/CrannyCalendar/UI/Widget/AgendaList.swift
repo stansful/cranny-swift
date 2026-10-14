@@ -179,22 +179,35 @@ private struct ScrollAnchor: Equatable {
 /// "+3 more" in the header line: clicking it scrolls to the first hidden row. While the list overflows it keeps
 /// its place (invisible when nothing is hidden below), so the date beside it does not change as the list scrolls.
 struct MoreEventsButton: View {
+    /// "+3 more", or "+3" where the header line has no room for the word (`DayHeaderLine.countOnly`).
+    enum Style { case words, count }
+
     @Environment(\.cranny) private var theme
+    @Environment(\.locale) private var locale
     let count: Int
+    var style = Style.words
     let action: @MainActor () -> Void
 
     var body: some View {
+        let words = Text("+\(max(count, 1)) more", bundle: .module, comment: "Calendar widget: events below the visible list (\"+3 more\")")
         Button(action: action) {
-            Text("+\(max(count, 1)) more", bundle: .module, comment: "Calendar widget: events below the visible list (\"+3 more\")")
-                .crannyFont(.caption)
-                .foregroundStyle(theme.palette.tertiaryLabel)
-                .lineLimit(1)
-                .fixedSize()
-                .contentTransition(.numericText())
-                .frame(minWidth: HitTarget.nook.width, minHeight: HitTarget.nook.height)
-                .contentShape(Rectangle())                                // 28 × 24 hit area around a 14-pt line
+            Group {
+                switch style {
+                case .words: words
+                case .count: Text(verbatim: max(count, 1).formatted(.number.sign(strategy: .always()).locale(locale)))  // "+3", "+٣"
+                }
+            }
+            .crannyFont(.caption)
+            .foregroundStyle(theme.palette.tertiaryLabel)
+            .lineLimit(1)
+            .fixedSize()
+            .contentTransition(.numericText())
+            .frame(minWidth: HitTarget.nook.width, minHeight: HitTarget.nook.height)
+            .contentShape(Rectangle())                                    // 28 × 24 hit area around a 14-pt line
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(words)                                        // "+3 more" also where it shows "+3"
+        .help(style == .count ? words : Text(verbatim: ""))
         .frame(height: 16)
         .opacity(count > 0 ? 1 : 0)
         .disabled(count == 0)

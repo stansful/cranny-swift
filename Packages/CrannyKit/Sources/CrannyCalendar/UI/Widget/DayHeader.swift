@@ -1,13 +1,14 @@
 // CrannyCalendar/UI/Widget/DayHeader.swift — the widget's first line (DESIGN.md §7.2): weekday (`micro`, red for
 // today) + date (`headline`), "+N more" while the list below overflows, and on the trailing side ‹ › (3 cells) or
 // the day strip (≥ 4 cells). The header is 16 pt tall; its 28-pt buttons overhang into the card padding so the
-// list keeps its room. The date shortens ("14 October" → "14 Oct" → "14") to make room.
+// list keeps its room. The weekday and the day number are never cut short: to make room the date shortens first
+// ("14 October" → "14 Oct" → "14"), then "+N more" (→ "+N" → gone), and last the weekday (`DayHeaderLine`).
 import CrannyCore
 import Foundation
 import SwiftUI
 
 struct DayHeader<Trailing: View>: View {
-    @Environment(\.cranny) private var theme
+    @Environment(\.locale) private var locale
     let date: Date
     let isToday: Bool
     /// Rows hidden below the list (nil = the list fits: no "+N more").
@@ -21,33 +22,108 @@ struct DayHeader<Trailing: View>: View {
     }
 
     var body: some View {
+        let dates = DayHeaderLine.Dates(date, locale: locale)
         HStack(spacing: Space.xs) {
-            HStack(alignment: .firstTextBaseline, spacing: Space.s) {
-                Text(CalendarFormat.weekday(date))
-                    .crannyFont(.micro)
-                    .foregroundStyle(isToday ? theme.palette.danger : theme.palette.secondaryLabel)
-                // "14 October", "14 Oct", or just "14" when ‹ › or the strip leave too little room.
-                ViewThatFits(in: .horizontal) {
-                    dateText(CalendarFormat.dayMonth(date))
-                    dateText(CalendarFormat.dayMonthShort(date))
-                    dateText(CalendarFormat.dayNumber(date))
-                }
+            DayHeaderChoice { line in
+                DayHeaderLineBody(line: line, date: date, dates: dates, isToday: isToday, more: more, showMore: showMore)
             }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel(Text(CalendarFormat.fullDate(date)))
-            .accessibilityAddTraits(.isHeader)
-            Spacer(minLength: 0)
-            if let more { MoreEventsButton(count: more, action: showMore) }
             trailing
         }
         .frame(height: 16)
     }
+}
 
-    private func dateText(_ text: String) -> some View {
-        Text(text)
-            .crannyFont(.headline)
-            .foregroundStyle(theme.palette.label)
+/// `ViewThatFits` over the `DayHeaderLine`s in order: the first whose ideal width fits, else the last.
+struct DayHeaderChoice<Line: View>: View {
+    let line: (DayHeaderLine) -> Line
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {                                       // `DayHeaderLine.allCases`, in order
+            line(.full)
+            line(.shortMonth)
+            line(.dayOnly)
+            line(.countOnly)
+            line(.noMore)
+            line(.shortWeekday)
+        }
+    }
+}
+
+/// The header line's variants, in the order the header tries them (`DayHeaderChoice`: the first whose ideal width
+/// fits beside ‹ › or the strip, else the last). Every variant shows the weekday and the day number in full; only the
+/// month, "+N more" and the weekday's length give way. Measured in every language by `DayHeaderFitTests`.
+enum DayHeaderLine: CaseIterable {
+    /// "TUE 14 October   +3 more".
+    case full
+    /// "TUE 14 Oct   +3 more".
+    case shortMonth
+    /// "TUE 14   +3 more": the 3-cell header in most languages.
+    case dayOnly
+    /// "TUE 14   +3": the count keeps its place (VoiceOver and the tooltip still say "+3 more").
+    case countOnly
+    /// "TUE 14": no room for the count either; the list still scrolls (a 5-cell column beside ‹ ›).
+    case noMore
+    /// "QUA. 14": last resort for a weekday whose abbreviation is a whole word (pt-PT "quarta", pl "niedz.").
+    case shortWeekday
+
+    var date: KeyPath<DayHeaderLine.Dates, String> {
+        switch self {
+        case .full: \.dayMonth
+        case .shortMonth: \.dayMonthShort
+        case .dayOnly, .countOnly, .noMore, .shortWeekday: \.dayNumber
+        }
+    }
+    var more: MoreEventsButton.Style? {
+        switch self {
+        case .full, .shortMonth, .dayOnly: .words
+        case .countOnly: .count
+        case .noMore, .shortWeekday: nil
+        }
+    }
+    var shortWeekday: Bool { self == .shortWeekday }
+
+    /// The day's texts in the header's locale, formatted once for all the lines.
+    struct Dates {
+        let weekday, weekdayShort, dayMonth, dayMonthShort, dayNumber: String
+
+        init(_ date: Date, locale: Locale) {
+            weekday = CalendarFormat.weekday(date, locale: locale)
+            weekdayShort = CalendarFormat.weekdayShort(date, locale: locale)
+            dayMonth = CalendarFormat.dayMonth(date, locale: locale)
+            dayMonthShort = CalendarFormat.dayMonthShort(date, locale: locale)
+            dayNumber = CalendarFormat.dayNumber(date, locale: locale)
+        }
+    }
+}
+
+/// One `DayHeaderLine`: the weekday and date (never cut short), then "+N more" against the trailing edge.
+struct DayHeaderLineBody: View {
+    @Environment(\.cranny) private var theme
+    let line: DayHeaderLine
+    let date: Date
+    let dates: DayHeaderLine.Dates
+    let isToday: Bool
+    let more: Int?
+    var showMore: @MainActor () -> Void = {}
+
+    var body: some View {
+        HStack(spacing: Space.xs) {
+            HStack(alignment: .firstTextBaseline, spacing: Space.s) {
+                Text(line.shortWeekday ? dates.weekdayShort : dates.weekday)
+                    .crannyFont(.micro)
+                    .foregroundStyle(isToday ? theme.palette.danger : theme.palette.secondaryLabel)
+                Text(dates[keyPath: line.date])
+                    .crannyFont(.headline)
+                    .foregroundStyle(theme.palette.label)
+            }
             .lineLimit(1)
+            .fixedSize()
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(Text(CalendarFormat.fullDate(date)))
+            .accessibilityAddTraits(.isHeader)
+            Spacer(minLength: 0)
+            if let more, let style = line.more { MoreEventsButton(count: more, style: style, action: showMore) }
+        }
     }
 }
 
