@@ -85,10 +85,14 @@ extension TrayStore {
         Task { _ = await notch.presentAirDrop(list) }
     }
 
-    /// Files dropped on an AirDrop zone go straight to the AirDrop sheet; they are not kept.
+    /// Files dropped on an AirDrop zone go straight to the AirDrop sheet; they are not kept. The drop counts as taken
+    /// whatever the user does in the sheet (a false result would make the shell keep the files in the Tray, §4.4), and
+    /// the drop does not wait for the sheet.
     func airDrop(dropped urls: [URL]) async -> Bool {
         guard !urls.isEmpty else { return false }
-        return await notch.presentAirDrop(urls)
+        let notch = notch
+        Task { _ = await notch.presentAirDrop(urls) }
+        return true
     }
 
     func share(_ id: UUID? = nil) {

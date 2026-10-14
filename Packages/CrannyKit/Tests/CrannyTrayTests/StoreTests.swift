@@ -221,6 +221,9 @@ import UniformTypeIdentifiers
         for _ in 0..<100 where !notch.calls.contains("airdrop(2)") { try? await Task.sleep(for: .milliseconds(5)) }
         #expect(notch.calls.contains("airdrop(2)") && notch.calls.contains("share(2)"))
         #expect(await store.airDrop(dropped: [Fixtures.text("c.txt", in: source)]))
+        for _ in 0..<100 where !notch.calls.contains("airdrop(1)") { try? await Task.sleep(for: .milliseconds(5)) }
+        #expect(notch.calls.contains("airdrop(1)"))
+        #expect(await store.airDrop(dropped: []) == false)
         store.toggleQuickLook()
         #expect(system.calls.contains("quickLook(2,0)"))
         store.toggleQuickLook()
