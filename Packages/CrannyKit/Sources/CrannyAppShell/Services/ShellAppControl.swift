@@ -50,7 +50,8 @@ import SwiftUI
 
     // MARK: AppControl
 
-    /// Read fresh whenever Cranny becomes active (Settings, Welcome), never cached as a Bool (§7.9).
+    /// Read on first use (not at launch) and again whenever Cranny becomes active (Settings, Welcome), never cached
+    /// as a Bool (§7.9).
     var loginItem: LoginItemState { loginItems?.state ?? .disabled }
     /// Turning it on while it `.requiresApproval`, or again after macOS refused it (`.unavailable`), opens
     /// System Settings ▸ General ▸ Login Items: that is what Settings' "Open Login Items…" calls.

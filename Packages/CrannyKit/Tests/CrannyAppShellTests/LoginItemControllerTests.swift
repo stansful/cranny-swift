@@ -6,9 +6,15 @@ import ServiceManagement
 import Testing
 @testable import CrannyAppShell
 
-/// Records every call; `register()` moves to `statusAfterRegister` or throws.
+/// Records every call; `register()` moves to `statusAfterRegister` or throws. `statusReads` counts the reads of
+/// `status` (each one is an XPC round trip with the real `SMAppService`).
 final class FakeLoginItem: LoginItemService {
-    var status: SMAppService.Status = .notRegistered
+    var status: SMAppService.Status {
+        get { statusReads += 1; return storedStatus }
+        set { storedStatus = newValue }
+    }
+    private var storedStatus: SMAppService.Status = .notRegistered
+    private(set) var statusReads = 0
     var statusAfterRegister: SMAppService.Status = .enabled
     var registerFails = false
     private(set) var calls: [String] = []
@@ -101,4 +107,39 @@ private let applications = URL(filePath: "/Applications/Cranny.app")
     NotificationCenter.default.post(name: NSApplication.didBecomeActiveNotification, object: nil)
     for _ in 0..<40 where controller.state != .enabled { try await Task.sleep(for: .milliseconds(25)) }
     #expect(controller.state == .enabled)
+}
+
+/// Counts deliveries of one test's own posts (other tests post `didBecomeActive` too).
+@MainActor private final class Deliveries {
+    var count = 0
+}
+
+/// The status is an XPC round trip, and only Settings and the welcome show it: neither the launch (`start()`) nor an
+/// activation before anything showed it reads it. The first reader gets the real status, and from then on every
+/// activation reads it again.
+@Test func theStatusIsReadOnFirstUseNotAtLaunch() async throws {
+    let fake = FakeLoginItem()
+    fake.status = .enabled
+    let controller = LoginItemController(service: fake, bundleURL: applications)
+    controller.start()
+    defer { controller.stop() }
+    #expect(fake.statusReads == 0)
+
+    // Main-queue observers of one post run in the order they were added: once the probe ran, the controller's
+    // observer (added first, for every sender) has run too.
+    let sender = NSObject(), deliveries = Deliveries()
+    let probe = NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: sender,
+                                                       queue: .main) { _ in MainActor.assumeIsolated { deliveries.count += 1 } }
+    defer { NotificationCenter.default.removeObserver(probe) }
+    NotificationCenter.default.post(name: NSApplication.didBecomeActiveNotification, object: sender)
+    for _ in 0..<400 where deliveries.count < 1 { try await Task.sleep(for: .milliseconds(25)) }
+    #expect(deliveries.count == 1 && fake.statusReads == 0)                         // nothing showed it yet
+
+    #expect(controller.state == .enabled && fake.statusReads == 1)                  // the first reader asks
+    #expect(controller.state == .enabled && fake.statusReads == 1)                  // later reads do not
+
+    fake.status = .notRegistered                                                    // changed in System Settings
+    NotificationCenter.default.post(name: NSApplication.didBecomeActiveNotification, object: sender)
+    for _ in 0..<400 where controller.state != .disabled { try await Task.sleep(for: .milliseconds(25)) }
+    #expect(controller.state == .disabled && fake.statusReads >= 2)
 }

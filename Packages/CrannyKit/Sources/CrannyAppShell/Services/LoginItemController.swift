@@ -1,6 +1,7 @@
 // CrannyAppShell/Services/LoginItemController.swift — Launch at login (ARCHITECTURE.md §7.9, D15).
-// `SMAppService.mainApp` only. The status is read again whenever the app becomes active (Settings and the
-// welcome window activate it), never cached as a Bool: the user can change it in System Settings at any time.
+// `SMAppService.mainApp` only. The status (an XPC round trip) is read on first use, not at launch: only Settings and
+// the welcome show it. After that it is read again whenever the app becomes active (Settings and the welcome window
+// activate it), never cached as a Bool: the user can change it in System Settings at any time.
 // `.requiresApproval` and a refused registration lead to System Settings ▸ General ▸ Login Items; a translocated
 // copy (run from Downloads) cannot register at all, so it asks to be moved to Applications.
 import AppKit
@@ -29,8 +30,16 @@ final class MainAppLoginItem: LoginItemService {
 }
 
 @MainActor @Observable final class LoginItemController {
-    /// `AppControl.loginItem`.
-    private(set) var state: LoginItemState = .disabled
+    /// `AppControl.loginItem`. The first read asks `SMAppService` (so whoever shows it first, Settings ▸ General or the
+    /// welcome, sees the real status); later reads return what the last refresh found.
+    var state: LoginItemState {
+        if !hasRead { refresh() }
+        return current
+    }
+    /// The status as last read or set (observed: views reading `state` follow it).
+    private var current: LoginItemState = .disabled
+    /// Whether the status was read (or set) at least once; until then nothing shows it.
+    @ObservationIgnored private var hasRead = false
     @ObservationIgnored private let service: any LoginItemService
     @ObservationIgnored private let bundleURL: URL
     @ObservationIgnored private var observer: (any NSObjectProtocol)?
@@ -39,12 +48,12 @@ final class MainAppLoginItem: LoginItemService {
         self.service = service; self.bundleURL = bundleURL
     }
 
-    /// Reads the status now and again every time Cranny becomes active.
+    /// Reads the status again every time Cranny becomes active, once something has read it (the first read is lazy:
+    /// a launch at login, which shows neither Settings nor the welcome, makes no XPC call for it).
     func start() {
-        refresh()
         observer = NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification,
                                                           object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.refresh() }                       // queue: .main
+            MainActor.assumeIsolated { if let self, self.hasRead { self.refresh() } }      // queue: .main
         }
     }
 
@@ -53,27 +62,30 @@ final class MainAppLoginItem: LoginItemService {
         observer = nil
     }
 
+    /// Reads the status now.
     func refresh() {
+        hasRead = true
         let next = Self.isTranslocated(bundleURL) ? .unavailable(Self.moveToApplicationsMessage) : Self.state(for: service.status)
-        if next != state { state = next }
+        if next != current { current = next }
     }
 
     /// `AppControl.setLaunchAtLogin`. Turning it on while approval is pending, or again after macOS refused it,
     /// opens Login Items in System Settings, where the user finishes the job (Settings' "Open Login Items…").
     func setEnabled(_ enabled: Bool) {
         guard !Self.isTranslocated(bundleURL) else { refresh(); return }
-        let current = Self.state(for: service.status)
+        hasRead = true                                         // every path below reads the status and sets `current`
+        let status = Self.state(for: service.status)
         if enabled {
-            switch current {
+            switch status {
             case .enabled:
-                state = .enabled
+                current = .enabled
                 return
             case .requiresApproval:
-                state = .requiresApproval
+                current = .requiresApproval
                 service.openSystemSettingsLoginItems()
                 return
             case .disabled, .unavailable:
-                if state == .unavailable(Self.refusedMessage) { service.openSystemSettingsLoginItems(); return }
+                if current == .unavailable(Self.refusedMessage) { service.openSystemSettingsLoginItems(); return }
             }
             do {
                 try service.register()
@@ -83,22 +95,22 @@ final class MainAppLoginItem: LoginItemService {
             }
             switch Self.state(for: service.status) {
             case .enabled:
-                state = .enabled
+                current = .enabled
             case .requiresApproval:
-                state = .requiresApproval
+                current = .requiresApproval
                 service.openSystemSettingsLoginItems()
             case .disabled, .unavailable:
-                state = .unavailable(Self.refusedMessage)
+                current = .unavailable(Self.refusedMessage)
             }
         } else {
-            guard current != .disabled else { state = .disabled; return }
+            guard status != .disabled else { current = .disabled; return }
             do {
                 try service.unregister()
                 log.info("login item unregistered")
             } catch {
                 log.error("login item not unregistered: \(error.localizedDescription, privacy: .public)")
             }
-            state = Self.state(for: service.status)
+            current = Self.state(for: service.status)
         }
     }
 
