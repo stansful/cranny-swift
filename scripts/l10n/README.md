@@ -78,7 +78,8 @@ segment, a table column header, a 2-cell widget (`…widget, 2 cells`, Mirror / 
   (clean room, ARCHITECTURE.md D20). Never look at other notch apps' translations.
 - **Apple's names for Apple's things**: apps, System Settings panes, privacy services, accessibility settings,
   Finder places and alert sounds are written exactly as macOS shows them in your language — take them from
-  `apple-terms.py` (`--details` shows where each one comes from). People look for these words on screen.
+  `apple-terms.py` (`--details` shows where each one comes from and the alternatives macOS also uses, such as
+  an app's longer bundle name: pt-BR “Ajustes” / “Ajustes do Sistema”). People look for these words on screen.
 - Cranny's own names keep a capital in English (Home, Tray, Quick Apps, Live Activities, Layout & Widgets): give
   each one fixed translation and use it everywhere (see the Russian glossary in docs/ARCHITECTURE.md §8.7 for how
   the reviewed translation does it).

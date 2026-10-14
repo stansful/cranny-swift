@@ -202,8 +202,9 @@ def from_table(term, spec, codes):
 
 
 def from_app(path, codes):
-    """The app's display name in the language: InfoPlist.loctable, else <lproj>/InfoPlist.strings, else Info.plist
-    (English)."""
+    """The app's display name in the language (what Finder and the Dock show): InfoPlist.loctable, else
+    <lproj>/InfoPlist.strings, else Info.plist (English). A different CFBundleName (pt-BR “Ajustes” /
+    “Ajustes do Sistema”) is returned as an alternative."""
     path = os.path.realpath(path)
     resources = os.path.join(path, "Contents/Resources")
     table = load_plist(os.path.join(resources, "InfoPlist.loctable"))
@@ -215,15 +216,17 @@ def from_app(path, codes):
         if isinstance(strings, dict):
             sources.append((strings, os.path.join(resources, f"{code}.lproj", "InfoPlist.strings")))
         for values, where in sources:
-            for key in ("CFBundleDisplayName", "CFBundleName"):
-                if isinstance(values.get(key), str):
-                    return clean(values[key]), where, key
+            names = [(key, clean(values[key])) for key in ("CFBundleDisplayName", "CFBundleName")
+                     if isinstance(values.get(key), str)]
+            if names:
+                key, value = names[0]
+                return value, where, key, [name for _, name in names[1:] if name != value]
     if "en" in codes or "English" in codes:
         info = load_plist(os.path.join(path, "Contents/Info.plist"))
         if isinstance(info, dict):
             for key in ("CFBundleDisplayName", "CFBundleName"):
                 if isinstance(info.get(key), str):
-                    return clean(info[key]), os.path.join(path, "Contents/Info.plist"), key
+                    return clean(info[key]), os.path.join(path, "Contents/Info.plist"), key, []
     return None
 
 
@@ -231,11 +234,13 @@ def lookup(term, code):
     """{"value", "source", "key", "alternatives"} for one term, or None."""
     codes = apple_codes(code)
     found = []
+    extra = []
     for kind, spec in TERMS.get(term, []):
         if kind == "app":
             hit = from_app(spec, codes)
             if hit:
-                found.append(hit)
+                found.append(hit[:3])
+                extra = hit[3]
         else:
             found += list(from_table(term, spec, codes))
         if found:
@@ -249,7 +254,7 @@ def lookup(term, code):
     if not found:
         return None
     value, source, key = found[0]
-    alternatives = sorted({hit[0] for hit in found[1:] if hit[0] != value})
+    alternatives = sorted({hit[0] for hit in found[1:] if hit[0] != value} | set(extra))
     return {"value": value, "source": source, "key": key, "alternatives": alternatives}
 
 
