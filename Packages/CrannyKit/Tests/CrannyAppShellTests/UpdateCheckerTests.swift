@@ -1,4 +1,4 @@
-// WP16: the GitHub Releases update check (ARCHITECTURE.md §7.11) against fixtures — no network.
+// The GitHub Releases update check (ARCHITECTURE.md §7.11) against fixtures — no network.
 // The fixtures follow the REST API's "release" object (only a few of its fields are read; the rest must be ignored).
 import CrannyCore
 import Foundation

@@ -1,5 +1,5 @@
 // CrannyNotchUI/NotchScene.swift — the render model of one notch (one per display panel, one per stage).
-// The contract of ARCHITECTURE.md §4.12. Additive since WP0: `middleLabelWidth` (open issue 3) and
+// The contract of ARCHITECTURE.md §4.12. Additive since the foundation: `middleLabelWidth` (open issue 3) and
 // `isVisibleOnScreen`.
 import CrannyCore
 import CrannyEffects

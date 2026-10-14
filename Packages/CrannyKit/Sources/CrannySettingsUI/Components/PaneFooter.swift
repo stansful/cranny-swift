@@ -47,7 +47,7 @@ struct PaneFooter: View {
 /// What "Reset ‹Pane›…" does.
 enum PaneReset {
     /// Resets every key of `namespaces`, except the records that live there but are no preference the pane shows:
-    /// `activities.pausedUntil` (menu bar ▸ Pause Live Activities; written by WP16's PauseController) and
+    /// `activities.pausedUntil` (menu bar ▸ Pause Live Activities; written by the shell's PauseController) and
     /// `updates.lastCheck`. Reset All still clears them. They are written back in the same main-actor turn, so
     /// observers (`observe`, SwiftUI) never see them change.
     @MainActor static func reset(_ namespaces: [ModuleID], settings: SettingsStore) {

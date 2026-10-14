@@ -6,7 +6,7 @@ import CrannyCore
 import SwiftUI
 
 /// `CoreSettings` → theme, per-display layout, display keys and the light palette: one implementation for the
-/// shell (WP13), the Settings stage (WP14) and the onboarding stage (WP15), which cannot import each other.
+/// shell, the Settings stage and the onboarding stage, which cannot import each other.
 public enum ThemeResolver {
     /// The theme of one surface. `albumAccent` = `services.nowPlaying?.palette?.accent` while media plays.
     public static func theme(settings: SettingsStore, albumAccent: RGB?, notchUnit: CGFloat,

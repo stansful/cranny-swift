@@ -57,7 +57,7 @@ nonisolated enum DisplayCatalog {
             let matching = displays.filter { keys.contains($0.key) }
             chosen = matching.isEmpty ? [primary].compactMap { $0 } : matching
         }
-        // One rule with the Settings stage (Core, WP14): an explicit per-display Off hides Cranny on any display;
+        // One rule with the Settings stage (Core): an explicit per-display Off hides Cranny on any display;
         // the no-notch style applies only where there is no notch.
         return chosen.filter { showsCranny($0, perDisplay: perDisplay, noNotchStyle: noNotchStyle) }
     }

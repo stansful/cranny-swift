@@ -1,5 +1,5 @@
 // CrannyMediaBridge v3 — Cranny's media helper (ARCHITECTURE.md §6.3), R2's verified bridge. Owned by the
-// Media package (WP1); the Swift client is CrannyMedia/Providers (BridgeConnection, BridgeMessage).
+// Media package; the Swift client is CrannyMedia/Providers (BridgeConnection, BridgeMessage).
 // Original code (MIT, Cranny). Technique credit: ungive/mediaremote-adapter
 // (BSD-3) documented that /usr/bin/perl (identity com.apple.perl*) is admitted
 // by mediaremoted and can load a custom library via DynaLoader.

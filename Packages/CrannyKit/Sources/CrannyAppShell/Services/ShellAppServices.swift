@@ -1,4 +1,4 @@
-// CrannyAppShell/Services/ShellAppServices.swift — app-level services (ARCHITECTURE.md §10.0, §10.17), WP16.
+// CrannyAppShell/Services/ShellAppServices.swift — app-level services (ARCHITECTURE.md §10.0, §10.17).
 // Owns launch at login (`LoginItemController`), the update check (`UpdateChecker`), Pause Live Activities
 // (`PauseController`), Demo mode (`DemoMode`), the Show On display list and the interactive tutorial, and wires
 // them and the windows, the overlay and the hot keys into the `AppControl` port. Nothing here polls: every

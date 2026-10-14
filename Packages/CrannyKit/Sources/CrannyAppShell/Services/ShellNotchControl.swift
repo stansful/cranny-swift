@@ -1,4 +1,4 @@
-// CrannyAppShell/Services/ShellNotchControl.swift — the `NotchControl` port (ARCHITECTURE.md §3.9), WP13.
+// CrannyAppShell/Services/ShellNotchControl.swift — the `NotchControl` port (ARCHITECTURE.md §3.9).
 // Created before the registry (modules receive it in `register(in:)`), then attached to the `OverlayCoordinator`,
 // which owns the panels. Calls made before the coordinator exists are ignored (modules must not call it from
 // `register`, §3.4). Event observers outlive panel rebuilds: they hang off this object, not off a panel.

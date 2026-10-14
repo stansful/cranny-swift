@@ -1,4 +1,4 @@
-// WP15: the Welcome window controller's decisions (first launch, visual QA, the close button, activation
+// The Welcome window controller's decisions (first launch, visual QA, the close button, activation
 // hand-back) and the onboarding QA launch arguments.
 import CrannyOnboarding
 import Testing

@@ -1,6 +1,6 @@
 // CrannyAppShell/Services/FlashActivity.swift — the shell-owned transient activity behind
 // `NotchControl.flash(symbol:label:)` (ARCHITECTURE.md §3.6, `ActivityID.flash`): a glyph and a short,
-// already-localized label (≤ 12 characters) in the wings for 2.6 s — onboarding "Hi", "Path copied". WP13.
+// already-localized label (≤ 12 characters) in the wings for 2.6 s — onboarding "Hi", "Path copied".
 import CrannyCore
 import Foundation
 import Observation

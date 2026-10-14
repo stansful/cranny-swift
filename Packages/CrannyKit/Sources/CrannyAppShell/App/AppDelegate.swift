@@ -1,7 +1,7 @@
 // CrannyAppShell/App/AppDelegate.swift — a thin orchestrator (ARCHITECTURE.md §3.4, §10.1).
 // Builds the ports and the registry (CompositionRoot), registers the shell's own contributions, then owns and
-// starts four components with final initializers: OverlayCoordinator (WP13), SettingsWindowController (WP14),
-// WelcomeWindowController (WP15) and ShellAppServices (WP16). `--diagnostics` exits before any window exists, and
+// starts four components with final initializers: OverlayCoordinator, SettingsWindowController,
+// WelcomeWindowController and ShellAppServices. `--diagnostics` exits before any window exists, and
 // before any module launched, so no terminate hook runs then either (`LaunchGate`).
 import AppKit
 import CrannyCore

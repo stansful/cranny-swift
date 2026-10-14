@@ -6,7 +6,7 @@ import Testing
 @testable import CrannyAppShell
 
 // State machine, view model, arbitration and overlay tests: NotchMachineTests.swift, NotchViewModelTests.swift,
-// ActivityArbiterTests.swift and OverlayGeometryTests.swift (WP13).
+// ActivityArbiterTests.swift and OverlayGeometryTests.swift.
 
 // MARK: - Hot keys, contributions, menu bar
 
@@ -26,7 +26,7 @@ import Testing
     let registry = ModuleRegistry(services: .preview())
     let overlay = OverlayCoordinator(registry: registry, environment: ShellEnvironment())
     ShellContributions.register(in: registry, overlay: overlay)
-    #expect(registry.shortcuts.map(\.id) == [.openNook, .togglePin, .pauseActivities])                 // WP16 adds Pause
+    #expect(registry.shortcuts.map(\.id) == [.openNook, .togglePin, .pauseActivities])                 // the shell adds Pause
     #expect(registry.shortcuts.first?.defaultCombo == .openNookDefault)
     #expect(registry.activity(.flash)?.kind.defaultPriority == .alert)
     #expect(registry.activity(.flash)?.activity.isActive == false)

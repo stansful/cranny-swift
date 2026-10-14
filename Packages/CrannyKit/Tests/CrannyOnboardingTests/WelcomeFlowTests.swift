@@ -337,7 +337,7 @@ import Testing
         stage.show(.open, reduceMotion: false)
         stage.setVisibleOnScreen(false)
         #expect(stage.theme.motion == .instant)
-        // Tripwire for the WP12 merge: once NotchSceneModel has `isVisibleOnScreen` (its canvas budget reads it),
+        // Tripwire: once NotchSceneModel has `isVisibleOnScreen` (its canvas budget reads it),
         // the stage must clear it as well.
         let visibility = Mirror(reflecting: stage.model).children.first { $0.label == "_isVisibleOnScreen" }?.value
         if let visibility = visibility as? Bool { #expect(visibility == false) }

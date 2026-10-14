@@ -247,7 +247,7 @@ Everything in this section is the **contract** between work packages. The code b
 | `Platform/AudioHAL.swift` | `AudioHAL`: typed Core Audio HAL reads (HUD, Media, System Activities) | 7.1 |
 | `Platform/AppIdentity.swift`, `Platform/ProtectedLocations.swift` | `AppIdentityResolver` (bundle ID → name and icon, off the main actor) and the guard that keeps Cranny from reading prompt-protected folders | 9.2, 10.15 |
 | `Resources/Localizable.xcstrings` | Core's catalog (en + ru) | 8.7 |
-| `Additions/` | Staging for additive change requests made while packages work in parallel (`<WPnn or phase>-<Topic>.swift`, §10.0). Before a release each is folded into the folder above that fits its topic and the file is deleted. | 10.0 |
+| `Additions/` | Staging for additive change requests made while packages work in parallel (`<WPnn or phase>-<Topic>.swift`, §10.0). Before a release each is folded into the folder above that fits its topic and the file is deleted. Empty since the Phase C review fixes were merged (the folder exists only while something is staged). | 10.0 |
 
 ### 3.2 Design system placement and the three amendments
 
@@ -529,8 +529,10 @@ import SwiftUI
     /// Adds a type-to-capture target.
     public func add(captureTarget: CaptureTarget) { captureTargets.append(captureTarget) }
     /// Declares a permission the registering module may request, with its localized one-line reason.
-    public func declare(_ kind: PermissionKind, reason: String) {
-        permissionUses.append(PermissionUse(kind: kind, module: registeringModule ?? .shell, reason: reason))
+    /// `optIn`: the module's off-by-default switch that the permission serves (`PermissionUse.optIn`).
+    public func declare(_ kind: PermissionKind, reason: String, optIn: SettingKey<Bool>? = nil) {
+        permissionUses.append(PermissionUse(kind: kind, module: registeringModule ?? .shell, reason: reason,
+                                            optIn: optIn))
     }
 
     /// Runs after ALL modules registered and the services are wired (start observers, load files here). Hooks of
@@ -1085,8 +1087,17 @@ public struct CaptureTarget: Identifiable {
     public let symbol: String
     /// Receives the first characters; must create the item, focus its editor and return the widget to focus.
     public let capture: @MainActor (String) -> WidgetID
+    /// The widget that shows what `capture` creates. While it is on no page the shell does not capture (the item
+    /// would be invisible, DESIGN.md §7.5); nil = not known, always captured.
+    public let widget: WidgetID?
+    /// A capture target that does not name its widget (always captured).
     public init(id: String, title: String, symbol: String, capture: @escaping @MainActor (String) -> WidgetID) {
-        self.id = id; self.title = title; self.symbol = symbol; self.capture = capture
+        self.id = id; self.title = title; self.symbol = symbol; self.capture = capture; self.widget = nil
+    }
+    /// A capture target whose items appear in `widget` (Notes: `.notes`, To-dos: `.todos`).
+    public init(id: String, title: String, symbol: String, widget: WidgetID,
+                capture: @escaping @MainActor (String) -> WidgetID) {
+        self.id = id; self.title = title; self.symbol = symbol; self.capture = capture; self.widget = widget
     }
 }
 
@@ -1097,8 +1108,13 @@ public nonisolated struct PermissionUse: Hashable, Sendable {
     /// The module that may ask for it.
     public let module: ModuleID
     public let reason: String               // "Show your events in Cranny. Cranny never edits or uploads them."
-    public init(kind: PermissionKind, module: ModuleID, reason: String) {
-        self.kind = kind; self.module = module; self.reason = reason
+    /// The module's switch for the feature the permission serves, when that feature is off by default and a
+    /// grant alone changes nothing (Media's Apple Events fallback, every Bluetooth device); nil when the
+    /// feature uses the permission as soon as it is granted. Onboarding asks for such a use only while the
+    /// switch is on; the switch itself asks when it is turned on.
+    public let optIn: SettingKey<Bool>?
+    public init(kind: PermissionKind, module: ModuleID, reason: String, optIn: SettingKey<Bool>? = nil) {
+        self.kind = kind; self.module = module; self.reason = reason; self.optIn = optIn
     }
 }
 ```
@@ -1258,6 +1274,21 @@ public nonisolated enum NotchEvent: Sendable, Equatable {
     func removeEventObserver(_ id: UUID)
 }
 
+/// Key focus for a selection rather than for typing (ARCHITECTURE.md §4.10). Implemented by the shell's `NotchControl`;
+/// a module asks with `(notch as? any NotchSelectionFocus)?.requestSelectionFocus()` and falls back to
+/// `requestKeyboardFocus()` when the control does not conform (previews and test doubles).
+///
+/// A click on a Tray tile selects it, and the row's keys (Space, ⌘C, ⌘⌫, ⌘.) must then reach the Tray, never the
+/// frontmost app (⌘⌫ in Finder would trash the user's own selection). So the panel becomes key, without activating
+/// Cranny, but unlike typing that key status does not hold the panel open: it still closes when the pointer leaves,
+/// after the usual grace, and the close hands key status back to the previous app (DESIGN.md §3.6).
+@MainActor public protocol NotchSelectionFocus: AnyObject {
+    /// Makes the open panel key like `requestKeyboardFocus()`, without the `typing` hold. Key status taken this way
+    /// holds the panel open after all once a text view or field becomes first responder or anything calls
+    /// `requestKeyboardFocus()`; a panel that is already key and held stays held.
+    func requestSelectionFocus()
+}
+
 // MARK: - SystemEnvironment (implemented by CrannyAppShell)
 
 /// Observable facts about the machine. Read inside SwiftUI bodies or `observe(_:onChange:)`.
@@ -1282,9 +1313,18 @@ public nonisolated enum NotchEvent: Sendable, Equatable {
     var areLiveActivitiesPaused: Bool { get }
     /// Built-in or Magic Trackpad present (onboarding gesture step, haptics copy).
     var hasTrackpad: Bool { get }
+    /// A HUD shown now would be drawn: the display it appears on has a panel that is not hidden and whose
+    /// General ▸ Displays ▸ HUD toggle is on. The HUD takes a volume or brightness key only when Cranny can show it
+    /// (D10: never two HUDs, never none); lock, sleep and full screen it reads itself, but whether a panel would draw
+    /// it only the shell knows, so the shell writes the answer here and the HUD hands the key back to macOS when it is
+    /// false (ARCHITECTURE.md §7.1). Default `true`.
+    var canPresentHUD: Bool { get }
 }
 
 public extension SystemEnvironment {
+    /// Default for environments that know nothing about panels (previews, tests): presentable.
+    var canPresentHUD: Bool { true }
+
     /// The energy budget for an effect drawn in an open Nook (DESIGN.md §4.7).
     func effectBudget(isOpen: Bool, isOnScreen: Bool, reduceMotion: Bool) -> EffectBudget {
         EffectBudget(isOpen: isOpen, onScreen: isOnScreen && !isScreenLocked && !areDisplaysAsleep,
@@ -1333,6 +1373,14 @@ public nonisolated enum ShortcutState: Sendable, Equatable { case off, registere
     func resetAllSettings()
     /// Quits Cranny (the modules' terminate hooks run first).
     func quit()
+    /// A shortcut recorder listens (true) or stopped (false): Cranny's own global shortcuts pause meanwhile, so the
+    /// keys of a bound one are recorded instead of running it. Default: no-op.
+    func setShortcutRecording(_ recording: Bool)
+}
+
+public extension AppControl {
+    /// Default: no global shortcuts to pause (previews, test doubles).
+    func setShortcutRecording(_ recording: Bool) {}
 }
 
 // MARK: - Media (implemented by CrannyMedia)
@@ -1558,6 +1606,7 @@ import Observation
     public var areLiveActivitiesPaused = false
     /// See `SystemEnvironment.hasTrackpad`.
     public var hasTrackpad = true
+    public var canPresentHUD = true
     public init() {}
 }
 

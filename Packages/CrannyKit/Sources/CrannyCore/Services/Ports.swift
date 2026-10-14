@@ -63,6 +63,21 @@ public nonisolated enum NotchEvent: Sendable, Equatable {
     func removeEventObserver(_ id: UUID)
 }
 
+/// Key focus for a selection rather than for typing (ARCHITECTURE.md §4.10). Implemented by the shell's `NotchControl`;
+/// a module asks with `(notch as? any NotchSelectionFocus)?.requestSelectionFocus()` and falls back to
+/// `requestKeyboardFocus()` when the control does not conform (previews and test doubles).
+///
+/// A click on a Tray tile selects it, and the row's keys (Space, ⌘C, ⌘⌫, ⌘.) must then reach the Tray, never the
+/// frontmost app (⌘⌫ in Finder would trash the user's own selection). So the panel becomes key, without activating
+/// Cranny, but unlike typing that key status does not hold the panel open: it still closes when the pointer leaves,
+/// after the usual grace, and the close hands key status back to the previous app (DESIGN.md §3.6).
+@MainActor public protocol NotchSelectionFocus: AnyObject {
+    /// Makes the open panel key like `requestKeyboardFocus()`, without the `typing` hold. Key status taken this way
+    /// holds the panel open after all once a text view or field becomes first responder or anything calls
+    /// `requestKeyboardFocus()`; a panel that is already key and held stays held.
+    func requestSelectionFocus()
+}
+
 // MARK: - SystemEnvironment (implemented by CrannyAppShell)
 
 /// Observable facts about the machine. Read inside SwiftUI bodies or `observe(_:onChange:)`.
@@ -88,11 +103,17 @@ public nonisolated enum NotchEvent: Sendable, Equatable {
     /// Built-in or Magic Trackpad present (onboarding gesture step, haptics copy).
     var hasTrackpad: Bool { get }
     /// A HUD shown now would be drawn: the display it appears on has a panel that is not hidden and whose
-    /// General ▸ Displays ▸ HUD toggle is on. Default `true` (Additions/WP09-HUDPresentability.swift).
+    /// General ▸ Displays ▸ HUD toggle is on. The HUD takes a volume or brightness key only when Cranny can show it
+    /// (D10: never two HUDs, never none); lock, sleep and full screen it reads itself, but whether a panel would draw
+    /// it only the shell knows, so the shell writes the answer here and the HUD hands the key back to macOS when it is
+    /// false (ARCHITECTURE.md §7.1). Default `true`.
     var canPresentHUD: Bool { get }
 }
 
 public extension SystemEnvironment {
+    /// Default for environments that know nothing about panels (previews, tests): presentable.
+    var canPresentHUD: Bool { true }
+
     /// The energy budget for an effect drawn in an open Nook (DESIGN.md §4.7).
     func effectBudget(isOpen: Bool, isOnScreen: Bool, reduceMotion: Bool) -> EffectBudget {
         EffectBudget(isOpen: isOpen, onScreen: isOnScreen && !isScreenLocked && !areDisplaysAsleep,
@@ -142,8 +163,13 @@ public nonisolated enum ShortcutState: Sendable, Equatable { case off, registere
     /// Quits Cranny (the modules' terminate hooks run first).
     func quit()
     /// A shortcut recorder listens (true) or stopped (false): Cranny's own global shortcuts pause meanwhile, so the
-    /// keys of a bound one are recorded instead of running it. Default: no-op (Additions/PhaseC-ShortcutRecording.swift).
+    /// keys of a bound one are recorded instead of running it. Default: no-op.
     func setShortcutRecording(_ recording: Bool)
+}
+
+public extension AppControl {
+    /// Default: no global shortcuts to pause (previews, test doubles).
+    func setShortcutRecording(_ recording: Bool) {}
 }
 
 // MARK: - Media (implemented by CrannyMedia)

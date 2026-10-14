@@ -224,7 +224,7 @@ import Testing
         #expect(model.makeChangeSet() == nil)                                   // nothing left pending
     }
 
-    /// A save handed to its task but not yet written when the app quits: the flush writes it (review of WP5).
+    /// A save handed to its task but not yet written when the app quits: the flush writes it.
     @Test func flushWritesSavesThatAreStillInFlight() async throws {
         let model = await loadedModel()
         let id = model.newNote()
@@ -365,7 +365,7 @@ import Testing
     }
 
     /// Layout editing or demo redaction while focus mode is shown: the shell may drop focus mode meanwhile, so the
-    /// non-live widget releases its holds at once instead of waiting for an explicit close (review of WP5).
+    /// non-live widget releases its holds at once instead of waiting for an explicit close.
     @Test func aWidgetThatStopsBeingLiveReleasesItsHolds() {
         let model = makeModel()
         model.widgetPresentationChanged(isLive: true, isFocusPresented: true)

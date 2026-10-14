@@ -107,7 +107,7 @@ private func escapeEvent(in window: NSWindow) -> NSEvent? {
 }
 
 /// A text field being edited (a field editor: the Notes rename field, a to-do title) sees Esc first and ends its
-/// edit; Esc it does not handle reaches the panel's `cancelOperation`, which runs the chain (WP5/WP6 contract).
+/// edit; Esc it does not handle reaches the panel's `cancelOperation`, which runs the chain (ARCHITECTURE.md §4.10).
 @Test func aFieldEditorSeesEscapeFirst() throws {
     _ = NSApplication.shared
     let registry = ModuleRegistry(services: .preview())

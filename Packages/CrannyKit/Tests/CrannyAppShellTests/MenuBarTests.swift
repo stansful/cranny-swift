@@ -1,4 +1,4 @@
-// WP16: the menu bar extra's logic — Show On ▸ (`ShowOnPolicy`, `DisplayList`), key equivalents, the wiring of
+// The menu bar extra's logic — Show On ▸ (`ShowOnPolicy`, `DisplayList`), key equivalents, the wiring of
 // `ShellAppServices` into the `AppControl` port, and the QA launch arguments of the menu.
 import AppKit
 import CrannyCore

@@ -1,8 +1,8 @@
 // CrannyAppShell/App/QAHooks.swift — DEBUG-only visual QA launch arguments (docs/CONTRIBUTING.md):
 //
 //   --qa-state closed|compact|peek|open   force that state on the primary panel, held regardless of the pointer
-//              calibrate                  the Appearance ▸ Notch fit outline and loupe (WP13)
-//              keyboard                   open as the hot key does (takes key focus) and log focus facts (WP13)
+//              calibrate                  the Appearance ▸ Notch fit outline and loupe
+//              keyboard                   open as the hot key does (takes key focus) and log focus facts
 //   --qa-page <page id>                   with `open`: show this page (`nook` = Home, `tray`, `page.<uuid>`)
 //   --qa-exit-after <seconds>             quit after that many seconds (screenshots in scripts and CI)
 //   --qa-settings <pane id>               also open Settings at that pane (`general`, `about`, …)
@@ -12,7 +12,7 @@
 //   --qa-snapshot <file.png>              render the primary panel's canvas offscreen to that PNG (handled by
 //                                         CrannyNotchUI's NotchUIQAHooks; no Screen Recording access needed)
 //
-// Menu bar extra (WP16, parsed by `MenuBarQA.Options`):
+// Menu bar extra (parsed by `MenuBarQA.Options`):
 //   --qa-menu main|pause|showOn           open the menu bar extra's menu (or one of its submenus) after 1.5 s
 //   --qa-demo on|off                      turn Demo mode on or off after 1 s, so the icon badge changes live
 //   --qa-update-check                     run "Check for Updates…" as the menu does (Settings ▸ About opens)
@@ -20,7 +20,7 @@
 //   --qa-snapshot <dir> [--qa-snapshot-at 1,3.5]   render every window of the app (menus, Settings, the status
 //                                         item) in-process into <dir> at those seconds; works while displays sleep
 //
-// Welcome and tour (WP15, acted on by `WelcomeWindowController`):
+// Welcome and tutorial (acted on by `WelcomeWindowController`):
 //   --qa-welcome <step>                   show the Welcome window at a step (`hello`, `openIt`, `gestures`,
 //                                         `preset`, `permissions`, `done`); records nothing
 //   --qa-tutorial <n>                     start the interactive tutorial at step n (1-based); records nothing
@@ -50,9 +50,9 @@ enum QAHooks {
         var settingsPage: SettingsPageID?
         var captureDirectory: URL?
         var captureAfter: Double = 3
-        /// `WelcomeStep` raw value; `WelcomeWindowController` acts on it (WP15).
+        /// `WelcomeStep` raw value; `WelcomeWindowController` acts on it.
         var welcomeStep: String?
-        /// 1-based tutorial step; `WelcomeWindowController` starts the tour there (WP15).
+        /// 1-based tutorial step; `WelcomeWindowController` starts the tutorial there.
         var tutorialStep: Int?
         /// `--qa-snapshot`: a `.png` file (the panel canvas, NotchUI) or a directory for in-process window snapshots.
         var snapshotPath: String?
@@ -97,7 +97,7 @@ enum QAHooks {
     static var sampleLabel: String { String(localized: "Hi", bundle: .module, comment: "Visual QA (Debug builds only): sample activity label") }
 
     @MainActor static func apply(_ options: Options, to overlay: OverlayCoordinator, appControl: any AppControl) {
-        MenuBarQA.apply(MenuBarQA.Options(arguments: CommandLine.arguments), to: appControl)          // WP16
+        MenuBarQA.apply(MenuBarQA.Options(arguments: CommandLine.arguments), to: appControl)
         guard !options.isEmpty else { return }
         if let page = options.settingsPage { appControl.openSettings(page) }
         if let state = options.state {

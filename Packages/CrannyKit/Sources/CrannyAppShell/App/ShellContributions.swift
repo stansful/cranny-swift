@@ -1,4 +1,4 @@
-// CrannyAppShell/App/ShellContributions.swift — the shell's own contributions (ARCHITECTURE.md §10.0), WP16.
+// CrannyAppShell/App/ShellContributions.swift — the shell's own contributions (ARCHITECTURE.md §10.0).
 // Global shortcuts: Open Cranny (⌃⌥N) and Toggle pin → the overlay; Pause activities → `PauseController`.
 // ⌘K: Pause Live Activities for 1 hour (or Resume), Demo mode, Keep Cranny open, Show tutorial, and every
 // Settings pane — and nothing else. Commands resolve state at query time, so their titles always say what they do.

@@ -1,4 +1,4 @@
-// CrannyAppShell/Services/ShellAppControl.swift — the `AppControl` port (ARCHITECTURE.md §3.9), WP16.
+// CrannyAppShell/Services/ShellAppControl.swift — the `AppControl` port (ARCHITECTURE.md §3.9).
 // Created before the registry (modules receive it in `register(in:)`); `ShellAppServices.start()` wires it to the
 // windows, the overlay and the hot keys (`connect`), then to the app services (`attach`): launch at login,
 // the update check, Pause Live Activities, Demo mode, the Show On displays and the tutorial. The menu bar extra

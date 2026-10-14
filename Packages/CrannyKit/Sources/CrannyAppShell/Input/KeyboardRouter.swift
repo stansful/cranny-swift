@@ -71,7 +71,7 @@ import Foundation
         if event.keyCode == 53 {                                                 // kVK_Escape
             if Self.isComposing(panel.firstResponder) { return event }           // Esc cancels the marked text first
             // A text field being edited (a field editor: the Notes rename field, a to-do title, the palette's
-            // search) ends its edit first; the next Esc runs the chain (WP5/WP6, §4.10). If the field does not
+            // search) ends its edit first; the next Esc runs the chain (§4.10). If the field does not
             // handle it, the panel's `cancelOperation` runs the chain instead (`NotchPanel.onCancel`).
             if Self.isEditingText(panel.firstResponder) { return event }
             if panel.contentView?.performKeyEquivalent(with: event) == true { return nil }   // NotchUI's chain took it

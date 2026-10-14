@@ -1,8 +1,8 @@
-// CrannyAppShell/Services/ShellEnvironment.swift — the `SystemEnvironment` port (ARCHITECTURE.md §7.10), WP13.
+// CrannyAppShell/Services/ShellEnvironment.swift — the `SystemEnvironment` port (ARCHITECTURE.md §7.10).
 // Event-driven only: lock/unlock and fast user switching, display sleep, Low Power Mode, thermal state, AC vs battery,
 // frontmost app, Reduce Motion, trackpad presence, and per-display full-screen detection (§5.7) re-evaluated 0.6 s
 // after Space/app/screen changes (and on demand right before a hover-open). Demo mode and "Pause Live Activities" are
-// derived from CoreSettings by observation; their only writers are WP16's DemoMode/PauseController.
+// derived from CoreSettings by observation; their only writers are DemoMode and PauseController.
 import AppKit
 import CoreGraphics
 import CrannyCore

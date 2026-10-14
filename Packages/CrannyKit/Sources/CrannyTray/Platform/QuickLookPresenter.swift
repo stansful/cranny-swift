@@ -1,5 +1,4 @@
-// CrannyTray/Platform/QuickLookPresenter.swift — Quick Look for tray items (ARCHITECTURE.md §7.8; decision recorded in
-// the WP8 report).
+// CrannyTray/Platform/QuickLookPresenter.swift — Quick Look for tray items (ARCHITECTURE.md §7.8).
 //
 // Decision: the shared `QLPreviewPanel` is NOT used. It finds its data source through the KEY window's responder chain
 // and, like every floating panel of an inactive app, only shows while its app is active — so from the non-activating

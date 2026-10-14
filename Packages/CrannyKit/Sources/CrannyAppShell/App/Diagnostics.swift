@@ -29,9 +29,9 @@ enum Diagnostics {
         r["bridge"] = FileManager.default.fileExists(atPath: bridge) ? bridge : "(missing)"
         // Metal effects: the CrannyEffects bundle's default.metallib, loaded the way the app loads it (Bundle.module).
         r["shaders"] = EffectsDiagnostics.shaderStatus
-        // How the ambient light is drawn: "metal-layer", "swiftui-shader" or "fallback" (WP11).
+        // How the ambient light is drawn: "metal-layer", "swiftui-shader" or "fallback" (CrannyEffects).
         r["effectsRenderer"] = EffectsDiagnostics.ambientRenderer
-        // The media source's health facts (WP1: provider, state, elected player as unknown/none/some; no names).
+        // The media source's health facts (provider, state, elected player as unknown/none/some; no names).
         if let media = registry.services.nowPlaying as? any NowPlayingDiagnostics { r["media"] = media.diagnostics }
         // Which display(s) get a panel under the current settings, in AppKit screen coordinates (visual QA).
         r["panelScreens"] = OverlayCoordinator.panelScreens(settings: registry.services.settings).map { entry in

@@ -1,4 +1,4 @@
-// CrannyAppShell/Services/UpdateChecker.swift — the GitHub Releases update check (ARCHITECTURE.md §7.11), WP16.
+// CrannyAppShell/Services/UpdateChecker.swift — the GitHub Releases update check (ARCHITECTURE.md §7.11).
 // Daily (one sleep to the next due time, no polling) and on demand. One GET with the stored ETag, an ephemeral
 // session, no cookies and no identifiers; never downloads or installs anything. Shows "Update available" in the
 // menu bar extra and Settings ▸ About through `AppControl.update`. No repository configured = no check at all.

@@ -1,11 +1,10 @@
 // CrannyAppShell/Input/HotKeyCenter.swift — system-wide shortcuts with Carbon `RegisterEventHotKey` on the
 // application event target: no Accessibility permission (ARCHITECTURE.md §4.10, verified on macOS 27).
-// Intra-shell interface fixed by WP0 (§10.0): `apply(_:bindings:)`, `state(_:)`. It re-applies itself when
+// Intra-shell interface fixed by the foundation (§10.0): `apply(_:bindings:)`, `state(_:)`. It re-applies itself when
 // `CoreSettings.shortcuts` changes (Reset All, Undo, any writer); `AppControl.setShortcut` writes the key and
 // calls `reapply()` so it can return the resulting state at once. `states` is observed: Settings ▸ Keyboard
 // re-renders when a shortcut turns `.conflict` or `.off`. While Settings records a shortcut (`setPaused`) every hot key
 // is unregistered, so its keys reach the recorder; the states stay as they were and everything re-registers after.
-// WP13.
 import AppKit
 import Carbon
 import CrannyCore

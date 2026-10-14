@@ -3,8 +3,8 @@ import Foundation
 import Testing
 @testable import CrannyCore
 
-// Additive Core change requested by WP1: a value zone with `onEnd:` tells a release from a system cancel
-// (Additions/WP01-ScrollEnd.swift). Zones without it keep the `.cancelled` update.
+// A value zone with `onEnd:` tells a release from a system cancel (`NotchZones.ScrollEnd`, Input/NotchZones.swift).
+// Zones without it keep the `.cancelled` update.
 
 private func sample(_ phase: SwipePhase, dx: CGFloat = 0, at t: TimeInterval) -> ScrollSample {
     ScrollSample(phase: phase, isMomentum: false, deltaX: dx, deltaY: 0, isPrecise: true,

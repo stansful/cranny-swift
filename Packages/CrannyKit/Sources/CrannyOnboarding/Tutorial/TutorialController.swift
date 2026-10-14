@@ -1,5 +1,5 @@
 // CrannyOnboarding/Tutorial/TutorialController.swift — the 5-step interactive tutorial in the real notch
-// (DESIGN.md §12.2). Intra-shell interface fixed by WP0 (ARCHITECTURE.md §10.0): `init(registry:)`, `start()`,
+// (DESIGN.md §12.2). Intra-shell interface fixed by the foundation (ARCHITECTURE.md §10.0): `init(registry:)`, `start()`,
 // `stop()`, `isRunning` (observable, so a menu can offer "Skip tutorial" while it runs). Every step completes on real
 // detection through `NotchControl.addEventObserver`, with a ✓ bounce, an `.alignment` haptic and a VoiceOver
 // announcement. The bubble sits under `NotchControl.shapeFrameOnScreen()` and shows only while the notch does

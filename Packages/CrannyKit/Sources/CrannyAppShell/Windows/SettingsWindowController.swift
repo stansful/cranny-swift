@@ -1,4 +1,4 @@
-// CrannyAppShell/Windows/SettingsWindowController.swift — the Settings window (ARCHITECTURE.md §5.9, D11; DESIGN.md §11.1), WP14.
+// CrannyAppShell/Windows/SettingsWindowController.swift — the Settings window (ARCHITECTURE.md §5.9, D11; DESIGN.md §11.1).
 // An AppKit-managed NSWindow hosting `SettingsRootView`, so any pane (or row: "general#hoverDelay") can be opened
 // programmatically from an agent app (no SwiftUI `Settings` scene). 860 × 620 by default, 780 × 560 minimum; the frame
 // is autosaved and the last pane is restored. SwiftUI drives the toolbar and title (`sceneBridgingOptions`), so the

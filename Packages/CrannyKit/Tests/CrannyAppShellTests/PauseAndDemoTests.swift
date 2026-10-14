@@ -1,4 +1,4 @@
-// WP16: Pause Live Activities (`PauseController`, `PauseStatus`, the menu's status line) and Demo mode.
+// Pause Live Activities (`PauseController`, `PauseStatus`, the menu's status line) and Demo mode.
 import AppKit
 import CoreGraphics
 import CrannyCore

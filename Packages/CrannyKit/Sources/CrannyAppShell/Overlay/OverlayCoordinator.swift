@@ -1,7 +1,7 @@
 // CrannyAppShell/Overlay/OverlayCoordinator.swift — owns one `NotchPanelController` per eligible display, rebuilds
 // them on display changes, routes the pointer and file drags, keeps at most one open panel and forwards every event
 // to `NotchControl` observers (ARCHITECTURE.md §4.9, §5.4–§5.5). Arbitration lives in `+Activities`, the
-// `NotchControl` backing and "Show on Notch" in `+Control`. Intra-shell interface fixed by WP0 (§10.0):
+// `NotchControl` backing and "Show on Notch" in `+Control`. Intra-shell interface fixed by the foundation (§10.0):
 // `init(registry:environment:)`, `start()`, `notchControl`, `hotKeys`, `play(_:for:)`, `toggleOpen()`, `setPinned(_:)`.
 import AppKit
 import CrannyCore

@@ -1,4 +1,4 @@
-// WP16: Launch at login (ARCHITECTURE.md §7.9) against a fake `SMAppService` — the real login items are never touched.
+// Launch at login (ARCHITECTURE.md §7.9) against a fake `SMAppService` — the real login items are never touched.
 import AppKit
 import CrannyCore
 import Foundation

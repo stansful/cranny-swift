@@ -15,7 +15,7 @@
 		<string>en</string>
 		<string>ru</string>
 	</array>
-	<!-- Metal effects run on the integrated GPU of dual-GPU Macs and never force the discrete one on (WP11). -->
+	<!-- Metal effects run on the integrated GPU of dual-GPU Macs and never force the discrete one on. -->
 	<key>NSSupportsAutomaticGraphicsSwitching</key>
 	<true/>
 	<!-- "owner/repo" for the GitHub Releases update check. Empty = update check disabled. -->

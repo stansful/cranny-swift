@@ -1,5 +1,5 @@
-// CrannyAppShell/Services/DemoMode.swift — Demo mode (DESIGN.md §11.1 General, §13, §14.3), WP16.
-// The only writer of `CoreSettings.demoMode`. Everything else follows the key: WP13's `ShellEnvironment`
+// CrannyAppShell/Services/DemoMode.swift — Demo mode (DESIGN.md §11.1 General, §13, §14.3).
+// The only writer of `CoreSettings.demoMode`. Everything else follows the key: `ShellEnvironment`
 // publishes `isDemoMode` (the panel never auto-closes or hides and shows on full screen, sounds are muted,
 // calendar titles are redacted when `demoRedactsCalendar` is on), and the menu bar icon wears its 4-pt dot.
 import CrannyCore

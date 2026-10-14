@@ -183,7 +183,7 @@ private func earWidth(body: CGFloat, ear: CGFloat, y: CGFloat = 0.25) -> CGFloat
             // Increase Contrast strokes a 45 % keyline ON the outline: its inner pixel is lighter than the probe's
             // dark threshold, so the measured width can lose one device pixel per side.
             let tolerance: CGFloat = variant == "increaseContrast" ? 1 : 0.5
-            // Vivid lights the open panel from its bottom edge up (WP11's aurora, by design), so the bottom rows of
+            // Vivid lights the open panel from its bottom edge up (the aurora, by design), so the bottom rows of
             // the centre column are not dark there: the dark-pixel probe checks only the width there.
             if variant == "vivid" && phase == .open {
                 #expect(probe.verticalExtent != nil, "\(variant) \(phase)")

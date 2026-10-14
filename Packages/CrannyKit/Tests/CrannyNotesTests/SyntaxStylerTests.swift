@@ -1,4 +1,4 @@
-// The keystroke path (DESIGN.md §4.7, review of WP5): merged edits, the syntax styler's synchronous, background and
+// The keystroke path (DESIGN.md §4.7): merged edits, the syntax styler's synchronous, background and
 // sliced writes against a full pass, and incremental line numbers.
 import AppKit
 import CrannyCore

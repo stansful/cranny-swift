@@ -166,11 +166,16 @@ public struct CaptureTarget: Identifiable {
     /// Receives the first characters; must create the item, focus its editor and return the widget to focus.
     public let capture: @MainActor (String) -> WidgetID
     /// The widget that shows what `capture` creates. While it is on no page the shell does not capture (the item
-    /// would be invisible); nil = not known, always captured. Set by `init(id:title:symbol:widget:capture:)`
-    /// (Additions/PhaseC-CaptureTargetWidget.swift).
+    /// would be invisible, DESIGN.md §7.5); nil = not known, always captured.
     public let widget: WidgetID?
+    /// A capture target that does not name its widget (always captured).
     public init(id: String, title: String, symbol: String, capture: @escaping @MainActor (String) -> WidgetID) {
         self.id = id; self.title = title; self.symbol = symbol; self.capture = capture; self.widget = nil
+    }
+    /// A capture target whose items appear in `widget` (Notes: `.notes`, To-dos: `.todos`).
+    public init(id: String, title: String, symbol: String, widget: WidgetID,
+                capture: @escaping @MainActor (String) -> WidgetID) {
+        self.id = id; self.title = title; self.symbol = symbol; self.capture = capture; self.widget = widget
     }
 }
 

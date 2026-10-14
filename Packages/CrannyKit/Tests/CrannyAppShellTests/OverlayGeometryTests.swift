@@ -110,7 +110,7 @@ private func placed(_ displays: [DisplayDescriptor], _ selection: DisplaySelecti
     off.showsPeeks = false
     #expect(placed([external, builtIn, side], .all, perDisplay: ["side": off]) == ["external", "built-in"])
     #expect(placed([external, builtIn], .all, style: .off) == ["built-in"])     // the no-notch style skips a notch
-    // An explicit per-display Off hides Cranny on a notched display too (the rule Settings' stage uses, WP14).
+    // An explicit per-display Off hides Cranny on a notched display too (the rule Settings' stage uses).
     #expect(placed([external, builtIn], .all, perDisplay: ["built-in": DisplayPreferences(style: .off)]) == ["external"])
     let attached = DisplayCatalog.placements(for: [side], selection: .all, perDisplay: ["side": DisplayPreferences(style: .attached)],
                                              noNotchStyle: .floatingIsland)

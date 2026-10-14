@@ -1,4 +1,4 @@
-// CrannyAppShell/Services/LoginItemController.swift — Launch at login (ARCHITECTURE.md §7.9, D15), WP16.
+// CrannyAppShell/Services/LoginItemController.swift — Launch at login (ARCHITECTURE.md §7.9, D15).
 // `SMAppService.mainApp` only. The status is read again whenever the app becomes active (Settings and the
 // welcome window activate it), never cached as a Bool: the user can change it in System Settings at any time.
 // `.requiresApproval` and a refused registration lead to System Settings ▸ General ▸ Login Items; a translocated

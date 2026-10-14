@@ -12,7 +12,7 @@ struct TodoEditorIntegrationTests {
     let services = CrannyServices.testing()
 
     /// Records the keys nothing inside handled: they reached the end of the responder chain, where the shell's
-    /// Esc chain (WP12) closes the panel.
+    /// Esc chain (ARCHITECTURE.md §4.10) closes the panel.
     final class RecordingWindow: NSWindow {
         var unhandledKeyCodes: [UInt16] = []
         override func keyDown(with event: NSEvent) { unhandledKeyCodes.append(event.keyCode) }

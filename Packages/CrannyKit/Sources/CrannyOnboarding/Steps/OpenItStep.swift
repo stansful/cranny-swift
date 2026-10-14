@@ -99,7 +99,7 @@ private struct OpenMethodCard: View {
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
     }
 
-    /// DESIGN.md §14.1 (+ `cursorarrow.click`, macOS 11; listed as a §14.1 addition in the WP15 report).
+    /// DESIGN.md §14.1 (`cursorarrow.click`, macOS 11).
     private var symbol: String {
         switch method {
         case .hover: "cursorarrow.motionlines"

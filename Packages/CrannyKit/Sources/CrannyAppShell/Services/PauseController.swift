@@ -1,5 +1,5 @@
-// CrannyAppShell/Services/PauseController.swift — "Pause Live Activities" (ARCHITECTURE.md §4.7, DESIGN.md §13), WP16.
-// The only writer of `CoreSettings.pausedUntil` (+1 hour / tomorrow 00:00 / `.distantFuture`). WP13's
+// CrannyAppShell/Services/PauseController.swift — "Pause Live Activities" (ARCHITECTURE.md §4.7, DESIGN.md §13).
+// The only writer of `CoreSettings.pausedUntil` (+1 hour / tomorrow 00:00 / `.distantFuture`). The shell's
 // `ShellEnvironment` derives `areLiveActivitiesPaused` from the key by observation; the arbiter then silences
 // activities, peeks and delight moments while the HUD keeps working. Event-driven: one sleep to the deadline
 // clears the key, so a pause that has ended never lingers in Settings or the menu.

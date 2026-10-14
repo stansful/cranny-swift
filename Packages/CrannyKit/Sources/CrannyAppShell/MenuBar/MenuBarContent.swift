@@ -1,4 +1,4 @@
-// CrannyAppShell/MenuBar/MenuBarContent.swift — the menu bar extra's menu (DESIGN.md §13), WP16. A standard native
+// CrannyAppShell/MenuBar/MenuBarContent.swift — the menu bar extra's menu (DESIGN.md §13). A standard native
 // menu (`.menuBarExtraStyle(.menu)`), nothing custom:
 //
 //   Open Cranny  ⌃⌥N · Keep Cranny Open ✓ │ Pause Live Activities ▸ · Show On ▸ · Demo Mode ✓ │

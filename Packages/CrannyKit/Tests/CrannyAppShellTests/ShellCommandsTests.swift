@@ -1,4 +1,4 @@
-// WP16: the shell's contributions — the Pause shortcut and the ⌘K provider (ARCHITECTURE.md §10.0).
+// The shell's contributions — the Pause shortcut and the ⌘K provider (ARCHITECTURE.md §10.0).
 import CrannyCore
 import Foundation
 import Observation
@@ -77,7 +77,7 @@ import Testing
 
     let pin = try #require(commands.commands(matching: "").first { $0.id == "shell.pin" })
     #expect(pin.shortcut?.display == "⌘P" && pin.symbol == "pin")
-    pin.perform()                    // no panel on screen in this test: WP13's coordinator has nothing to pin
+    pin.perform()                    // no panel on screen in this test: the coordinator has nothing to pin
     #expect(!overlay.isPinned)
     overlay.isPinned = true          // what an open panel's `.pinned(true)` event sets
     #expect(commands.commands(matching: "").first { $0.id == "shell.pin" }?.symbol == "pin.fill")
