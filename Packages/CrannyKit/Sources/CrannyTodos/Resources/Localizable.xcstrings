@@ -7,7 +7,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "осталось %lld"
+            "value" : "Осталось %lld"
           }
         }
       }
