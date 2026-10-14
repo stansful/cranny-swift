@@ -15,6 +15,9 @@ import Observation
     public var nowPlaying: (any NowPlayingSource)?
     /// Set by CrannyTray in `register(in:)`.
     public var tray: (any TrayIntake)?
+    /// VoiceOver announcements with the app-wide limit of DESIGN.md §16 (one alert or result per 10 s). Tests replace
+    /// it with an `Announcer(post:now:)` that records.
+    public var announcer = Announcer()
 
     public init(settings: SettingsStore, permissions: PermissionsCenter, haptics: Haptics, paths: AppPaths,
                 notch: any NotchControl, environment: any SystemEnvironment, app: any AppControl) {

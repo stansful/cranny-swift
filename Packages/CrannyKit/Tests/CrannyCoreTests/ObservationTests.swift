@@ -52,3 +52,33 @@ import Testing
         #expect(probe.delivered.isEmpty)
     }
 }
+
+@MainActor @Suite("Announcer") struct AnnouncerTests {
+    private final class Clock { var time: TimeInterval = 1000 }
+
+    @Test func alertsAndResultsShareOneLimitFeedbackIsNeverLimited() {
+        let clock = Clock()
+        var posted: [String] = []
+        let announcer = Announcer(post: { posted.append($0) }, now: { clock.time })
+        #expect(announcer.announce("Timer done", kind: .alert))
+        clock.time += 3
+        #expect(!announcer.announce("Compress finished", kind: .result))     // another module, same 10-s window
+        #expect(announcer.announce("Moved to column 2", kind: .feedback))     // the user's own action: always
+        clock.time += 6.9
+        #expect(!announcer.announce("Morning routine finished", kind: .result))
+        clock.time += 0.1                                                     // 10 s after the alert
+        #expect(announcer.announce("Meeting in 1 minute", kind: .alert))
+        #expect(!announcer.announce("", kind: .feedback))
+        #expect(posted == ["Timer done", "Moved to column 2", "Meeting in 1 minute"])
+        #expect(Announcer.interval == 10)
+    }
+
+    @Test func servicesShareOneAnnouncer() {
+        let services = CrannyServices.preview()
+        var posted: [String] = []
+        services.announcer = Announcer(post: { posted.append($0) })
+        services.announcer.announce("a", kind: .alert)
+        services.announcer.announce("b", kind: .result)
+        #expect(posted == ["a"])
+    }
+}
