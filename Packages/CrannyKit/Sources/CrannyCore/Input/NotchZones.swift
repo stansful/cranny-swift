@@ -27,6 +27,8 @@ public nonisolated struct DropPayload: Sendable {
         public let onUpdate: @MainActor (SwipeUpdate) -> Void
         /// false = a value zone (`crannyContinuousScrollZone`): never commits, `.tracking` for the whole touch.
         public var commits = true
+        /// Set: the end of a touch sequence comes here (`.released` / `.cancelled`) instead of a `.cancelled` update.
+        public var onEnd: (@MainActor (ScrollEnd) -> Void)? = nil
     }
 
     /// The drop zone under the pointer during a file drag (views highlight when `armedDropZone == id`).
@@ -70,7 +72,11 @@ public nonisolated struct DropPayload: Sendable {
         var tracker = trackers[id] ?? (zone.commits ? SwipeTracker(axis: zone.axis) : .continuous(axis: zone.axis))
         let update = tracker.handle(sample)
         trackers[id] = tracker
-        if let update { zone.onUpdate(update) }
+        if update == .cancelled, let onEnd = zone.onEnd, let end = ScrollEnd(sample.phase) {
+            onEnd(end)
+        } else if let update {
+            zone.onUpdate(update)
+        }
         if sample.phase.contains(.ended) || sample.phase.contains(.cancelled) { activeScrollZone = nil }
         return true
     }
@@ -109,10 +115,12 @@ struct ScrollZoneModifier: ViewModifier {
     let axis: SwipeAxis
     let onUpdate: @MainActor (SwipeUpdate) -> Void
     var commits = true
+    var onEnd: (@MainActor (NotchZones.ScrollEnd) -> Void)? = nil
     func body(content: Content) -> some View {
         content
             .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .named(NotchCoordinateSpace.name)) }) { frame in
-                zones?.setScrollZone(.init(id: id, frame: frame, axis: axis, onUpdate: onUpdate, commits: commits))
+                zones?.setScrollZone(.init(id: id, frame: frame, axis: axis, onUpdate: onUpdate, commits: commits,
+                                           onEnd: onEnd))
             }
             .onDisappear { zones?.removeScrollZone(id) }
     }
