@@ -41,6 +41,15 @@ nonisolated enum DurationParser {
         return c.isASCIIDigit || ".,: ".contains(c) || unitLetters.contains(c)
     }
 
+    /// Whether the focused widget takes `character` as the next one of `entry`: digits and "." always (".5"), unit
+    /// letters and the separators ",", ":" and " " only once the entry holds a digit. So an entry always starts like a
+    /// number, and a word typed over the focused face ("note", "test") is never captured.
+    static func canAppend(_ character: Character, to entry: String) -> Bool {
+        let c = Character(character.lowercased())
+        if c.isASCIIDigit || c == "." { return true }
+        return accepts(c) && entry.contains(where: \.isASCIIDigit)
+    }
+
     /// Every letter of the unit words below ("hours minutes seconds", "часов минуты секунд").
     private static let unitLetters = Set("hoursminutesecd" + "часовминутыекд")
 

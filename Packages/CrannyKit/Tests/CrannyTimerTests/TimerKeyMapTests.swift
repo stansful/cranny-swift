@@ -70,4 +70,34 @@ import Testing
         #expect(press([.character("q")]).handled == [false])
         #expect(press([.character("/")]).handled == [false])
     }
+
+    @Test func aWordTypedOverTheFaceIsNotCaptured() {
+        for word in ["note", "test", "hello", "мин", "сон"] {
+            let r = press(typed(word))
+            #expect(r.entry.isEmpty, "\(word)")
+            #expect(r.handled.allSatisfy { !$0 }, "\(word)")                    // every key goes to the panel
+        }
+        #expect(press([.character(":")]).handled == [false])                    // separators only after a number
+        #expect(press([.character(",")]).handled == [false])
+        #expect(press(typed("m5")).entry == "5")                                // the unit was not taken first
+    }
+
+    @Test func anEntryStartsWithADigitOrAPoint() {
+        #expect(press(typed(".5") + [.returnKey]).commands == [.start(seconds: 30)])
+        #expect(press(typed("1:30") + [.returnKey]).commands == [.start(seconds: 90)])
+        #expect(press(typed("2,5") + [.returnKey]).commands == [.start(seconds: 150)])
+        #expect(press(typed("25 мин") + [.returnKey]).commands == [.start(seconds: 1500)])
+        #expect(press(typed(". ")).entry == ".")                                // no space before a number
+    }
+
+    @Test func canAppendFollowsTheEntry() {
+        #expect(DurationParser.canAppend("7", to: ""))
+        #expect(DurationParser.canAppend(".", to: ""))
+        #expect(!DurationParser.canAppend("m", to: ""))
+        #expect(!DurationParser.canAppend("m", to: "."))
+        #expect(DurationParser.canAppend("m", to: "5"))
+        #expect(DurationParser.canAppend("M", to: "5"))
+        #expect(DurationParser.canAppend("с", to: "90"))
+        #expect(!DurationParser.canAppend("x", to: "90"))
+    }
 }

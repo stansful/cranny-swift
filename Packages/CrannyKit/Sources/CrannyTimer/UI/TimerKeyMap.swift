@@ -50,11 +50,14 @@ nonisolated enum TimerKeyMap {
         case .down:
             return Result(handled: true, entry: entry, command: .adjust(minutes: -1))
         case .space:
-            if !entry.isEmpty { return type(" ", into: entry) }                              // "1h 30m"
+            if !entry.isEmpty {                                                              // "1h 30m"
+                return DurationParser.canAppend(" ", to: entry) ? type(" ", into: entry) : Result(handled: true, entry: entry)
+            }
             return phase == .counting ? Result(handled: true, entry: entry, command: .togglePause)
                                       : Result(handled: false, entry: entry)
         case .character(let c):
-            guard DurationParser.accepts(c), c != " " else { return Result(handled: false, entry: entry) }
+            // An entry starts with a digit or "."; a letter first ("note") is not ours, so the panel gets it.
+            guard c != " ", DurationParser.canAppend(c, to: entry) else { return Result(handled: false, entry: entry) }
             return type(c, into: entry)
         }
     }
