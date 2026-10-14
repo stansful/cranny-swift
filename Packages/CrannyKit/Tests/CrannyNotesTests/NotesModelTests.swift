@@ -183,6 +183,22 @@ import Testing
         #expect(model.makeChangeSet() == nil)                                   // nothing left pending
     }
 
+    @Test func anUnreadableIndexShowsTheErrorAndIsNotOverwritten() async throws {
+        let store = NotesStore(paths: services.paths)
+        let kept = Note(title: "Kept title", text: "x", mode: .code, language: .swift)
+        try store.write(NotesChangeSet(revision: 1, index: NotesIndex(notes: [kept.entry]), texts: [kept.id: "x"]))
+        let index = services.paths.root.appending(path: "notes/index.json")
+        let path = index.path(percentEncoded: false)
+        try FileManager.default.setAttributes([.posixPermissions: NSNumber(value: 0o000)], ofItemAtPath: path)
+        let model = await loadedModel()
+        #expect(model.phase == .failed)
+        #expect(model.makeChangeSet() == nil)                                   // nothing would replace the index
+        try FileManager.default.setAttributes([.posixPermissions: NSNumber(value: 0o644)], ofItemAtPath: path)
+        await model.load()                                                      // "Try again"
+        #expect(model.entries.map(\.title) == ["Kept title"])
+        #expect(model.entries.first?.language == .swift)
+    }
+
     @Test func theIndexIsNeverWrittenBeforeTheNotesAreLoaded() async throws {
         let store = NotesStore(paths: services.paths)
         let existing = Note(title: "Existing", text: "old", mode: .plain)

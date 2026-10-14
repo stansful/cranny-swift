@@ -134,4 +134,57 @@ import Testing
         _ = NotesStore(paths: paths)
         #expect(!FileManager.default.fileExists(atPath: paths.root.path(percentEncoded: false)))
     }
+
+    // MARK: Read errors are not "absent"
+
+    /// Runs `body` with `url`'s POSIX permissions set to `mode`, restoring them afterwards (the temp folder is
+    /// removed in `deinit`).
+    private func with(_ url: URL, mode: Int16, _ body: () throws -> Void) throws {
+        let path = url.path(percentEncoded: false)
+        let original = try FileManager.default.attributesOfItem(atPath: path)[.posixPermissions] as? NSNumber
+        try FileManager.default.setAttributes([.posixPermissions: NSNumber(value: mode)], ofItemAtPath: path)
+        defer { try? FileManager.default.setAttributes([.posixPermissions: original ?? NSNumber(value: 0o755)], ofItemAtPath: path) }
+        try body()
+    }
+
+    @Test func anUnreadableIndexFailsTheLoadInsteadOfRecoveringOrphans() throws {
+        let a = note("Groceries", "milk", mode: .code)
+        try save([a])
+        let index = paths.root.appending(path: "notes/index.json")
+        try with(index, mode: 0o000) {
+            #expect(throws: (any Error).self) { try NotesStore(paths: paths).loadNow() }
+        }
+        #expect(try NotesStore(paths: paths).loadNow().notes.first?.title == "Groceries")   // nothing was overwritten
+    }
+
+    @Test func anUnlistableFolderFailsTheLoadInsteadOfDroppingEveryNote() throws {
+        try save([note("A", "a"), note("B", "b")])
+        let folder = paths.root.appending(path: "notes")
+        try with(folder, mode: 0o300) {                                         // files reachable, listing refused
+            #expect(throws: (any Error).self) { try NotesStore(paths: paths).loadNow() }
+        }
+        #expect(try NotesStore(paths: paths).loadNow().notes.count == 2)
+    }
+
+    @Test func anUnreadableNoteFailsTheLoadInsteadOfLoadingEmpty() throws {
+        let a = note("A", "precious")
+        try save([a])
+        let file = paths.root.appending(path: "notes/\(a.id.uuidString).md")
+        try with(file, mode: 0o000) {
+            #expect(throws: (any Error).self) { try NotesStore(paths: paths).loadNow() }
+        }
+        #expect(try NotesStore(paths: paths).loadNow().notes.first?.text == "precious")
+    }
+
+    @Test func onlyAMissingFileCountsAsAbsent() throws {
+        let missing = paths.root.appending(path: "nowhere/index.json")
+        #expect(try NotesStore.contentsIfPresent(missing) == nil)
+        do {
+            _ = try Data(contentsOf: missing)
+        } catch {
+            #expect(NotesStore.isMissingFile(error))
+        }
+        #expect(!NotesStore.isMissingFile(CocoaError(.fileReadNoPermission)))
+        #expect(NotesStore.isMissingFile(POSIXError(.ENOENT)))
+    }
 }

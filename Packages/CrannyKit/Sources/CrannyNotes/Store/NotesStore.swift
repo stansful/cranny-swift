@@ -6,6 +6,9 @@
 //     which `load()` drops (it was being deleted).
 // Saves run off the main actor (`@concurrent`); the terminate hook needs a synchronous flush, so both paths
 // go through `write(_:)`, serialized by a lock that also drops a change set older than what is on disk.
+// Loading fails (the widget shows its error state and "Try again") on any read error other than a missing
+// `index.json`: an unreadable index, folder listing or note is never mistaken for "absent", which would make
+// the next save overwrite titles, drop notes or replace a text with "".
 import CrannyCore
 import Foundation
 import os
@@ -55,7 +58,7 @@ nonisolated final class NotesStore: Sendable {
         let indexURL = dir.appending(path: Self.indexName)
         var corrupt = false
         var index = NotesIndex(notes: [])
-        if let data = try? Data(contentsOf: indexURL) {
+        if let data = try Self.contentsIfPresent(indexURL) {
             do {
                 index = try Self.decoder.decode(NotesIndex.self, from: data)
             } catch {
@@ -65,8 +68,7 @@ nonisolated final class NotesStore: Sendable {
                 log.error("index.json is corrupt, moved aside: \(error.localizedDescription, privacy: .public)")
             }
         }
-        let files = (try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey, .creationDateKey]))
-            ?? []
+        let files = try fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.contentModificationDateKey, .creationDateKey])
         var bodies: [UUID: URL] = [:]
         for url in files where url.pathExtension == Self.textExtension {
             if let id = UUID(uuidString: url.deletingPathExtension().lastPathComponent) { bodies[id] = url }
@@ -78,22 +80,40 @@ nonisolated final class NotesStore: Sendable {
                 log.info("dropping a listed note without a text file (deleted before a crash)")
                 continue
             }
-            notes.append(Note(id: entry.id, title: entry.title, text: Self.readText(url), mode: entry.mode,
+            notes.append(Note(id: entry.id, title: entry.title, text: try Self.readText(url), mode: entry.mode,
                               language: entry.language, createdAt: entry.createdAt, modifiedAt: entry.modifiedAt))
         }
-        let orphans = bodies.filter { !seen.contains($0.key) }.map { id, url -> Note in
+        let orphans = try bodies.filter { !seen.contains($0.key) }.map { id, url -> Note in
             let values = try? url.resourceValues(forKeys: [.contentModificationDateKey, .creationDateKey])
             let modified = values?.contentModificationDate ?? Date()
-            return Note(id: id, title: "", text: Self.readText(url), mode: .plain,
+            return Note(id: id, title: "", text: try Self.readText(url), mode: .plain,
                         createdAt: values?.creationDate ?? modified, modifiedAt: modified)
         }.sorted { $0.modifiedAt > $1.modifiedAt }
         if !orphans.isEmpty { log.info("recovered \(orphans.count, privacy: .public) unlisted notes") }
         return NotesLoadResult(notes: orphans + notes, recovered: orphans.count, indexWasCorrupt: corrupt)
     }
 
-    private static func readText(_ url: URL) -> String {
-        guard let data = try? Data(contentsOf: url) else { return "" }
-        return String(decoding: data, as: UTF8.self)
+    private static func readText(_ url: URL) throws -> String {
+        String(decoding: try Data(contentsOf: url), as: UTF8.self)
+    }
+
+    /// The file's contents, or nil when it does not exist; every other read error is thrown.
+    static func contentsIfPresent(_ url: URL) throws -> Data? {
+        do {
+            return try Data(contentsOf: url)
+        } catch let error where isMissingFile(error) {
+            return nil
+        }
+    }
+
+    /// "No such file" in either of the forms Foundation reports it.
+    static func isMissingFile(_ error: any Error) -> Bool {
+        let error = error as NSError
+        switch error.domain {
+        case NSCocoaErrorDomain: return error.code == NSFileReadNoSuchFileError || error.code == NSFileNoSuchFileError
+        case NSPOSIXErrorDomain: return error.code == Int(ENOENT)
+        default: return false
+        }
     }
 
     // MARK: Saving
