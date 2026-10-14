@@ -1,13 +1,57 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "About" : {
+      "comment" : "⌘K: Settings pane name (as in the Settings sidebar)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "О программе"
+          }
+        }
+      }
+    },
     "About Cranny" : {
-      "comment" : "Menu bar: opens the About panel",
+      "comment" : "Menu bar: opens Settings ▸ About",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "О программе Cranny"
+          }
+        }
+      }
+    },
+    "Appearance" : {
+      "comment" : "⌘K: Settings pane name (as in the Settings sidebar)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оформление"
+          }
+        }
+      }
+    },
+    "Check for Updates…" : {
+      "comment" : "Menu bar: checks GitHub Releases for a newer version",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверить обновления…"
+          }
+        }
+      }
+    },
+    "Checking for Updates…" : {
+      "comment" : "Menu bar: disabled item while an update check runs",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Проверка обновлений…"
           }
         }
       }
@@ -19,6 +63,116 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Подтверждения"
+          }
+        }
+      }
+    },
+    "Cranny, demo mode" : {
+      "comment" : "Menu bar icon: VoiceOver label while Demo mode is on",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny, демо-режим"
+          }
+        }
+      }
+    },
+    "Demo Mode" : {
+      "comment" : "Menu bar: toggles Demo mode (no auto-close, muted sounds, redacted titles)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Демо-режим"
+          }
+        }
+      }
+    },
+    "Display with the Pointer" : {
+      "comment" : "Menu bar ▸ Show On: show Cranny only on the display the pointer is on",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Дисплей с указателем"
+          }
+        }
+      }
+    },
+    "For 1 Hour" : {
+      "comment" : "Menu bar ▸ Pause Live Activities: duration",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "На 1 час"
+          }
+        }
+      }
+    },
+    "General" : {
+      "comment" : "⌘K: Settings pane name (as in the Settings sidebar)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Основные"
+          }
+        }
+      }
+    },
+    "Gestures" : {
+      "comment" : "⌘K: Settings pane name (as in the Settings sidebar)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Жесты"
+          }
+        }
+      }
+    },
+    "GitHub answered with an error (%lld). Try again later." : {
+      "comment" : "Update check: failure reason, other HTTP status; the number is the status code",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub ответил ошибкой (%lld). Попробуйте позже."
+          }
+        }
+      }
+    },
+    "GitHub couldn't be reached. Check your internet connection and try again." : {
+      "comment" : "Update check: failure reason, network error",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось связаться с GitHub. Проверьте подключение к интернету и попробуйте снова."
+          }
+        }
+      }
+    },
+    "GitHub couldn't find Cranny's releases. Try again later." : {
+      "comment" : "Update check: failure reason, HTTP 404 (the configured repository does not exist)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub не нашёл выпуски Cranny. Попробуйте позже."
+          }
+        }
+      }
+    },
+    "GitHub is limiting requests right now. Try again later." : {
+      "comment" : "Update check: failure reason, HTTP 403/429",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub сейчас ограничивает запросы. Попробуйте позже."
           }
         }
       }
@@ -45,6 +199,105 @@
         }
       }
     },
+    "Keep Cranny open" : {
+      "comment" : "⌘K: command (pins the open panel)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрепить Cranny"
+          }
+        }
+      }
+    },
+    "Keyboard" : {
+      "comment" : "⌘K: Settings pane name (as in the Settings sidebar)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Клавиатура"
+          }
+        }
+      }
+    },
+    "Launch at login needs Cranny in the Applications folder. Move it there, then open it again." : {
+      "comment" : "Settings ▸ General ▸ Launch at login: footnote when the app runs from a translocated copy",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Для автозапуска Cranny должен лежать в папке «Программы». Переместите его туда и откройте снова."
+          }
+        }
+      }
+    },
+    "Layout & Widgets" : {
+      "comment" : "⌘K: Settings pane name (as in the Settings sidebar)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Раскладка и виджеты"
+          }
+        }
+      }
+    },
+    "Live Activities" : {
+      "comment" : "⌘K: Settings pane name (as in the Settings sidebar)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Активности"
+          }
+        }
+      }
+    },
+    "Live Activities paused" : {
+      "comment" : "Menu bar: status line of a pause without an end",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Активности приостановлены"
+          }
+        }
+      }
+    },
+    "Live Activities paused until %@" : {
+      "comment" : "Menu bar: status line of a pause that ends later today; the argument is a time, e.g. 15:42",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Активности приостановлены до %@"
+          }
+        }
+      }
+    },
+    "Live Activities paused until %@ at %@" : {
+      "comment" : "Menu bar: status line of a pause that ends on another day; the arguments are a weekday and a time, e.g. Thu and 00:30",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Активности приостановлены до %1$@, %2$@"
+          }
+        }
+      }
+    },
+    "Live Activities paused until tomorrow" : {
+      "comment" : "Menu bar: status line of a pause that ends at midnight",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Активности приостановлены до завтра"
+          }
+        }
+      }
+    },
     "Open Cranny" : {
       "comment" : "Menu bar and Settings ▸ Keyboard: item and shortcut that open the panel",
       "localizations" : {
@@ -52,6 +305,50 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Открыть Cranny"
+          }
+        }
+      }
+    },
+    "Pause Live Activities" : {
+      "comment" : "Menu bar: submenu that silences live activities and peeks for a while",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приостановить активности"
+          }
+        }
+      }
+    },
+    "Pause Live Activities for 1 hour" : {
+      "comment" : "⌘K: command that pauses Live Activities for one hour",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приостановить активности на 1 час"
+          }
+        }
+      }
+    },
+    "Pause activities" : {
+      "comment" : "Settings ▸ Keyboard: shortcut name (pauses Live Activities for 1 hour, or resumes them)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приостановить активности"
+          }
+        }
+      }
+    },
+    "Permissions" : {
+      "comment" : "⌘K: Settings pane name (as in the Settings sidebar)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешения"
           }
         }
       }
@@ -67,6 +364,28 @@
         }
       }
     },
+    "Resume Live Activities" : {
+      "comment" : "Menu bar and ⌘K: ends a pause of Live Activities",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Возобновить активности"
+          }
+        }
+      }
+    },
+    "Settings" : {
+      "comment" : "⌘K: result kind of the Settings pane commands",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки"
+          }
+        }
+      }
+    },
     "Settings…" : {
       "comment" : "Menu bar: opens Settings",
       "localizations" : {
@@ -78,6 +397,50 @@
         }
       }
     },
+    "Show On" : {
+      "comment" : "Menu bar: submenu listing the displays that show Cranny",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показывать на"
+          }
+        }
+      }
+    },
+    "Show Tutorial" : {
+      "comment" : "Menu bar: replays the interactive tutorial in the notch",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать обучение"
+          }
+        }
+      }
+    },
+    "Show tutorial" : {
+      "comment" : "⌘K: command (replays the interactive tutorial)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Показать обучение"
+          }
+        }
+      }
+    },
+    "The release information couldn't be read." : {
+      "comment" : "Update check: failure reason, unexpected response",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось прочитать сведения о выпуске."
+          }
+        }
+      }
+    },
     "Toggle pin" : {
       "comment" : "Settings ▸ Keyboard: shortcut name (pins or unpins the open panel)",
       "localizations" : {
@@ -85,6 +448,226 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Закрепить/открепить"
+          }
+        }
+      }
+    },
+    "Turn off demo mode" : {
+      "comment" : "⌘K: command that turns Demo mode off",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Выключить демо-режим"
+          }
+        }
+      }
+    },
+    "Turn on demo mode" : {
+      "comment" : "⌘K: command that turns Demo mode on",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Включить демо-режим"
+          }
+        }
+      }
+    },
+    "Unpin Cranny" : {
+      "comment" : "⌘K: command (lets the open panel close again)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открепить Cranny"
+          }
+        }
+      }
+    },
+    "Until I Resume" : {
+      "comment" : "Menu bar ▸ Pause Live Activities: duration (no end)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Пока не возобновлю"
+          }
+        }
+      }
+    },
+    "Until Tomorrow" : {
+      "comment" : "Menu bar ▸ Pause Live Activities: duration (until midnight)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "До завтра"
+          }
+        }
+      }
+    },
+    "Update Available: Cranny %@…" : {
+      "comment" : "Menu bar: opens the release page of a newer version; the argument is the version, e.g. 0.2.0",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Доступно обновление: Cranny %@…"
+          }
+        }
+      }
+    },
+    "Update checks are not available in this build." : {
+      "comment" : "Update check: failure reason, no GitHub repository configured",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "В этой сборке проверка обновлений недоступна."
+          }
+        }
+      }
+    },
+    "accent, colour, text size, motion, ambient light, notch fit, density" : {
+      "comment" : "⌘K: search words for Settings ▸ Appearance, comma-separated",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "акцент, цвет, размер текста, движение, анимация, подсветка, подгонка выреза, плотность"
+          }
+        }
+      }
+    },
+    "demo, presentation, recording, screen sharing" : {
+      "comment" : "⌘K: search words for Demo mode, comma-separated",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "демо, презентация, запись экрана, демонстрация экрана"
+          }
+        }
+      }
+    },
+    "launch at login, displays, hover, full screen, demo, sounds, menu bar icon, updates" : {
+      "comment" : "⌘K: search words for Settings ▸ General, comma-separated",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "автозапуск, вход в систему, дисплеи, мониторы, наведение, полный экран, демо, звуки, значок в строке меню, обновления"
+          }
+        }
+      }
+    },
+    "macOS didn't add Cranny to your login items. Open Login Items in System Settings to add it." : {
+      "comment" : "Settings ▸ General ▸ Launch at login: footnote when registration failed",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS не добавил Cranny в объекты входа. Добавьте его в разделе «Объекты входа» в Системных настройках."
+          }
+        }
+      }
+    },
+    "pause, silence, quiet, resume, live activities" : {
+      "comment" : "⌘K: search words for Pause/Resume Live Activities, comma-separated",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "пауза, приостановить, тишина, не беспокоить, возобновить, активности"
+          }
+        }
+      }
+    },
+    "peek, priority, satellite, activities" : {
+      "comment" : "⌘K: search words for Settings ▸ Live Activities, comma-separated",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "мини-просмотр, приоритет, спутник, активности"
+          }
+        }
+      }
+    },
+    "pin, keep open, stay" : {
+      "comment" : "⌘K: search words for Keep Cranny open, comma-separated",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "закрепить, не закрывать"
+          }
+        }
+      }
+    },
+    "privacy, access, calendar, camera, accessibility" : {
+      "comment" : "⌘K: search words for Settings ▸ Permissions, comma-separated",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "конфиденциальность, доступ, календарь, камера, универсальный доступ"
+          }
+        }
+      }
+    },
+    "shortcuts, hot keys, keys" : {
+      "comment" : "⌘K: search words for Settings ▸ Keyboard, comma-separated",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "сочетания клавиш, горячие клавиши, клавиши"
+          }
+        }
+      }
+    },
+    "swipe, trackpad, haptics" : {
+      "comment" : "⌘K: search words for Settings ▸ Gestures, comma-separated",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "смахивание, жесты, трекпад, тактильный отклик"
+          }
+        }
+      }
+    },
+    "tutorial, tour, help, learn" : {
+      "comment" : "⌘K: search words for Show tutorial, comma-separated",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "обучение, тур, справка, подсказки"
+          }
+        }
+      }
+    },
+    "version, updates, licence, acknowledgements" : {
+      "comment" : "⌘K: search words for Settings ▸ About, comma-separated",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "версия, обновления, лицензия, благодарности"
+          }
+        }
+      }
+    },
+    "widgets, pages, grid, layout" : {
+      "comment" : "⌘K: search words for Settings ▸ Layout & Widgets, comma-separated",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "виджеты, страницы, сетка, раскладка"
           }
         }
       }

@@ -12,6 +12,14 @@
 //   --qa-snapshot <file.png>              render the primary panel's canvas offscreen to that PNG (handled by
 //                                         CrannyNotchUI's NotchUIQAHooks; no Screen Recording access needed)
 //
+// Menu bar extra (WP16, parsed by `MenuBarQA.Options`):
+//   --qa-menu main|pause|showOn           open the menu bar extra's menu (or one of its submenus) after 1.5 s
+//   --qa-demo on|off                      turn Demo mode on or off after 1 s, so the icon badge changes live
+//   --qa-update-check                     run "Check for Updates…" as the menu does (Settings ▸ About opens)
+//   --qa-open-cranny <seconds>            run the menu's "Open Cranny" then (it opens, never closes)
+//   --qa-snapshot <dir> [--qa-snapshot-at 1,3.5]   render every window of the app (menus, Settings, the status
+//                                         item) in-process into <dir> at those seconds; works while displays sleep
+//
 // No input is synthesized: the state is written through the same view-model inputs the pointer uses.
 // The whole file is compiled out of Release builds.
 #if DEBUG
@@ -59,6 +67,7 @@ enum QAHooks {
     static var sampleLabel: String { String(localized: "Hi", bundle: .module, comment: "Visual QA (Debug builds only): sample activity label") }
 
     @MainActor static func apply(_ options: Options, to overlay: OverlayCoordinator, appControl: any AppControl) {
+        MenuBarQA.apply(MenuBarQA.Options(arguments: CommandLine.arguments), to: appControl)          // WP16
         guard !options.isEmpty else { return }
         if let page = options.settingsPage { appControl.openSettings(page) }
         if let state = options.state {

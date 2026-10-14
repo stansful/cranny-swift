@@ -26,7 +26,7 @@ import Testing
     let registry = ModuleRegistry(services: .preview())
     let overlay = OverlayCoordinator(registry: registry, environment: ShellEnvironment())
     ShellContributions.register(in: registry, overlay: overlay)
-    #expect(registry.shortcuts.map(\.id) == [.openNook, .togglePin])
+    #expect(registry.shortcuts.map(\.id) == [.openNook, .togglePin, .pauseActivities])                 // WP16 adds Pause
     #expect(registry.shortcuts.first?.defaultCombo == .openNookDefault)
     #expect(registry.activity(.flash)?.kind.defaultPriority == .alert)
     #expect(registry.activity(.flash)?.activity.isActive == false)
