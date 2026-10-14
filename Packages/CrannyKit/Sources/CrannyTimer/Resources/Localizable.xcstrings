@@ -1,0 +1,83 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Countdowns with presets" : {
+      "comment" : "Widget library description",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обратный отсчёт с заготовками"
+          }
+        }
+      }
+    },
+    "Peek at one minute left" : {
+      "comment" : "Live Activities pane: timer option",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Мини-просмотр за минуту до конца"
+          }
+        }
+      }
+    },
+    "Start 25-minute timer" : {
+      "comment" : "Command palette",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запустить таймер на 25 минут"
+          }
+        }
+      }
+    },
+    "Start timer" : {
+      "comment" : "Global shortcut name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Запустить таймер"
+          }
+        }
+      }
+    },
+    "Stop timer" : {
+      "comment" : "VoiceOver action",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Остановить таймер"
+          }
+        }
+      }
+    },
+    "Timer" : {
+      "comment" : "Command palette kind\nLive activity name\nWidget name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Таймер"
+          }
+        }
+      }
+    },
+    "Timer running" : {
+      "comment" : "VoiceOver label",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Таймер запущен"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
