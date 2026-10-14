@@ -27,7 +27,8 @@ import Testing
         return try #require(catalog["strings"] as? [String: Any])
     }
 
-    /// Reads the source catalog: every key needs a "Surface: purpose" comment and a translated Russian value.
+    /// Reads the source catalog: every key needs a "Surface: purpose" comment and a Russian value (translated, or
+    /// pending translation).
     @Test func everyKeyIsTranslatedIntoRussian() throws {
         let strings = try catalogStrings()
         #expect(strings.count >= 25)
@@ -40,7 +41,8 @@ import Testing
             let unit = try #require(ru["stringUnit"] as? [String: Any], "ru unit for \(key)")
             let state = unit["state"] as? String
             let value = unit["value"] as? String ?? ""
-            #expect(state == "translated", "ru state for \(key)")
+            // needs_review: pending translation (docs/TRANSLATING.md ▸ New strings); a release refuses it.
+            #expect(state == "translated" || state == "needs_review", "ru state for \(key)")
             #expect(!value.isEmpty, "ru value for \(key)")
         }
     }

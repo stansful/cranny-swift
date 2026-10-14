@@ -183,6 +183,28 @@ def english_text(key, entry):
     return key if text is None else text
 
 
+def shaped_like(english, categories):
+    """The English text in the shape a language needs: each plural form for exactly `categories` (a category English
+    lacks takes English "other"). Pending placeholders (pending.py) are written this way."""
+    def forms(plural):
+        return {c: plural.get(c, plural.get("other")) for c in PLURAL_ORDER if c in categories}
+    if isinstance(english, str):
+        return english
+    if "plural" in english:
+        return {"plural": forms(english["plural"])}
+    return {"value": english["value"],
+            "substitutions": {name: {"argNum": sub["argNum"], "formatSpecifier": sub["formatSpecifier"],
+                                     "plural": forms(sub["plural"])}
+                              for name, sub in english.get("substitutions", {}).items()}}
+
+
+def is_pending(localization):
+    """True for a key marked "pending translation": every form in state needs_review (pending.py writes the English
+    text that way; the app shows it until a translation is imported)."""
+    states = localization_states(localization) if localization else []
+    return bool(states) and all(state == "needs_review" for state in states)
+
+
 def localization_states(localization):
     """Every stringUnit state in a localization."""
     states = []

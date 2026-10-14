@@ -15,7 +15,9 @@ App/InfoPlist.xcstrings). Each item of "strings" is:
     english        the English source (a string, {"plural": …} or {"value": …, "substitutions": …}; see l10n.py)
     placeholders   the arguments: [{"arg": 1, "specifier": "%@", "type": "text"}, {"arg": 2, …, "plural": true}]
     russian        the reviewed Russian translation, as an extra reference (same structure)
-    translation    the existing translation in this language, or null — translators fill this in
+    translation    the existing translation in this language, or null — translators fill this in (null also for a
+                   key pending translation: pending.py's English placeholder is not a translation; a translation that
+                   needs review after its English changed is kept, with state null)
     state          "translated" when every form of the existing translation is translated, else null
     constrained    true when the text sits in a fixed-width place (compact wing, tab, chip, segment, capsule…)
     maxWidth       for constrained keys: {"kind", "maxWidthPt", "hint", "ratio"} (see l10n.SURFACE_RULES)
@@ -41,6 +43,8 @@ def item(path, key, entry, code):
     english = l10n.english_text(key, entry)
     existing = localizations.get(code)
     translation = l10n.localization_to_text(existing) if existing and code != "en" else None
+    if l10n.is_pending(existing) and translation == l10n.shaped_like(english, l10n.language(code)["pluralCategories"]):
+        translation = None                         # pending.py's English placeholder, not a translation
     states = l10n.localization_states(existing) if existing else []
     complete = bool(states) and all(state == "translated" for state in states)
     result = {
@@ -50,7 +54,8 @@ def item(path, key, entry, code):
         "surface": l10n.surface(comment),
         "english": english,
         "placeholders": l10n.placeholders(english),
-        "russian": l10n.localization_to_text(localizations.get("ru")) if code != "ru" else None,
+        "russian": (l10n.localization_to_text(localizations.get("ru"))
+                    if code != "ru" and not l10n.is_pending(localizations.get("ru")) else None),
         "translation": translation,
         "state": "translated" if complete else None,
         "constrained": constrained,

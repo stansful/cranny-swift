@@ -2,9 +2,11 @@
 
 Cranny's text lives in String Catalogs: one per CrannyKit target
 (`Packages/CrannyKit/Sources/<Target>/Resources/Localizable.xcstrings`) plus `App/InfoPlist.xcstrings` (the
-permission prompts). English is the source; the other 34 languages of `languages.json` are complete and
-reviewed. These tools let you translate all of it as one JSON file, check it, and write it back. They need only
-the Python 3 that ships with macOS (`/usr/bin/python3`, standard library) and no Xcode.
+permission prompts). English is the source; the other 34 languages of `languages.json` are complete, translated
+and cross-reviewed by AI (corrections by native speakers are welcome: [docs/TRANSLATING.md](../../docs/TRANSLATING.md),
+which also holds the policy for new strings and the terminology sheets in `docs/l10n/terms/`). These tools let you
+translate all of it as one JSON file, check it, and write it back. They need only the Python 3 that ships with macOS
+(`/usr/bin/python3`, standard library) and no Xcode.
 
 | Command | Does |
 |---|---|
@@ -14,6 +16,8 @@ the Python 3 that ships with macOS (`/usr/bin/python3`, standard library) and no
 | `python3 -I scripts/l10n/import.py de de.json` | Writes the translations into the catalogs (validates first) |
 | `python3 -I scripts/l10n/validate.py de --catalogs` | Checks what the catalogs hold for German |
 | `make l10n-check` (= `validate.py --shipped`) | Every shipped language complete and valid; part of `make strings-check` and CI |
+| `make l10n-pending` (= `pending.py`) | Marks new English keys “pending translation” (English text, state `needs_review`) in every shipped language that lacks them |
+| `validate.py --shipped --release` | Also fails on pending keys (the release workflow) |
 
 `languages.json` lists the languages Cranny is translated into — every language macOS 27 itself ships, except
 English variants and regional variants that fall back on their own (es-419 → es, fr-CA → fr, zh-HK → zh-Hant) —
@@ -92,7 +96,9 @@ segment, a table column header, a 2-cell widget (`…widget, 2 cells`, Mirror / 
 
 ## Checks (`validate.py`)
 
-Errors (exit status 1): a key without a translation; a placeholder lost, added or of another type; positional and
+Errors (exit status 1): a key without a translation (in the catalogs: a shipped language with no entry; an entry
+whose every form is `needs_review` is *pending*, listed as one warning per language, and an error only with
+`--release`); a placeholder lost, added or of another type; positional and
 plain specifiers mixed; plural categories that are not exactly the language's; an empty string; "Nook" and the
 other denylisted names; "Cranny" missing or misspelled; quotation marks of another language or straight quotes;
 three dots; French spaces. Warnings: a string identical to English (unless it is only names macOS keeps, such as

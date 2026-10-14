@@ -2,7 +2,7 @@
 # Command Line Tools: the scripts locate /Applications/Xcode*.app themselves.
 SHELL := /bin/bash
 
-.PHONY: help build debug run smoke dist check test strings strings-check copy-check l10n-check probe probe-check icon list clean distclean
+.PHONY: help build debug run smoke dist check test strings strings-check copy-check l10n-check l10n-pending probe probe-check icon list clean distclean
 
 help:            ## Show this help
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -41,6 +41,9 @@ copy-check:      ## Copy rules of every String Catalog, per language (no build; 
 
 l10n-check:      ## Shipped languages complete + valid: scripts/l10n/validate.py --shipped (no build; part of strings-check)
 	@/usr/bin/python3 -I scripts/l10n/validate.py --shipped
+
+l10n-pending:    ## Mark new English strings pending translation in every shipped language (docs/TRANSLATING.md)
+	@/usr/bin/python3 -I scripts/l10n/pending.py
 
 probe:           ## Regenerate the SDK name-collision probe after adding public CrannyCore types
 	@scripts/name-probe.sh

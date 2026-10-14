@@ -59,6 +59,9 @@ jobs:
           xcodebuild -showComponent MetalToolchain
           xcrun metal -v
 
+      - name: Every shipped language translated, none pending (docs/TRANSLATING.md ▸ New strings)
+        run: /usr/bin/python3 -I scripts/l10n/validate.py --shipped --release --quiet
+
       - name: Build (universal)
         run: scripts/build.sh
 

@@ -4,11 +4,14 @@
     python3 -I scripts/l10n/validate.py de de.json            # a translator file (from export.py)
     python3 -I scripts/l10n/validate.py de --catalogs         # what the catalogs hold for German now
     python3 -I scripts/l10n/validate.py --shipped             # every language marked "shipped" (make strings-check)
+    python3 -I scripts/l10n/validate.py --shipped --release   # … and no key pending translation (release.yml)
     python3 -I scripts/l10n/validate.py de de.json --glossary de-terms.json   # also compare with Apple's terms
 
 Errors:
 - completeness: every key of the export has a translation (a file made with --missing-only must still hold every key
-  the catalogs lack), and in --catalogs mode every form is in state "translated";
+  the catalogs lack), and in --catalogs mode every form is in state "translated" — except keys pending translation
+  (every form "needs_review", written by pending.py), which are listed as one warning per language, and are errors
+  with --release;
 - placeholders: the same arguments as English (%@, %lld, %#@name@ …), same types, none lost or added; positions
   (%1$@, %2$lld) may reorder them; one string may not mix positional and sequential specifiers; a plural form may
   leave its number out only in a category of languages.json "pluralExactValues" (Arabic zero/one/two, Hebrew two…),
@@ -306,15 +309,23 @@ def complete_in_catalog(entry, code):
     return bool(states) and all(state == "translated" for state in states)
 
 
-def validate_catalogs(report, code, glossary=None):
+def validate_catalogs(report, code, glossary=None, release=False):
     info = l10n.language(code)
+    pending = []
     for (catalog, key), (comment, english, entry) in sorted(current_items().items()):
         if code == l10n.source_language():
             check_source(report, catalog, key, english)
             continue
         localization = entry.get("localizations", {}).get(code)
         if localization is None:
-            report.error(where(code, catalog, key), "no translation")
+            report.error(where(code, catalog, key), "no translation (translate it, or mark it pending: make l10n-pending; "
+                                                    "docs/TRANSLATING.md)")
+            continue
+        if l10n.is_pending(localization):
+            if release:
+                report.error(where(code, catalog, key), "pending translation (needs_review): translate it before a release")
+            else:
+                pending.append(f"{target(catalog)}: {json.dumps(key, ensure_ascii=False)}")
             continue
         if not complete_in_catalog(entry, code):
             report.error(where(code, catalog, key), "not every form is in state “translated”")
@@ -324,6 +335,10 @@ def validate_catalogs(report, code, glossary=None):
             report.error(where(code, catalog, key), str(problem))
             continue
         check_item(report, code, info, catalog, key, comment, english, translation, glossary)
+    if pending:
+        shown = "; ".join(pending[:5]) + (f"; … {len(pending) - 5} more" if len(pending) > 5 else "")
+        report.warn(f"{code}", f"{len(pending)} key(s) pending translation (needs_review; export.py {code} --missing-only "
+                               f"lists them): {shown}")
 
 
 def validate_file(report, code, path, glossary=None):
@@ -396,6 +411,8 @@ def main(argv):
     parser.add_argument("file", nargs="?", help="translator JSON (from export.py, \"translation\" filled in)")
     parser.add_argument("--catalogs", action="store_true", help="check what the String Catalogs hold for the language")
     parser.add_argument("--shipped", action="store_true", help="check every language marked shipped in languages.json")
+    parser.add_argument("--release", action="store_true", help="with --shipped or --catalogs: keys pending translation "
+                                                               "(needs_review) are errors")
     parser.add_argument("--glossary", help="apple-terms.py output for the language: warn on Apple terms left in English")
     parser.add_argument("-q", "--quiet", action="store_true", help="print errors only")
     args = parser.parse_args(argv)
@@ -408,11 +425,11 @@ def main(argv):
         codes = l10n.shipped_languages()
         for code in codes:
             check_language_entry(report, code)
-            validate_catalogs(report, code, glossary)
+            validate_catalogs(report, code, glossary, args.release)
         label = "shipped languages " + ", ".join(codes)
     elif args.language and args.catalogs:
         check_language_entry(report, args.language)
-        validate_catalogs(report, args.language, glossary)
+        validate_catalogs(report, args.language, glossary, args.release)
         label = f"{args.language} in the catalogs"
     elif args.language and args.file:
         check_language_entry(report, args.language)

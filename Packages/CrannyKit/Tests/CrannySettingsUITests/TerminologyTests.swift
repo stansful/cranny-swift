@@ -32,15 +32,20 @@ private struct CatalogFile: Decodable {
         let localizations: [String: Localization]?
     }
     struct Localization: Decodable {
-        struct Unit: Decodable { let value: String }
+        struct Unit: Decodable { let value: String; let state: String? }
         let stringUnit: Unit?
         let variations: [String: [String: Localization]]?
 
         /// Every form, plural variations flattened in category order.
-        var forms: [String] {
-            if let stringUnit { return [stringUnit.value] }
+        var forms: [String] { units.map(\.value) }
+        /// Pending translation (docs/TRANSLATING.md ▸ New strings): every form in state needs_review, the English
+        /// text standing in until a translation is imported. Not Russian wording yet, so the glossary skips it.
+        var isPending: Bool { !units.isEmpty && units.allSatisfy { $0.state == "needs_review" } }
+
+        private var units: [Unit] {
+            if let stringUnit { return [stringUnit] }
             return (variations ?? [:]).sorted { $0.key < $1.key }.flatMap { _, cases in
-                cases.sorted { $0.key < $1.key }.flatMap(\.value.forms)
+                cases.sorted { $0.key < $1.key }.flatMap(\.value.units)
             }
         }
     }
@@ -60,12 +65,13 @@ private enum Catalogs {
         }
     }
 
-    /// Every entry of every catalog.
+    /// Every entry of every catalog, except keys whose Russian is pending translation.
     static func entries() throws -> [CatalogEntry] {
         try files().flatMap { target, url -> [CatalogEntry] in
             let file = try JSONDecoder().decode(CatalogFile.self, from: Data(contentsOf: url))
-            return file.strings.map { key, entry in
+            return file.strings.compactMap { key, entry in
                 let localizations = entry.localizations ?? [:]
+                if localizations["ru"]?.isPending == true { return nil }
                 return CatalogEntry(target: target, key: key,
                                     english: localizations["en"]?.forms.last ?? key,
                                     russian: localizations["ru"]?.forms ?? [],

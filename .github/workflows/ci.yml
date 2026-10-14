@@ -35,7 +35,7 @@ jobs:
       - name: Copy rules per language (American spelling, typographic punctuation, competitor denylist)
         run: /usr/bin/python3 -I scripts/lint-copy.py
 
-      - name: Shipped languages are complete and valid (placeholders, plural forms, quotes)
+      - name: Shipped languages are complete and valid (placeholders, plural forms, quotes; new keys may be pending)
         run: /usr/bin/python3 -I scripts/l10n/validate.py --shipped
 
       - name: Every CrannyKit module builds on its own (zero warnings) + unit tests
@@ -100,7 +100,7 @@ jobs:
       - name: Copy rules per language (American spelling, typographic punctuation, competitor denylist)
         run: /usr/bin/python3 -I scripts/lint-copy.py
 
-      - name: Shipped languages are complete and valid (placeholders, plural forms, quotes)
+      - name: Shipped languages are complete and valid (placeholders, plural forms, quotes; new keys may be pending)
         run: /usr/bin/python3 -I scripts/l10n/validate.py --shipped
 
       - name: Every CrannyKit module builds on its own (zero warnings) + unit tests
