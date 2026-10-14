@@ -10,7 +10,7 @@ Apple fonts or artwork.
 ## Acknowledgements
 
 These projects were studied for *techniques*. No code, assets or text were copied from them, so no
-license obligations apply; we credit them as a courtesy (also shown in Settings ▸ About).
+license obligations apply; we credit them as a courtesy (Settings ▸ About will list them too).
 
 | Project | License | What we learned |
 |---|---|---|
