@@ -58,11 +58,12 @@ import Testing
     }
 
     @Test func ringCadenceFollowsOnePixelOfArc() {
-        // Widget ring (88 pt @2x): a 1-minute timer redraws ≈ 9× per second, a 25-minute one once per 2.7 s.
-        let short = RingCadence.interval(total: 60, diameter: 88, displayScale: 2)
-        #expect(short > 0.1 && short < 0.12)
+        // Widget ring (88 pt @2x): a 5-minute timer redraws about twice a second, a 25-minute one once per 2.7 s.
+        let five = RingCadence.interval(total: 300, diameter: 88, displayScale: 2)
+        #expect(five > 0.5 && five < 0.6)
         #expect(abs(RingCadence.interval(total: 1500, diameter: 88, displayScale: 2) - 1500 / (Double.pi * 176)) < 1e-9)
-        // Never faster than 15 fps, never slower than every 30 s.
+        // Never faster than 4 fps (a 1-minute timer would want ≈ 9), never slower than every 30 s.
+        #expect(RingCadence.interval(total: 60, diameter: 88, displayScale: 2) == RingCadence.fastest)
         #expect(RingCadence.interval(total: 1, diameter: 88, displayScale: 2) == RingCadence.fastest)
         #expect(RingCadence.interval(total: 86_000, diameter: 16, displayScale: 2) == RingCadence.slowest)
     }

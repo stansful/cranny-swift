@@ -5,11 +5,15 @@ import SwiftUI
 
 /// "4:59" for a counting timer, "0:00" when done. In the last 10 s of a running timer the digits turn `warning`
 /// and pulse once per second (at most 10 pulses, WCAG 2.3.1); Calm, Instant and Reduce Motion keep the colour only.
+///
+/// Energy: the per-second tick is NOT animated. A `.numericText` roll every second (DESIGN.md §7.7) was measured at
+/// 20–27 % CPU with the open panel on screen (each roll re-renders the panel at the display rate for 0.3 s), against
+/// 0.3 % for a plain swap. The digits roll only when the timer itself jumps (start, +1 min, scroll, resume).
 struct TimerDigits: View {
     @Environment(\.cranny) private var theme
     let state: TimerState
     let style: CrannyTextStyle
-    /// Roll each second with `.numericText(countsDown:)` (widget, peek). The band never animates per second.
+    /// Roll with `.numericText(countsDown:)` when the timer jumps (widget, peek). The band never animates.
     var rolls = true
     /// The band: `warning` for the whole last minute (DESIGN.md §9.2).
     var warnsInLastMinute = false
@@ -23,11 +27,12 @@ struct TimerDigits: View {
                 .lineLimit(1)
                 .foregroundStyle(color(pulsing: pulsing, lastMinute: state.isInLastMinute(at: now)))
                 .contentTransition(theme.reduceMotion ? .opacity : .numericText(countsDown: true))
-                .animation(rolls ? theme.animation(.contentSwap) : nil, value: seconds)
+                .animation(rolls ? theme.animation(.contentSwap) : nil, value: state)          // jumps only, never ticks
                 .phaseAnimator([false, true], trigger: Self.pulseTrigger(seconds: seconds, pulsing: pulsing)) { content, up in
                     content.scaleEffect(up && pulses ? TimerMetrics.pulseScale : 1)
                 } animation: { up in
-                    theme.animation(up ? .press : .commit)
+                    // Short on purpose: every frame of it re-renders the panel (≈ 0.2 s per second, 10 times).
+                    theme.animation(up ? .hover : .contentOut)
                 }
         }
     }

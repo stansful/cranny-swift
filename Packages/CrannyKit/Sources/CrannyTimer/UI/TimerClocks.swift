@@ -3,8 +3,9 @@
 // filters the content. Instead:
 //  • digits use `CountdownClock`: one sleep to the exact moment the shown second changes (1 Hz, aligned to the
 //    deadline, so "4:59" never lags), and no wake-up at all while paused, idle or done;
-//  • rings use `RingClock` (Core's `EffectClock` technique) at `RingCadence`: as often as the arc moves about one device pixel (≈ 9 fps for
-//    a 1-minute timer in the widget, every 15–30 s for a long timer in the band), paused when not running.
+//  • rings use `RingClock` (Core's `EffectClock` technique) at `RingCadence`: as often as the arc moves about one
+//    device pixel, at most 4 × per second (a 1-minute timer in the widget), every 15–30 s for a long timer in the
+//    band, and not at all unless running.
 // Both stop as soon as their view leaves the screen.
 import CrannyCore
 import Foundation
@@ -48,8 +49,9 @@ nonisolated enum CountdownTick {
 }
 
 nonisolated enum RingCadence {
-    /// Never faster than this (s): a 1-second timer still looks smooth without costing a display-rate redraw.
-    static let fastest: Double = 1.0 / 15
+    /// Never faster than 4 redraws per second: each redraw renders the open panel once (≈ 3–4 ms of CPU, measured),
+    /// so even a 1-minute timer stays near 1 % CPU. Longer timers redraw less often than once a second.
+    static let fastest: Double = 0.25
     /// Never slower than this (s).
     static let slowest: Double = 30
 
@@ -117,4 +119,23 @@ enum TimerRingPhase: Equatable {
         case .done: self = .done
         }
     }
+}
+
+#Preview("Clocks · countdown digits and rings") {
+    let now = Date()
+    let running = TimerState(phase: .running(endDate: now.addingTimeInterval(65)), total: 90)
+    VStack(spacing: Space.l) {
+        CountdownClock(deadline: running.endDate) { date in
+            Text(verbatim: TimerFormat.clock(running.displayedSeconds(at: date))).crannyFont(.numeral)
+        }
+        HStack(spacing: Space.l) {
+            TimerRing(state: running, diameter: 16, lineWidth: StrokeWidth.ringCompact)
+            TimerRing(state: running, diameter: 40, lineWidth: StrokeWidth.ring)
+            TimerRing(state: TimerState(phase: .paused(remaining: 30), total: 90), diameter: 40, lineWidth: StrokeWidth.ring)
+        }
+    }
+    .foregroundStyle(.white)
+    .padding(Space.xl)
+    .background(.black)
+    .crannyThemeRoot(CrannyTheme())
 }
