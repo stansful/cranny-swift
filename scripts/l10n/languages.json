@@ -1,0 +1,1112 @@
+[
+  {
+    "code": "en",
+    "appleCode": "en",
+    "englishName": "English",
+    "nativeName": "English",
+    "rtl": false,
+    "shipped": true,
+    "source": true,
+    "pluralCategories": [
+      "one",
+      "other"
+    ],
+    "pluralExactValues": {
+      "one": 1
+    },
+    "quoteStyle": {
+      "primary": [
+        "“",
+        "”"
+      ],
+      "secondary": [
+        "‘",
+        "’"
+      ]
+    },
+    "notes": [
+      "Source language (American English). Keys are the English text; copy rules: docs/CONTRIBUTING.md ▸ Copy.",
+      "Apostrophe ’ (U+2019), quotes “ ” and ‘ ’, never ' or \"; one-character ellipsis …."
+    ]
+  },
+  {
+    "code": "ar",
+    "appleCode": "ar",
+    "englishName": "Arabic",
+    "nativeName": "العربية",
+    "rtl": true,
+    "shipped": false,
+    "pluralCategories": [
+      "zero",
+      "one",
+      "two",
+      "few",
+      "many",
+      "other"
+    ],
+    "pluralExactValues": {
+      "zero": 0,
+      "one": 1,
+      "two": 2
+    },
+    "quoteStyle": {
+      "primary": [
+        "\"",
+        "\""
+      ],
+      "secondary": [
+        "'",
+        "'"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Right to left. Don’t add bidi control characters: placeholders such as %@ (app names, keys) are isolated by the system.",
+      "macOS 27 quotes names with straight double quotes \"…\" (counted in the system strings); keep that.",
+      "Arabic comma ، (U+060C), semicolon ؛ (U+061B) and question mark ؟ (U+061F).",
+      "Six plural forms. zero, one and two each hold a single number, so they may drop the number (dual form) — then any other placeholder in that form must be positional (%2$@).",
+      "Numbers, dates and durations come formatted from the code; never write digits into a translation."
+    ]
+  },
+  {
+    "code": "ca",
+    "appleCode": "ca",
+    "englishName": "Catalan",
+    "nativeName": "català",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "one",
+      "many",
+      "other"
+    ],
+    "pluralExactValues": {
+      "one": 1
+    },
+    "quoteStyle": {
+      "primary": [
+        "“",
+        "”"
+      ],
+      "secondary": [
+        "‘",
+        "’"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "macOS uses “…” in Catalan (not the CLDR « »); apostrophe ’ (U+2019): l’app, d’Apple.",
+      "Geminated l: l·l with the middle dot (U+00B7).",
+      "Informal tu, as macOS (“Vols permetre…”). Before an app name placeholder macOS writes “l’app %@”.",
+      "Plural many is used for millions only (1.000.000 de …); give it the same wording as other."
+    ]
+  },
+  {
+    "code": "cs",
+    "appleCode": "cs",
+    "englishName": "Czech",
+    "nativeName": "čeština",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "one",
+      "few",
+      "many",
+      "other"
+    ],
+    "pluralExactValues": {
+      "one": 1
+    },
+    "quoteStyle": {
+      "primary": [
+        "„",
+        "“"
+      ],
+      "secondary": [
+        "‚",
+        "‘"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Quotes „…“ and ‚…‘.",
+      "Formal vy (“Vaše poloha”), as macOS.",
+      "No-break space (U+00A0) after one-letter prepositions and conjunctions (k, s, v, z, o, u, a, i), as macOS does.",
+      "Avoid declining placeholders: “aplikace %@”, “aplikaci %@”.",
+      "Plural many is for fractions only; counts use one/few/other, but fill many too (same text as other)."
+    ]
+  },
+  {
+    "code": "da",
+    "appleCode": "da",
+    "englishName": "Danish",
+    "nativeName": "dansk",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "one",
+      "other"
+    ],
+    "pluralExactValues": {
+      "one": 1
+    },
+    "quoteStyle": {
+      "primary": [
+        "“",
+        "”"
+      ],
+      "secondary": [
+        "‘",
+        "’"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Quotes “…” as macOS (CLDR agrees).",
+      "Informal du.",
+      "Nouns lowercase; compounds written together (“Indstillinger til system” style follows Apple’s terms)."
+    ]
+  },
+  {
+    "code": "de",
+    "appleCode": "de",
+    "englishName": "German",
+    "nativeName": "Deutsch",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "one",
+      "other"
+    ],
+    "pluralExactValues": {
+      "one": 1
+    },
+    "quoteStyle": {
+      "primary": [
+        "„",
+        "“"
+      ],
+      "secondary": [
+        "‚",
+        "‘"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Quotes „…“ and ‚…‘ (macOS: „%@“).",
+      "Informal du, lowercase in running text (“dein”, “deine Kamera”), as macOS since 2020.",
+      "Capitalize all nouns; compounds with English names take a hyphen (“Cranny-Fenster”, “iTunes-Datenbank”).",
+      "Use Apple’s pane names with “&” where Apple does (“Datenschutz & Sicherheit”).",
+      "German runs 30–40 % longer than English: watch the constrained keys."
+    ]
+  },
+  {
+    "code": "el",
+    "appleCode": "el",
+    "englishName": "Greek",
+    "nativeName": "Ελληνικά",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "one",
+      "other"
+    ],
+    "pluralExactValues": {
+      "one": 1
+    },
+    "quoteStyle": {
+      "primary": [
+        "«",
+        "»"
+      ],
+      "secondary": [
+        "“",
+        "”"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Quotes «…» and “…”.",
+      "The Greek question mark is “;” — macOS uses the plain semicolon (U+003B).",
+      "Formal plural (σας), as macOS.",
+      "All-caps text drops the tonos; text here is sentence case, so keep accents."
+    ]
+  },
+  {
+    "code": "es",
+    "appleCode": "es",
+    "englishName": "Spanish",
+    "nativeName": "español",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "one",
+      "many",
+      "other"
+    ],
+    "pluralExactValues": {
+      "one": 1
+    },
+    "quoteStyle": {
+      "primary": [
+        "“",
+        "”"
+      ],
+      "secondary": [
+        "‘",
+        "’"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Quotes “…” as macOS (CLDR agrees).",
+      "Opening ¿ and ¡.",
+      "Informal tú (“tu ubicación”), as macOS.",
+      "Spanish for Spain and Latin America (es-419 falls back here): prefer neutral words.",
+      "Plural many is used for millions only; give it the same wording as other."
+    ]
+  },
+  {
+    "code": "fi",
+    "appleCode": "fi",
+    "englishName": "Finnish",
+    "nativeName": "suomi",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "one",
+      "other"
+    ],
+    "pluralExactValues": {
+      "one": 1
+    },
+    "quoteStyle": {
+      "primary": [
+        "”",
+        "”"
+      ],
+      "secondary": [
+        "’",
+        "’"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Quotes ”…” (the same character on both sides, U+201D) and ’…’.",
+      "macOS mostly avoids quoting names: “Saako %@ käyttää kameraa?”, “Lataukset-kansio”.",
+      "Avoid inflecting placeholders: use “%@-appi”, “apin %@” constructions.",
+      "Informal sinä."
+    ]
+  },
+  {
+    "code": "fr",
+    "appleCode": "fr",
+    "englishName": "French",
+    "nativeName": "français",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "one",
+      "many",
+      "other"
+    ],
+    "pluralExactValues": {},
+    "quoteStyle": {
+      "primary": [
+        "« ",
+        " »"
+      ],
+      "secondary": [
+        "“",
+        "”"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Quotes « … » with a no-break space inside the guillemets. macOS uses U+00A0; the narrow no-break space U+202F is accepted too, a plain space is not.",
+      "No-break space (U+00A0 or U+202F) before : ; ! ? and », after «.",
+      "Formal vous, as macOS.",
+      "Apostrophe ’ (U+2019). Accented capitals (É, À).",
+      "Canadian French (fr-CA) falls back here.",
+      "Plural one covers 0 and 1; many is used for millions only (same wording as other)."
+    ]
+  },
+  {
+    "code": "he",
+    "appleCode": "he",
+    "englishName": "Hebrew",
+    "nativeName": "עברית",
+    "rtl": true,
+    "shipped": false,
+    "pluralCategories": [
+      "one",
+      "two",
+      "other"
+    ],
+    "pluralExactValues": {
+      "one": 1,
+      "two": 2
+    },
+    "quoteStyle": {
+      "primary": [
+        "״",
+        "״"
+      ],
+      "secondary": [
+        "׳",
+        "׳"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Right to left; don’t add bidi control characters.",
+      "macOS quotes names with gershayim ״…״ (U+05F4) and uses geresh ׳ (U+05F3) for abbreviations.",
+      "Plural forms one, two (dual) and other; one and two hold a single number and may drop it — then other placeholders in that form must be positional.",
+      "Address the user without gendered verbs where possible (infinitive or plural forms), as macOS does."
+    ]
+  },
+  {
+    "code": "hi",
+    "appleCode": "hi",
+    "englishName": "Hindi",
+    "nativeName": "हिन्दी",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "one",
+      "other"
+    ],
+    "pluralExactValues": {},
+    "quoteStyle": {
+      "primary": [
+        "“",
+        "”"
+      ],
+      "secondary": [
+        "‘",
+        "’"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Quotes “…”; the full stop is the danda । (U+0964), as macOS.",
+      "Formal आप.",
+      "Keep established English technical words where macOS does (ऐक्सेस, फ़ोल्डर); check the glossary.",
+      "Plural one covers 0 and 1."
+    ]
+  },
+  {
+    "code": "hr",
+    "appleCode": "hr",
+    "englishName": "Croatian",
+    "nativeName": "hrvatski",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "one",
+      "few",
+      "other"
+    ],
+    "pluralExactValues": {},
+    "quoteStyle": {
+      "primary": [
+        "“",
+        "”"
+      ],
+      "secondary": [
+        "‘",
+        "’"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "macOS 27 quotes names with “…” in Croatian (CLDR has „…“); follow macOS.",
+      "Formal Vi (“Vaša lokacija”).",
+      "Avoid declining placeholders: “aplikaciji %@”."
+    ]
+  },
+  {
+    "code": "hu",
+    "appleCode": "hu",
+    "englishName": "Hungarian",
+    "nativeName": "magyar",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "one",
+      "other"
+    ],
+    "pluralExactValues": {
+      "one": 1
+    },
+    "quoteStyle": {
+      "primary": [
+        "„",
+        "”"
+      ],
+      "secondary": [
+        "»",
+        "«"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Quotes „…” and »…«.",
+      "Article before placeholders: “a(z) %@”, as macOS.",
+      "Formal Ön.",
+      "Suffixes after a placeholder need a hyphen-free construction (“a(z) %@ alkalmazás”)."
+    ]
+  },
+  {
+    "code": "id",
+    "appleCode": "id",
+    "englishName": "Indonesian",
+    "nativeName": "Indonesia",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "other"
+    ],
+    "pluralExactValues": {},
+    "quoteStyle": {
+      "primary": [
+        "“",
+        "”"
+      ],
+      "secondary": [
+        "‘",
+        "’"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Quotes “…”.",
+      "Formal Anda, capitalized, as macOS.",
+      "No grammatical plural: the single plural form other holds every count."
+    ]
+  },
+  {
+    "code": "it",
+    "appleCode": "it",
+    "englishName": "Italian",
+    "nativeName": "italiano",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "one",
+      "many",
+      "other"
+    ],
+    "pluralExactValues": {
+      "one": 1
+    },
+    "quoteStyle": {
+      "primary": [
+        "“",
+        "”"
+      ],
+      "secondary": [
+        "‘",
+        "’"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "macOS 27 uses “…” in Italian (CLDR has « »); follow macOS.",
+      "Informal tu (“Vuoi consentire…”), as macOS.",
+      "Apostrophe ’ (U+2019): l’app, dell’elemento.",
+      "Plural many is used for millions only; give it the same wording as other."
+    ]
+  },
+  {
+    "code": "ja",
+    "appleCode": "ja",
+    "englishName": "Japanese",
+    "nativeName": "日本語",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "other"
+    ],
+    "pluralExactValues": {},
+    "quoteStyle": {
+      "primary": [
+        "“",
+        "”"
+      ],
+      "secondary": [
+        "‘",
+        "’"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "macOS 27 quotes names and folders with “…” in Japanese (not 「」); follow macOS.",
+      "Japanese punctuation 、。; macOS writes the question mark half-width (?).",
+      "No spaces between Japanese and Latin text or numbers (as macOS).",
+      "Polite です／ます style in sentences; labels and buttons are short noun phrases.",
+      "No grammatical plural: the single plural form other holds every count."
+    ]
+  },
+  {
+    "code": "ko",
+    "appleCode": "ko",
+    "englishName": "Korean",
+    "nativeName": "한국어",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "other"
+    ],
+    "pluralExactValues": {},
+    "quoteStyle": {
+      "primary": [
+        "‘",
+        "’"
+      ],
+      "secondary": [
+        "“",
+        "”"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "macOS quotes names with ‘…’ in Korean.",
+      "Particles after a placeholder or a Latin name cover both forms: ‘%@’이(가), 을(를), 은(는), 와(과).",
+      "Polite style (-요 / -습니다) as macOS; avoid “you” (사용자 / omit).",
+      "No grammatical plural: the single plural form other holds every count."
+    ]
+  },
+  {
+    "code": "ms",
+    "appleCode": "ms",
+    "englishName": "Malay",
+    "nativeName": "Bahasa Melayu",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "other"
+    ],
+    "pluralExactValues": {},
+    "quoteStyle": {
+      "primary": [
+        "“",
+        "”"
+      ],
+      "secondary": [
+        "‘",
+        "’"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Quotes “…”.",
+      "anda in lowercase, as macOS.",
+      "No grammatical plural: the single plural form other holds every count."
+    ]
+  },
+  {
+    "code": "nb",
+    "appleCode": "no",
+    "englishName": "Norwegian Bokmål",
+    "nativeName": "norsk bokmål",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "one",
+      "other"
+    ],
+    "pluralExactValues": {
+      "one": 1
+    },
+    "quoteStyle": {
+      "primary": [
+        "«",
+        "»"
+      ],
+      "secondary": [
+        "‘",
+        "’"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Code nb in the catalogs (Xcode); macOS’s own folders are named no.lproj.",
+      "Quotes «…» and ‘…’.",
+      "Informal du.",
+      "Compounds with English names take a hyphen (“Cranny-vinduet”, “Nedlastinger-mappen”)."
+    ]
+  },
+  {
+    "code": "nl",
+    "appleCode": "nl",
+    "englishName": "Dutch",
+    "nativeName": "Nederlands",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "one",
+      "other"
+    ],
+    "pluralExactValues": {
+      "one": 1
+    },
+    "quoteStyle": {
+      "primary": [
+        "‘",
+        "’"
+      ],
+      "secondary": [
+        "“",
+        "”"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Quotes ‘…’ (CLDR). macOS itself writes straight '…' in Dutch; Cranny keeps typographic quotes, so use ‘…’ and the apostrophe ’ (’s, zo’n).",
+      "Informal je/jij, as macOS.",
+      "Compounds are written together or with a hyphen after names (“Cranny-paneel”)."
+    ]
+  },
+  {
+    "code": "pl",
+    "appleCode": "pl",
+    "englishName": "Polish",
+    "nativeName": "polski",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "one",
+      "few",
+      "many",
+      "other"
+    ],
+    "pluralExactValues": {
+      "one": 1
+    },
+    "quoteStyle": {
+      "primary": [
+        "„",
+        "”"
+      ],
+      "secondary": [
+        "«",
+        "»"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Quotes „…” and «…».",
+      "macOS capitalizes the polite Ty forms in Polish (“Twoje położenie”); do the same.",
+      "Avoid declining placeholders: “aplikacji %@”, “aplikacja %@”.",
+      "No-break space (U+00A0) after one-letter words (w, z, i, o, u, a) is customary.",
+      "Plural one/few/many plus other (fractions); fill all four."
+    ]
+  },
+  {
+    "code": "pt-BR",
+    "appleCode": "pt_BR",
+    "englishName": "Portuguese (Brazil)",
+    "nativeName": "português (Brasil)",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "one",
+      "many",
+      "other"
+    ],
+    "pluralExactValues": {},
+    "quoteStyle": {
+      "primary": [
+        "“",
+        "”"
+      ],
+      "secondary": [
+        "‘",
+        "’"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Quotes “…”.",
+      "você (“sua localização”); macOS writes “o app %@”.",
+      "Brazilian vocabulary: arquivo, tela, câmera, acessar, Ajustes do Sistema (see the glossary).",
+      "Plural one covers 0 and 1; many is used for millions only (same wording as other)."
+    ]
+  },
+  {
+    "code": "pt-PT",
+    "appleCode": "pt_PT",
+    "englishName": "Portuguese (Portugal)",
+    "nativeName": "português (Portugal)",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "one",
+      "many",
+      "other"
+    ],
+    "pluralExactValues": {
+      "one": 1
+    },
+    "quoteStyle": {
+      "primary": [
+        "“",
+        "”"
+      ],
+      "secondary": [
+        "‘",
+        "’"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "macOS 27 uses “…” in European Portuguese (CLDR has « »); follow macOS.",
+      "European vocabulary: ficheiro, ecrã, câmara, aceder, Definições do Sistema (see the glossary); never Brazilian forms.",
+      "Neutral “a sua …” address, as macOS.",
+      "Plural many is used for millions only; give it the same wording as other."
+    ]
+  },
+  {
+    "code": "ro",
+    "appleCode": "ro",
+    "englishName": "Romanian",
+    "nativeName": "română",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "one",
+      "few",
+      "other"
+    ],
+    "pluralExactValues": {
+      "one": 1
+    },
+    "quoteStyle": {
+      "primary": [
+        "„",
+        "”"
+      ],
+      "secondary": [
+        "«",
+        "»"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Quotes „…” and «…».",
+      "Comma-below letters ș ț (U+0219, U+021B), never cedilla ş ţ.",
+      "Formal dvs. / dumneavoastră, as macOS.",
+      "Plural few covers 0 and 2–19 (and 101–119…); numbers ≥ 20 take “de” (“20 de elemente”) in other."
+    ]
+  },
+  {
+    "code": "ru",
+    "appleCode": "ru",
+    "englishName": "Russian",
+    "nativeName": "русский",
+    "rtl": false,
+    "shipped": true,
+    "pluralCategories": [
+      "one",
+      "few",
+      "many",
+      "other"
+    ],
+    "pluralExactValues": {},
+    "quoteStyle": {
+      "primary": [
+        "«",
+        "»"
+      ],
+      "secondary": [
+        "„",
+        "“"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Reviewed translation; glossary and rules in docs/ARCHITECTURE.md §8.7 (guarded by TerminologyTests).",
+      "Quotes «…» and „…“; app names in « » («Музыка»).",
+      "Plural one/few/many plus other (fractions); fill all four."
+    ]
+  },
+  {
+    "code": "sk",
+    "appleCode": "sk",
+    "englishName": "Slovak",
+    "nativeName": "slovenčina",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "one",
+      "few",
+      "many",
+      "other"
+    ],
+    "pluralExactValues": {
+      "one": 1
+    },
+    "quoteStyle": {
+      "primary": [
+        "„",
+        "“"
+      ],
+      "secondary": [
+        "‚",
+        "‘"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Quotes „…“ and ‚…‘.",
+      "Formal vy (“Vaša poloha”).",
+      "No-break space (U+00A0) after one-letter prepositions (k, s, v, z, o, u, a, i).",
+      "Plural many is for fractions only; counts use one/few/other, but fill many too (same text as other)."
+    ]
+  },
+  {
+    "code": "sl",
+    "appleCode": "sl",
+    "englishName": "Slovenian",
+    "nativeName": "slovenščina",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "one",
+      "two",
+      "few",
+      "other"
+    ],
+    "pluralExactValues": {},
+    "quoteStyle": {
+      "primary": [
+        "»",
+        "«"
+      ],
+      "secondary": [
+        "„",
+        "“"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "macOS 27 quotes names with »…« in Slovenian (reversed guillemets); follow macOS.",
+      "Formal vi (“Vaša lokacija”).",
+      "Four plural forms: one (1, 101…), two (dual: 2, 102…), few (3–4, 103–104…), other."
+    ]
+  },
+  {
+    "code": "sv",
+    "appleCode": "sv",
+    "englishName": "Swedish",
+    "nativeName": "svenska",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "one",
+      "other"
+    ],
+    "pluralExactValues": {
+      "one": 1
+    },
+    "quoteStyle": {
+      "primary": [
+        "”",
+        "”"
+      ],
+      "secondary": [
+        "’",
+        "’"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Quotes ”…” (the same character on both sides, U+201D) and ’…’.",
+      "Informal du.",
+      "Compounds with English names take a hyphen (“Cranny-panelen”)."
+    ]
+  },
+  {
+    "code": "th",
+    "appleCode": "th",
+    "englishName": "Thai",
+    "nativeName": "ไทย",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "other"
+    ],
+    "pluralExactValues": {},
+    "quoteStyle": {
+      "primary": [
+        "“",
+        "”"
+      ],
+      "secondary": [
+        "‘",
+        "’"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Quotes “…”.",
+      "No spaces between words; a space separates phrases and sentences; no full stop at the end, as macOS.",
+      "Polite neutral register; คุณ for “you”.",
+      "No grammatical plural: the single plural form other holds every count."
+    ]
+  },
+  {
+    "code": "tr",
+    "appleCode": "tr",
+    "englishName": "Turkish",
+    "nativeName": "Türkçe",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "one",
+      "other"
+    ],
+    "pluralExactValues": {
+      "one": 1
+    },
+    "quoteStyle": {
+      "primary": [
+        "“",
+        "”"
+      ],
+      "secondary": [
+        "‘",
+        "’"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Quotes “…”.",
+      "Suffixes on proper names take the apostrophe ’ (U+2019): Cranny’yi, Cranny’de, Finder’da.",
+      "After a placeholder macOS avoids suffixes: “%@”, … (a comma) or “%@ uygulaması”.",
+      "Dotted and dotless i: İ/i and I/ı are different letters.",
+      "Formal siz."
+    ]
+  },
+  {
+    "code": "uk",
+    "appleCode": "uk",
+    "englishName": "Ukrainian",
+    "nativeName": "українська",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "one",
+      "few",
+      "many",
+      "other"
+    ],
+    "pluralExactValues": {},
+    "quoteStyle": {
+      "primary": [
+        "«",
+        "»"
+      ],
+      "secondary": [
+        "„",
+        "“"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Quotes «…» and „…“.",
+      "Apostrophe in words is ʼ (U+02BC), as macOS (памʼять, обʼєкт).",
+      "Formal ви, lowercase (“ваша геопозиція”).",
+      "Plural one/few/many plus other (fractions); fill all four."
+    ]
+  },
+  {
+    "code": "vi",
+    "appleCode": "vi",
+    "englishName": "Vietnamese",
+    "nativeName": "Tiếng Việt",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "other"
+    ],
+    "pluralExactValues": {},
+    "quoteStyle": {
+      "primary": [
+        "“",
+        "”"
+      ],
+      "secondary": [
+        "‘",
+        "’"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Quotes “…”.",
+      "bạn for “you”.",
+      "No grammatical plural: the single plural form other holds every count."
+    ]
+  },
+  {
+    "code": "zh-Hans",
+    "appleCode": "zh_CN",
+    "englishName": "Chinese, Simplified",
+    "nativeName": "简体中文",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "other"
+    ],
+    "pluralExactValues": {},
+    "quoteStyle": {
+      "primary": [
+        "“",
+        "”"
+      ],
+      "secondary": [
+        "‘",
+        "’"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Quotes “…”; full-width punctuation ，。：；？！（）.",
+      "No spaces between Chinese and Latin text or numbers (as macOS 27).",
+      "你 (not 您), as macOS.",
+      "Apple’s names differ from the English ones (Finder = 访达); always take them from the glossary.",
+      "No grammatical plural: the single plural form other holds every count."
+    ]
+  },
+  {
+    "code": "zh-Hant",
+    "appleCode": "zh_TW",
+    "englishName": "Chinese, Traditional",
+    "nativeName": "繁體中文",
+    "rtl": false,
+    "shipped": false,
+    "pluralCategories": [
+      "other"
+    ],
+    "pluralExactValues": {},
+    "quoteStyle": {
+      "primary": [
+        "「",
+        "」"
+      ],
+      "secondary": [
+        "『",
+        "』"
+      ]
+    },
+    "notes": [
+      "One-character ellipsis … (U+2026), never three dots.",
+      "Quotes 「…」 and 『…』; full-width punctuation ，。：；？！（）.",
+      "Taiwan vocabulary as macOS (取用, 檔案夾); Hong Kong (zh-HK) falls back here.",
+      "No spaces between Chinese and Latin text or numbers.",
+      "你, as macOS.",
+      "No grammatical plural: the single plural form other holds every count."
+    ]
+  }
+]
