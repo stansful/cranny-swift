@@ -69,11 +69,11 @@ private struct FlashGlyph: View {
     var body: some View {
         let glyph = Image(systemName: symbol).foregroundStyle(theme.palette.label).accessibilityHidden(true)
         if inPeek {
-            glyph.font(.system(size: 18, weight: .semibold))
-                .frame(width: 40, height: 40)
+            glyph.crannySymbol(.peekVisual)
+                .frame(width: NotchLayout.peekVisual, height: NotchLayout.peekVisual)
                 .background(RoundedRectangle(cornerRadius: Radius.artPeek, style: .continuous).fill(theme.palette.control))
         } else {
-            glyph.font(.system(size: 13 * theme.notchUnit, weight: .semibold))
+            glyph.crannySymbol(.band)
         }
     }
 }
