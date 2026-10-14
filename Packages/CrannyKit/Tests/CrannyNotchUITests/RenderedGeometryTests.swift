@@ -98,6 +98,22 @@ private func earWidth(body: CGFloat, ear: CGFloat, y: CGFloat = 0.25) -> CGFloat
         #expect(near(CGFloat(rightmost + 1) / probe.scale, bubble.maxX, 1))
     }
 
+    /// The open grid draws its cards (a smoked card over the black panel), not just the shape.
+    @Test func openDrawsItsCards() throws {
+        let (model, registry) = scene(.open) { $0.openColumns = 10 }
+        let image = try #require(Snapshot.image(model, registry))
+        let probe = try #require(ShapeProbe(image, scale: 2))
+        let open = model.layout.open(columns: 10)
+        let grid = CrannyTheme().grid
+        let left = (model.layout.canvasSize.width - open.bodyWidth) / 2 + grid.padding
+        let top = model.layout.headerHeight + grid.headerGap
+        // Inside the first card, near its top-left corner (away from the placeholder glyph) …
+        let card = probe.luminance(x: Int((left + 24) * 2), y: Int((top + 24) * 2))
+        // … and the panel between the header and the cards.
+        let panel = probe.luminance(x: Int((left + 24) * 2), y: Int((top - 3) * 2))
+        #expect(card > panel + 0.02, "card \(card), panel \(panel)")
+    }
+
     @Test func hiddenDrawsNothing() throws {
         let (model, registry) = scene(.hidden)
         #expect(Snapshot.probe(model, registry)?.hasDarkPixels == false)

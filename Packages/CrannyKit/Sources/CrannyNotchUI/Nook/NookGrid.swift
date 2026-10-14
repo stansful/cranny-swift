@@ -25,13 +25,13 @@ struct WidgetGridPage: View {
             ForEach(Array(items.enumerated()), id: \.element.widget) { index, item in
                 WidgetCard(item: item, registry: registry, isFocused: focused == item.widget,
                            commands: GridCommands.make(page: page, model: model, registry: registry, actions: actions))
+                    .modifier(VoiceOverLanding(focus: $voiceOverFocus, widget: item.widget))
                     .notchMatched("card.\(item.widget.rawValue)")
                     .focusable()
                     .focused($focused, equals: item.widget)
                     .focusEffectDisabled()
                     .focusSection()
                     .accessibilityRotorEntry(id: item.widget, in: rotor)
-                    .accessibilityFocused($voiceOverFocus, equals: item.widget)
                     .overlay(alignment: .trailing) { if index < items.count - 1 { FlatDivider() } }
                     .staggeredReveal(delay: Stagger.delay(ring: rings[index], reduceMotion: theme.reduceMotion))
             }
@@ -63,6 +63,24 @@ struct WidgetGridPage: View {
         guard entrance else { return nil }
         if let focus, items.contains(where: { $0.widget == focus }) { return focus }
         return items.first?.widget
+    }
+}
+
+/// Binds a card to the page's VoiceOver focus, so opening can put VoiceOver on it (DESIGN.md §16). Snapshots
+/// (`ImageRenderer`: tests, the gallery, `--qa-snapshot`) leave the binding out, because ImageRenderer draws
+/// nothing for a view that carries one; `notchRendersFinalState` never changes within a live hierarchy, so this
+/// switch never re-creates a card.
+private struct VoiceOverLanding: ViewModifier {
+    @Environment(\.notchRendersFinalState) private var isSnapshot
+    let focus: AccessibilityFocusState<WidgetID?>.Binding
+    let widget: WidgetID
+
+    func body(content: Content) -> some View {
+        if isSnapshot {
+            content
+        } else {
+            content.accessibilityFocused(focus, equals: widget)
+        }
     }
 }
 
