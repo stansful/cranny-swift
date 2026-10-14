@@ -1,6 +1,7 @@
 // CrannyNotchUI/Keyboard/NotchUIQAHooks.swift — DEBUG-only visual QA arguments that complement the shell's
 // `--qa-state` (CrannyAppShell/App/QAHooks.swift, docs/CONTRIBUTING.md). They only ask the owner through
-// `NotchUIActions` (the scene stays owner-written) or decorate what is drawn; Release builds compile none of it.
+// `NotchUIActions` (the scene stays owner-written) or decorate what is drawn. Release builds compile only three
+// inert answers (no mode, no hints, nothing applied) for the call sites outside `#if DEBUG`.
 //
 //   --qa-mode palette|edit|focus|catch   with --qa-state open: switch the open panel to that mode once
 //   --qa-hints                           show the hold-⌘ key caps as if ⌘ were held
@@ -15,27 +16,20 @@ import UniformTypeIdentifiers
 
 nonisolated enum NotchUIQAHooks {
     #if DEBUG
-    static let arguments = ProcessInfo.processInfo.arguments
-    #else
-    static let arguments: [String] = []
-    #endif
+    static let arguments = LaunchArguments.current
 
-    /// The mode `--qa-mode` asks for (nil = none, or a Release build).
-    static var mode: NookMode? { mode(in: arguments) }
+    /// The mode `--qa-mode` asks for (nil = none).
+    static var mode: NookMode? { mode(in: arguments.values) }
 
     /// `--qa-mode` is applied once per launch, on the first open.
     @MainActor static var didApplyMode = false
 
-    /// `--qa-hints` (always false in Release builds).
+    /// `--qa-hints`.
     static var showsHints: Bool { arguments.contains("--qa-hints") }
 
-    /// `--qa-snapshot <file.png>` (nil = none, or a Release build). Any other path is a directory for the shell's
-    /// window snapshots (CrannyAppShell/App/QAHooks.swift), not this canvas.
-    static var snapshotPath: String? {
-        guard let i = arguments.firstIndex(of: "--qa-snapshot"), i + 1 < arguments.count,
-              arguments[i + 1].lowercased().hasSuffix(".png") else { return nil }
-        return arguments[i + 1]
-    }
+    /// `--qa-snapshot <file.png>` (nil = none). Any other value is a directory for the shell's window snapshots
+    /// (CrannyAppShell/App/QAHooks.swift); `LaunchArguments.qaPanelSnapshot` holds the rule.
+    static var snapshotPath: String? { arguments.qaPanelSnapshot }
 
     /// One snapshot per launch (the first canvas that asks: the primary panel's).
     @MainActor static var didSnapshot = false
@@ -61,13 +55,18 @@ nonisolated enum NotchUIQAHooks {
     }
 
     static func mode(in arguments: [String]) -> NookMode? {
-        guard let i = arguments.firstIndex(of: "--qa-mode"), i + 1 < arguments.count else { return nil }
-        switch arguments[i + 1] {
-        case "palette": return .palette
-        case "edit": return .editLayout
-        case "focus": return .focus(.notes)
-        case "catch": return .catchFiles([.fileURL])
-        default: return nil
+        switch LaunchArguments(arguments).value(after: "--qa-mode") {
+        case "palette": .palette
+        case "edit": .editLayout
+        case "focus": .focus(.notes)
+        case "catch": .catchFiles([.fileURL])
+        default: nil
         }
     }
+    #else
+    // Release: inert answers for the two call sites outside `#if DEBUG`; nothing else is compiled.
+    static var mode: NookMode? { nil }
+    @MainActor static var didApplyMode = false
+    static var showsHints: Bool { false }
+    #endif
 }

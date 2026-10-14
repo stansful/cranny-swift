@@ -159,29 +159,17 @@ struct HeaderIconButtonStyle: ButtonStyle {
 }
 
 /// Time and date in the empty camera zone of displays without a notch. Redraws once a minute, on the minute
-/// (one sleep per minute, only while the panel is open; no `TimelineView`).
+/// (Core's `AlignedClock`: one sleep per minute, only while the panel is open; no `TimelineView`).
 struct MinuteClock: View {
     @Environment(\.cranny) private var theme
-    @State private var now = Date()
 
     var body: some View {
-        Text(now.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute()))
-            .crannyFont(.eyebrow)
-            .foregroundStyle(theme.palette.secondaryLabel)
-            .lineLimit(1)
-            .task {
-                while !Task.isCancelled {
-                    now = Date()
-                    let next = MinuteClock.nextMinute(after: now)
-                    do { try await Task.sleep(for: .seconds(max(next.timeIntervalSince(Date()), 0.2))) } catch { return }
-                }
-            }
-    }
-
-    /// The start of the next minute (pure).
-    nonisolated static func nextMinute(after date: Date, calendar: Calendar = .current) -> Date {
-        calendar.nextDate(after: date, matching: DateComponents(second: 0), matchingPolicy: .nextTime)
-            ?? date.addingTimeInterval(60)
+        AlignedClock(period: 60) { now in
+            Text(now.formatted(.dateTime.weekday(.abbreviated).day().month(.abbreviated).hour().minute()))
+                .crannyFont(.eyebrow)
+                .foregroundStyle(theme.palette.secondaryLabel)
+                .lineLimit(1)
+        }
     }
 }
 
