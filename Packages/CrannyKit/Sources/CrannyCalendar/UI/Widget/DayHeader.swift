@@ -52,7 +52,8 @@ struct DayHeader<Trailing: View>: View {
 }
 
 /// ‹ › within days behind / ahead. Hidden when there is nowhere to page (a single day, or 5 cells showing the
-/// whole two-day window). `columns`: days shown side by side; paging moves them together.
+/// whole two-day window). `columns`: days shown side by side; paging moves them together. `chevron.backward` /
+/// `chevron.forward` point the way the days run: right to left the previous day is the right-hand ›.
 struct DayPager: View {
     let model: CalendarModel
     var columns = 1
@@ -61,9 +62,9 @@ struct DayPager: View {
         let back = model.canPage(-1, columns: columns), forward = model.canPage(1, columns: columns)
         if back || forward {
             HStack(spacing: 0) {
-                pagerButton("chevron.left", label: String(localized: "Previous day", bundle: .module, comment: "Calendar widget: page to the previous day (button label)"),
+                pagerButton("chevron.backward", label: String(localized: "Previous day", bundle: .module, comment: "Calendar widget: page to the previous day (button label)"),
                             enabled: back) { model.page(-1, columns: columns) }
-                pagerButton("chevron.right", label: String(localized: "Next day", bundle: .module, comment: "Calendar widget: page to the next day (button label)"),
+                pagerButton("chevron.forward", label: String(localized: "Next day", bundle: .module, comment: "Calendar widget: page to the next day (button label)"),
                             enabled: forward) { model.page(1, columns: columns) }
             }
             .frame(height: 16)

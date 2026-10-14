@@ -40,6 +40,7 @@ private typealias ProbeAppIdentityResolver = AppIdentityResolver
 private typealias ProbeAppInfo = AppInfo
 private typealias ProbeAppPaths = AppPaths
 private typealias ProbeAudioHAL = AudioHAL
+private typealias ProbeBidiIsolation = BidiIsolation
 private typealias ProbeBlurScale = BlurScale
 private typealias ProbeBrandColor = BrandColor
 private typealias ProbeButtonShapeStyle = ButtonShapeStyle

@@ -69,9 +69,25 @@ struct SnapshotGallery {
         try write(pinned, pinnedRegistry, name: "open-island-pinned", in: dir)
     }
 
-    private func write(_ model: NotchSceneModel, _ registry: ModuleRegistry, name: String, in dir: URL) throws {
+    /// Arabic and Hebrew panels (ARCHITECTURE.md §8.7): mirrored wings, header and grid; the satellite beyond the left
+    /// wing; the playback rim and media transport left to right.
+    @Test func rightToLeft() throws {
+        let dir = try #require(directory)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let scenes: [(String, (NotchSceneModel, ModuleRegistry))] = [
+            ("compact", previewScene(.compact)), ("compact-satellite", previewScene(.compact, satellite: true)),
+            ("compact-timer", previewScene(.compact, sample: .timer)), ("compact-hud", previewScene(.compact, sample: .hud)),
+            ("peek-three", previewScene(.peek, peekRowCount: 3)), ("open", previewScene(.open)),
+            ("open-palette", previewScene(.open, palette: true)), ("open-edit", previewScene(.open, mode: .editLayout)),
+        ]
+        for (name, scene) in scenes { try write(scene.0, scene.1, name: "rtl-\(name)", in: dir, layoutDirection: .rightToLeft) }
+    }
+
+    private func write(_ model: NotchSceneModel, _ registry: ModuleRegistry, name: String, in dir: URL,
+                       layoutDirection: LayoutDirection = .leftToRight) throws {
         let size = CGSize(width: model.layout.canvasSize.width, height: model.layout.canvasSize.height)
-        let image = try #require(Snapshot.image(model, registry, size: size, background: Color(white: 0.32)))
+        let image = try #require(Snapshot.image(model, registry, size: size, background: Color(white: 0.32),
+                                                layoutDirection: layoutDirection))
         try Snapshot.write(image, to: dir.appending(path: "\(name).png"))
     }
 }

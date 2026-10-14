@@ -41,7 +41,7 @@ enum MediaStrings {
     /// "Open in Music", or "Open the player" while no name is known.
     static func openAction(_ app: String?) -> String { app.map { openIn($0) } ?? openPlayer }
     static func openIn(_ app: String) -> String {
-        String(localized: "Open in \(app)", bundle: .module, comment: "Media: tooltip and VoiceOver action on the artwork; argument is the player's name")
+        String(localized: "Open in \(app.crannyIsolated)", bundle: .module, comment: "Media: tooltip and VoiceOver action on the artwork; argument is the player's name")
     }
 
     /// "Now playing: Midnight Window by The Example Band" (DESIGN.md §16).
@@ -65,5 +65,12 @@ enum MediaStrings {
         let s = max(seconds, 0)
         let pattern: Duration.TimeFormatStyle.Pattern = s >= 3600 ? .hourMinuteSecond : .minuteSecond
         return Duration.seconds(s.rounded(.down)).formatted(.time(pattern: pattern))
+    }
+
+    /// "−2:11", the time left beside the scrubber. It opens with a LEFT-TO-RIGHT MARK: a text without letters takes
+    /// its paragraph direction from the app's language, and in Arabic or Hebrew the minus would land after the
+    /// digits ("2:11−"); the scrubber's labels read left to right in every language (ARCHITECTURE.md §8.7).
+    static func remaining(_ seconds: TimeInterval) -> String {
+        String(BidiIsolation.leftToRightMark) + "\u{2212}" + clock(seconds)
     }
 }

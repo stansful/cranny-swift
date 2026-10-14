@@ -279,6 +279,7 @@ public struct ProgressRing: View {
                 .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
         }
+        .crannyLeftToRight()        // clockwise from 12 o'clock in every language (a mirrored rotation starts at 6)
     }
 }
 

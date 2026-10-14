@@ -98,6 +98,15 @@ scripts/run.sh -- "${QA[@]}" --qa-pause oneHour --qa-state closed --qa-snapshot 
 defaults delete app.cranny.Cranny.qa                      # the next session starts from the defaults
 ```
 
+**Right to left.** `-AppleLanguages "(ar)"` (or `"(he)"`) alone shows Arabic text in a left-to-right layout: AppKit
+mirrors the app only with `-AppleTextDirection YES` as well. Pass both to QA Arabic and Hebrew, and `-AppleLocale ar_SA`
+to see Arabic-Indic digits. Rules and tests: ARCHITECTURE.md §8.7 rule 10.
+
+```sh
+scripts/run.sh -- "${QA[@]}" -AppleLanguages "(ar)" -AppleTextDirection YES --qa-state open --qa-page nook \
+  --qa-media playing --qa-calendar sample --qa-snapshot /tmp/open-ar.png --qa-exit-after 6
+```
+
 ### Capturing
 
 - **Window by id** (`screencapture -x -o -l <id> open.png`; the panel is the app's only window at layer 26, find
@@ -280,7 +289,9 @@ pass the module bundle (`Text("…", bundle: .module, comment: "…")`, `String(
 never bare `LocalizedStringKey` initializers inside the package. Keys are the English text, written to
 the copy rules below; every key has a comment `"<Surface>: <purpose>"` (one comment per key; a key used in
 two places shares one), Russian follows the glossary in ARCHITECTURE.md §8.7 with state `translated`.
-Formatting through `FormatStyle` only. Every count gets plural variations in the catalog (English one/other,
+Formatting through `FormatStyle` only. A name, file name or key combination put into a sentence is
+`crannyIsolated`, and layout code follows the right-to-left rules of ARCHITECTURE.md §8.7 rule 10 (leading/trailing,
+media and rings left to right, physical input converted). Every count gets plural variations in the catalog (English one/other,
 Russian one/few/many/other), also when English writes both forms alike; `make l10n-check` fails a count without
 them. Never choose words with `count == 1` for a number that is shown.
 **Other languages** (every UI language macOS ships, `scripts/l10n/languages.json`) come in through

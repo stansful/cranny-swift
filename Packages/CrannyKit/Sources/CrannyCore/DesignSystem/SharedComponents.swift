@@ -113,6 +113,7 @@ public struct CrannyLinkButtonStyle: ButtonStyle {
 
 public struct Scrubber: View {
     @Environment(\.cranny) private var theme
+    @Environment(\.layoutDirection) private var direction
     @State private var hovered = false
     @State private var dragValue: Double?
     private let value: Double
@@ -136,7 +137,8 @@ public struct Scrubber: View {
                 .frame(maxHeight: .infinity)
                 .contentShape(Rectangle())
                 .gesture(DragGesture(minimumDistance: 0)
-                    .onChanged { dragValue = min(max($0.location.x / max(g.size.width, 1), 0), 1) }
+                    // The location is physical; the bar fills from the leading edge (the right one, right to left).
+                    .onChanged { dragValue = direction.fraction(atPhysicalX: $0.location.x, width: g.size.width) }
                     .onEnded { _ in if let v = dragValue { onCommit(v) }; dragValue = nil })
         }
         .frame(height: HitTarget.nook.height)
@@ -159,9 +161,12 @@ public struct Scrubber: View {
 /// One-line text that, while `isActive`, scrolls ONCE to its end and back (30 pt/s, a 0.3-s lead-in and a 1-s pause
 /// at the end), then rests. A new hover, a new title or a new width starts another pass; nothing loops, so it costs
 /// nothing while the pointer rests on the title (ARCHITECTURE.md §9.2). With Reduce Motion or Motion ▸ Instant it
-/// never moves: it truncates with an ellipsis and the tooltip shows the full title.
+/// never moves: it truncates with an ellipsis and the tooltip shows the full title. An overflowing text starts where
+/// its own first letter puts it and scrolls toward its end: a Latin title in an Arabic layout starts at the left,
+/// an Arabic one in an English layout at the right (as the truncated `Text` it replaces shows them).
 public struct MarqueeText: View {
     @Environment(\.cranny) private var theme
+    @Environment(\.layoutDirection) private var layoutDirection
     @State private var textWidth: CGFloat = 0
     @State private var boxWidth: CGFloat = 0
     @State private var offset: CGFloat = 0
@@ -201,10 +206,14 @@ public struct MarqueeText: View {
 
     private var scrolling: some View {
         let overflow = max(textWidth - boxWidth, 0)
+        // A text that fits keeps the layout's alignment; one that overflows is laid out in its own direction, so its
+        // start shows first and the (mirrored, right to left) offset scrolls toward its end.
+        let direction = overflow > 0 ? BidiIsolation.direction(of: text) ?? layoutDirection : layoutDirection
         return Text(text).crannyFont(style).lineLimit(1).fixedSize()
             .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { textWidth = $0 }
             .offset(x: offset)
             .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)   // min 0: the box takes the proposed width, so overflow > 0
+            .environment(\.layoutDirection, direction)
             .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { boxWidth = $0 }
             .clipped()
             .help(text)

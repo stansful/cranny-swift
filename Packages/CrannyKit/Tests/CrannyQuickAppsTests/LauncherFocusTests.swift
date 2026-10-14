@@ -1,6 +1,7 @@
 // Keyboard stops and drag targets: the arrows reach everything the card shows ("+N" and "+" included), ⌥ + arrow
 // and drags stay on tile positions, the drag target follows the tile's centre, Delete keeps the focus in place.
 import CoreGraphics
+import SwiftUI
 import Testing
 @testable import CrannyQuickApps
 
@@ -88,4 +89,19 @@ private func stops(_ layout: LauncherLayout, tiles: Int, editing: Bool) -> [Laun
     #expect(shown == Set(ids.prefix(3)))
     let all = LauncherLayout.tilesShown(layout.slots(tileCount: 4, showsAddTile: false), tileIDs: Array(ids.prefix(4)))
     #expect(all == Set(ids.prefix(4)))
+}
+
+/// Right to left the columns run from the right (Arabic, Hebrew): ← walks to the next column, the one on its left, and
+/// → back; ↑ ↓ are the same in every language.
+@Test func arrowsGoTheWayTheyPointRightToLeft() {
+    typealias Move = LauncherLayout.MoveDirection
+    #expect(Move(.leftArrow, layoutDirection: .leftToRight) == .left && Move(.rightArrow, layoutDirection: .leftToRight) == .right)
+    #expect(Move(.leftArrow, layoutDirection: .rightToLeft) == .right && Move(.rightArrow, layoutDirection: .rightToLeft) == .left)
+    #expect(Move(.upArrow, layoutDirection: .rightToLeft) == .up && Move(.downArrow, layoutDirection: .rightToLeft) == .down)
+    #expect(Move(.return, layoutDirection: .rightToLeft) == nil)
+    let layout = LauncherLayout(columns: 2, rows: 2)
+    let all = stops(layout, tiles: 4, editing: false)
+    if let left = Move(.leftArrow, layoutDirection: .rightToLeft) {
+        #expect(layout.focus(from: .tile(ids[0]), left, stops: all) == .tile(ids[2]))     // column 0 is the right one
+    }
 }

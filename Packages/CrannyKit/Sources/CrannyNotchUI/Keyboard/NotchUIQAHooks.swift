@@ -6,8 +6,9 @@
 //   --qa-mode palette|edit|focus|catch   with --qa-state open: switch the open panel to that mode once
 //   --qa-hints                           show the hold-⌘ key caps as if ⌘ were held
 //   --qa-snapshot <file.png>             3 s after launch, render the primary canvas offscreen (ImageRenderer,
-//                                        final state, on mid-grey) to that PNG: QA while the displays sleep,
-//                                        when the window server has no image of the panel to capture
+//                                        final state, on mid-grey, in the panel's layout direction) to that PNG:
+//                                        QA while the displays sleep, when the window server has no image of the
+//                                        panel to capture
 import CrannyCore
 import Foundation
 import ImageIO
@@ -35,7 +36,8 @@ nonisolated enum NotchUIQAHooks {
     @MainActor static var didSnapshot = false
 
     /// Renders the canvas of `model` offscreen and writes it to `snapshotPath` (DEBUG visual QA only).
-    @MainActor static func writeSnapshot(model: NotchSceneModel, registry: ModuleRegistry, actions: NotchUIActions) async {
+    @MainActor static func writeSnapshot(model: NotchSceneModel, registry: ModuleRegistry, actions: NotchUIActions,
+                                         layoutDirection: LayoutDirection) async {
         guard let path = snapshotPath, !didSnapshot, !model.context.isPreview else { return }
         do { try await Task.sleep(for: .seconds(3)) } catch { return }       // after --qa-state / --qa-mode settled
         guard !didSnapshot, model.phase != .hidden else { return }
@@ -45,6 +47,7 @@ nonisolated enum NotchUIQAHooks {
             .environment(\.notchRendersFinalState, true)
             .frame(width: size.width, height: size.height)
             .background(Color(white: 0.25))
+            .environment(\.layoutDirection, layoutDirection)          // right to left in Arabic and Hebrew
         let renderer = ImageRenderer(content: view)
         renderer.scale = 2
         guard let image = renderer.cgImage,

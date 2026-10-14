@@ -3,7 +3,8 @@
 // to reorder (`listReorder`), drag the handle to resize in whole cells (an `.alignment` haptic and a "4 cells"
 // tooltip per cell), ⌥← / ⌥→ move the focused card, ⌥⇧← / ⌥⇧→ resize it; every change is announced to
 // VoiceOver and written through `NotchUIActions.commitLayout`. ↩ or Esc finishes (the header's Done). One
-// `WiggleClock` drives every card's wiggle at the effect budget's rate.
+// `WiggleClock` drives every card's wiggle at the effect budget's rate. Right to left the row is mirrored: the pointer's
+// travel is turned into travel along the row, and ⌥← / ⌥→ and Move left / right go the way they point.
 import AppKit
 import CrannyCore
 import Foundation
@@ -11,6 +12,7 @@ import SwiftUI
 
 struct EditLayoutView: View {
     @Environment(\.cranny) private var theme
+    @Environment(\.layoutDirection) private var direction
     @FocusState private var focused: WidgetID?
     /// The card / handle whose drag is in flight. SwiftUI resets these when a gesture ends OR is cancelled, so
     /// the drafts below only count while their gesture is alive (a cancelled drag leaves nothing behind).
@@ -27,7 +29,7 @@ struct EditLayoutView: View {
         var widget: WidgetID
         var origin: CGPoint              // where this drag began (a new drag never reuses an old draft)
         var startX: CGFloat              // the card's x in the row when the drag began
-        var translation: CGFloat
+        var translation: CGFloat         // along the row (leading → trailing), not the pointer's physical travel
         var draft: [NookItem]
     }
     private struct HandleDrag: Equatable {
@@ -91,10 +93,10 @@ struct EditLayoutView: View {
             .focusEffectDisabled()
             .gesture(reorderGesture(item.widget, index: index, items: items))
             .accessibilityAction(named: Text("Move left", bundle: .module, comment: "Layout editor: VoiceOver action")) {
-                move(item.widget, by: -1)
+                move(item.widget, by: direction.step(physical: -1))
             }
             .accessibilityAction(named: Text("Move right", bundle: .module, comment: "Layout editor: VoiceOver action")) {
-                move(item.widget, by: 1)
+                move(item.widget, by: direction.step(physical: 1))
             }
             // Wider / Narrower: the card's own VoiceOver actions (CardAccessibilityActions), through cardCommands.
     }
@@ -137,7 +139,7 @@ struct EditLayoutView: View {
                 var current = drag.flatMap { $0.widget == widget && $0.origin == value.startLocation ? $0 : nil }
                     ?? CardDrag(widget: widget, origin: value.startLocation, startX: rowX(of: index, in: items),
                                 translation: 0, draft: items)
-                current.translation = value.translation.width
+                current.translation = direction.alongLayout(value.translation.width)
                 let widths = current.draft.map { width(of: $0) }
                 if let from = current.draft.firstIndex(where: { $0.widget == widget }) {
                     let start = rowX(of: from, in: current.draft)
@@ -170,7 +172,8 @@ struct EditLayoutView: View {
             .onChanged { value in
                 var current = resize.flatMap { $0.widget == widget && $0.origin == value.startLocation ? $0 : nil }
                     ?? HandleDrag(widget: widget, origin: value.startLocation, startCells: cells, cells: cells)
-                let target = current.startCells + LayoutEditing.cellDelta(translation: value.translation.width,
+                // The handle is on the trailing edge: right to left, dragging it left widens the card.
+                let target = current.startCells + LayoutEditing.cellDelta(translation: direction.alongLayout(value.translation.width),
                                                                           cell: theme.grid.cell, gutter: theme.grid.gutter)
                 let rules = editing()
                 if target != current.cells, let index = rules.items.firstIndex(where: { $0.widget == widget }),
@@ -197,8 +200,7 @@ struct EditLayoutView: View {
     // MARK: Keyboard and VoiceOver
 
     private func keyboardEdit(_ press: KeyPress) -> Bool {
-        guard press.modifiers.contains(.option), let widget = focused else { return false }
-        let step = press.key == .leftArrow ? -1 : 1
+        guard press.modifiers.contains(.option), let widget = focused, let step = direction.step(for: press.key) else { return false }
         if press.modifiers.contains(.shift) { resize(widget, by: step) } else { move(widget, by: step) }
         return true
     }

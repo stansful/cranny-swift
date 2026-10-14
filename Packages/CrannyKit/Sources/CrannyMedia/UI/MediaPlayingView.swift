@@ -73,7 +73,7 @@ struct MediaPlayingView: View {
         .disabled(source == nil)
         .help(source == nil ? "" : MediaStrings.openAction(appName))
         .accessibilityLabel(Text(verbatim: source == nil ? MediaStrings.moduleName : MediaStrings.openAction(appName)))
-        .offset(x: swipe)
+        .crannyPhysicalOffset(x: swipe)                     // follows the fingers, also right to left
         .crannyScrollZone(ScrollZoneID("media.track.artwork"), axis: .horizontal, onUpdate: trackSwipe)
     }
 
@@ -109,7 +109,7 @@ struct MediaPlayingView: View {
                 }
             }
         }
-        .offset(x: swipe * 0.6)
+        .crannyPhysicalOffset(x: swipe * 0.6)
         .contentShape(Rectangle())
         .onHover(perform: hoverTitle)
         .crannyScrollZone(ScrollZoneID("media.track.title"), axis: .horizontal, onUpdate: trackSwipe)

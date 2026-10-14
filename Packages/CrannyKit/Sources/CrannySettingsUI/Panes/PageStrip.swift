@@ -2,12 +2,14 @@
 // user pages as selectable capsules; Add Page; and per page Rename…, Symbol, Move left / right and Remove Page. Every
 // action has a click path (the page's context menu and the "…" menu of the selected page), a keyboard path (the "…"
 // menu, and on a focused page ↩ rename, ⌥← ⌥→ move, ⌘⌫ remove) and VoiceOver actions (ARCHITECTURE §9.5).
-// Selecting a page edits it and shows it on the stage.
+// Selecting a page edits it and shows it on the stage. Right to left the pages run from the right: Move left / right
+// and ⌥← ⌥→ go the way they point.
 import CrannyCore
 import Foundation
 import SwiftUI
 
 struct PageStrip: View {
+    @Environment(\.layoutDirection) private var direction
     let editor: LayoutEditor
     @Binding var selection: PageID
     let apply: LayoutCommit
@@ -30,8 +32,8 @@ struct PageStrip: View {
                             return .handled
                         }
                         .onKeyPress(keys: [.leftArrow, .rightArrow]) { press in
-                            guard press.modifiers.contains(.option) else { return .ignored }
-                            movePage(page, by: press.key == .leftArrow ? -1 : 1)
+                            guard press.modifiers.contains(.option), let step = direction.step(for: press.key) else { return .ignored }
+                            movePage(page, by: step)
                             return .handled
                         }
                         .onKeyPress(keys: [.delete, .deleteForward]) { press in
@@ -103,10 +105,10 @@ struct PageStrip: View {
             Text("Symbol", bundle: .module, comment: "Settings ▸ Layout & Widgets: submenu that picks a page's glyph")
         }
         Divider()
-        Button { movePage(page, by: -1) } label: { Self.moveLeftTitle }
-            .disabled(editor.pages.first?.id == page.id)
-        Button { movePage(page, by: 1) } label: { Self.moveRightTitle }
-            .disabled(editor.pages.last?.id == page.id)
+        Button { movePage(page, by: direction.step(physical: -1)) } label: { Self.moveLeftTitle }
+            .disabled(!canMove(page, physical: -1))
+        Button { movePage(page, by: direction.step(physical: 1)) } label: { Self.moveRightTitle }
+            .disabled(!canMove(page, physical: 1))
         if page.id != .nook {
             Divider()
             Button(role: .destructive) { removePage(page) } label: { Self.removeTitle }
@@ -118,11 +120,11 @@ struct PageStrip: View {
         Button { startRenaming(page) } label: {
             Text("Rename…", bundle: .module, comment: "Settings ▸ Layout & Widgets: rename a page")
         }
-        if editor.pages.first?.id != page.id {
-            Button { movePage(page, by: -1) } label: { Self.moveLeftTitle }
+        if canMove(page, physical: -1) {
+            Button { movePage(page, by: direction.step(physical: -1)) } label: { Self.moveLeftTitle }
         }
-        if editor.pages.last?.id != page.id {
-            Button { movePage(page, by: 1) } label: { Self.moveRightTitle }
+        if canMove(page, physical: 1) {
+            Button { movePage(page, by: direction.step(physical: 1)) } label: { Self.moveRightTitle }
         }
         if page.id != .nook {
             Button { removePage(page) } label: { Self.removeTitle }
@@ -137,6 +139,12 @@ struct PageStrip: View {
     }
     private static var removeTitle: Text {
         Text("Remove Page", bundle: .module, comment: "Settings ▸ Layout & Widgets: removes a user page (its widgets stay available)")
+    }
+
+    /// Whether "Move Left" (`physical` −1) or "Move Right" (+1) has somewhere to go in this layout direction.
+    private func canMove(_ page: NookPage, physical: Int) -> Bool {
+        guard let index = editor.pages.firstIndex(where: { $0.id == page.id }) else { return false }
+        return editor.pages.indices.contains(index + direction.step(physical: physical))
     }
 
     private func movePage(_ page: NookPage, by offset: Int) {

@@ -129,7 +129,7 @@ private struct StepRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
-                Text(verbatim: "\(index + 1).").monospacedDigit().foregroundStyle(.secondary)
+                Text(verbatim: (index + 1).formatted() + ".").monospacedDigit().foregroundStyle(.secondary)   // the locale's digits
                 parameter
                 Spacer()
                 Menu {

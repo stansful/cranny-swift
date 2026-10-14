@@ -75,7 +75,7 @@ struct StageCanvas: View {
 private struct OffNotice: View {
     let displayName: String?
     var body: some View {
-        Text(displayName.map { String(localized: "Cranny is off on \($0).", bundle: .module,
+        Text(displayName.map { String(localized: "Cranny is off on \($0.crannyIsolated).", bundle: .module,
                                       comment: "Settings preview stage: Cranny is turned off on this display; the argument is its name") }
              ?? String(localized: "Cranny is off on this display.", bundle: .module,
                        comment: "Settings preview stage: Cranny is turned off on the previewed display"))

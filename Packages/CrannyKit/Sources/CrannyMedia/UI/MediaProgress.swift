@@ -1,7 +1,8 @@
 // CrannyMedia/UI/MediaProgress.swift — the scrubber and its time labels (DESIGN.md §7.1): drag or scroll
 // horizontally to seek (`.levelChange` haptic at every 10 %), ← / → ±10 s while focused (⌘← / ⌘→ pass through to
 // the widget: previous / next), VoiceOver adjustable. A scroll previews for as long as the fingers move and seeks
-// once, when they lift; a touch the system cancels seeks nowhere (`ScrollSeek`).
+// once, when they lift; a touch the system cancels seeks nowhere (`ScrollSeek`). The bar and its labels run left to
+// right in every language (elapsed left, "−remaining" right): time-based media keeps its direction (Apple HIG).
 // Energy (open issue 2, ARCHITECTURE.md §10.1): the position is interpolated from the provider's anchor
 // (`NowPlaying.position(at:)`) once per second of playback by `PlaybackTicker` (one sleep per tick, aligned to the
 // track's seconds), only while playing and on screen — never a display-rate TimelineView, never polling MediaRemote.
@@ -40,7 +41,11 @@ struct MediaProgress: View {
         }
     }
 
-    @ViewBuilder private func content(position: TimeInterval, duration: TimeInterval) -> some View {
+    private func content(position: TimeInterval, duration: TimeInterval) -> some View {
+        timeline(position: position, duration: duration).crannyLeftToRight()
+    }
+
+    @ViewBuilder private func timeline(position: TimeInterval, duration: TimeInterval) -> some View {
         let time = PlaybackTime(position: position, duration: duration)
         switch style {
         case .hairline:
@@ -73,7 +78,7 @@ struct MediaProgress: View {
     }
 
     private func remainingLabel(_ time: PlaybackTime) -> some View {
-        Text(verbatim: "\u{2212}" + MediaStrings.clock(TimeInterval(time.remaining)))
+        Text(verbatim: MediaStrings.remaining(TimeInterval(time.remaining)))
             .crannyFont(.caption).foregroundStyle(theme.palette.tertiaryLabel)
             .fixedSize()
             .accessibilityHidden(true)

@@ -34,23 +34,25 @@ struct ShortcutRow: View {
         }
     }
 
-    /// The first problem with `combo`, in order of certainty.
+    /// The first problem with `combo`, in order of certainty. The keys are isolated: "⌃⌥N" is mostly neutral symbols,
+    /// which a right-to-left sentence would otherwise reorder.
     private func warning(for combo: KeyCombo?) -> String? {
         guard let combo else { return nil }
+        let keys = combo.display.crannyIsolated
         if app.shortcutState(shortcut.id) == .conflict {
-            return String(localized: "Another app already uses \(combo.display). Choose other keys.", bundle: .module,
+            return String(localized: "Another app already uses \(keys). Choose other keys.", bundle: .module,
                           comment: "Settings ▸ Keyboard: the shortcut could not be registered; the argument is the keys (⌃⌥N)")
         }
         if let other = others.first(where: { $0.combo.keyCode == combo.keyCode && $0.combo.modifiers == combo.modifiers }) {
-            return String(localized: "\(combo.display) is also set for \(other.title).", bundle: .module,
+            return String(localized: "\(keys) is also set for \(other.title).", bundle: .module,
                           comment: "Settings ▸ Keyboard: two Cranny shortcuts share keys; arguments are the keys and the other shortcut's name")
         }
         if let clash = SystemShortcuts.conflict(for: combo, in: system) {
             if let name = SystemShortcuts.name(of: clash.id) {
-                return String(localized: "macOS uses \(combo.display) for \(name).", bundle: .module,
+                return String(localized: "macOS uses \(keys) for \(name).", bundle: .module,
                               comment: "Settings ▸ Keyboard: a Cranny shortcut collides with a macOS shortcut; arguments are the keys and its name")
             }
-            return String(localized: "macOS also uses \(combo.display).", bundle: .module,
+            return String(localized: "macOS also uses \(keys).", bundle: .module,
                           comment: "Settings ▸ Keyboard: a Cranny shortcut collides with an unnamed macOS shortcut; the argument is the keys")
         }
         return nil

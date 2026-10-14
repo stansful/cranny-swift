@@ -2377,7 +2377,7 @@ Every symbol below was verified on this machine against `name_availability.plist
 |---|---|
 | Header, pages | `square.grid.2x2.fill` · `tray.full.fill` · `note.text` (11) · `magnifyingglass` · `pin` / `pin.fill` · `gearshape.fill` (11) · `ellipsis` · `plus` · `minus` (edit layout) · `xmark` · `chevron.down` · `checkmark` · `square.resize` (14, card size menu) |
 | Media | `play.fill` · `pause.fill` · `backward.fill` · `forward.fill` · `shuffle` · `repeat` · `airplayaudio` · `music.note` · `music.note.list` · `waveform` |
-| Calendar, meetings | `calendar` · `person.2.wave.2.fill` (12, Join) · `clock` · `mappin.and.ellipse` · `chevron.left` / `chevron.right` (day paging) |
+| Calendar, meetings | `calendar` · `person.2.wave.2.fill` (12, Join) · `clock` · `mappin.and.ellipse` · `chevron.backward` / `chevron.forward` (day paging; they flip right to left) |
 | Launcher | app icons via `NSWorkspace` (an app in a protected folder such as Downloads is drawn with macOS's generic app icon, because its bundle is never read) · `app.dashed` (12, placeholder: a missing app, the empty widget, ⌘K "Open …") · `square.2.layers.3d.fill` (14, the Quick Apps widget's identity glyph and the Shortcuts pane) |
 | Mirror | `web.camera` (13) · `camera.fill` · `flip.horizontal` |
 | Notes, to-dos | `chevron.left.forwardslash.chevron.right` (12) · `arrow.up.left.and.arrow.down.right` / `arrow.down.right.and.arrow.up.left` (focus) · `checklist` (12) · `circle` · `checkmark.circle.fill` |
@@ -2542,6 +2542,7 @@ A build script could render 16–1024 px for an `AppIcon.appiconset`; it is need
 
 - **Languages:** English (the source) and Russian ship today; the target set is every language macOS 27 ships (`scripts/l10n/languages.json`, ARCHITECTURE §8.7), in String Catalogs (`.xcstrings`) with translator comments. Apple's apps, panes and settings keep Apple's own names in every language (`scripts/l10n/apple-terms.py`).
 - **Formatting:** numbers, dates and durations always go through `FormatStyle`, never concatenation (12/24-hour clock from the locale).
+- **Right to left** (Arabic, Hebrew): the layout mirrors — tabs from the right, cards, the compact wings (glyph right of the camera, value left of it), the satellite beyond the left wing, Settings and Welcome — while the notch stays centred on the camera. Time-based media keeps its direction: ⏮ ⏯ ⏭, the scrubber with elapsed left and "−remaining" right, the playback rim; rings fill clockwise from 12 o'clock. ← / → and Move Left / Right go the way they point; day paging uses `chevron.backward` / `chevron.forward`; names and keys inside a sentence are bidi-isolated (ARCHITECTURE §8.7 rule 10).
 - **Voice:** calm, plain and sentence case (title case only in standard AppKit chrome: the menu bar menu and the Settings window's menu items and push buttons), American English, ’ and “ ” in English and « » in Russian; the full rules are `docs/CONTRIBUTING.md` ▸ Copy, checked by `scripts/lint-copy.py`. No exclamation marks, no "Oops", no marketing words inside the product. Examples:
   - empty Media "Nothing playing"; Calendar "No more events today"; Tray "Drop files on the notch to keep them here";
   - permission rows "Show your events in Cranny. Cranny never edits or uploads them."
@@ -2854,6 +2855,7 @@ public struct ProgressRing: View {
                 .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
         }
+        .crannyLeftToRight()        // clockwise from 12 o'clock in every language (a mirrored rotation starts at 6)
     }
 }
 

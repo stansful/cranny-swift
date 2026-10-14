@@ -20,13 +20,16 @@ struct ActivityStack: View {
                     .transition(.asymmetric(insertion: .identity, removal: .opacity.animation(theme.animation(.contentOut))))
             }
         }
-        .offset(GestureFollow.contentOffset(model.gestureTranslation, phase: model.phase))
+        // The translation is the fingers' (physical): the content follows them in a right-to-left layout too.
+        .crannyPhysicalOffset(GestureFollow.contentOffset(model.gestureTranslation, phase: model.phase))
         .foregroundStyle(theme.palette.label)
     }
 }
 
 /// The band row: leading wing | camera (or the middle label) | trailing wing. Click opens the panel focused on
-/// the activity's widget; the row is one VoiceOver element.
+/// the activity's widget; the row is one VoiceOver element. Right to left the wings swap sides like the rest of the
+/// layout (the leading glyph sits right of the camera, the value left of it), and the slots stay symmetric around
+/// the camera (`CompactSlots`).
 private struct CompactBand: View {
     @Environment(\.cranny) private var theme
     let model: NotchSceneModel

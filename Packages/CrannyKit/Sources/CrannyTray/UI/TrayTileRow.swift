@@ -2,7 +2,7 @@
 // map (§16): ← → move, ⇧ extends, ⌘A all, Space Quick Look, ↩ open, ⌘C copy, ⌘⌫ remove, ⌥⌘⌫ clear; also ⌘. stops
 // running pipelines (the selection's, else all) and ⌘⌫ with nothing selected hides the error tiles of failed drops,
 // which cannot be selected. The focus ring appears only after a key press in the row. Lists never stagger on open
-// (§4.5); inserts use `listReorder`.
+// (§4.5); inserts use `listReorder`. Right to left the row runs from the right, and ← → move the way they point.
 import AppKit
 import CrannyCore
 import Foundation
@@ -12,6 +12,7 @@ import UniformTypeIdentifiers
 struct TrayTileRow: View {
     @Environment(\.cranny) private var theme
     @Environment(\.notchContext) private var context
+    @Environment(\.layoutDirection) private var direction
     let store: TrayStore
     var isInteractive = true
     @FocusState private var focused: Bool
@@ -66,7 +67,7 @@ struct TrayTileRow: View {
         switch press.key {
         case .leftArrow, .rightArrow:
             usedKeyboard = true
-            store.moveSelection(forward: press.key == .rightArrow, extend: press.modifiers.contains(.shift))
+            store.moveSelection(forward: direction.step(for: press.key) == 1, extend: press.modifiers.contains(.shift))
         case .space:
             store.toggleQuickLook(store.selection.cursor)
         case .return:

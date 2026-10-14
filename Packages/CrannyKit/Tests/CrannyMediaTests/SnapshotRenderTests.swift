@@ -59,6 +59,10 @@ import Testing
         var contrast = CrannyTheme()
         contrast.increaseContrast = true
         try write("widget-5-increase-contrast", widget(playing, cells: 5, theme: contrast))
+        // Right to left (Arabic, Hebrew): the card is mirrored, the transport and the scrubber are not.
+        for cells in [4, 6] {
+            try write("widget-\(cells)-playing-rtl", widget(playing, cells: cells).environment(\.layoutDirection, .rightToLeft))
+        }
     }
 
     @Test func nowPlayingPresentations() throws {

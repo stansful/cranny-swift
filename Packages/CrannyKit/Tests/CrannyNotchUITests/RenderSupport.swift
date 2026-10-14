@@ -33,9 +33,14 @@ struct ShapeProbe {
 
     /// Relative luminance (0…1) of a pixel; row 0 is the top of the canvas.
     func luminance(x: Int, y: Int) -> Double {
-        let i = (y * width + x) * 4
-        let r = Double(pixels[i]) / 255, g = Double(pixels[i + 1]) / 255, b = Double(pixels[i + 2]) / 255
+        let (r, g, b) = color(x: x, y: y)
         return 0.2126 * r + 0.7152 * g + 0.0722 * b
+    }
+
+    /// The pixel's red, green and blue (0…1, premultiplied over the opaque backdrop); row 0 is the top.
+    func color(x: Int, y: Int) -> (r: Double, g: Double, b: Double) {
+        let i = (y * width + x) * 4
+        return (Double(pixels[i]) / 255, Double(pixels[i + 1]) / 255, Double(pixels[i + 2]) / 255)
     }
 
     /// Dark extent of the row at `y` points from the top (nil = none).
@@ -58,21 +63,25 @@ struct ShapeProbe {
 }
 
 @MainActor enum Snapshot {
-    /// The canvas at `size` (default: the panel canvas) over white, rendered at 2×.
+    /// The canvas at `size` (default: the panel canvas) over white, rendered at 2× (right to left for Arabic and
+    /// Hebrew panels).
     static func image(_ model: NotchSceneModel, _ registry: ModuleRegistry, size: CGSize? = nil,
-                      background: Color = .white, scale: CGFloat = 2) -> CGImage? {
+                      background: Color = .white, scale: CGFloat = 2,
+                      layoutDirection: LayoutDirection = .leftToRight) -> CGImage? {
         let canvas = size ?? model.layout.canvasSize
         let view = NotchCanvasView(model: model, registry: registry)
             .environment(\.notchRendersFinalState, true)
             .frame(width: canvas.width, height: canvas.height)
             .background(background)
+            .environment(\.layoutDirection, layoutDirection)
         let renderer = ImageRenderer(content: view)
         renderer.scale = scale
         return renderer.cgImage
     }
 
-    static func probe(_ model: NotchSceneModel, _ registry: ModuleRegistry) -> ShapeProbe? {
-        image(model, registry).flatMap { ShapeProbe($0, scale: 2) }
+    static func probe(_ model: NotchSceneModel, _ registry: ModuleRegistry,
+                      layoutDirection: LayoutDirection = .leftToRight) -> ShapeProbe? {
+        image(model, registry, layoutDirection: layoutDirection).flatMap { ShapeProbe($0, scale: 2) }
     }
 
     /// Writes a PNG (for the opt-in gallery).

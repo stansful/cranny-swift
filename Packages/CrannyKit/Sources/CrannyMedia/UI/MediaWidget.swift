@@ -130,7 +130,7 @@ private struct MediaEmptyView: View {
     }
 
     static func openTitle(_ app: String) -> String {
-        String(localized: "Open \(app)", bundle: .module, comment: "Media widget: empty-state text button that launches the player; argument is its name")
+        String(localized: "Open \(app.crannyIsolated)", bundle: .module, comment: "Media widget: empty-state text button that launches the player; argument is its name")
     }
 }
 

@@ -47,6 +47,8 @@ import SwiftUI
         let frame = Self.panelFrame(canvas: appearance.layout.canvasSize, screen: screen)
         panel = NotchPanel(frame: frame)
         root = NotchRootView(frame: CGRect(origin: .zero, size: frame.size))
+        // The hosting view takes the same direction from AppKit and SwiftUI mirrors the canvas with it.
+        viewModel.layoutDirection = root.userInterfaceLayoutDirection == .rightToLeft ? .rightToLeft : .leftToRight
         focus = FocusManager(panel: panel)
         keyboard = KeyboardRouter(panel: panel, viewModel: viewModel, registry: registry)
         gestures = GestureRouter(scene: scene, viewModel: viewModel, registry: registry)

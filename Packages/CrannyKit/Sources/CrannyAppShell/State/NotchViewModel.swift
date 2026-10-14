@@ -5,6 +5,7 @@ import AppKit
 import CrannyCore
 import CrannyNotchUI
 import Foundation
+import SwiftUI
 
 @MainActor final class NotchViewModel {
     let scene: NotchSceneModel
@@ -46,6 +47,9 @@ import Foundation
     var playSound: (UISound) -> Void = { _ in }
     /// After every scene sync (the controller derives its drop zone and hit area from the state).
     var didSync: () -> Void = {}
+    /// The panel's layout direction, from AppKit (right to left in Arabic and Hebrew): SwiftUI mirrors what the
+    /// canvas draws, so the satellite's click target is mirrored with it (`satelliteFrame(in:)`).
+    var layoutDirection: LayoutDirection = .leftToRight
 
     init(scene: NotchSceneModel, registry: ModuleRegistry) {
         self.scene = scene
@@ -165,10 +169,10 @@ import Foundation
 
     /// The satellite's click target in canvas coordinates (top-left origin) while it shows, beside the shape as
     /// drawn (the compact wings, or the closed notch once the inactivity timeout collapsed them): the bubble
-    /// padded to at least 32 × 24 (`SatelliteMetrics.hitFrame`, DESIGN.md §2.3).
+    /// padded to at least 32 × 24 (`SatelliteMetrics.hitFrame`, DESIGN.md §2.3), on the left in a right-to-left layout.
     func satelliteFrame(in canvas: CGRect) -> CGRect? {
         guard scene.satellite != nil, state.isClosed, state.hidden == nil else { return nil }
-        return SatelliteMetrics.hitFrame(beside: scene.geometry, layout: scene.layout, in: canvas)
+        return SatelliteMetrics.hitFrame(beside: scene.geometry, layout: scene.layout, in: canvas, layoutDirection: layoutDirection)
     }
 
     /// The compact wings for menu-bar courtesy (also while retracted): nil without a primary.

@@ -2,7 +2,8 @@
 // bubble 6u beyond the compact shape's trailing edge, vertically centred in the band, showing the activity's
 // `minimal()` glyph. It buds off the shape with the `satellite` spring; in Standard and Lively CrannyEffects'
 // `LiquidNeck` joins the two for the first 0.38 s (§4.3, §5.5). Click swaps it with the primary (a ≥ 32 × 24
-// target, `SatelliteMetrics`); VoiceOver can dismiss it.
+// target, `SatelliteMetrics`); VoiceOver can dismiss it. Right to left the trailing edge is the left one: the view's
+// offsets are mirrored with the layout, and the shell mirrors the click target (`hitFrame(…layoutDirection:)`).
 import CrannyCore
 import CrannyEffects
 import Foundation
@@ -74,11 +75,14 @@ public enum SatelliteMetrics {
     }
 
     /// The click target beside `compact` in `canvas` coordinates (the same frame the satellite is drawn around:
-    /// `NotchLayout.satelliteFrame(beside:in:)`, padded to `hitSize`).
-    public static func hitFrame(beside compact: NotchGeometry, layout: NotchLayout, in canvas: CGRect) -> CGRect {
+    /// `NotchLayout.satelliteFrame(beside:in:)`, padded to `hitSize`). Right to left the bubble is drawn beyond the
+    /// other (trailing) wing, so the target is mirrored around the camera.
+    public static func hitFrame(beside compact: NotchGeometry, layout: NotchLayout, in canvas: CGRect,
+                                layoutDirection: LayoutDirection = .leftToRight) -> CGRect {
         let bubble = layout.satelliteFrame(beside: compact, in: canvas)
         let size = hitSize(layout: layout)
-        return CGRect(x: bubble.midX - size.width / 2, y: bubble.midY - size.height / 2, width: size.width, height: size.height)
+        let midX = layoutDirection == .rightToLeft ? 2 * canvas.midX - bubble.midX : bubble.midX
+        return CGRect(x: midX - size.width / 2, y: bubble.midY - size.height / 2, width: size.width, height: size.height)
     }
 }
 

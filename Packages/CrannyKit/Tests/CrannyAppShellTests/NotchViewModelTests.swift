@@ -258,3 +258,16 @@ func quickPeekOnHoverWorksForEveryHoverDelay(_ delay: HoverIntent.Delay) async t
     g.viewModel.send(.band(.courtesy))
     #expect(g.scene.satellite == nil && g.viewModel.satelliteFrame(in: canvas) == nil)
 }
+
+/// Right to left (Arabic, Hebrew) SwiftUI draws the satellite beyond the left wing, so its click target is there too:
+/// the left-to-right frame mirrored around the camera.
+@Test func theSatelliteTargetIsMirroredRightToLeft() throws {
+    let f = Fixture()
+    f.viewModel.layoutDirection = .rightToLeft
+    f.viewModel.setLineup(Lineup(primary: "probe.one", satellite: "probe.two", primarySlot: .medium))
+    let canvas = CGRect(origin: .zero, size: f.scene.layout.canvasSize)
+    let ltr = SatelliteMetrics.hitFrame(beside: f.scene.layout.compact(.medium), layout: f.scene.layout, in: canvas)
+    let rtl = try #require(f.viewModel.satelliteFrame(in: canvas))
+    #expect(abs(rtl.midX - (canvas.width - ltr.midX)) < 0.001 && rtl.midY == ltr.midY && rtl.size == ltr.size)
+    #expect(rtl.maxX < canvas.midX)
+}

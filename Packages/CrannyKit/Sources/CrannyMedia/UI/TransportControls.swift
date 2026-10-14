@@ -1,6 +1,7 @@
 // CrannyMedia/UI/TransportControls.swift — ⏮ ⏯ ⏭ (+ shuffle and repeat at 6 cells), DESIGN.md §7.1/§9.3:
 // 28-pt plain buttons around a 32-pt prominent play/pause (white, black glyph) in the widget; three 28-pt plain
-// buttons in the peek row. The play glyph swaps with `.symbolEffect(.replace)`.
+// buttons in the peek row. The play glyph swaps with `.symbolEffect(.replace)`. Left to right in every language
+// (⏮ before ⏭, as the glyphs point: Apple HIG, Right to left ▸ Controls; CrannyCore's RightToLeft.swift).
 import CrannyCore
 import SwiftUI
 
@@ -29,6 +30,7 @@ struct TransportControls: View {
             if showsModes { RepeatButton(service: service) }
         }
         .disabled(np == nil || !service.supportsCommands)
+        .crannyLeftToRight()
     }
 
     private func button(_ title: String, symbol: String, command: MediaCommand) -> some View {

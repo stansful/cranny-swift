@@ -1,5 +1,6 @@
 // CrannyNotes/NotesStrings.swift — every user-visible string of the module, in one place so each key has exactly
 // one translator comment ("<Surface>: <purpose>", ARCHITECTURE.md §10.0). Always looked up in `Bundle.module`.
+import CrannyCore
 import Foundation
 
 nonisolated enum NotesStrings {
@@ -84,7 +85,7 @@ nonisolated enum NotesStrings {
     // MARK: Delete confirmation
 
     static func deleteQuestion(_ title: String) -> String {
-        String(localized: "Delete “\(title)”?", bundle: .module, comment: "Notes widget: delete confirmation; the argument is the note’s title")
+        String(localized: "Delete “\(title.crannyIsolated)”?", bundle: .module, comment: "Notes widget: delete confirmation; the argument is the note’s title")
     }
     static var deleteDetail: String {
         String(localized: "You can’t undo this.", bundle: .module, comment: "Notes widget: delete confirmation, second line")

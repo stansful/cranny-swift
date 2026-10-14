@@ -1,6 +1,7 @@
 // CrannyMirror/MirrorCopy.swift — every user-visible string of the module in one place, so each key has
 // exactly one translator comment ("<Surface>: <purpose>", ARCHITECTURE.md §10.0). Voice: calm, plain,
 // sentence case (DESIGN.md §17). Russian lives in Resources/Localizable.xcstrings.
+import CrannyCore
 import Foundation
 
 nonisolated enum MirrorCopy {
@@ -58,7 +59,7 @@ nonisolated enum MirrorCopy {
     static var camera: String { String(localized: "Camera", bundle: .module, comment: "Mirror widget: camera menu (tooltip, VoiceOver) and options picker label") }
     static var automatic: String { String(localized: "Automatic", bundle: .module, comment: "Mirror widget: camera menu item that follows the system's preferred camera") }
     static func unavailableCamera(_ name: String) -> String {
-        String(localized: "\(name) (unavailable)", bundle: .module, comment: "Mirror widget: camera menu item for a suspended camera; argument is the camera name")
+        String(localized: "\(name.crannyIsolated) (unavailable)", bundle: .module, comment: "Mirror widget: camera menu item for a suspended camera; argument is the camera name")
     }
     static var optionsFootnote: String {
         String(localized: "The camera turns on only when you click the widget and turns off when Cranny closes.", bundle: .module,

@@ -104,7 +104,8 @@ struct FilesShelfView: View {
                 VStack(spacing: Space.xxs) {
                     Image(systemName: "tray.full.fill").font(.system(size: TrayMetrics.thumbnail * 0.32, weight: .medium))
                     if store.items.count > Self.recentCount {
-                        Text(verbatim: "+\(store.items.count - Self.recentCount)").crannyFont(.micro)
+                        Text(verbatim: (store.items.count - Self.recentCount).formatted(.number.sign(strategy: .always())))
+                            .crannyFont(.micro)
                     }
                 }
                 .foregroundStyle(theme.palette.secondaryLabel)

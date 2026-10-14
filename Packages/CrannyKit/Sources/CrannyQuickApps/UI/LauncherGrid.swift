@@ -3,7 +3,8 @@
 //
 // Keyboard (DESIGN.md §7.3, §16): the arrows walk every stop the card shows — tiles, "+N", "+" (`LauncherFocus`);
 // ↩ / Space open a tile or pop up the "+N" / "+" menu under its tile; in edit mode ⌥ + arrow moves a tile and ⌫
-// removes it, keeping the focus on the tile that takes its place.
+// removes it, keeping the focus on the tile that takes its place. Right to left the columns run from the right
+// (the offsets are mirrored with the layout): ← → and a drag's travel are turned into steps along the row.
 import CrannyCore
 import SwiftUI
 
@@ -11,6 +12,7 @@ struct LauncherGrid: View {
     static let space = "quickapps.grid"
 
     @Environment(\.cranny) private var theme
+    @Environment(\.layoutDirection) private var direction
     let model: QuickAppsModel
     let tiles: [LauncherTile]
     let layout: LauncherLayout
@@ -31,7 +33,7 @@ struct LauncherGrid: View {
     private struct Drag: Equatable {
         var id: TileID
         var from: Int
-        var translation: CGSize
+        var translation: CGSize          // along the layout (x: leading → trailing), not the pointer's physical travel
         var target: Int
     }
 
@@ -161,8 +163,9 @@ struct LauncherGrid: View {
 
     private func dragChanged(_ tile: LauncherTile, from index: Int, _ value: DragGesture.Value) {
         let from = drag?.from ?? tiles.firstIndex(of: tile) ?? index
-        let target = layout.dropTarget(from: from, translation: value.translation, metrics: metrics, limit: reorderLimit)
-        drag = Drag(id: tile.id, from: from, translation: value.translation, target: target)
+        let translation = direction.alongLayout(value.translation)
+        let target = layout.dropTarget(from: from, translation: translation, metrics: metrics, limit: reorderLimit)
+        drag = Drag(id: tile.id, from: from, translation: translation, target: target)
     }
 
     private func dragEnded() {
@@ -178,13 +181,7 @@ struct LauncherGrid: View {
     private func handleKey(_ press: KeyPress, slots: [LauncherLayout.Slot], shown: [LauncherTile]) -> KeyPress.Result {
         guard interactive, let focus else { return .ignored }
         let editing = model.isEditing
-        let direction: LauncherLayout.MoveDirection? = switch press.key {
-        case .upArrow: .up
-        case .downArrow: .down
-        case .leftArrow: .left
-        case .rightArrow: .right
-        default: nil
-        }
+        let direction = LauncherLayout.MoveDirection(press.key, layoutDirection: self.direction)
         if let direction {
             if editing, press.modifiers.contains(.option) {
                 guard case .tile(let id) = focus, let index = tiles.firstIndex(where: { $0.id == id }),
@@ -224,6 +221,20 @@ extension AnyTransition {
     /// A tile arriving or leaving: grows from 0.6 with a fade (opacity only under Reduce Motion).
     static func quickAppsTile(reduceMotion: Bool) -> AnyTransition {
         reduceMotion ? .opacity : .scale(scale: 0.6).combined(with: .opacity)
+    }
+}
+
+extension LauncherLayout.MoveDirection {
+    /// The move an arrow key asks for. Right to left the columns run from the right, so ← walks to the next column
+    /// and → to the previous one: the focus and a moved tile go the way the arrow points. Nil for any other key.
+    init?(_ key: KeyEquivalent, layoutDirection: LayoutDirection) {
+        switch key {
+        case .upArrow: self = .up
+        case .downArrow: self = .down
+        default:
+            guard let step = layoutDirection.step(for: key) else { return nil }
+            self = step < 0 ? .left : .right
+        }
     }
 }
 

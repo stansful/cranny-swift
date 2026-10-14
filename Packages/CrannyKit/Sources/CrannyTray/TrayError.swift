@@ -1,5 +1,6 @@
 // CrannyTray/TrayError.swift — everything that can go wrong in the Tray, as one localized line each
 // (ARCHITECTURE.md §9.3; DESIGN.md §8.2 "Error": the tile's tooltip and accessibility value say what failed).
+import CrannyCore
 import Foundation
 
 nonisolated enum TrayError: Error, LocalizedError, Equatable, Sendable {
@@ -29,11 +30,11 @@ nonisolated enum TrayError: Error, LocalizedError, Equatable, Sendable {
     var errorDescription: String? {
         switch self {
         case .cannotRead(let name):
-            String(localized: "Couldn’t read “\(name)”", bundle: .module, comment: "Tray error (tile tooltip): a file could not be read")
+            String(localized: "Couldn’t read “\(name.crannyIsolated)”", bundle: .module, comment: "Tray error (tile tooltip): a file could not be read")
         case .cannotWrite:
             String(localized: "Couldn’t save the result", bundle: .module, comment: "Tray error (tile tooltip): the result file could not be written")
         case .unsupportedFile(let name):
-            String(localized: "This doesn’t work with “\(name)”", bundle: .module, comment: "Tray error (tile tooltip): the action does not apply to this kind of file")
+            String(localized: "This doesn’t work with “\(name.crannyIsolated)”", bundle: .module, comment: "Tray error (tile tooltip): the action does not apply to this kind of file")
         case .formatUnavailable(let format):
             String(localized: "This Mac can’t write \(format) files", bundle: .module, comment: "Tray error (tile tooltip): image format not supported for writing; the argument is a format name such as AVIF")
         case .notSmaller:
@@ -53,7 +54,7 @@ nonisolated enum TrayError: Error, LocalizedError, Equatable, Sendable {
         case .fileMissing:
             String(localized: "The file is no longer there", bundle: .module, comment: "Tray error (tile tooltip): a linked file was moved or deleted")
         case .cannotKeep(let name):
-            String(localized: "Couldn’t keep “\(name)”", bundle: .module, comment: "Tray error (tile tooltip): a dropped file could not be copied into the Tray, for example because the disk is full")
+            String(localized: "Couldn’t keep “\(name.crannyIsolated)”", bundle: .module, comment: "Tray error (tile tooltip): a dropped file could not be copied into the Tray, for example because the disk is full")
         }
     }
 

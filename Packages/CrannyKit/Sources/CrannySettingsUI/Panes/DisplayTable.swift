@@ -94,7 +94,7 @@ struct DisplaySection: View {
             if case .custom = selection, ChosenDisplays.connected(selection, connected: displays.map(\.key)).isEmpty,
                let fallback = displays.first {
                 // The chosen displays were unplugged: say where Cranny is instead of showing no display checked.
-                Text("None of the chosen displays is connected, so Cranny uses \(fallback.name).", bundle: .module,
+                Text("None of the chosen displays is connected, so Cranny uses \(fallback.name.crannyIsolated).", bundle: .module,
                      comment: "Settings ▸ General ▸ Displays: footnote when no chosen display is connected; the argument is the display Cranny falls back to")
                     .font(.footnote)
                     .foregroundStyle(.secondary)

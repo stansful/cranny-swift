@@ -18,7 +18,7 @@ public nonisolated enum CrannySymbol {
     ]
     /// Calendar and meetings (the day header pages with the chevrons).
     public static let calendar: Set<String> = [
-        "calendar", "person.2.wave.2.fill", "clock", "mappin.and.ellipse", "chevron.left", "chevron.right",
+        "calendar", "person.2.wave.2.fill", "clock", "mappin.and.ellipse", "chevron.backward", "chevron.forward",
     ]
     /// Quick Apps placeholders and the Shortcuts pane.
     public static let launcher: Set<String> = ["app.dashed", "square.2.layers.3d.fill"]

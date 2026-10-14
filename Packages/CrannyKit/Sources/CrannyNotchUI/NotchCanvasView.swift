@@ -14,6 +14,10 @@ import SwiftUI
 /// peek, open). Used by the shell's panels and by the Settings and onboarding stages.
 public struct NotchCanvasView: View {
     @Namespace private var namespace
+    #if DEBUG
+    /// The panel's direction, for the offscreen `--qa-snapshot` (an `ImageRenderer` starts left to right).
+    @Environment(\.layoutDirection) private var layoutDirection
+    #endif
     private let model: NotchSceneModel
     private let registry: ModuleRegistry
     private let actions: NotchUIActions
@@ -33,7 +37,10 @@ public struct NotchCanvasView: View {
             .environment(\.notchZones, model.zones)
             .crannyThemeRoot(model.theme)
         #if DEBUG
-            .task { await NotchUIQAHooks.writeSnapshot(model: model, registry: registry, actions: actions) }   // --qa-snapshot
+            .task {                                                                                 // --qa-snapshot
+                await NotchUIQAHooks.writeSnapshot(model: model, registry: registry, actions: actions,
+                                                   layoutDirection: layoutDirection)
+            }
         #endif
     }
 

@@ -69,8 +69,10 @@ struct CalendarWidgetView: View {
 /// Chooses the layout for the width and owns keyboard navigation (DESIGN.md §7.2, §16): ↑ ↓ events, ↩ or Space
 /// open in Calendar, ⌘J join, ← → change day. With two columns (5 cells) ← → first move between the columns,
 /// then page; ↑ ↓ work in the column that holds the selection. At 2 cells ↑ ↓ ↩ work on the two rows shown.
+/// Right to left the columns and the pager are mirrored, and so are ← →.
 private struct CalendarAgendaLayout: View {
     @Environment(\.cranny) private var theme
+    @Environment(\.layoutDirection) private var direction
     @FocusState private var focused: Bool
     /// The keyboard's column (5 cells: 0 or 1) and the selected row in it. A multi-day event appears in both
     /// columns with the same id, so the column is part of the selection.
@@ -108,8 +110,9 @@ private struct CalendarAgendaLayout: View {
         .focusEffectDisabled()
         .onKeyPress(.upArrow) { move(-1, in: layout) }
         .onKeyPress(.downArrow) { move(1, in: layout) }
-        .onKeyPress(.leftArrow) { sideways(-1, in: layout) }
-        .onKeyPress(.rightArrow) { sideways(1, in: layout) }
+        // ← → go the way they point: right to left the days (and the columns) run from the right.
+        .onKeyPress(.leftArrow) { sideways(direction.step(physical: -1), in: layout) }
+        .onKeyPress(.rightArrow) { sideways(direction.step(physical: 1), in: layout) }
         .onKeyPress(.return) { open(in: layout) }
         .onKeyPress(.space) { open(in: layout) }
         .onKeyPress(characters: CharacterSet(charactersIn: "jJ")) { press in

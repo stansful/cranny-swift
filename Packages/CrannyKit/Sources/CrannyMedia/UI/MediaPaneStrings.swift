@@ -64,7 +64,7 @@ enum MediaPaneStrings {
     static var testNoAnswer: String { String(localized: "The media helper didn’t answer.", bundle: .module,
                comment: "Settings ▸ Media: test result") }
     static func testSeesPlayer(_ app: String, _ milliseconds: Int) -> String {
-        String(localized: "Working: the helper answered in \(milliseconds) ms and sees \(app).", bundle: .module,
+        String(localized: "Working: the helper answered in \(milliseconds) ms and sees \(app.crannyIsolated).", bundle: .module,
                comment: "Settings ▸ Media: test result; arguments are a round-trip time in milliseconds and a player name")
     }
     static func testSeesUnnamedPlayer(_ milliseconds: Int) -> String {

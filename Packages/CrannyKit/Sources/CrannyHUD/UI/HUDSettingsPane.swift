@@ -180,7 +180,7 @@ struct HUDSettingsPane: View {
     }
 
     private var competingRow: some View {
-        let names = competingApps.formatted(.list(type: .and))
+        let names = competingApps.map(\.crannyIsolated).formatted(.list(type: .and))     // each name in its own direction
         return Label {
             Group {
                 if competingApps.count == 1 {

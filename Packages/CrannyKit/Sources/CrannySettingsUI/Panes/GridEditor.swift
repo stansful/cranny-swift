@@ -2,7 +2,8 @@
 // page's widgets as cards at their true proportions on a black panel (the notch's own tokens and theme), with the
 // edit-mode look (dashed outline, 8 × 24 resize handle). Drag a card to reorder, drag its handle to resize in whole
 // cells (an `.alignment` detent per cell and an "N cells" tip), "+" opens the widget library. Keyboard: ⌥← ⌥→ move,
-// ⌥⇧← ⌥⇧→ resize; VoiceOver: named actions and an adjustable width; every change is announced.
+// ⌥⇧← ⌥⇧→ resize; VoiceOver: named actions and an adjustable width; every change is announced. Right to left the row
+// is mirrored: drags, drops, the arrows and Move Left / Right go the way they point.
 import AppKit
 import CrannyCore
 import Foundation
@@ -86,6 +87,7 @@ struct EditorMetrics {
 /// One widget in edit mode.
 private struct EditorCard: View {
     @Environment(\.cranny) private var theme
+    @Environment(\.layoutDirection) private var direction
     let info: WidgetInfo
     let cells: Int
     let metrics: EditorMetrics
@@ -126,7 +128,8 @@ private struct EditorCard: View {
         .draggable(info.id.rawValue)
         .dropDestination(for: String.self) { dropped, location in
             guard let raw = dropped.first, raw != info.id.rawValue else { return false }
-            let after = location.x > metrics.width(cells: shown) / 2
+            // The location is physical; right to left the card's later half is its left one.
+            let after = direction.alongLayout(location.x - metrics.width(cells: shown) / 2) > 0
             apply { editor in
                 guard let items = editor.page(pageID)?.items,
                       let target = items.firstIndex(where: { $0.widget == info.id }) else { return nil }
@@ -143,8 +146,7 @@ private struct EditorCard: View {
         .focused($focused)
         .focusEffectDisabled()
         .onKeyPress(keys: [.leftArrow, .rightArrow]) { press in
-            guard press.modifiers.contains(.option) else { return .ignored }
-            let step = press.key == .leftArrow ? -1 : 1
+            guard press.modifiers.contains(.option), let step = direction.step(for: press.key) else { return .ignored }
             if press.modifiers.contains(.shift) { resize(by: step) } else { shift(by: step) }
             return .handled
         }
@@ -154,8 +156,8 @@ private struct EditorCard: View {
         .accessibilityAdjustableAction { direction in
             resize(by: direction == .increment ? 1 : -1)
         }
-        .accessibilityAction(named: Text("Move Left", bundle: .module, comment: "Settings ▸ Layout & Widgets: move a widget or a page one place left")) { shift(by: -1) }
-        .accessibilityAction(named: Text("Move Right", bundle: .module, comment: "Settings ▸ Layout & Widgets: move a widget or a page one place right")) { shift(by: 1) }
+        .accessibilityAction(named: Text("Move Left", bundle: .module, comment: "Settings ▸ Layout & Widgets: move a widget or a page one place left")) { shift(by: direction.step(physical: -1)) }
+        .accessibilityAction(named: Text("Move Right", bundle: .module, comment: "Settings ▸ Layout & Widgets: move a widget or a page one place right")) { shift(by: direction.step(physical: 1)) }
         .accessibilityAction(named: Text("Remove", bundle: .module, comment: "Settings ▸ Layout & Widgets: remove a widget from the page")) { remove() }
     }
 
@@ -169,7 +171,8 @@ private struct EditorCard: View {
             .gesture(DragGesture(minimumDistance: 2)
                 .onChanged { value in
                     let step = metrics.cell + metrics.gutter
-                    let delta = Int((value.translation.width / max(step, 1)).rounded())
+                    // The handle is on the trailing edge: right to left, dragging it left widens the card.
+                    let delta = Int((direction.alongLayout(value.translation.width) / max(step, 1)).rounded())
                     let next = info.sizes.clamp(cells + delta)
                     if next != dragCells { haptics.play(.alignment) }
                     dragCells = next
@@ -191,8 +194,8 @@ private struct EditorCard: View {
         Button { resize(by: -1) } label: { Text("Narrower", bundle: .module, comment: "Settings ▸ Layout & Widgets: make a widget one cell narrower") }
             .disabled(cells <= info.sizes.minimum)
         Divider()
-        Button { shift(by: -1) } label: { Text("Move Left", bundle: .module, comment: "Settings ▸ Layout & Widgets: move a widget or a page one place left") }
-        Button { shift(by: 1) } label: { Text("Move Right", bundle: .module, comment: "Settings ▸ Layout & Widgets: move a widget or a page one place right") }
+        Button { shift(by: direction.step(physical: -1)) } label: { Text("Move Left", bundle: .module, comment: "Settings ▸ Layout & Widgets: move a widget or a page one place left") }
+        Button { shift(by: direction.step(physical: 1)) } label: { Text("Move Right", bundle: .module, comment: "Settings ▸ Layout & Widgets: move a widget or a page one place right") }
         Divider()
         Button(role: .destructive) { remove() } label: { Text("Remove", bundle: .module, comment: "Settings ▸ Layout & Widgets: remove a widget from the page") }
     }

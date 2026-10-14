@@ -97,7 +97,7 @@ struct LauncherTileView: View {
     private var helpText: String {
         switch runState {
         case .running:
-            String(localized: "\(displayName) — click to stop", bundle: .module, comment: "Quick Apps: a running shortcut's tooltip and \"+N\" menu row (shortcut name)")
+            String(localized: "\(displayName.crannyIsolated) — click to stop", bundle: .module, comment: "Quick Apps: a running shortcut's tooltip and \"+N\" menu row (shortcut name)")
         case .failed(let error):
             "\(displayName)\n\(error.localizedDescription)"
         case .idle, .succeeded:

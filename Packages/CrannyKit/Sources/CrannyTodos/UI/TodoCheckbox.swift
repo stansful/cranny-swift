@@ -62,8 +62,11 @@ private struct TodoCheckboxButtonStyle: ButtonStyle {
     }
 }
 
-/// The check inside the circle, as one open path so `trim` draws it from the short stroke to the long one.
+/// The check inside the circle, as one open path so `trim` draws it from the short stroke to the long one. A check
+/// mark is not mirrored right to left (like the `checkmark` symbol); a custom `Shape` would be.
 nonisolated struct TodoCheckmark: Shape {
+    var layoutDirectionBehavior: LayoutDirectionBehavior { .fixed }
+
     func path(in rect: CGRect) -> Path {
         var path = Path()
         path.move(to: CGPoint(x: rect.minX + rect.width * 0.29, y: rect.minY + rect.height * 0.53))

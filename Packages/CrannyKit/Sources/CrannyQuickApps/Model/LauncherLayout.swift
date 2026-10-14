@@ -94,5 +94,7 @@ nonisolated struct LauncherLayout: Equatable, Sendable {
         return next
     }
 
+    /// Along the layout: `left` is the previous column, `right` the next (right to left the next column is the one on
+    /// the left; `MoveDirection(_:layoutDirection:)` maps the arrow keys).
     enum MoveDirection: Sendable { case up, down, left, right }
 }

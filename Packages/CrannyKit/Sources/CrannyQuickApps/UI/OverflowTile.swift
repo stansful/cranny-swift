@@ -32,7 +32,7 @@ struct OverflowTile: View {
                     .frame(width: metrics.body, height: metrics.body)
                     .overlay {
                         RunStateGlyph(state: state, metrics: metrics, frameInterval: interval) {
-                            Text(verbatim: "+\(count)")
+                            Text(verbatim: count.formatted(.number.sign(strategy: .always())))   // "+3", "+٣"
                                 .crannyFont(.headline)
                                 .monospacedDigit()
                                 .foregroundStyle(p.label)
@@ -86,7 +86,7 @@ struct OverflowTile: View {
                 let image = ShortcutMenuImage.image(for: entry, redacted: redacted)
                 switch model.runs.state(of: entry.id) {
                 case .running:
-                    let title = String(localized: "\(name) — click to stop", bundle: .module, comment: "Quick Apps: a running shortcut's tooltip and \"+N\" menu row (shortcut name)")
+                    let title = String(localized: "\(name.crannyIsolated) — click to stop", bundle: .module, comment: "Quick Apps: a running shortcut's tooltip and \"+N\" menu row (shortcut name)")
                     return MenuEntry(title, image: image) { model.activate(tile) }
                 case .failed(let error):
                     return MenuEntry(name, image: image, toolTip: error.localizedDescription) { model.activate(tile) }

@@ -7,7 +7,8 @@ import CrannyEffects
 import SwiftUI
 
 /// The lower outline of `geometry`: the shape's stroke below the band's middle, revealed left to right up
-/// to `progress` (0…1). Content of `NotchSurface`, so it sits in the canvas at the shape's place.
+/// to `progress` (0…1), in every language: playback progress keeps its direction (CrannyCore's RightToLeft.swift).
+/// Content of `NotchSurface`, so it sits in the canvas at the shape's place.
 struct LowerRim: View {
     let geometry: NotchGeometry
     let progress: Double
@@ -20,9 +21,10 @@ struct LowerRim: View {
             .mask(alignment: .top) { LowerRim.mask(geometry: geometry, progress: progress) }
             .allowsHitTesting(false)
             .accessibilityHidden(true)
+            .crannyLeftToRight()
     }
 
-    /// Below the middle of the body, from the leading edge to `progress` of the width.
+    /// Below the middle of the body, from the left edge to `progress` of the width (`LowerRim` lays it out left to right).
     static func mask(geometry g: NotchGeometry, progress: Double) -> some View {
         let p = CGFloat(min(max(progress, 0), 1))
         return HStack(spacing: 0) {
