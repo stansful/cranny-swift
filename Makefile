@@ -2,7 +2,7 @@
 # Command Line Tools: the scripts locate /Applications/Xcode*.app themselves.
 SHELL := /bin/bash
 
-.PHONY: help build debug run smoke dist check test strings strings-check icon list clean distclean
+.PHONY: help build debug run smoke dist check test strings strings-check probe probe-check icon list clean distclean
 
 help:            ## Show this help
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
@@ -33,6 +33,12 @@ strings:         ## Sync String Catalogs with keys used in code
 
 strings-check:   ## Fail if String Catalogs are out of date (CI)
 	@CHECK=1 scripts/sync-strings.sh
+
+probe:           ## Regenerate the SDK name-collision probe after adding public CrannyCore types
+	@scripts/name-probe.sh
+
+probe-check:     ## Fail if the SDK name-collision probe is out of date (CI)
+	@CHECK=1 scripts/name-probe.sh
 
 icon:            ## Re-render the App/AppIcon.icon layers (scripts/render-icon.swift)
 	@. scripts/lib.sh && ensure_xcode && xcrun swift scripts/render-icon.swift App/AppIcon.icon/Assets

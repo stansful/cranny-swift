@@ -29,6 +29,9 @@ jobs:
       - name: Every CrannyKit module builds on its own + unit tests
         run: JOBS=3 TEST=1 scripts/check-modules.sh
 
+      - name: SDK name-collision probe is up to date
+        run: CHECK=1 scripts/name-probe.sh
+
       - name: String Catalogs are in sync with code
         run: CHECK=1 scripts/sync-strings.sh
 

@@ -1,0 +1,72 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "Accessibility": {
+      "comment": "Permission name (System Settings ▸ Privacy)",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Универсальный доступ"
+          }
+        }
+      }
+    },
+    "Automation (%@)": {
+      "comment": "Permission name; argument is an app bundle identifier",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Автоматизация (%@)"
+          }
+        }
+      }
+    },
+    "Bluetooth": {
+      "comment": "Permission name",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bluetooth"
+          }
+        }
+      }
+    },
+    "Calendars": {
+      "comment": "Permission name",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Календари"
+          }
+        }
+      }
+    },
+    "Camera": {
+      "comment": "Permission name",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Камера"
+          }
+        }
+      }
+    },
+    "System Audio Recording": {
+      "comment": "Permission name",
+      "localizations": {
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Запись системного звука"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}
