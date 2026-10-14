@@ -135,6 +135,27 @@ import Foundation
     /// Re-derives the scene after settings or the layout changed.
     func refresh() { syncScene(config: currentConfig()) }
 
+    /// The open shape follows the layout whoever writes it: ⌘E (`commitLayout`), a card's ⋯ menu, Settings ▸ Layout &
+    /// Widgets, the Welcome presets, Reset All and Undo all write `CoreSettings.pages`, so the scene is re-derived
+    /// when the pages (or the last page) change. A grid page that was deleted while it showed gives way to the last
+    /// page. The controller keeps the token for as long as the panel lives.
+    func observeLayout() -> ObservationToken {
+        let settings = registry.services.settings
+        return observe({ LayoutFacts(pages: settings[CoreSettings.pages], lastPage: settings[CoreSettings.lastPage]) }) {
+            [weak self] _ in self?.layoutChanged()
+        }
+    }
+
+    private struct LayoutFacts: Equatable {
+        var pages: [NookPage]
+        var lastPage: PageID
+    }
+
+    private func layoutChanged() {
+        if let page = state.openState?.page, !pageExists(page) { send(.selectPage(currentConfig().lastPage)) }
+        refresh()
+    }
+
     /// The geometry hover zones use: the drawn shape, or the closed shape while the idle handle is hidden
     /// (hover is geometric and brings it back, DESIGN.md §3.5); nil while hidden for any other reason.
     var hoverGeometry: NotchGeometry? {

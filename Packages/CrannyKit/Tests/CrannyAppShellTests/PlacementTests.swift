@@ -1,6 +1,6 @@
 // Where things land on the open panel (DESIGN.md §7.5, ARCHITECTURE.md §3.9, §4.12): type-to-capture only reaches a
-// widget that is on a page, and `NotchControl.open(focus:)` opens the page that shows the widget. No windows are
-// shown: key events go straight to the router of a panel never ordered in.
+// widget that is on a page, `NotchControl.open(focus:)` opens the page that shows the widget, and the open shape
+// follows every layout writer. No windows are shown: key events go straight to the router of a panel never ordered in.
 import AppKit
 import CrannyCore
 import CrannyNotchUI
@@ -93,4 +93,23 @@ private func keyEvent(_ characters: String, keyCode: UInt16, in window: NSWindow
     f.viewModel.send(.close)
     f.viewModel.send(.open(page: .nook, focus: .media, reason: .keyboard))     // already there: unchanged
     #expect(f.scene.open == OpenState(page: .nook, focus: .media, reason: .keyboard))
+}
+
+/// C-SHELL-3: ⌘E, a card's ⋯ menu, Settings, presets, Reset and Undo all write `CoreSettings.pages`; the open shape
+/// follows at once, not at the next pointer move. A grid page deleted while it shows gives way to the last page.
+@Test func theOpenShapeFollowsTheLayout() async throws {
+    let f = Fixture()
+    let token = f.viewModel.observeLayout()
+    defer { token.cancel() }
+    f.viewModel.send(.hotKey)
+    #expect(f.scene.openColumns == 10)                                          // Listener: 5 + 3 + 2
+    f.viewModel.actions.commitLayout([NookPage(id: .nook, symbol: "square.grid.2x2.fill", items: [.init(.timer, cells: 2)])])
+    for _ in 0..<100 where f.scene.openColumns != 2 { try await Task.sleep(for: .milliseconds(10)) }
+    #expect(f.scene.openColumns == 2)
+    f.settings[CoreSettings.pages] = [NookPreset.maker.page, NookPage(id: "page.b", symbol: "star", items: [.init(.media, cells: 6)])]
+    f.viewModel.send(.selectPage("page.b"))
+    #expect(f.scene.openColumns == 6)
+    f.settings[CoreSettings.pages] = [NookPreset.maker.page]                    // the page that shows is deleted
+    for _ in 0..<100 where f.scene.open?.page != .nook { try await Task.sleep(for: .milliseconds(10)) }
+    #expect(f.scene.open?.page == .nook && f.scene.openColumns == 10)
 }
