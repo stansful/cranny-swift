@@ -160,9 +160,17 @@ nonisolated private let log = Log.logger(.quickApps)
         }
     }
 
-    /// The notch flash after a failure (≤ 12 characters).
+    /// The notch flash after a failure: one word that must fit the compact wing (measured, see `NotchControl.flash`).
     static var failedLabel: String {
-        String(localized: "Failed", bundle: .module, comment: "Notch flash: a shortcut or an app failed (≤ 12 characters)")
+        String(localized: "Failed", bundle: .module,
+               comment: "Notch flash: a shortcut or an app failed; one short word that must fit the compact wing (measured, see NotchControl.flash)")
+    }
+
+    /// The notch flash after a shortcut finished: one word that must fit the compact wing (measured, see
+    /// `NotchControl.flash`).
+    static var doneLabel: String {
+        String(localized: "Done", bundle: .module,
+               comment: "Notch flash: a shortcut finished; one short word that must fit the compact wing (measured, see NotchControl.flash)")
     }
 
     /// The name of a shortcut wherever it could be seen or heard; neutral in Demo mode (it may be personal). A run's
@@ -189,8 +197,7 @@ nonisolated private let log = Log.logger(.quickApps)
     private func finished(_ entry: ShortcutEntry, _ outcome: ShortcutRunOutcome) {
         switch outcome {
         case .succeeded:
-            reportInNotch(entry, symbol: "checkmark.circle.fill",
-                          label: String(localized: "Done", bundle: .module, comment: "Notch flash: a shortcut finished (≤ 12 characters)"),
+            reportInNotch(entry, symbol: "checkmark.circle.fill", label: Self.doneLabel,
                           announcement: resultAnnouncement(of: entry, failed: false))
         case .failed:
             reportInNotch(entry, symbol: "exclamationmark", label: Self.failedLabel,

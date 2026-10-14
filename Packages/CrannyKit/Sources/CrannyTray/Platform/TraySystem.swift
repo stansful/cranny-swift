@@ -16,8 +16,10 @@ import SwiftUI
     func quickLook(_ urls: [URL], at index: Int)
     func closeQuickLook()
     var isQuickLookVisible: Bool { get }
-    /// A VoiceOver announcement (pipeline finished).
+    /// A VoiceOver announcement of work that finished (a pipeline): it shares the app-wide limit (DESIGN.md §16).
     func announce(_ message: String)
+    /// A VoiceOver announcement that answers the user's own action (Copy paths), never rate-limited (`.feedback`).
+    func announceFeedback(_ message: String)
     /// Moves files Cranny just wrote to the Trash (Undo); recoverable, never a hard delete.
     func trash(_ urls: [URL]) async
 }
@@ -54,6 +56,10 @@ import SwiftUI
         announcer.announce(message, kind: .result)
     }
 
+    func announceFeedback(_ message: String) {
+        announcer.announce(message, kind: .feedback)
+    }
+
     func trash(_ urls: [URL]) async {
         await Self.trashOffMain(urls)
     }
@@ -67,6 +73,8 @@ import SwiftUI
 @MainActor final class RecordingTraySystem: TraySystem {
     private(set) var calls: [String] = []
     private(set) var copiedText: String?
+    /// What `announceFeedback` was asked to say.
+    private(set) var feedback: [String] = []
     private(set) var trashed: [URL] = []
     var isQuickLookVisible = false
 
@@ -77,6 +85,7 @@ import SwiftUI
     func quickLook(_ urls: [URL], at index: Int) { isQuickLookVisible = true; calls.append("quickLook(\(urls.count),\(index))") }
     func closeQuickLook() { isQuickLookVisible = false; calls.append("closeQuickLook") }
     func announce(_ message: String) { calls.append("announce") }
+    func announceFeedback(_ message: String) { feedback.append(message); calls.append("feedback") }
     func trash(_ urls: [URL]) async {
         trashed += urls                                                     // recorded only, never deleted
         calls.append("trash(\(urls.count))")

@@ -68,7 +68,7 @@ nonisolated enum PauseConfirmation: Equatable, Sendable {
         }
     }
 
-    /// The wing's word (≤ 12 characters, like every flash label).
+    /// The wing's word: like every flash label it must fit the wing by measured width (`FlashLabelFitTests`).
     var label: String {
         switch self {
         case .paused:

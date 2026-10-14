@@ -60,12 +60,21 @@ extension TrayStore {
         system.copy(files: list)
     }
 
-    /// "Copy path" (context menu) and the Copy paths chip; confirmed in the band (`NotchControl.flash`).
+    /// "Copy path" (context menu) and the Copy paths chip; confirmed in the band with the copy glyph and "Copied"
+    /// (`NotchControl.flash`), and to VoiceOver with what was copied, since the glyph is not read out (DESIGN.md §16).
     func copyPaths(_ id: UUID? = nil) {
         let list = urls(of: targets(for: id))
         guard !list.isEmpty else { return }
         system.copy(text: list.map(\.path).joined(separator: "\n"))
-        notch.flash(symbol: "link", label: Self.pathsCopiedLabel(count: list.count))
+        notch.flash(symbol: "doc.on.doc", label: Self.copiedLabel)
+        system.announceFeedback(Self.pathsCopiedAnnouncement(count: list.count))
+    }
+
+    /// VoiceOver's confirmation of Copy paths: the flash's word alone («Готово») does not say what happened.
+    static func pathsCopiedAnnouncement(count: Int) -> String {
+        count == 1
+            ? String(localized: "Path copied", bundle: .module, comment: "Tray: VoiceOver announcement after Copy paths (one file)")
+            : String(localized: "Paths copied", bundle: .module, comment: "Tray: VoiceOver announcement after Copy paths (several files)")
     }
 
     /// ⌘⌫ / ✕ / "Remove": removes the selection (or `id`).

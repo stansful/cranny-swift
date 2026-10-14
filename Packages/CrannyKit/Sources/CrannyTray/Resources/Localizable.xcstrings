@@ -375,6 +375,17 @@
         }
       }
     },
+    "Copied" : {
+      "comment" : "Notch flash: confirms Copy paths or a copied text, beside the copy glyph that says it was copied; one short word that must fit the compact wing (measured, see NotchControl.flash)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Готово"
+          }
+        }
+      }
+    },
     "Copies" : {
       "comment" : "Settings ▸ Tray: keep dropped files as copies (default)",
       "localizations" : {
@@ -921,23 +932,23 @@
       }
     },
     "Path copied" : {
-      "comment" : "Notch flash: Copy paths confirmation (one file); at most 12 characters",
+      "comment" : "Tray: VoiceOver announcement after Copy paths (one file)",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Скопировано"
+            "value" : "Путь скопирован"
           }
         }
       }
     },
     "Paths copied" : {
-      "comment" : "Notch flash: Copy paths confirmation (several files); at most 12 characters",
+      "comment" : "Tray: VoiceOver announcement after Copy paths (several files)",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Скопировано"
+            "value" : "Пути скопированы"
           }
         }
       }
@@ -1202,17 +1213,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Удалить метаданные"
-          }
-        }
-      }
-    },
-    "Text copied" : {
-      "comment" : "Notch flash: Copy text confirmation; at most 12 characters",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Скопировано"
           }
         }
       }

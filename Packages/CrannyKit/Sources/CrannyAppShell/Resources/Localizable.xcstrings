@@ -57,7 +57,7 @@
       }
     },
     "Confirmations" : {
-      "comment" : "Live Activities pane: the shell's short confirmations (e.g. \"Path copied\")",
+      "comment" : "Live Activities pane: the shell's short confirmations (e.g. \"Copied\")",
       "localizations" : {
         "ru" : {
           "stringUnit" : {

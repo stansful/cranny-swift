@@ -105,7 +105,7 @@ nonisolated struct ActivityArbiter {
             guard started, let seen = lastSeen[activity.id], activity.revision != seen,
                   candidateIDs.contains(activity.id) else { continue }
             outcome.changed.append(activity.id)
-            // The flash IS the transient presentation; it never peeks (onboarding "Hi", "Path copied").
+            // The flash IS the transient presentation; it never peeks (onboarding "Hi", the Tray's "Copied").
             if activity.id != .flash, activity.priority != .hud,
                activity.priority == .alert || activity.peeksOnChange { outcome.peeks.append(activity.id) }
             if activity.priority == .alert, activity.id != .flash { outcome.announcements.append(activity.id) }

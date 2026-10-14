@@ -244,7 +244,7 @@
       }
     },
     "Done" : {
-      "comment" : "Notch flash: a shortcut finished (≤ 12 characters)",
+      "comment" : "Notch flash: a shortcut finished; one short word that must fit the compact wing (measured, see NotchControl.flash)",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -299,7 +299,7 @@
       }
     },
     "Failed" : {
-      "comment" : "Notch flash: a shortcut or an app failed (≤ 12 characters)",
+      "comment" : "Notch flash: a shortcut or an app failed; one short word that must fit the compact wing (measured, see NotchControl.flash)",
       "localizations" : {
         "ru" : {
           "stringUnit" : {

@@ -129,12 +129,11 @@ extension TrayStore {
         }
         if result.copiesPaths {
             system.copy(text: finalURLs.map(\.path).joined(separator: "\n"))
-            notch.flash(symbol: "link", label: Self.pathsCopiedLabel(count: finalURLs.count))
+            notch.flash(symbol: "doc.on.doc", label: Self.copiedLabel)
         }
         if let text = result.text {
             system.copy(text: text)
-            notch.flash(symbol: "doc.on.doc", label: String(localized: "Text copied", bundle: .module,
-                                                            comment: "Notch flash: Copy text confirmation; at most 12 characters"))
+            notch.flash(symbol: "doc.on.doc", label: Self.copiedLabel)
         }
         if result.reveals { system.reveal(finalURLs) }
         haptics.play(.generic)
@@ -145,11 +144,12 @@ extension TrayStore {
         endJob(jobID)
     }
 
-    /// "Path copied" / "Paths copied" in the band (Copy paths chip, context menu, pipelines ending in Copy paths).
-    static func pathsCopiedLabel(count: Int) -> String {
-        count == 1
-            ? String(localized: "Path copied", bundle: .module, comment: "Notch flash: Copy paths confirmation (one file); at most 12 characters")
-            : String(localized: "Paths copied", bundle: .module, comment: "Notch flash: Copy paths confirmation (several files); at most 12 characters")
+    /// "Copied" / «Готово» in the band after Copy paths (the chip, the context menu, a pipeline ending in Copy paths)
+    /// and after a pipeline copied text, always beside the copy glyph (`doc.on.doc`), which says that something was
+    /// copied (design ruling E4); the word fits the wing in every language (`NotchControl.flash`).
+    static var copiedLabel: String {
+        String(localized: "Copied", bundle: .module,
+               comment: "Notch flash: confirms Copy paths or a copied text, beside the copy glyph that says it was copied; one short word that must fit the compact wing (measured, see NotchControl.flash)")
     }
 
     private func fail(_ jobID: UUID, _ error: any Error) {
