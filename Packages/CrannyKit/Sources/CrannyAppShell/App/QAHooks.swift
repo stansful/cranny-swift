@@ -7,6 +7,8 @@
 //   --qa-welcome <step>                   show the Welcome window at a step (`hello`, `openIt`, `gestures`,
 //                                         `preset`, `permissions`, `done`); records nothing (WP15)
 //   --qa-tutorial <n>                     start the interactive tutorial at step n (1-based); records nothing
+//   --qa-snapshot <dir>                   with --qa-welcome / --qa-tutorial: draw every visible window into
+//                                         <dir>/<level>-<n>.png after 3 s (works while the screen is locked)
 //
 // No input is synthesized: the state is written through the same view-model inputs the pointer uses.
 // The whole file is compiled out of Release builds.
@@ -30,11 +32,13 @@ enum QAHooks {
         var welcomeStep: String?
         /// 1-based tutorial step; `WelcomeWindowController` starts the tour there (WP15).
         var tutorialStep: Int?
+        /// Directory for in-process snapshots of the app's windows (WP15).
+        var snapshotPath: String?
 
         init(state: State? = nil, page: PageID? = nil, exitAfter: Double? = nil, settingsPage: SettingsPageID? = nil,
-             welcomeStep: String? = nil, tutorialStep: Int? = nil) {
+             welcomeStep: String? = nil, tutorialStep: Int? = nil, snapshotPath: String? = nil) {
             self.state = state; self.page = page; self.exitAfter = exitAfter; self.settingsPage = settingsPage
-            self.welcomeStep = welcomeStep; self.tutorialStep = tutorialStep
+            self.welcomeStep = welcomeStep; self.tutorialStep = tutorialStep; self.snapshotPath = snapshotPath
         }
 
         init(arguments: [String]) {
@@ -47,7 +51,8 @@ enum QAHooks {
                       exitAfter: value("--qa-exit-after").flatMap(Double.init).flatMap { $0 > 0 ? $0 : nil },
                       settingsPage: value("--qa-settings").map(SettingsPageID.init(rawValue:)),
                       welcomeStep: value("--qa-welcome"),
-                      tutorialStep: value("--qa-tutorial").flatMap(Int.init).flatMap { $0 > 0 ? $0 : nil })
+                      tutorialStep: value("--qa-tutorial").flatMap(Int.init).flatMap { $0 > 0 ? $0 : nil },
+                      snapshotPath: value("--qa-snapshot"))
         }
 
         var isEmpty: Bool {

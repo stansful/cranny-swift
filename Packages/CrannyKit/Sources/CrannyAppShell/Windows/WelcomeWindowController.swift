@@ -105,14 +105,38 @@ private let log = Log.logger(.onboarding)
         isVisualQA = !qa.isEmpty
         if let name = qa.welcomeStep {
             show(at: WelcomeStep(rawValue: name) ?? .hello)
+            if let path = qa.snapshotPath { snapshotForVisualQA(into: URL(fileURLWithPath: path)) }
             return
         }
         if let step = qa.tutorialStep {
             tutorial.startForVisualQA(atStep: step)
+            if let path = qa.snapshotPath { snapshotForVisualQA(into: URL(fileURLWithPath: path)) }
             return
         }
         if isVisualQA { return }                  // QA screenshots never get the first-launch welcome on top
         #endif
         if registry.services.settings[CoreSettings.onboardingCompletedVersion] == nil { show() }
     }
+
+    #if DEBUG
+    /// Visual QA: draws every visible window of the app (welcome, tip, notch panel) into `<directory>/<level>-<n>.png`
+    /// once the step has settled. In-process, so it also works while the screen is locked (window-server captures
+    /// fail then); materials and Metal effects may draw flat.
+    private func snapshotForVisualQA(into directory: URL) {
+        Task {
+            try? await Task.sleep(for: .seconds(3))
+            for (index, window) in NSApp.windows.enumerated() where window.isVisible {
+                guard let view = window.contentView, let rep = view.bitmapImageRepForCachingDisplay(in: view.bounds) else { continue }
+                view.cacheDisplay(in: view.bounds, to: rep)
+                let url = directory.appendingPathComponent("\(window.level.rawValue)-\(index).png")
+                do {
+                    try rep.representation(using: .png, properties: [:])?.write(to: url)
+                    log.info("QA: snapshot \(url.lastPathComponent, privacy: .public) \(NSStringFromRect(window.frame), privacy: .public)")
+                } catch {
+                    log.error("QA: snapshot failed: \(error.localizedDescription, privacy: .public)")
+                }
+            }
+        }
+    }
+    #endif
 }
