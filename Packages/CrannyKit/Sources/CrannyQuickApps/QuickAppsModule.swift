@@ -35,9 +35,9 @@ public enum QuickAppsModule: FeatureModule {
     static var searchKeywords: [String] {
         [
             String(localized: "Quick Apps", bundle: .module, comment: "Quick Apps: widget name (widget library, VoiceOver container)"),
-            String(localized: "Apps", bundle: .module, comment: "Settings search keyword (Shortcuts pane)"),
-            String(localized: "Dock", bundle: .module, comment: "Settings search keyword (Shortcuts pane)"),
-            String(localized: "Launcher", bundle: .module, comment: "Settings search keyword (Shortcuts pane)"),
+            String(localized: "Apps", bundle: .module, comment: "Settings search: keyword for the Shortcuts pane"),
+            String(localized: "Dock", bundle: .module, comment: "Settings search: keyword for the Shortcuts pane"),
+            String(localized: "Launcher", bundle: .module, comment: "Settings search: keyword for the Shortcuts pane"),
             String(localized: "Symbol", bundle: .module, comment: "Settings ▸ Shortcuts: symbol (popover section, search keyword)"),
             String(localized: "Colour", bundle: .module, comment: "Settings ▸ Shortcuts: colour (popover section, search keyword)"),
             String(localized: "Show names under tiles", bundle: .module, comment: "Quick Apps: option toggle (widget options, Settings ▸ Shortcuts)"),
