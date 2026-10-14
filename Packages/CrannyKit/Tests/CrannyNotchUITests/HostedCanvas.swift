@@ -36,6 +36,18 @@ import SwiftUI
         return ShapeProbe(image, scale: CGFloat(rep.pixelsWide) / max(host.bounds.width, 1))
     }
 
+    /// Offers a key equivalent to the hosted view the way the window would (an in-process call: nothing is
+    /// posted to the system). Returns whether a view handled it.
+    @discardableResult func keyEquivalent(_ characters: String, keyCode: UInt16, modifiers: NSEvent.ModifierFlags) -> Bool {
+        guard let event = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: modifiers, timestamp: 0,
+                                           windowNumber: window.windowNumber, context: nil, characters: characters,
+                                           charactersIgnoringModifiers: characters, isARepeat: false, keyCode: keyCode)
+        else { return false }
+        let handled = host.performKeyEquivalent(with: event)
+        settle(0.05)
+        return handled
+    }
+
     func tearDown() {
         window.contentView = nil
         window.close()

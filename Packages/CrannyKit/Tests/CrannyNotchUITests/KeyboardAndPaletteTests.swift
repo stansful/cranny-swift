@@ -24,6 +24,14 @@ import UniformTypeIdentifiers
         #expect(Set(keys).count == keys.count)
     }
 
+    @Test func theWholeMapIsBoundOnceWhateverTheHeaderShows() {
+        // Visible controls (tabs, ⌕ 📌 ⚙︎) come and go with the edit bar and the HUD; their shortcuts must not.
+        let bound = NookHiddenShortcuts.bound.map(\.display)
+        #expect(Set(bound) == Set(NookKeyMap.all.map(\.display)))
+        #expect(bound.count == Set(bound).count)                              // each once
+        for display in ["⌘K", "⌘P", "⌘E", "⌘,", "⌘1", "⌘5", "⌃⇥", "⌃⇧⇥"] { #expect(bound.contains(display)) }
+    }
+
     @Test func escapeStepsBackBeforeItCloses() {
         #expect(NookKeyMap.escape(from: .palette) == .grid)
         #expect(NookKeyMap.escape(from: .editLayout) == .grid)

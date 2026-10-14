@@ -50,8 +50,7 @@ struct HeaderTabsView: View {
                 }
                 .buttonStyle(TabSegmentStyle(isSelected: tab.id == selected, indicator: selection,
                                              indicatorID: showsTitles ? "tab.titled" : "tab.icons"))
-                .nookShortcut(NookKeyMap.page(index))
-                .help(tab.title)
+                .help(tab.title)                                   // ⌘1–⌘5: NookHiddenShortcuts
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(Text(verbatim: tab.title))
                 .modifier(BadgeValue(count: tab.badge))

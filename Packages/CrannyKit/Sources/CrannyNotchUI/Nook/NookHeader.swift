@@ -93,7 +93,8 @@ struct NookHeader: View {
 }
 
 /// A 28-pt icon button (`CrannyIconButtonStyle`, shape from Appearance ▸ Buttons) with a 32 × 28 hit area:
-/// the design owner's decision for open issue 4 (band controls need ≥ 32 × 24, the glyph stays 28).
+/// the design owner's decision for open issue 4 (band controls need ≥ 32 × 24, the glyph stays 28). Its
+/// shortcut is bound by `NookHiddenShortcuts`; the button shows it as a hold-⌘ hint and a VoiceOver hint.
 private struct HeaderButton: View {
     let symbol: String
     let isOn: Bool
@@ -108,7 +109,6 @@ private struct HeaderButton: View {
             }
         }
         .buttonStyle(HeaderIconButtonStyle(role: isOn ? .filled : .plain))
-        .nookShortcut(shortcut)
         .help(label)
         .accessibilityLabel(Text(verbatim: label))
         .accessibilityAddTraits(isOn ? .isSelected : [])

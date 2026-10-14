@@ -133,6 +133,34 @@ extension HostedTests {
         }
     }
 
+    /// The keyboard map works whatever the header shows (review: the edit bar and a HUD removed the buttons
+    /// that carried ⌘K, ⌘P, ⌘, and ⌘1–⌘5).
+    @MainActor @Suite("Keyboard map in the open panel") struct KeyMapHostedTests {
+        @Test(arguments: ["grid", "edit", "hud"]) func shortcutsSurviveTheHeaderSwaps(state: String) async throws {
+            let (model, registry) = previewScene(.open, hudInHeader: state == "hud", mode: state == "edit" ? .editLayout : .grid)
+            registry.services.settings[CoreSettings.pages].append(NookPage(id: "page.focus", title: "Focus", symbol: "note.text", items: []))
+            var modes: [NookMode] = []
+            var pins = 0, settings = 0
+            var pages: [PageID] = []
+            var actions = NotchUIActions()
+            actions.setMode = { modes.append($0) }
+            actions.togglePin = { pins += 1 }
+            actions.openSettings = { settings += 1 }
+            actions.selectPage = { pages.append($0) }
+            let (hosted, _) = hostedCanvas(model, registry, actions: actions)
+            defer { hosted.tearDown() }
+            hosted.keyEquivalent("k", keyCode: 40, modifiers: .command)
+            hosted.keyEquivalent("p", keyCode: 35, modifiers: .command)
+            hosted.keyEquivalent(",", keyCode: 43, modifiers: .command)
+            hosted.keyEquivalent("2", keyCode: 19, modifiers: .command)
+            try await Task.sleep(for: .milliseconds(100))                  // a tab change lands on the next main-actor turn
+            #expect(modes.contains(.palette), "⌘K: \(modes)")
+            #expect(pins == 1, "⌘P")
+            #expect(settings == 1, "⌘,")
+            #expect(pages == ["page.focus"], "⌘2")
+        }
+    }
+
     @MainActor @Suite("Morph frames (hosted, off-screen)") struct MorphFrameTests {
         /// While the shape grows out of the camera, nothing of the open panel may be drawn below the shape's current
         /// bottom edge: no keyline, no underglow layer, no surface instance at its final size (DESIGN.md §3.4, §4.3).

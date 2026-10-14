@@ -1,7 +1,9 @@
 // CrannyNotchUI/Keyboard/NookKeyHandling.swift — the open panel's keyboard map (DESIGN.md §16, ARCHITECTURE.md
 // §4.10): ⌘K palette · ⌘P pin · ⌘E edit layout · ⌘, Settings · ⌘1–⌘5 pages · ⌃Tab / ⌃⇧Tab next/previous page ·
 // Esc steps back (palette, edit layout, focus mode → grid, then close). The table is pure and unit-tested;
-// the views bind it with `.keyboardShortcut` (works while the panel is key) and show it as hold-⌘ hints.
+// `NookHiddenShortcuts` binds ALL of it once, for as long as the panel is open (works while the panel is key),
+// and the visible tabs and buttons only show it as hold-⌘ hints. So a shortcut never disappears with the
+// control that shows it (the edit bar replaces the actions; a HUD takes the whole header row).
 import CrannyCore
 import SwiftUI
 
@@ -84,34 +86,21 @@ extension NookShortcut.ModifierSet {
     }
 }
 
-extension View {
-    /// Binds `shortcut` as this button's key equivalent (active while the panel is key).
-    func nookShortcut(_ shortcut: NookShortcut?) -> some View {
-        modifier(NookShortcutModifier(shortcut: shortcut))
-    }
-}
-
-private struct NookShortcutModifier: ViewModifier {
-    let shortcut: NookShortcut?
-    func body(content: Content) -> some View {
-        if let shortcut {
-            content.keyboardShortcut(KeyEquivalent(shortcut.key), modifiers: shortcut.modifiers.eventModifiers)
-        } else {
-            content
-        }
-    }
-}
-
-/// Invisible buttons for the shortcuts that have no visible control (⌘E, ⌃Tab, ⌃⇧Tab, Esc). They draw nothing
-/// and take no space; `.keyboardShortcut` makes them key equivalents of the panel while it is key.
+/// Invisible buttons for the whole keyboard map (`NookKeyMap.all`: ⌘K, ⌘P, ⌘E, ⌘,, ⌘1–⌘5, ⌃Tab, ⌃⇧Tab) and
+/// Esc. They draw nothing and take no space; `.keyboardShortcut` makes them key equivalents of the panel while
+/// it is key. They live as long as the open panel, whatever the header shows.
 struct NookHiddenShortcuts: View {
     let perform: @MainActor (NookCommand) -> Void
 
+    /// Every shortcut bound here (the map plus Esc).
+    static var bound: [NookShortcut] { NookKeyMap.all }
+
     var body: some View {
         ZStack {
-            button(NookKeyMap.editLayout)
-            button(NookKeyMap.nextPage)
-            button(NookKeyMap.previousPage)
+            ForEach(Array(Self.bound.enumerated()), id: \.offset) { _, shortcut in
+                Button { perform(shortcut.command) } label: { EmptyView() }
+                    .keyboardShortcut(KeyEquivalent(shortcut.key), modifiers: shortcut.modifiers.eventModifiers)
+            }
             Button { perform(.escape) } label: { EmptyView() }
                 .keyboardShortcut(.cancelAction)
         }
@@ -120,10 +109,5 @@ struct NookHiddenShortcuts: View {
         .opacity(0)
         .accessibilityHidden(true)
         .allowsHitTesting(false)
-    }
-
-    private func button(_ shortcut: NookShortcut) -> some View {
-        Button { perform(shortcut.command) } label: { EmptyView() }
-            .nookShortcut(shortcut)
     }
 }
