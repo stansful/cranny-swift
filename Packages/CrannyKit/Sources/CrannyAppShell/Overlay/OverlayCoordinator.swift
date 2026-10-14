@@ -1,8 +1,8 @@
-// CrannyAppShell/Overlay/OverlayCoordinator.swift — owns one `NotchPanelController` per eligible display,
-// rebuilds them on screen changes, routes the pointer, keeps at most one open panel and runs the (minimal)
-// activity arbitration (ARCHITECTURE.md §4.6, §4.9, §5.4). Intra-shell interface fixed by WP0 (§10.0):
-// `init(registry:environment:)`, `start()`, `notchControl`, `play(_:for:)`, `toggleOpen()`, `setPinned(_:)`.
-// WP13 owns everything behind it.
+// CrannyAppShell/Overlay/OverlayCoordinator.swift — owns one `NotchPanelController` per eligible display, rebuilds
+// them on display changes, routes the pointer and file drags, keeps at most one open panel and forwards every event
+// to `NotchControl` observers (ARCHITECTURE.md §4.9, §5.4–§5.5). Arbitration lives in `+Activities`, the
+// `NotchControl` backing and "Show on Notch" in `+Control`. Intra-shell interface fixed by WP0 (§10.0):
+// `init(registry:environment:)`, `start()`, `notchControl`, `hotKeys`, `play(_:for:)`, `toggleOpen()`, `setPinned(_:)`.
 import AppKit
 import CrannyCore
 import CrannyNotchUI
@@ -18,20 +18,37 @@ private let log = Log.logger(.overlay)
     /// Carbon global shortcuts; `ShellAppControl` reads their state.
     @ObservationIgnored let hotKeys = HotKeyCenter()
     /// Mirrors the pin of the open panel (menu bar "Keep Cranny Open").
-    private(set) var isPinned = false
+    var isPinned = false
     /// The display the current `NotchControl.flash` belongs to (the pointer's when it was requested, §4.9).
-    private(set) var flashDisplay: DisplayKey?
+    var flashDisplay: DisplayKey?
+    /// The display under the pointer (alerts, peeks and the HUD follow it; `.pointer` selection shows only it).
+    var pointerDisplay: DisplayKey?
 
-    @ObservationIgnored private let registry: ModuleRegistry
-    @ObservationIgnored private let environment: ShellEnvironment
-    @ObservationIgnored private var controllers: [DisplayKey: NotchPanelController] = [:]
-    @ObservationIgnored private let pointer = PointerMonitor()
-    @ObservationIgnored private var screenObserver: (any NSObjectProtocol)?
-    @ObservationIgnored private let rebuildDebouncer = Debouncer(delay: .milliseconds(250))
-    @ObservationIgnored private var tokens: [ObservationToken] = []
-    @ObservationIgnored private var playTask: Task<Void, Never>?
-    @ObservationIgnored private var menuObservers: [any NSObjectProtocol] = []
-    @ObservationIgnored private var trackingMenus = 0
+    @ObservationIgnored let registry: ModuleRegistry
+    @ObservationIgnored let environment: ShellEnvironment
+    @ObservationIgnored var controllers: [DisplayKey: NotchPanelController] = [:]
+    /// Every connected display (with or without a panel), for the allocation-free pointer lookup.
+    @ObservationIgnored var screens: [(key: DisplayKey, id: CGDirectDisplayID, frame: CGRect)] = []
+    @ObservationIgnored let pointer = PointerMonitor()
+    @ObservationIgnored let drags = DragDetector()
+    @ObservationIgnored let displayChanges = DisplayChangeObserver()
+    @ObservationIgnored var tokens: [ObservationToken] = []
+    @ObservationIgnored var menuObservers: [any NSObjectProtocol] = []
+    @ObservationIgnored var trackingMenus = 0
+    // Arbitration (+Activities)
+    @ObservationIgnored var arbiter = ActivityArbiter()
+    @ObservationIgnored var ranked: [ActivitySnapshot] = []
+    @ObservationIgnored var expiryTask: Task<Void, Never>?
+    @ObservationIgnored var delights = DelightScheduler()
+    @ObservationIgnored var announcements = AnnouncementLimiter()
+    // Control (+Control)
+    @ObservationIgnored var playTask: Task<Void, Never>?
+    @ObservationIgnored var preview: (key: DisplayKey, id: ActivityID)?
+    @ObservationIgnored var isCalibrating = false
+    #if DEBUG
+    /// Visual QA forces a state even while the screen is locked (`--qa-state`, QAHooks).
+    @ObservationIgnored var qaForcesVisibility = false
+    #endif
 
     init(registry: ModuleRegistry, environment: ShellEnvironment) {
         self.registry = registry
@@ -39,22 +56,17 @@ private let log = Log.logger(.overlay)
         notchControl = (registry.services.notch as? ShellNotchControl) ?? ShellNotchControl()
         notchControl.coordinator = self
         registry.add(activity: notchControl.flashActivity, kind: FlashActivity.kind)
+        notchControl.sharing.shapeFrame = { [weak self] in self?.shapeFrameOnScreen() }
+        notchControl.sharing.setHold = { [weak self] on in self?.setHoldOpen(on, reason: NotchMachineState.shareHold) }
     }
 
     /// Builds the panels and starts observing. Call once, after every contribution is registered.
     func start() {
         rebuildPanels()
-        screenObserver = NotificationCenter.default.addObserver(
-            forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.rebuildDebouncer.schedule { self?.rebuildPanels() } }
-        }
+        displayChanges.start { [weak self] in self?.rebuildPanels() }
         let settings = registry.services.settings
         tokens.append(observe({ Self.displayPolicy(settings) }) { [weak self] _ in self?.rebuildPanels() })
-        tokens.append(observe({ [weak self] in self?.arbitrate() ?? Arbitration() }) { [weak self] result in self?.apply(result) })
-        // Pausing silences activities: a flash shown just before must not come back when the pause ends.
-        tokens.append(observe({ [environment] in environment.areLiveActivitiesPaused }) { [weak self] paused in
-            if paused { self?.notchControl.flashActivity.hide() }
-        })
+        startArbitration()
         // §4.5: a tracking menu (a context menu in the panel, the menu bar extra's menu) holds the open panel.
         menuObservers = [NSMenu.didBeginTrackingNotification, NSMenu.didEndTrackingNotification].map { name in
             NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
@@ -62,108 +74,36 @@ private let log = Log.logger(.overlay)
                 MainActor.assumeIsolated { self?.menuTracking(began: began) }          // queue: .main
             }
         }
-        pointer.start { [weak self] point in self?.pointerMoved(point) }
+        pointer.start { [weak self] point, kind in self?.pointerEvent(point, kind: kind) }
         hotKeys.start(registry: registry)
     }
 
     // MARK: Intra-shell interface (§10.0)
 
-    /// "Show on Notch" from the Settings stage: plays a preview state on the real notch for `duration`.
-    func play(_ state: PreviewStageState, for duration: Duration) {
-        guard let controller = pointerController ?? controllers.values.first else { return }
-        playTask?.cancel()
-        switch state {
-        case .open: controller.viewModel.send(.open(page: nil, focus: nil, reason: .programmatic))
-        case .peek, .activity, .hud:                                                             // WP13: sample activities
-            showFlash(symbol: "sparkles", label: "Cranny", duration: HoverIntent.peekAutoDismiss, on: controller.key)
-        case .closed: controller.viewModel.send(.close)
-        }
-        controller.viewModel.send(.hold("preview", true))
-        playTask = Task { [weak controller] in
-            try? await Task.sleep(for: duration)
-            guard !Task.isCancelled, let controller else { return }
-            controller.viewModel.send(.hold("preview", false))
-            controller.viewModel.send(.close)
-        }
-    }
-
     /// Open Cranny hot key and menu item: toggles the panel on the pointer's display, with keyboard focus.
     func toggleOpen() {
-        if let open = controllers.values.first(where: { $0.viewModel.state.isOpen }) {
+        if let open = openController {
             open.viewModel.send(.close)
         } else {
-            (pointerController ?? primaryController)?.viewModel.send(.hotKey)
+            refreshEnvironmentNow()
+            alertController?.viewModel.send(.hotKey)
         }
     }
 
     func setPinned(_ pinned: Bool) {
-        let target = controllers.values.first { $0.viewModel.state.isOpen } ?? pointerController ?? primaryController
+        let target = openController ?? alertController
         if pinned, let target, !target.viewModel.state.isOpen {
             target.viewModel.send(.open(page: nil, focus: nil, reason: .programmatic))
         }
         for controller in controllers.values where controller.viewModel.state.pinned != pinned || controller === target {
             controller.viewModel.send(.setPinned(pinned && controller === target))
         }
-        isPinned = pinned
+        isPinned = pinned && target != nil
     }
 
-    // MARK: Used by ShellNotchControl
+    // MARK: Displays (§4.9, §5.4)
 
-    func open(page: PageID?, focus: WidgetID?, reason: OpenReason) {
-        (pointerController ?? primaryController)?.viewModel.send(.open(page: page, focus: focus, reason: reason))
-    }
-    func closeAll() { for controller in controllers.values { controller.viewModel.send(.close) } }
-    func togglePinned() { setPinned(!isPinned) }
-    func setHoldOpen(_ hold: Bool, reason: String) {
-        for controller in controllers.values { controller.viewModel.send(.hold(reason, hold)) }
-    }
-    func setFocusMode(_ widget: WidgetID?) {
-        guard let controller = controllers.values.first(where: { $0.viewModel.state.isOpen }) else { return }
-        controller.viewModel.send(.setMode(widget.map { .focus($0) } ?? .grid))
-    }
-    func requestKeyboardFocus() {
-        controllers.values.first { $0.viewModel.state.isOpen }?.panel.makeKey()
-    }
-    func shapeFrameOnScreen() -> CGRect? { (pointerController ?? primaryController)?.shapeFrameOnScreen }
-
-    /// `NotchControl.flash` (Ports.swift): a transient P1 compact activity on ONE display — `display`, else the
-    /// pointer's. Dropped while Live Activities are paused, the screen is locked or asleep, or that display's
-    /// panel is hidden. `duration` > 2.6 s only for "Show on Notch" and visual QA.
-    func showFlash(symbol: String, label: String, duration: TimeInterval, on display: DisplayKey? = nil) {
-        guard !environment.areLiveActivitiesPaused, !environment.isScreenLocked, !environment.areDisplaysAsleep else { return }
-        presentFlash(symbol: symbol, label: label, duration: duration, on: display)
-    }
-
-    /// Puts the flash on one display without the pause/lock policy (visual QA forces states on any screen).
-    private func presentFlash(symbol: String, label: String, duration: TimeInterval, on display: DisplayKey?) {
-        guard let target = display.flatMap({ controllers[$0] }) ?? pointerController ?? primaryController,
-              target.viewModel.state.hidden == nil else { return }
-        flashDisplay = target.key
-        notchControl.flashActivity.show(symbol: symbol, label: label, duration: duration)
-    }
-
-    #if DEBUG
-    /// Visual QA (`--qa-state`): force a state on the primary display, held open regardless of the pointer.
-    func forceQAState(_ state: QAHooks.State, page: PageID?) {
-        guard let controller = primaryController else { log.error("QA: no panel"); return }
-        controller.viewModel.send(.hold("qa", true))
-        switch state {
-        case .closed:
-            controller.viewModel.send(.close)
-        case .compact:
-            presentFlash(symbol: "hand.wave.fill", label: QAHooks.sampleLabel, duration: 3600, on: controller.key)
-        case .peek:
-            presentFlash(symbol: "hand.wave.fill", label: QAHooks.sampleLabel, duration: 3600, on: controller.key)
-            controller.viewModel.send(.autoPeek(.flash, until: .infinity))
-        case .open:
-            controller.viewModel.send(.open(page: page, focus: nil, reason: .programmatic))
-        }
-    }
-    #endif
-
-    // MARK: Displays
-
-    /// The policy inputs that decide which displays get a panel (§4.9).
+    /// The policy inputs that decide which displays get a panel.
     private struct DisplayPolicy: Equatable {
         var selection: DisplaySelection
         var perDisplay: [DisplayKey: DisplayPreferences]
@@ -174,34 +114,20 @@ private let log = Log.logger(.overlay)
                       noNotchStyle: settings[CoreSettings.noNotchStyle])
     }
 
-    /// Eligible displays and their style: `.builtIn` → the built-in display if online, else the primary
-    /// display (clamshell removes the built-in screen, R1 §2.6). WP13 adds the pointer-follows policy.
+    /// Eligible displays and their style (`--diagnostics` lists them; `DisplayCatalog.placements` decides).
     static func panelScreens(settings: SettingsStore) -> [(screen: NSScreen, key: DisplayKey, style: NoNotchStyle)] {
         let policy = displayPolicy(settings)
-        let screens: [NSScreen]
-        switch policy.selection {
-        case .builtIn:
-            let builtIn = NSScreen.screens.first { screen in
-                (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)
-                    .map { CGDisplayIsBuiltin($0.uint32Value) != 0 } ?? false
-            }
-            screens = [builtIn ?? NSScreen.screens.first].compactMap { $0 }
-        case .pointer, .all:
-            screens = NSScreen.screens
-        case .custom(let keys):
-            let chosen = NSScreen.screens.filter { ThemeResolver.displayKey($0).map(keys.contains) ?? false }
-            screens = chosen.isEmpty ? Array(NSScreen.screens.prefix(1)) : chosen
-        }
-        return screens.compactMap { screen in
-            guard let key = ThemeResolver.displayKey(screen) else { return nil }
-            let style = policy.perDisplay[key]?.style ?? policy.noNotchStyle
-            let hasNotch = screen.safeAreaInsets.top > 0
-            if !hasNotch && style == .off { return nil }
-            return (screen, key, style)
+        let all = DisplayCatalog.descriptors()
+        let placements = DisplayCatalog.placements(for: all.map(\.descriptor), selection: policy.selection,
+                                                   perDisplay: policy.perDisplay, noNotchStyle: policy.noNotchStyle)
+        return placements.compactMap { placement in
+            all.first { $0.descriptor.key == placement.key }.map { ($0.screen, placement.key, placement.style) }
         }
     }
 
-    private func rebuildPanels() {
+    func rebuildPanels() {
+        let all = DisplayCatalog.descriptors()
+        screens = all.map { ($0.descriptor.key, $0.descriptor.displayID, $0.screen.frame) }
         let wanted = Self.panelScreens(settings: registry.services.settings)
         let keys = Set(wanted.map(\.key))
         for (key, controller) in controllers where !keys.contains(key) {
@@ -212,30 +138,89 @@ private let log = Log.logger(.overlay)
             if let existing = controllers[entry.key] {
                 existing.update(screen: entry.screen, style: entry.style)
             } else {
-                let controller = NotchPanelController(screen: entry.screen, key: entry.key, style: entry.style, registry: registry)
-                controller.viewModel.pointerSpeed = { [weak self] in self?.pointer.currentSpeed ?? 0 }
-                controller.viewModel.openSettings = { [weak self] in self?.registry.services.app.openSettings(nil) }
-                controller.onEvent = { [weak self, weak controller] event in
-                    guard let self, let controller else { return }
-                    self.didEmit(event, from: controller)
-                }
-                controllers[entry.key] = controller
+                controllers[entry.key] = makeController(screen: entry.screen, key: entry.key, style: entry.style)
             }
         }
-        apply(arbitrate())
-        log.info("panels on \(self.controllers.count, privacy: .public) display(s)")
+        updatePointerDisplay(NSEvent.mouseLocation)
+        environment.refreshFullScreen()
+        applyDisplayFacts()
+        log.info("panels on \(self.controllers.count, privacy: .public) of \(self.screens.count, privacy: .public) display(s)")
     }
 
-    private var primaryController: NotchPanelController? {
-        controllers.values.first { $0.screen == NSScreen.screens.first } ?? controllers.values.first
-    }
-    private var pointerController: NotchPanelController? {
-        let point = NSEvent.mouseLocation
-        return controllers.values.first { NSMouseInRect(point, $0.screen.frame, false) || $0.zoneContains(point) }
+    private func makeController(screen: NSScreen, key: DisplayKey, style: NoNotchStyle) -> NotchPanelController {
+        let controller = NotchPanelController(screen: screen, key: key, style: style, registry: registry)
+        let viewModel = controller.viewModel
+        viewModel.pointerSpeed = { [weak self] in self?.pointer.currentSpeed ?? 0 }
+        viewModel.openSettings = { [weak self] in self?.registry.services.app.openSettings(nil) }
+        viewModel.refreshEnvironment = { [weak self, weak controller] in
+            guard let self, let controller else { return nil }
+            self.environment.refreshFullScreen()
+            return self.environmentFacts(for: controller.key)
+        }
+        viewModel.dismissActivity = { [weak self] id in self?.dismiss(id) }
+        viewModel.swapSatellite = { [weak self, weak controller] in
+            guard let self, let controller else { return }
+            self.swapSatellite(on: controller)
+        }
+        viewModel.playSound = { [weak self] sound in self?.play(sound) }
+        controller.onEvent = { [weak self, weak controller] event in
+            guard let self, let controller else { return }
+            self.didEmit(event, from: controller)
+        }
+        controller.onDropFinished = { [weak self, weak controller] in self?.dropFinished(on: controller) }
+        if isCalibrating { controller.setCalibrating(true) }
+        return controller
     }
 
-    private func pointerMoved(_ point: CGPoint) {
-        for controller in controllers.values { controller.pointerMoved(to: point) }
+    /// The panel on the primary display (menu bar screen), else any.
+    var primaryController: NotchPanelController? {
+        screens.first.flatMap { controllers[$0.key] } ?? controllers.values.first
+    }
+    /// Where alerts, peeks, the hot key and programmatic opens go: the pointer's display, else the primary one.
+    var alertController: NotchPanelController? {
+        pointerDisplay.flatMap { controllers[$0] } ?? primaryController
+    }
+    var openController: NotchPanelController? {
+        controllers.values.first { $0.viewModel.state.isOpen }
+    }
+
+    // MARK: Pointer and file drags (§5.5)
+
+    private func pointerEvent(_ point: CGPoint, kind: PointerMonitor.Kind) {
+        updatePointerDisplay(point)
+        if let change = drags.update(kind), change == nil {
+            for controller in controllers.values { controller.dragEnded() }
+        }
+        for controller in controllers.values {
+            controller.pointerMoved(to: point)
+            if let contents = drags.current { controller.dragMoved(to: point, contents: contents) }
+        }
+    }
+
+    /// A drop on `source` ends the drag everywhere. The detector may never see the source's mouse-up, so it would
+    /// never report the end: every other panel the drag passed (its catch state, `drag` hold and enlarged drop zone)
+    /// lets go now. The dropping panel keeps its zones until the drop router has delivered the payload.
+    func dropFinished(on source: NotchPanelController?) {
+        drags.reset()
+        for controller in controllers.values {
+            if controller === source { controller.dropFinished() } else { controller.dragEnded() }
+        }
+    }
+
+    /// O(displays), no allocation: the cached frames, the top row included (y == maxY, R1 §2.5).
+    private func updatePointerDisplay(_ point: CGPoint) {
+        var found: (key: DisplayKey, id: CGDirectDisplayID)?
+        for screen in screens where point.x >= screen.frame.minX && point.x < screen.frame.maxX
+            && point.y >= screen.frame.minY && point.y <= screen.frame.maxY {
+            found = (screen.key, screen.id)
+            break
+        }
+        guard let found, found.key != pointerDisplay else { return }
+        pointerDisplay = found.key
+        environment.setPointerDisplay(found.id)
+        // Now, not on the next observation hop: sliding along the menu bar onto the other display's notch must
+        // find its panel already shown (`.pointer` selection) and its alerts already moved.
+        if !controllers.isEmpty { applyDisplayFacts() }
     }
 
     /// Menus nest (submenus): hold while any tracking session is open.
@@ -244,67 +229,29 @@ private let log = Log.logger(.overlay)
         setHoldOpen(trackingMenus > 0, reason: NotchMachineState.menuHold)
     }
 
+    // MARK: Events
+
     /// One open panel at a time; the menu bar's "Keep Cranny Open" follows the open panel's pin.
     private func didEmit(_ event: NotchEvent, from source: NotchPanelController) {
         switch event {
         case .opened:
             for other in controllers.values where other !== source { other.viewModel.send(.close) }
+            if delights.firstOpen() { playDelight(.firstLight, on: source.key) }
         case .pinned(let pinned):
             isPinned = pinned
         case .closed:
             if !controllers.values.contains(where: { $0.viewModel.state.pinned }) { isPinned = false }
+        case .filesCaught:
+            playDelight(.gulp, on: source.key)
         default:
             break
         }
         notchControl.emit(event)
     }
 
-    // MARK: Arbitration (WP0 minimum of §4.6: highest priority active, unexpired, enabled activity)
-
-    struct Arbitration: Equatable {
-        struct Candidate: Equatable {
-            var id: ActivityID
-            var slot: SlotWidth
-        }
-        /// Every candidate, best first.
-        var ranked: [Candidate] = []
-        /// The display that shows `.flash` (the flash is a per-display activity, §4.9).
-        var flashDisplay: DisplayKey?
-
-        /// The primary on one display: the best candidate that may appear there.
-        func primary(on display: DisplayKey) -> Candidate? {
-            ranked.first { $0.id != .flash || display == flashDisplay }
-        }
-    }
-
-    private func arbitrate() -> Arbitration {
-        let settings = registry.services.settings
-        let preferences = settings[CoreSettings.activityPreferences]
-        let paused = environment.areLiveActivitiesPaused
-        let now = Date()
-        let candidates = registry.activities.enumerated().filter { _, registered in
-            let a = registered.activity
-            return a.isActive
-                && (preferences[registered.id]?.isEnabled ?? registered.kind.isEnabledByDefault)
-                && (a.expiresAt.map { $0 > now } ?? true)
-                && (!paused || a.priority == .hud)
-        }
-        let order = settings[CoreSettings.activityOrder]
-        let ranked = candidates.sorted { lhs, rhs in
-            let l = (lhs.element.activity.priority.rawValue, order.firstIndex(of: lhs.element.id) ?? lhs.offset)
-            let r = (rhs.element.activity.priority.rawValue, order.firstIndex(of: rhs.element.id) ?? rhs.offset)
-            return l < r
-        }
-        return Arbitration(ranked: ranked.map { .init(id: $0.element.id, slot: $0.element.activity.slot) }, flashDisplay: flashDisplay)
-    }
-
-    private func apply(_ result: Arbitration) {
-        for controller in controllers.values {
-            let primary = result.primary(on: controller.key)
-            let slot = primary?.slot ?? .short
-            if controller.scene.primary != primary?.id || controller.scene.primarySlot != slot {
-                controller.viewModel.setPrimary(primary?.id, slot: slot)
-            }
-        }
+    /// "Pop" on a catch (DESIGN.md §14.3): system sounds by name, only with UI sounds on, never in Demo mode.
+    private func play(_ sound: UISound) {
+        guard registry.services.settings[CoreSettings.uiSounds], !environment.isDemoMode else { return }
+        NSSound(named: NSSound.Name(sound.rawValue))?.play()
     }
 }

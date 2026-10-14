@@ -1,18 +1,18 @@
 // CrannyAppShell/Services/ShellNotchControl.swift — the `NotchControl` port (ARCHITECTURE.md §3.9), WP13.
-// Created before the registry (modules receive it in `register(in:)`), then attached to the
-// `OverlayCoordinator`, which owns the panels. Calls made before the coordinator exists are ignored.
+// Created before the registry (modules receive it in `register(in:)`), then attached to the `OverlayCoordinator`,
+// which owns the panels. Calls made before the coordinator exists are ignored (modules must not call it from
+// `register`, §3.4). Event observers outlive panel rebuilds: they hang off this object, not off a panel.
 import AppKit
 import CrannyCore
 import Foundation
-import os
-
-private let log = Log.logger(.overlay)
 
 @MainActor final class ShellNotchControl: NotchControl {
     /// Set by `OverlayCoordinator.init`.
     weak var coordinator: OverlayCoordinator?
     /// The shell-owned transient activity behind `flash(symbol:label:)` (`ActivityID.flash`).
     let flashActivity = FlashActivity()
+    /// AirDrop and the share picker (anchored below the notch; wired by the coordinator).
+    let sharing = SharingPresenter()
     private var observers: [UUID: @MainActor (NotchEvent) -> Void] = [:]
 
     func open(page: PageID?, focus: WidgetID?, reason: OpenReason) { coordinator?.open(page: page, focus: focus, reason: reason) }
@@ -20,12 +20,13 @@ private let log = Log.logger(.overlay)
     func togglePinned() { coordinator?.togglePinned() }
     func setHoldOpen(_ hold: Bool, reason: String) { coordinator?.setHoldOpen(hold, reason: reason) }
     func setFocusMode(_ widget: WidgetID?) { coordinator?.setFocusMode(widget) }
-    func requestPeek(_ activity: ActivityID) { log.debug("requestPeek(\(activity.rawValue, privacy: .public)) — WP13") }
+    /// A one-off peek on the pointer's display; ignored while paused, open, hidden or not shown there (§4.7).
+    func requestPeek(_ activity: ActivityID) { coordinator?.requestPeek(activity) }
     func requestKeyboardFocus() { coordinator?.requestKeyboardFocus() }
-    func setCalibrationOverlay(_ visible: Bool) { log.debug("calibration overlay — WP13") }
+    func setCalibrationOverlay(_ visible: Bool) { coordinator?.setCalibrating(visible) }
     func shapeFrameOnScreen() -> CGRect? { coordinator?.shapeFrameOnScreen() }
-    func presentAirDrop(_ urls: [URL]) async -> Bool { log.debug("AirDrop — WP13 SharingPresenter"); return false }
-    func presentSharePicker(_ urls: [URL]) { log.debug("share picker — WP13 SharingPresenter") }
+    func presentAirDrop(_ urls: [URL]) async -> Bool { await sharing.presentAirDrop(urls) }
+    func presentSharePicker(_ urls: [URL]) { sharing.presentSharePicker(urls) }
 
     /// On the pointer's display only; dropped while paused, locked or hidden (the coordinator decides).
     func flash(symbol: String, label: String) {

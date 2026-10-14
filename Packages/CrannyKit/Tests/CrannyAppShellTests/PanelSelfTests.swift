@@ -6,6 +6,13 @@
 // - Configuration and root-view hit testing run everywhere (CI included).
 // - The on-screen checks put a real panel at the top of the primary display for about two seconds, so they are
 //   opt-in: `CRANNY_INTEGRATION=1 swift test --filter PanelSelfTests` (ARCHITECTURE.md §9.6).
+// - `keyboardFocusIsTakenAndHandedBack` (also opt-in) checks that the hot key's programmatic `makeKey()` gives the
+//   non-activating panel key status without activating Cranny or changing the frontmost app, and that closing
+//   hands it back (ARCHITECTURE.md §4.10 [UNVERIFIED before WP13]). It briefly takes the keyboard: run it on an idle
+//   Mac. It skips itself while the login window is in front (locked screen, screen saver), where nothing can become
+//   key — the state WP13's machine was in, so it stays on the §11.2 hardware checklist.
+// - Two more opt-in checks drive real controllers without input: a layout change that arrives during a peek is
+//   applied once the peek ends (peeks never emit `.closed`), and a drop on one panel ends the drag on the others.
 // - Not covered without real input (manual, §11.2 hardware checklist): a real click is delivered without
 //   activating the app, and the panel shows above another app's full-screen Space.
 import AppKit
@@ -15,6 +22,7 @@ import CrannyNotchUI
 import Foundation
 import SwiftUI
 import Testing
+import UniformTypeIdentifiers
 @testable import CrannyAppShell
 
 // MARK: - Configuration (R1 §3.1)
@@ -44,6 +52,59 @@ import Testing
 }
 
 private struct EmptyViewForTest: View { var body: some View { Color.clear } }
+
+/// AppKit owns drag and drop (§5.6): the root view takes file URLs and file promises, and drops are refused
+/// until a `DropRouter` is attached.
+@Test func rootViewIsThePanelsDropDestination() {
+    let root = NotchRootView(frame: CGRect(x: 0, y: 0, width: 400, height: 200))
+    #expect(root.registeredDraggedTypes.contains(.fileURL))
+    #expect(NSFilePromiseReceiver.readableDraggedTypes.allSatisfy { root.registeredDraggedTypes.contains(NSPasteboard.PasteboardType($0)) })
+    #expect(!root.wantsPeriodicDraggingUpdates())
+    #expect(DropRouter.canvasPoint(CGPoint(x: 10, y: 150), in: root) == CGPoint(x: 10, y: 50))   // top-left canvas
+}
+
+// MARK: - Esc ownership (§4.10)
+
+/// A view that binds Esc the way NotchUI's keyboard map does (`.keyboardShortcut(.cancelAction)`).
+private struct CancelButtonForTest: View {
+    let onEscape: () -> Void
+    var body: some View { Button("Back", action: onEscape).keyboardShortcut(.cancelAction) }
+}
+
+private func escapeEvent(in window: NSWindow) -> NSEvent? {
+    NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0, windowNumber: window.windowNumber,
+                     context: nil, characters: "\u{1b}", charactersIgnoringModifiers: "\u{1b}", isARepeat: false, keyCode: 53)
+}
+
+/// NotchUI owns the Esc chain; the shell's monitor offers each press to the panel's views first and runs the
+/// machine's chain only when nothing took it: one press, one handler, whichever side binds Esc. Nothing is posted
+/// to the system: the event object goes straight to the router, on a panel that is never ordered in.
+@Test func escapeIsHandledOnceWhoeverOwnsIt() throws {
+    _ = NSApplication.shared
+    let registry = ModuleRegistry(services: .preview())
+    let scene = NotchSceneModel(layout: NotchLayout(metrics: .reference), theme: CrannyTheme())
+    let viewModel = NotchViewModel(scene: scene, registry: registry)
+    let panel = NotchPanel(frame: CGRect(x: 0, y: 0, width: 400, height: 200))
+    defer { panel.close() }
+    let router = KeyboardRouter(panel: panel, viewModel: viewModel, registry: registry)
+
+    // Nothing in the panel binds Esc: the shell's chain closes, and the press is consumed.
+    panel.contentView = NSView(frame: panel.frame)
+    viewModel.send(.open(page: nil, focus: nil, reason: .programmatic))
+    let bare = try #require(escapeEvent(in: panel))
+    #expect(router.handleKeyDown(bare) == nil && viewModel.state.isClosed)
+
+    // NotchUI binds Esc: its binding takes the press (as a key equivalent), and the shell's chain does not run.
+    var notchUIHandled = 0
+    let host = NSHostingView(rootView: CancelButtonForTest { notchUIHandled += 1 })
+    host.frame = CGRect(x: 0, y: 0, width: 400, height: 200)
+    panel.contentView = host
+    host.layoutSubtreeIfNeeded()
+    viewModel.send(.open(page: nil, focus: nil, reason: .programmatic))
+    let bound = try #require(escapeEvent(in: panel))
+    #expect(router.handleKeyDown(bound) == nil)
+    #expect(notchUIHandled == 1 && viewModel.state.isOpen, "NotchUI: \(notchUIHandled), shell closed: \(viewModel.state.isClosed)")
+}
 
 // MARK: - On screen (opt-in)
 
@@ -123,4 +184,75 @@ private extension NSScreen {
     #expect(!hits(CGPoint(x: open.minX + 2, y: open.minY + 2)))                // outside the rounded bottom corner
     #expect(!hits(CGPoint(x: open.midX, y: open.minY - 6)))                    // the shadow does not capture
     #expect(NSWorkspace.shared.frontmostApplication?.processIdentifier == frontBefore)
+}
+
+/// While the login window is in front (locked screen, screen saver) no window of any app can become key.
+nonisolated private func sessionIsUnlocked() -> Bool {
+    NSWorkspace.shared.frontmostApplication?.bundleIdentifier != "com.apple.loginwindow"
+}
+
+@Test(.enabled(if: integration), .enabled(if: sessionIsUnlocked(), "needs an unlocked session"))
+func keyboardFocusIsTakenAndHandedBack() throws {
+    _ = NSApplication.shared
+    // The test runner is an unbundled process (activation policy `.prohibited`: no key windows at all);
+    // Cranny is an agent app (`LSUIElement`), so run as one.
+    NSApp.setActivationPolicy(.accessory)
+    NSApp.finishLaunching()                                                     // connect like a launched app
+    let screen = try #require(NSScreen.screens.first)
+    let frontBefore = NSWorkspace.shared.frontmostApplication?.processIdentifier
+    let registry = ModuleRegistry(services: .preview())
+    let controller = NotchPanelController(screen: screen, key: "selftest.keys", style: .floatingIsland, registry: registry)
+    defer { controller.close() }
+    spin(0.5)
+    controller.viewModel.send(.hotKey)                                          // opens with `makeKey`
+    #expect(eventually(within: 3) { controller.panel.isKeyWindow })
+    #expect(controller.viewModel.state.holds.contains(NotchMachineState.typingHold))   // key status is a hold (§4.5)
+    #expect(NSWorkspace.shared.frontmostApplication?.processIdentifier == frontBefore)  // no activation (R1 §3.5)
+    controller.viewModel.send(.escape)                                          // closes and hands focus back
+    #expect(eventually(within: 3) { !controller.panel.isKeyWindow })
+    #expect(!controller.viewModel.state.holds.contains(NotchMachineState.typingHold))
+    #expect(controller.panel.isVisible)                                         // orderOut + orderFrontRegardless
+    #expect(NSWorkspace.shared.frontmostApplication?.processIdentifier == frontBefore)
+}
+
+/// A canvas change (density here; display reconfiguration and Notch fit take the same path) must not resize the
+/// panel mid-morph, and must not be lost when the surface returns to closed without a `.closed` event (a peek).
+/// Async: the settings observation and the settle delay run as main-actor tasks, which a nested run loop inside
+/// a synchronous test would never drain.
+@Test(.enabled(if: integration)) func aLayoutChangeDuringAPeekIsAppliedAfterIt() async throws {
+    _ = NSApplication.shared
+    let screen = try #require(NSScreen.screens.first)
+    let registry = ModuleRegistry(services: .preview())
+    let controller = NotchPanelController(screen: screen, key: "selftest.layout", style: .floatingIsland, registry: registry)
+    defer { controller.close() }
+    try await Task.sleep(for: .milliseconds(300))
+    controller.viewModel.send(.autoPeek(.flash, until: .infinity))
+    let before = controller.scene.layout, frameBefore = controller.panel.frame
+    registry.services.settings[CoreSettings.density] = .roomy
+    try await Task.sleep(for: .milliseconds(1000))                              // the observation hop, then some
+    #expect(controller.scene.layout == before && controller.panel.frame == frameBefore)   // not during the peek
+    controller.viewModel.send(.close)                                           // the peek ends: no `.closed` event
+    for _ in 0..<60 where controller.scene.layout == before { try await Task.sleep(for: .milliseconds(50)) }
+    #expect(controller.scene.layout.grid.density == .roomy)
+    #expect(controller.panel.frame == NotchPanelController.panelFrame(canvas: controller.scene.layout.canvasSize, screen: screen))
+}
+
+/// A drop on one panel ends the drag everywhere: another panel the drag passed lets go of its `drag` hold and its
+/// enlarged drop zone (which would otherwise capture menu-bar clicks around its notch).
+@Test(.enabled(if: integration)) func aDropOnOnePanelEndsTheDragOnTheOthers() throws {
+    _ = NSApplication.shared
+    let screen = try #require(NSScreen.screens.first)
+    let registry = ModuleRegistry(services: .preview())
+    let overlay = OverlayCoordinator(registry: registry, environment: ShellEnvironment())
+    let dropping = NotchPanelController(screen: screen, key: "selftest.a", style: .floatingIsland, registry: registry)
+    let passed = NotchPanelController(screen: screen, key: "selftest.b", style: .floatingIsland, registry: registry)
+    defer { dropping.close(); passed.close() }
+    overlay.controllers = ["selftest.a": dropping, "selftest.b": passed]
+    passed.viewModel.send(.open(page: nil, focus: nil, reason: .programmatic))
+    passed.viewModel.send(.fileDragEntered([.pdf]))
+    #expect(passed.chrome.dropZone != nil && passed.viewModel.state.holds.contains(NotchMachineState.dragHold))
+    dropping.viewModel.send(.filesDropped(count: 1))
+    overlay.dropFinished(on: dropping)
+    #expect(passed.viewModel.state.fileDrag == nil && passed.viewModel.state.holds.isEmpty)
+    #expect(passed.chrome.dropZone == nil)
 }

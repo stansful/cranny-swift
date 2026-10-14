@@ -1,6 +1,8 @@
 // CrannyAppShell/App/QAHooks.swift — DEBUG-only visual QA launch arguments (docs/CONTRIBUTING.md):
 //
 //   --qa-state closed|compact|peek|open   force that state on the primary panel, held regardless of the pointer
+//              calibrate                  the Appearance ▸ Notch fit outline and loupe (WP13)
+//              keyboard                   open as the hot key does (takes key focus) and log focus facts (WP13)
 //   --qa-page <page id>                   with `open`: show this page (`nook` = Home, `tray`, `page.<uuid>`)
 //   --qa-exit-after <seconds>             quit after that many seconds (screenshots in scripts and CI)
 //   --qa-settings <pane id>               also open Settings at that pane (`general`, `about`, …)
@@ -21,7 +23,7 @@ import os
 private let log = Log.logger(.app)
 
 enum QAHooks {
-    enum State: String, CaseIterable, Sendable { case closed, compact, peek, open }
+    enum State: String, CaseIterable, Sendable { case closed, compact, peek, open, calibrate, keyboard }
 
     struct Options: Equatable {
         var state: State?

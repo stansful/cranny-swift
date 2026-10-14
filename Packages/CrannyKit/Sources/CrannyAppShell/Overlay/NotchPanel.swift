@@ -39,12 +39,25 @@ final class NotchPanel: NSPanel {
     }
 }
 
+/// Receives the drops `NotchRootView` gets (AppKit owns drag and drop, §5.6; `DropRouter` implements it).
+@MainActor protocol NotchDropTarget: AnyObject {
+    func dragUpdated(_ info: any NSDraggingInfo, in view: NSView) -> NSDragOperation
+    func dragExited()
+    func performDrop(_ info: any NSDraggingInfo, in view: NSView) -> Bool
+}
+
 /// Root content view: hit-testing limited to the shape, AppKit drop destination for the Tray.
 final class NotchRootView: NSView {
     var interactiveRect: () -> CGRect = { .zero }
+    weak var dropTarget: (any NotchDropTarget)?
+
+    /// File URLs, URLs and every file-promise type (Photos, Mail, Safari images; R1 §5.1).
+    static let draggedTypes: [NSPasteboard.PasteboardType] =
+        [.fileURL, .URL] + NSFilePromiseReceiver.readableDraggedTypes.map { NSPasteboard.PasteboardType($0) }
+
     override init(frame: NSRect) {
         super.init(frame: frame)
-        registerForDraggedTypes([.fileURL, .URL] + NSFilePromiseReceiver.readableDraggedTypes.map { NSPasteboard.PasteboardType($0) })
+        registerForDraggedTypes(Self.draggedTypes)
     }
     required init?(coder: NSCoder) { nil }
     override func hitTest(_ point: NSPoint) -> NSView? {
@@ -52,6 +65,23 @@ final class NotchRootView: NSView {
         return super.hitTest(point)
     }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
+
+    // MARK: NSDraggingDestination (forwarded; the root view is the panel's only drop destination)
+
+    override func draggingEntered(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        dropTarget?.dragUpdated(sender, in: self) ?? []
+    }
+    override func draggingUpdated(_ sender: any NSDraggingInfo) -> NSDragOperation {
+        dropTarget?.dragUpdated(sender, in: self) ?? []
+    }
+    override func draggingExited(_ sender: (any NSDraggingInfo)?) {
+        dropTarget?.dragExited()
+    }
+    override func prepareForDragOperation(_ sender: any NSDraggingInfo) -> Bool { dropTarget != nil }
+    override func performDragOperation(_ sender: any NSDraggingInfo) -> Bool {
+        dropTarget?.performDrop(sender, in: self) ?? false
+    }
+    override func wantsPeriodicDraggingUpdates() -> Bool { false }        // updates come with pointer moves only
 }
 
 final class NotchHostingView<Content: View>: NSHostingView<Content> {
