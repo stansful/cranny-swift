@@ -102,7 +102,8 @@ struct PlaybackRim: View {
     }
 
     /// The slowest redraw (a recording of many hours, whose line moves less than a pixel in this time). A seek,
-    /// a pause or a new track redraws at once whatever the interval: the snapshot changes.
+    /// a pause or a new track redraws at once whatever the interval: the snapshot changes. That redraw still uses
+    /// the last tick's date, so a seek while playing lands at most a pixel short until the next tick.
     nonisolated static let maximumInterval: Double = 30
 }
 

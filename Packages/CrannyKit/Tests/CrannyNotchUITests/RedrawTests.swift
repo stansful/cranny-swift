@@ -91,9 +91,9 @@ import Testing
         #expect(PlaybackRim.interval(duration: 36_000, rate: 1, pixels: pixels) == PlaybackRim.maximumInterval)
     }
 
-    @Test func degenerateInputsTickEverySecond() {
-        #expect(PlaybackRim.interval(duration: 3600, rate: 1, pixels: 0) == PlaybackRim.maximumInterval)
-        #expect(PlaybackRim.interval(duration: .infinity, rate: 1, pixels: pixels) == 1)
+    @Test func degenerateInputsStayWithinTheRange() {
+        #expect(PlaybackRim.interval(duration: 3600, rate: 1, pixels: 0) == PlaybackRim.maximumInterval)   // no rim
+        #expect(PlaybackRim.interval(duration: .infinity, rate: 1, pixels: pixels) == 1)                 // every second
         #expect(PlaybackRim.interval(duration: .nan, rate: 1, pixels: pixels) == 1)
     }
 }

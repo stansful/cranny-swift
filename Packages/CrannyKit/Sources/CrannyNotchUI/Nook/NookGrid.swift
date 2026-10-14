@@ -125,12 +125,13 @@ struct FocusedWidgetPage: View {
 enum GridCommands {
     @MainActor static func make(page: NookPage, model: NotchSceneModel, registry: ModuleRegistry,
                                 actions: NotchUIActions) -> CardCommands {
+        let pageID = page.id
         func editing() -> LayoutEditing {
-            LayoutEditing(pages: registry.services.settings[CoreSettings.pages], pageID: page.id,
+            LayoutEditing(pages: registry.services.settings[CoreSettings.pages], pageID: pageID,
                           maxColumns: model.layout.maxColumns, registry: registry)
         }
         func title(_ widget: WidgetID) -> String { registry.widget(widget)?.title ?? WidgetPlaceholder(widget).title }
-        var c = CardCommands(page: page.id)
+        var c = CardCommands(page: pageID)
         c.remove = { widget in
             guard let next = editing().removing(widget) else { return }
             actions.commitLayout(next.pages)
