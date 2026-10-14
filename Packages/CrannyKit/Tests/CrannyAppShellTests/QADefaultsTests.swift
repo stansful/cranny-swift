@@ -1,7 +1,9 @@
 // `--qa-defaults-suite <name>` (ARCHITECTURE §10.20 #29): a Debug QA run keeps every setting it writes in its own
 // suite and never writes the app's preferences domain. No test here opens a real suite (that would leave a plist in
-// ~/Library/Preferences): the suite is a recording in-memory stand-in, and the standard domain of the test process
-// is checked before and after.
+// ~/Library/Preferences): the suite is a recording in-memory stand-in. In the app, the standard domain IS
+// app.cranny.Cranny; in this process it is the test runner's, so that is where a leak would land (code that names
+// the app's domain explicitly is ruled out by Core's `noCodeCreatesAPreferencesSuite`). Every key the run wrote must
+// be absent from it, also when an earlier failing run left it there, so a leak never hides behind a stale copy.
 import AppKit
 import CrannyCore
 import Foundation
@@ -106,5 +108,8 @@ private func crannyState(in defaults: UserDefaults) -> [String: String] {
                                                    "cranny.general.openMode", "CrannySettingsLastPane"]))
         #expect(settings[CoreSettings.demoMode] && settings[CoreSettings.typeToCapture] == "todos")
         #expect(crannyState(in: .standard) == before)                            // the app's preferences: untouched
+        let leaked = Set(suite.written).filter { UserDefaults.standard.object(forKey: $0) != nil }
+        #expect(leaked.isEmpty, "in the standard domain: \(leaked.sorted())")      // nor left by an earlier run
+        #expect(Set(crannyState(in: .standard).keys).isDisjoint(with: suite.written))
     }
 }
