@@ -222,7 +222,8 @@ private func run(_ inputs: [NotchInput], from start: NotchMachineState = NotchMa
     let flash = FlashActivity()
     flash.show(symbol: "hand.wave.fill", label: "Hi", duration: 0.05)
     #expect(flash.isActive && flash.revision == 1 && flash.slot == .medium)
-    try await Task.sleep(for: .milliseconds(300))
+    // The expiry runs on the main actor, which other tests share (creating the first window can take a while).
+    for _ in 0..<60 where flash.isActive { try await Task.sleep(for: .milliseconds(50)) }
     #expect(!flash.isActive)
     flash.show(symbol: "doc.on.doc", label: "Path copied", duration: 5)
     #expect(flash.slot == .wide && flash.revision == 2)
