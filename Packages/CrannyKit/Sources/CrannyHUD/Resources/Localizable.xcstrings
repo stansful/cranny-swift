@@ -293,7 +293,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Моно"
+            "value" : "Белый"
           }
         }
       }
@@ -381,7 +381,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "По смыслу"
+            "value" : "По назначению"
           }
         }
       }
@@ -425,7 +425,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Оформление"
+            "value" : "Стиль"
           }
         }
       }
