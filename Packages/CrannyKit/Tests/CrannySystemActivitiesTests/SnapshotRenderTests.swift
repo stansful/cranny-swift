@@ -1,4 +1,5 @@
-// Opt-in visual QA: renders every sample (compact, satellite, peek) to PNGs with ImageRenderer.
+// Opt-in visual QA: renders every sample (compact, satellite, peek) to PNGs with ImageRenderer, and the
+// Settings ▸ Live Activities option rows (AppKit-backed controls) through an off-screen NSHostingView.
 //   CRANNY_SNAPSHOTS=/tmp/out [CRANNY_SNAPSHOT_LANGUAGE=ru] swift test --scratch-path .build-test --filter SnapshotRenderTests
 // Skipped unless CRANNY_SNAPSHOTS is set (never in CI). Nothing is asserted beyond "it renders". The language
 // switch (`SystemCopy.useLanguage`) exists in Debug builds only.
@@ -59,6 +60,38 @@ import Testing
                 let suffix = language.map { "-\($0)" } ?? ""
                 try data.write(to: URL(fileURLWithPath: directory).appending(path: "\(variant.name)-\(name)\(suffix).png"))
             }
+        }
+    }
+
+    /// The option rows as Settings shows them: a changed first warning (one dot, on its own row) and the
+    /// Bluetooth option on with access denied (the warning row). Light and dark; never shown on screen.
+    @Test(.enabled(if: directory != nil)) func renderTheOptionRows() throws {
+        let directory = try #require(Self.directory)
+        let language = ProcessInfo.processInfo.environment["CRANNY_SNAPSHOT_LANGUAGE"]
+        SystemCopy.useLanguage(language)
+        defer { SystemCopy.useLanguage(nil) }
+        let services = CrannyServices.preview()
+        services.settings[SystemSettings.lowBatteryThresholds] = [25, 10]
+        services.settings[SystemSettings.showsAllBluetoothDevices] = true
+        services.permissions.record(.denied, for: .bluetooth)
+        for (appearance, name) in [(NSAppearance.Name.aqua, "light"), (.darkAqua, "dark")] {
+            let form = Form {
+                Section(SystemCopy.lowBattery) { LowBatteryOptionsView(settings: services.settings) }
+                Section(SystemCopy.bluetoothDevices) {
+                    BluetoothOptionsView(settings: services.settings, permissions: services.permissions)
+                }
+            }
+            .formStyle(.grouped)
+            .environment(\.locale, language.map(Locale.init(identifier:)) ?? .current)
+            let host = NSHostingView(rootView: form)
+            host.appearance = NSAppearance(named: appearance)
+            host.frame = CGRect(x: 0, y: 0, width: 600, height: 400)
+            host.layoutSubtreeIfNeeded()
+            let bitmap = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+            host.cacheDisplay(in: host.bounds, to: bitmap)
+            let data = try #require(bitmap.representation(using: .png, properties: [:]))
+            let suffix = language.map { "-\($0)" } ?? ""
+            try data.write(to: URL(fileURLWithPath: directory).appending(path: "options-\(name)\(suffix).png"))
         }
     }
 }
