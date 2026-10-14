@@ -179,7 +179,8 @@ CRANNY_SNAPSHOT_DIR=/tmp/cranny-snapshots swift test --scratch-path .build-test 
 **Snapshot suites** (PNG files for review; nothing is asserted against them). One variable turns every one of them
 on: **`CRANNY_SNAPSHOT_DIR=<dir>`**. Each test target writes into its own folder, `<dir>/<Folder>/` (Core's
 `SnapshotOutput`), so one run of several suites never mixes files; pick the suites with `--filter`.
-**`CRANNY_SNAPSHOT_LANGUAGE=ru`** asks the suites that can render Russian for it (English otherwise).
+**`CRANNY_SNAPSHOT_LANGUAGE=ru`** asks the two suites that can render Russian, System activities and Tray, for it
+(English otherwise). Set it only for a run of one of them; the Tray suite must run alone (see its row).
 
 | Folder | Suite (`--filter`) | Notes |
 |---|---|---|
@@ -187,7 +188,7 @@ on: **`CRANNY_SNAPSHOT_DIR=<dir>`**. Each test target writes into its own folder
 | `Calendar` | `CalendarSnapshots` | Widget sizes, activities, Settings rows (including the Russian Join layouts). |
 | `QuickApps` | `LauncherSnapshot` | The launcher in its states (real app icons, read-only). |
 | `SystemActivities` | `CrannySystemActivitiesTests.SnapshotRenderTests` | Every sample in the band and the peek, the option rows; follows the language variable. |
-| `Tray` | `CrannyTrayTests.SnapshotTests` | Follows the language variable, which switches the whole test process: run the Russian set alone, with this filter. |
+| `Tray` | `CrannyTrayTests.SnapshotTests` | Follows the language variable, which switches the whole test process: run the Russian set alone, with exactly this filter. Never set `CRANNY_SNAPSHOT_LANGUAGE=ru` for a run that includes other Tray tests (`--filter CrannyTrayTests`, the whole package): they read the strings in English first, so the snapshot test fails and writes nothing. |
 | `Todos` | `TodosSnapshotTests` | The widget's states. |
 | `Notes` | `CrannyNotesTests.SnapshotGallery` | Cards with the real editor (Debug builds). |
 | `Media` | `CrannyMediaTests.SnapshotRenderTests` | The widget and the Now Playing presentations. |

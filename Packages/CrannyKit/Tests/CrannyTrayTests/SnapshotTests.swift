@@ -8,7 +8,9 @@
 // Why the language needs its own run: the test runner is an English-only tool, so `String(localized:bundle:)` resolves
 // in English whatever the system language or `.environment(\.locale)` says (only `Text(_:bundle:)` follows the
 // environment). The Russian run switches the process to Russian before the first string is read, so it must run
-// alone (the filter above), one language per process. 1.4× pseudo-localisation is WP-Final's (ARCHITECTURE.md §8.7).
+// alone (the filter above), one language per process: when other Tray tests run first, the strings are already
+// English and `writeSnapshots` fails without writing anything. 1.4× pseudo-localisation is WP-Final's
+// (ARCHITECTURE.md §8.7).
 import AppKit
 import CoreFoundation
 import CrannyCore
@@ -123,9 +125,15 @@ import UniformTypeIdentifiers
 
     @Test(.enabled(if: SnapshotTests.folder != nil)) func writeSnapshots() throws {
         let folder = try #require(Self.folder)
+        // Another Tray test that ran first in this process already read the strings in English: stop before writing
+        // anything, so no English render is saved under a "-ru" name.
+        try #require(Bundle.module.preferredLocalizations.first == Self.language,
+                     """
+                     strings resolve in \(Bundle.module.preferredLocalizations), not \(Self.language): with \
+                     \(SnapshotOutput.languageVariable) set, run this suite alone, \
+                     --filter CrannyTrayTests.SnapshotTests (see the header)
+                     """)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        #expect(Bundle.module.preferredLocalizations.first == Self.language,
-                "strings resolve in \(Bundle.module.preferredLocalizations); run this suite alone (see the header)")
         for variant in Self.variants {
             for surface in surfaces(variant.theme.grid) {
                 guard let image = render(surface, theme: variant.theme),
