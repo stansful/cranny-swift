@@ -55,6 +55,18 @@ import Testing
                greeting: "Hi")
 }
 
+/// A resolver for which exactly `bundleIDs` are installed (an injected lookup, never Launch Services), with those
+/// apps already looked up.
+@MainActor func installedApps(_ bundleIDs: Set<String>) async -> AppIdentityResolver {
+    let identities = AppIdentityResolver(locate: { id in
+        bundleIDs.contains(id) ? AppIdentity.Location(url: URL(fileURLWithPath: "/Applications/\(id).app"), name: id,
+                                                      isSafeToRead: false) : nil
+    }, icon: { _ in nil })
+    for id in bundleIDs { _ = identities.identity(of: id) }
+    for _ in 0..<3000 where identities.isLookingUp { try? await Task.sleep(for: .milliseconds(10)) }
+    return identities
+}
+
 /// Lets follow-up `Task`s on the main actor run, until `condition` holds (or about a second passed).
 @MainActor func settle(until condition: () -> Bool = { false }) async {
     for _ in 0..<100 {

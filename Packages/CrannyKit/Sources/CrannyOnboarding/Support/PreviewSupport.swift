@@ -84,9 +84,9 @@ enum SamplePermissionOptIns {
     struct Media: FeatureModule {
         static var id: ModuleID { .media }
         static func register(in registry: ModuleRegistry) {
-            registry.declare(.automation(bundleID: "com.apple.Music"), reason: "Control Music when other ways fail. Cranny sends only playback commands.",
+            registry.declare(.automation(bundleID: "com.apple.Music"), reason: "Control playback in your media apps when other ways fail. Cranny sends only playback commands.",
                              optIn: SamplePermissionOptIns.appleEvents)
-            registry.declare(.automation(bundleID: "com.spotify.client"), reason: "Control Music when other ways fail. Cranny sends only playback commands.",
+            registry.declare(.automation(bundleID: "com.spotify.client"), reason: "Control playback in your media apps when other ways fail. Cranny sends only playback commands.",
                              optIn: SamplePermissionOptIns.appleEvents)
             registry.declare(.systemAudioRecording, reason: "Draw the live visualizer.")
         }

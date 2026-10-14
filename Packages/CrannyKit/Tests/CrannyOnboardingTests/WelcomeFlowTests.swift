@@ -8,13 +8,14 @@ import Testing
     private final class Outcomes { var values: [WelcomeOutcome] = [] }
 
     private func makeFlow(trackpad: Bool = true, step: WelcomeStep = .hello,
-                          permissions: StaticPermissionGateway = StaticPermissionGateway())
+                          permissions: StaticPermissionGateway = StaticPermissionGateway(),
+                          identities: AppIdentityResolver = AppIdentityResolver(locate: { _ in nil }, icon: { _ in nil }))
         -> (WelcomeFlow, ModuleRegistry, RecordingTipPresenter, Outcomes) {
         let registry = makeRegistry(trackpad: trackpad)
         let coach = RecordingTipPresenter()
         let outcomes = Outcomes()
         let flow = WelcomeFlow(registry: registry, permissions: permissions, coach: coach, stage: makeStage(registry),
-                               initialStep: step, version: "9.9.9") { outcomes.values.append($0) }
+                               initialStep: step, version: "9.9.9", identities: identities) { outcomes.values.append($0) }
         return (flow, registry, coach, outcomes)
     }
 
@@ -217,7 +218,8 @@ import Testing
 
     @Test func permissionRowsFollowTheLayoutAndAskOnlyOnAllow() async throws {
         let gateway = StaticPermissionGateway([.calendar: .granted])
-        let (flow, registry, _, _) = makeFlow(step: .permissions, permissions: gateway)
+        let (flow, registry, _, _) = makeFlow(step: .permissions, permissions: gateway,
+                                              identities: await installedApps(["com.apple.Music", "com.spotify.client"]))
         flow.start(reduceMotion: true)
         #expect(gateway.refreshCount == 1)
         #expect(gateway.requested.isEmpty)                       // nothing is asked on its own
@@ -245,6 +247,26 @@ import Testing
         settings[SamplePermissionOptIns.allBluetoothDevices] = false
         #expect(flow.permissionRows.map(\.group) == [.accessibility])
         flow.stop()
+    }
+
+    /// Automation is offered only for players that are installed, once that is known (a player installed meanwhile
+    /// appears without a relaunch: the resolver is looked up again when Settings or the window appears).
+    @Test func automationIsOfferedOnlyForInstalledPlayers() async throws {
+        let (flow, registry, _, _) = makeFlow(step: .permissions, identities: await installedApps(["com.apple.Music"]))
+        flow.start(reduceMotion: true)
+        registry.services.settings[SamplePermissionOptIns.appleEvents] = true
+        let automation = try #require(flow.permissionRows.first { $0.group == .automation })
+        #expect(automation.kinds == [.automation(bundleID: "com.apple.Music")])               // Spotify is not installed
+        flow.stop()
+
+        let (pending, pendingRegistry, _, _) = makeFlow(step: .permissions,
+                                                        identities: AppIdentityResolver(locate: { _ in
+                                                            try? await Task.sleep(for: .seconds(60)); return nil
+                                                        }, icon: { _ in nil }))
+        pending.start(reduceMotion: true)
+        pendingRegistry.services.settings[SamplePermissionOptIns.appleEvents] = true
+        #expect(!pending.permissionRows.contains { $0.group == .automation })                // not known yet: no row
+        pending.stop()
     }
 
     // MARK: Endings

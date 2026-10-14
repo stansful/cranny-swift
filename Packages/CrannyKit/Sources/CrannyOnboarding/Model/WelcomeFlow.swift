@@ -32,6 +32,8 @@ private let log = Log.logger(.onboarding)
 
     @ObservationIgnored let registry: ModuleRegistry
     @ObservationIgnored private let permissions: any PermissionGateway
+    /// Which apps are installed (step 5 offers Automation only for those).
+    @ObservationIgnored private let identities: AppIdentityResolver
     @ObservationIgnored private let coach: TipRenderer
     @ObservationIgnored private let version: String
     @ObservationIgnored private let onFinish: @MainActor (WelcomeOutcome) -> Void
@@ -51,9 +53,10 @@ private let log = Log.logger(.onboarding)
 
     init(registry: ModuleRegistry, permissions: any PermissionGateway, coach: any TipPresenter, stage: StageScene,
          initialStep: WelcomeStep = .hello, version: String = AppInfo.current().version,
-         onFinish: @escaping @MainActor (WelcomeOutcome) -> Void) {
+         identities: AppIdentityResolver = .shared, onFinish: @escaping @MainActor (WelcomeOutcome) -> Void) {
         self.registry = registry
         self.permissions = permissions
+        self.identities = identities
         self.coach = TipRenderer(presenter: coach)
         self.stage = stage
         self.version = version
@@ -295,12 +298,17 @@ private let log = Log.logger(.onboarding)
 
     // MARK: Step 5 · Permissions
 
-    /// Observed by the view: a row whose opt-in is switched on elsewhere (Settings) appears.
+    /// Observed by the view: a row whose opt-in is switched on elsewhere (Settings) appears, and an Automation kind
+    /// counts once its app is known to be installed.
     var permissionRows: [PermissionRow] {
         let settings = services.settings
         let items = PresetLayout.homeItems(settings[CoreSettings.pages])
+        let identities = identities
         return PermissionPlan.rows(uses: registry.permissionUses, modules: PermissionPlan.modules(for: items),
-                                   isOn: { settings[$0] })
+                                   isOn: { settings[$0] }, isAvailable: { kind in
+                                       guard case .automation(let bundleID) = kind else { return true }
+                                       return identities.identity(of: bundleID).isInstalled
+                                   })
     }
 
     func state(of row: PermissionRow) -> PermissionRowState {

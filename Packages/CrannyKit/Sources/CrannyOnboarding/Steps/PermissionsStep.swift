@@ -115,7 +115,7 @@ extension PermissionGroup {
         switch self {
         case .calendar: String(localized: "Show your events in Cranny. Cranny never edits or uploads them.", bundle: .module, comment: "Welcome step 5: fallback reason for the Calendars permission")
         case .accessibility: String(localized: "Show volume and brightness in the notch instead of the system HUD. Cranny reads no other keys.", bundle: .module, comment: "Welcome step 5: fallback reason for the Accessibility permission")
-        case .automation: String(localized: "Control Music and Spotify when other ways fail. Cranny sends only playback commands.", bundle: .module, comment: "Welcome step 5: fallback reason for the Automation permission")
+        case .automation: String(localized: "Control playback in your media apps when other ways fail. Cranny sends only playback commands.", bundle: .module, comment: "Welcome step 5: fallback reason for the Automation permission (names no app: the row stands for every player)")
         case .bluetooth: String(localized: "Show the battery of every Bluetooth device. Cranny never connects to them.", bundle: .module, comment: "Welcome step 5: fallback reason for the Bluetooth permission")
         }
     }
