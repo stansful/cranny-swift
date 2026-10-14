@@ -7,7 +7,7 @@ import Testing
 
 /// Opt-in visual QA without a screen: renders the widget's states to PNGs in `CRANNY_SNAPSHOTS=<directory>`
 /// through an offscreen hosting view. Never runs in CI; nothing is shown on screen and nothing outside that
-/// directory is written. Look at the images yourself (`30-editor-alignment`: the title must not move when
+/// directory is written. Look at the images yourself (`50-editor-alignment`: the title must not move when
 /// editing starts).
 @MainActor
 @Suite(.enabled(if: ProcessInfo.processInfo.environment["CRANNY_SNAPSHOTS"] != nil))
@@ -83,6 +83,14 @@ struct TodosSnapshotTests {
         let firstDraft = TodosModel.testing([])
         firstDraft.beginNew(after: nil)                          // the first to-do: no "All done" in the header
         try await write(card(firstDraft, cells: 3), "15-first-draft")
+        let failure = try await SaveFailure(Array(fixture().items.prefix(3)))
+        let failed = failure.model(.testing())
+        try await write(card(failed, cells: 3), "16-save-failed-three-cells")
+        try await write(card(failed, cells: 2), "17-save-failed-two-cells")
+        try await write(card(failed, cells: 4), "18-save-failed-four-cells")
+        try await write(card(failed, cells: 3, theme: xl), "19-save-failed-extra-large")
+        failed.requestSelection(.saveError)                      // ↑ from the first row
+        try await write(card(failed, cells: 3, isFocused: true), "20-save-failed-selected")
     }
 
     @Test func rowsAndMoments() async throws {
@@ -98,7 +106,7 @@ struct TodosSnapshotTests {
             NewTodoRow(metrics: metrics, showsFocusRing: true) {}
         }
         try await write(rows.padding(.horizontal, Space.s).crannyCard(cells: 3).padding(Space.l).background(Color.black)
-            .crannyThemeRoot(CrannyTheme()), "20-rows-focus-redacted")
+            .crannyThemeRoot(CrannyTheme()), "40-rows-focus-redacted")
         let motes = HStack(spacing: Space.xl) {
             ForEach([0.08, 0.25, 0.5, 0.8], id: \.self) { progress in
                 ZStack {
@@ -108,7 +116,7 @@ struct TodosSnapshotTests {
                 }
             }
         }
-        try await write(motes.padding(Space.l).background(Color.black).crannyThemeRoot(CrannyTheme()), "21-motes")
+        try await write(motes.padding(Space.l).background(Color.black).crannyThemeRoot(CrannyTheme()), "41-motes")
         let checks = HStack(spacing: Space.xl) {
             ForEach([0.0, 0.35, 0.7, 1.0], id: \.self) { t in
                 ZStack {
@@ -119,7 +127,7 @@ struct TodosSnapshotTests {
                 .frame(width: 16, height: 16)
             }
         }
-        try await write(checks.padding(Space.l).background(Color.black).crannyThemeRoot(CrannyTheme()), "22-check-draw")
+        try await write(checks.padding(Space.l).background(Color.black).crannyThemeRoot(CrannyTheme()), "42-check-draw")
     }
 
     /// A row being edited above the same row at rest: the title must not jump when editing starts.
@@ -139,6 +147,6 @@ struct TodosSnapshotTests {
         .padding(Space.l)
         .background(Color.black)
         .crannyThemeRoot(CrannyTheme())
-        try await write(content, "30-editor-alignment")
+        try await write(content, "50-editor-alignment")
     }
 }

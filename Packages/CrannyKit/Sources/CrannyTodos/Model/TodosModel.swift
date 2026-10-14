@@ -70,6 +70,9 @@ private let log = Log.logger(.todos)
     /// The error state's "Try again".
     func reload() { Task { await store.load() } }
 
+    /// The header's save error (click, ↩ / Space on it, VoiceOver): writes the list again.
+    func retrySave() { store.retrySave() }
+
     /// `onTerminate`: ends editing and writes anything unsaved, synchronously.
     func flush() {
         endEditing()

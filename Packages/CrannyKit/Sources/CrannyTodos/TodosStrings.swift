@@ -80,10 +80,23 @@ nonisolated enum TodosStrings {
     }
     static var saveFailed: String {
         String(localized: "Couldn’t save your to-dos", bundle: .module,
-               comment: "To-dos widget: header warning button label and tooltip after a failed save")
+               comment: "To-dos widget: header after a failed save (its widest form) and its VoiceOver label")
+    }
+    static var notSaved: String {
+        String(localized: "Not saved", bundle: .module,
+               comment: "To-dos widget: header after a failed save, the short form of “Couldn’t save your to-dos”")
+    }
+    static var saveFailedHelp: String {
+        String(localized: "Couldn’t save your to-dos. Click to try again.", bundle: .module,
+               comment: "To-dos widget: tooltip of the header after a failed save")
+    }
+    static var saveRetryHint: String {
+        String(localized: "Tries to save your to-dos again.", bundle: .module,
+               comment: "To-dos widget: VoiceOver hint of the header after a failed save")
     }
     static var tryAgain: String {
-        String(localized: "Try again", bundle: .module, comment: "To-dos widget: error state retry button")
+        String(localized: "Try again", bundle: .module,
+               comment: "To-dos widget: retry action of the load error state and of the header after a failed save")
     }
 
     // MARK: Command palette

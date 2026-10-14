@@ -68,12 +68,23 @@
       }
     },
     "Couldn’t save your to-dos" : {
-      "comment" : "To-dos widget: header warning button label and tooltip after a failed save",
+      "comment" : "To-dos widget: header after a failed save (its widest form) and its VoiceOver label",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Не удалось сохранить задачи"
+          }
+        }
+      }
+    },
+    "Couldn’t save your to-dos. Click to try again." : {
+      "comment" : "To-dos widget: tooltip of the header after a failed save",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось сохранить задачи. Нажмите, чтобы повторить."
           }
         }
       }
@@ -188,6 +199,17 @@
         }
       }
     },
+    "Not saved" : {
+      "comment" : "To-dos widget: header after a failed save, the short form of “Couldn’t save your to-dos”",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не сохранено"
+          }
+        }
+      }
+    },
     "Reply to Sam" : {
       "comment" : "To-dos widget: sample to-do on preview stages",
       "localizations" : {
@@ -221,8 +243,19 @@
         }
       }
     },
+    "Tries to save your to-dos again." : {
+      "comment" : "To-dos widget: VoiceOver hint of the header after a failed save",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Повторяет попытку сохранить задачи."
+          }
+        }
+      }
+    },
     "Try again" : {
-      "comment" : "To-dos widget: error state retry button",
+      "comment" : "To-dos widget: retry action of the load error state and of the header after a failed save",
       "localizations" : {
         "ru" : {
           "stringUnit" : {

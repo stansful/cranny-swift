@@ -63,7 +63,8 @@ struct TodosModuleTests {
     /// Every catalog key (the test fails if one has no Russian).
     private static let keys = [
         "To-dos", "New to-do", "All done", "No to-dos yet", "Hide completed", "Delete completed", "%lld left",
-        "Couldn’t load your to-dos", "Couldn’t save your to-dos", "Try again", "Edit", "Mark as done",
+        "Couldn’t load your to-dos", "Couldn’t save your to-dos", "Not saved",
+        "Couldn’t save your to-dos. Click to try again.", "Tries to save your to-dos again.", "Try again", "Edit", "Mark as done",
         "Mark as not done", "Move up", "Move down", "Delete", "todo task add", "A short list of things to do",
         "Water the plants", "Reply to Sam", "Book train tickets", "Back up the laptop",
         "Space checks it, Return edits it, Command-Up and Command-Down move it."]

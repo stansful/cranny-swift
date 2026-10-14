@@ -1,7 +1,8 @@
 // CrannyTodos/UI/TodosView.swift — the widget's content (the card around it is NotchUI's): header + list, or
 // one of the states of DESIGN.md §6.8 — empty ("No to-dos yet" / "All done" + New to-do), loading (nothing for
-// 300 ms, then a quiet ring), error (danger glyph + one line + Try again). Stages (`isPreview`), layout editing
-// and Demo redaction draw the list read-only.
+// 300 ms, then a quiet ring), error (danger glyph + one line + Try again). A failed save turns the header into
+// the same anatomy (`TodosSaveError`). Stages (`isPreview`), layout editing and Demo redaction draw the list
+// read-only.
 import CrannyCore
 import SwiftUI
 
@@ -13,6 +14,8 @@ struct TodosView: View {
     private enum Content: Equatable { case list, empty, loading, failed }
 
     private var isReadOnly: Bool { context.isPreview || context.isEditingLayout || context.redactsPersonalData }
+    /// A failed save shows in the header (with retry) wherever the list can be edited.
+    private var showsSaveError: Bool { model.store.saveFailed && !isReadOnly }
 
     /// Stages show the user's own list, or samples when it is empty (never written).
     private var items: [Todo] {
@@ -31,7 +34,8 @@ struct TodosView: View {
         switch model.store.phase {
         case .loading: return .loading
         case .failed: return .failed
-        case .ready: return model.visibleItems.isEmpty ? .empty : .list
+        // An empty list whose last save failed still shows the header, so the failure stays visible.
+        case .ready: return model.visibleItems.isEmpty && !showsSaveError ? .empty : .list
         }
     }
 
@@ -40,14 +44,13 @@ struct TodosView: View {
         ZStack {
             switch content {
             case .list:
-                VStack(alignment: .leading, spacing: Space.xs) {
-                    TodosHeader(count: headerCount,
-                                showsCount: context.cells >= 3, saveFailed: model.store.saveFailed && !isReadOnly,
-                                metrics: metrics, isFocusedWidget: context.isFocused) { model.store.retrySave() }
-                    TodoListView(model: model, items: items, metrics: metrics,
-                                 checkStyle: model.checkStyle(personality: theme.motion, reduceMotion: theme.reduceMotion),
-                                 isReadOnly: isReadOnly, redacts: context.redactsPersonalData,
-                                 isFocusedWidget: context.isFocused)
+                TodoListView(model: model, items: items, metrics: metrics,
+                             checkStyle: model.checkStyle(personality: theme.motion, reduceMotion: theme.reduceMotion),
+                             isReadOnly: isReadOnly, redacts: context.redactsPersonalData,
+                             isFocusedWidget: context.isFocused, hasSaveError: showsSaveError) { ring in
+                    TodosHeader(count: headerCount, showsCount: context.cells >= 3, saveFailed: showsSaveError,
+                                metrics: metrics, isFocusedWidget: context.isFocused,
+                                showsSaveErrorRing: ring) { model.retrySave() }
                 }
                 .transition(.opacity)
             case .empty:

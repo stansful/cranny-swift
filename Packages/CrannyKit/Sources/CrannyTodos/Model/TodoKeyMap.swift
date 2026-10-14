@@ -3,16 +3,19 @@
 // Two places take keys:
 // • the list, when a row is selected but not being edited (`TodoKeyMap.command(for:…)`):
 //     ↑ ↓ select · Space toggle · ↩ edit (on "New to-do": new) · ⌘↑ ⌘↓ reorder · ⌘⌫ delete;
+//     after a failed save, ↑ from the first row selects the header's save error, where ↩ / Space retry;
 // • the title editor (`TodoEditorCommand`, from the field editor's key bindings):
 //     ↩ next row · ⌫ on an empty row deletes it · ↑ ↓ edit the neighbour · ⌘↑ ⌘↓ reorder · Esc stop editing.
 // Anything else returns nil and travels on (Tab to the next widget, Esc to close).
 import AppKit
 import Foundation
 
-/// The keyboard selection inside the list: a to-do, or the trailing "New to-do" row.
+/// The keyboard selection inside the list: a to-do, the trailing "New to-do" row, or (only while a save has
+/// failed) the header's save error above the first row.
 nonisolated enum TodoSelection: Hashable, Sendable {
     case item(Todo.ID)
     case newRow
+    case saveError
 }
 
 /// Keys the list reacts to.
@@ -29,16 +32,20 @@ nonisolated enum TodoListCommand: Equatable, Sendable {
     case newItem
     case move(Todo.ID, TodoMoveDirection)
     case delete(Todo.ID)
+    /// Save again after a failed save.
+    case retrySave
 }
 
 nonisolated enum TodoKeyMap {
-    /// nil = not handled (let it travel). `visible` is the order on screen, without the "New to-do" row.
+    /// nil = not handled (let it travel). `visible` is the order on screen, without the "New to-do" row;
+    /// `hasSaveError`: the header shows the save error, which ↑ can reach.
     static func command(for key: TodoListKey, command: Bool, selection: TodoSelection?,
-                        visible: [Todo.ID]) -> TodoListCommand? {
-        let rows: [TodoSelection] = visible.map(TodoSelection.item) + [.newRow]
+                        visible: [Todo.ID], hasSaveError: Bool = false) -> TodoListCommand? {
+        let firstRow = visible.first.map(TodoSelection.item) ?? .newRow
+        let rows: [TodoSelection] = (hasSaveError ? [.saveError] : []) + visible.map(TodoSelection.item) + [.newRow]
         guard let selection, let index = rows.firstIndex(of: selection) else {
-            // Nothing selected yet (focus just arrived): the first arrow selects the first row.
-            return key == .up || key == .down ? .select(rows[0]) : nil
+            // Nothing selected yet (focus just arrived): the first arrow selects the first row, never the error.
+            return key == .up || key == .down ? .select(firstRow) : nil
         }
         switch (key, selection) {
         case (.up, .item(let id)) where command:
@@ -55,6 +62,8 @@ nonisolated enum TodoKeyMap {
             return .edit(id)
         case (.space, .newRow) where !command, (.returnKey, .newRow) where !command:
             return .newItem
+        case (.space, .saveError) where !command, (.returnKey, .saveError) where !command:
+            return .retrySave
         case (.deleteBackward, .item(let id)) where command:
             return .delete(id)
         default:

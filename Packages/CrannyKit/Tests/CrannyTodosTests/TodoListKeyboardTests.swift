@@ -104,6 +104,40 @@ struct TodoListKeyboardTests {
         window.contentView = nil
     }
 
+    @Test func afterAFailedSaveUpSelectsTheErrorAndReturnRetries() async throws {
+        let failure = try await SaveFailure([Todo(title: "a"), Todo(title: "b")])
+        #expect(failure.store.saveFailed)
+        let model = failure.model(services)
+        let (window, host) = host(model)
+        try await settle(host)                                   // the widget has the keyboard: row "a" is selected
+        try await press(.up, in: window, host: host)             // → the header's save error
+        try failure.repair()
+        try await press(.returnKey, in: window, host: host)      // retry, not "edit a"
+        try await failure.waitUntilSaved()
+        #expect(!failure.store.saveFailed)
+        #expect(model.editingID == nil)
+        try await press(.returnKey, in: window, host: host)      // the error is gone: the selection is back on "a"
+        #expect(model.editingID == model.items.first?.id)
+        window.contentView = nil
+    }
+
+    @Test func aFailedSaveOfAnEmptyListStillShowsTheError() async throws {
+        let failure = try await SaveFailure([Todo(title: "a")])
+        let model = failure.model(services)
+        model.delete(model.items[0].id)
+        await failure.store.save()
+        #expect(failure.store.saveFailed && model.visibleItems.isEmpty)
+        let (window, host) = host(model)
+        try await settle(host)                                   // the list (not the empty state): "New to-do" selected
+        try await press(.up, in: window, host: host)
+        try failure.repair()
+        try await press(.space, in: window, host: host)
+        try await failure.waitUntilSaved()
+        #expect(!failure.store.saveFailed)
+        #expect(model.items.isEmpty && model.editingID == nil)
+        window.contentView = nil
+    }
+
     @Test func returnOnNewToDoStartsADraftAndCommandDeleteRemovesARow() async throws {
         let model = TodosModel.testing([Todo(title: "a")], services: services)
         let (window, host) = host(model)

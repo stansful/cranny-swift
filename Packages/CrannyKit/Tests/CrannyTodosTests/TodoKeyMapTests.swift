@@ -50,6 +50,25 @@ struct TodoKeyMapTests {
         #expect(command(.deleteBackward, .newRow, command: true) == nil)
     }
 
+    @Test func afterAFailedSaveUpReachesTheSaveErrorWhereReturnAndSpaceRetry() {
+        func command(_ key: TodoListKey, _ selection: TodoSelection?, visible: [UUID]? = nil) -> TodoListCommand? {
+            TodoKeyMap.command(for: key, command: false, selection: selection, visible: visible ?? ids, hasSaveError: true)
+        }
+        #expect(command(.up, .item(ids[0])) == .select(.saveError))
+        #expect(command(.up, .saveError) == nil)                      // top: the key travels on
+        #expect(command(.down, .saveError) == .select(.item(ids[0])))
+        #expect(command(.returnKey, .saveError) == .retrySave)
+        #expect(command(.space, .saveError) == .retrySave)
+        #expect(command(.down, nil) == .select(.item(ids[0])))         // focus arriving never lands on the error
+        #expect(command(.up, nil) == .select(.item(ids[0])))
+        #expect(command(.up, .newRow, visible: []) == .select(.saveError))
+        #expect(TodoKeyMap.command(for: .up, command: true, selection: .item(ids[0]), visible: ids, hasSaveError: true) == nil)
+        #expect(TodoKeyMap.command(for: .returnKey, command: true, selection: .saveError, visible: ids, hasSaveError: true) == nil)
+        // Without a failed save there is no such row.
+        #expect(self.command(.up, .item(ids[0])) == nil)
+        #expect(self.command(.returnKey, .saveError) == nil && self.command(.down, .saveError) == .select(.item(ids[0])))
+    }
+
     @Test func commandWithOtherKeysIsNotOurs() {
         #expect(command(.space, .item(ids[0]), command: true) == nil)
         #expect(command(.returnKey, .item(ids[0]), command: true) == nil)
