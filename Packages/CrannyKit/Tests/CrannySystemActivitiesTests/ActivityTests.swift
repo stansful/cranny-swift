@@ -34,6 +34,13 @@ import Testing
         #expect(activity.accessibilityValue?.contains("82") == true)
     }
 
+    @Test func pluggedInNotChargingDiffersByShapeNotOnlyColour() {
+        // DESIGN.md §16 (Differentiate Without Color): the band glyph itself tells charging from not charging.
+        #expect(ChargingContent.Phase.charging.bandSymbol == "bolt.fill")
+        #expect(ChargingContent.Phase.charged.bandSymbol == "bolt.fill")
+        #expect(ChargingContent.Phase.notCharging.bandSymbol == "powerplug.fill")
+    }
+
     @Test func lowBatteryActionOpensBatterySettings() throws {
         var opened = 0
         let activity = LowBatteryActivity { opened += 1 }

@@ -1,6 +1,7 @@
 // CrannySystemActivities/UI/ChargingActivity.swift — "Charging" (DESIGN.md §9.2): P1, transient for the peek
 // duration (2.6 s by default) on every plug and unplug; `delight = .chargeSweep` on plug-in.
-//   compact   bolt.fill in `success` | "82%"        (unplugged: the code-drawn battery | "82%")
+//   compact   bolt.fill in `success` | "82%"        (plugged in, not charging: powerplug.fill in `secondaryLabel`;
+//                                                     unplugged: the code-drawn battery | "82%")
 //   peek      battery 24 × 12 tile · "Charging" / "1h 20m until full" · "82%" in `numeral`
 import CrannyCore
 import Foundation
@@ -91,10 +92,18 @@ import SwiftUI
     }
 }
 
+extension ChargingContent.Phase {
+    /// The band glyph on power: `bolt.fill` while the battery charges or is full, `powerplug.fill` while power only
+    /// runs the Mac (macOS's own battery menu shows a plug for "not charging"). Unplugged, the band draws the
+    /// battery itself.
+    var bandSymbol: String { self == .notCharging ? "powerplug.fill" : "bolt.fill" }
+}
+
 // MARK: - Views
 
-/// Leading: the bolt in `success` while charging (secondary when power does not charge); unplugged, the
-/// exact battery. The satellite shows the same glyph, smaller.
+/// Leading: the bolt in `success` while charging; a plug in `secondaryLabel` when power does not charge (a
+/// different shape, so colour is never the only difference, DESIGN.md §16); unplugged, the exact battery.
+/// The satellite shows the same glyph, smaller.
 private struct ChargingGlyph: View {
     @Environment(\.cranny) private var theme
     let content: ChargingContent?
@@ -108,7 +117,8 @@ private struct ChargingGlyph: View {
                 BatteryGlyph(percent: content.percent, fill: p.label,
                              size: CGSize(width: (22 * u).rounded(), height: (11 * u).rounded()))
             } else {
-                BandSymbol(name: "bolt.fill", color: content?.phase == .notCharging ? p.secondaryLabel : p.success)
+                let phase = content?.phase ?? .charging
+                BandSymbol(name: phase.bandSymbol, color: phase == .notCharging ? p.secondaryLabel : p.success)
                     .scaleEffect(isMinimal ? 0.85 : 1)
             }
         }
