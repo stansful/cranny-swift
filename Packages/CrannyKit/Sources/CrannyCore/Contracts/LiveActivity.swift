@@ -108,7 +108,9 @@ public struct ActivityAction: Identifiable {
     /// Increment on every MEANINGFUL change (new track, last minute, meeting started, device connected).
     /// Undoes a swipe-up dismissal and, if the kind peeks on change (or priority is `.alert`), auto-peeks once.
     var revision: Int { get }
-    /// Transient activities (charging 2.6 s, device connected, HUD 1.5 s) set this; the shell drops them after.
+    /// Transient activities (charging 2.6 s, device connected) set this; the shell drops them after. An activity
+    /// that ends itself on time by flipping `isActive` (the HUD, whose deadline moves with every key press) leaves it
+    /// nil, so a key press does not reschedule the shell's expiry.
     var expiresAt: Date? { get }
     /// Light-layer palette while this is the top activity (`.timer`, `.charging`, album palette…).
     var palette: AmbientPalette? { get }
