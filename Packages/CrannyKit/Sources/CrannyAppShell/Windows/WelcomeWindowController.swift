@@ -1,8 +1,8 @@
 // CrannyAppShell/Windows/WelcomeWindowController.swift — the Welcome window (ARCHITECTURE.md §5.9), WP15.
 // 640 × 480, full-size content, hidden title bar, not resizable, centred, hosting `WelcomeView`. Shown on first
 // launch (`onboardingCompletedVersion == nil`, from a launch hook once every module has started) and from
-// "Show welcome". It also owns the app's one `TutorialController`: "Take the 1-minute tour" starts it here, and
-// `AppControl.startTutorial()` (menu bar, Settings ▸ About) reaches it through `startTutorial()`.
+// "Show welcome". "Take the 1-minute tour" closes the window and asks `AppControl.startTutorial()`, so the app keeps
+// one `TutorialController` (the app services own it, WP16) for the welcome, the menu bar and Settings ▸ About.
 import AppKit
 import CrannyCore
 import CrannyOnboarding
@@ -13,9 +13,6 @@ import SwiftUI
 private let log = Log.logger(.onboarding)
 
 @MainActor final class WelcomeWindowController: NSObject, NSWindowDelegate {
-    /// The interactive tutorial in the real notch (DESIGN.md §12.2), one per app.
-    let tutorial: TutorialController
-
     private let registry: ModuleRegistry
     private var window: NSWindow?
     /// Set once the welcome reported how it ended (a close before that counts as "skipped").
@@ -24,10 +21,13 @@ private let log = Log.logger(.onboarding)
     private var previousApp: NSRunningApplication?
     /// Visual QA runs (`--qa-*`) record nothing: the defaults domain is shared by every local build.
     private var isVisualQA = false
+    #if DEBUG
+    /// `--qa-tutorial` only: a tour shown without going through `AppControl`.
+    private var visualQATutorial: TutorialController?
+    #endif
 
     init(registry: ModuleRegistry) {
         self.registry = registry
-        tutorial = TutorialController(registry: registry)
         super.init()
         // After every module's launch hook, so the first-launch welcome shows a fully started app.
         registry.onLaunch { [weak self] in self?.applicationDidLaunch() }
@@ -35,12 +35,6 @@ private let log = Log.logger(.onboarding)
 
     /// Opens (or brings forward) the welcome at its first step. Call in response to a user action or at first launch.
     func show() { show(at: .hello) }
-
-    /// Starts the tutorial (`AppControl.startTutorial()`); an open welcome closes first (as if skipped).
-    func startTutorial() {
-        window?.close()
-        tutorial.start()
-    }
 
     // MARK: Private
 
@@ -92,7 +86,7 @@ private let log = Log.logger(.onboarding)
     private func finish(_ outcome: WelcomeOutcome) {
         hasFinished = true
         window?.close()
-        if outcome == .tour { tutorial.start() }
+        if outcome == .tour { registry.services.app.startTutorial() }
     }
 
     func windowWillClose(_ notification: Notification) {
@@ -117,6 +111,8 @@ private let log = Log.logger(.onboarding)
             return
         }
         if let step = qa.tutorialStep {
+            let tutorial = TutorialController(registry: registry)
+            visualQATutorial = tutorial
             tutorial.startForVisualQA(atStep: step)
             if let path = qa.snapshotPath { snapshotForVisualQA(into: URL(fileURLWithPath: path)) }
             return
