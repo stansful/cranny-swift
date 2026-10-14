@@ -1,6 +1,7 @@
 import CrannyCore
 import Foundation
 import Metal
+import SwiftUI
 import Testing
 @testable import CrannyEffects
 
@@ -65,5 +66,19 @@ import Testing
     #expect(["metal-layer", "swiftui-shader", "fallback"].contains(EffectsDiagnostics.ambientRenderer))
     if EffectsDiagnostics.shaderStatus == "ok", ShaderEffects.allowsLayer {
         #expect(EffectsDiagnostics.ambientRenderer == "metal-layer")
+    }
+}
+
+/// `ambientLightRendering(.inline)` (which `rasterize` applies around these public views, as a snapshot caller would)
+/// keeps the light inside SwiftUI, so `ImageRenderer` captures it instead of an empty platform view.
+@Test(.enabled(if: shadersRun)) func inlineRenderingReachesSnapshots() throws {
+    let size = CGSize(width: 440, height: 130)
+    let views: [AnyView] = [
+        AnyView(AuroraField(palette: .afterglow, level: .vivid, energy: 0, budget: runningBudget)),
+        AnyView(MotesField(palette: .afterglow, level: .vivid, energy: 0, budget: runningBudget)),
+        AnyView(TideField(palette: .afterglow, level: .vivid, energy: 0, budget: runningBudget)),
+    ]
+    for view in views {
+        #expect(try rasterize(view, size: size).peakAlpha > 0.2)
     }
 }
