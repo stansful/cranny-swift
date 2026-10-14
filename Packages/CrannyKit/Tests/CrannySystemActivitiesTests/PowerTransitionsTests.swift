@@ -108,4 +108,15 @@ import Testing
         #expect(!thresholds.isCritical(onPower(5)))
         #expect(!thresholds.isCritical(BatteryState.noBattery(isPluggedIn: false)))
     }
+
+    @Test func shownFinalWarningKeepsTheRearmHysteresis() {
+        // Shown for the current final threshold: stays until the level could alert again (10 + 3 = 13 %).
+        #expect(thresholds.isCritical(onBattery(11), shownFor: 10))
+        #expect(thresholds.isCritical(onBattery(12), shownFor: 10))
+        #expect(!thresholds.isCritical(onBattery(10 + PowerTransitions.rearmMargin), shownFor: 10))
+        #expect(!thresholds.isCritical(onPower(10), shownFor: 10))          // connecting power always ends it
+        // Shown for a threshold that is no longer the final one (Settings changed it): judged afresh.
+        #expect(!thresholds.isCritical(onBattery(11), shownFor: 15))
+        #expect(thresholds.isCritical(onBattery(10), shownFor: 15))
+    }
 }

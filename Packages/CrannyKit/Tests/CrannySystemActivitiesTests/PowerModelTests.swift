@@ -106,6 +106,40 @@ import Testing
         #expect(charging.isActive)
     }
 
+    @Test func finalWarningSurvivesALevelWobblingAcrossItsThreshold() {
+        let model = model()
+        model.apply(onBattery(11))
+        for percent in [10, 11, 10, 12, 10] {                               // the gauge wobbles on battery
+            model.apply(onBattery(percent))
+            #expect(lowBattery.isActive && lowBattery.isPersistent, "hidden at \(percent) %")
+            #expect(lowBattery.content?.percent == percent)
+            #expect(lowBattery.content?.level == .critical)
+        }
+        #expect(lowBattery.revision == 1)                                   // one alert, no flicker, no new peek
+    }
+
+    @Test func finalWarningEndsWhereItsThresholdRearms() {
+        let model = model()
+        model.apply(onBattery(11))
+        model.apply(onBattery(10))
+        model.apply(onBattery(10 + PowerTransitions.rearmMargin))           // recalibrated upwards on battery
+        #expect(!lowBattery.isActive)
+        model.apply(onBattery(10))                                          // and down again: a new alert
+        #expect(lowBattery.isPersistent)
+        #expect(lowBattery.revision == 2)
+    }
+
+    @Test func loweringTheFinalWarningBelowTheLevelEndsIt() async {
+        let model = model(read: { BatteryState(hasBattery: true, percent: 8, isPluggedIn: false) })
+        model.start()
+        defer { model.stop() }
+        for _ in 0..<100 where model.state == nil { await Task.yield() }
+        #expect(lowBattery.isPersistent)                                    // 8 % ≤ 10 %
+        services.settings[SystemSettings.lowBatteryThresholds] = [20, 5]    // judged afresh: no hysteresis
+        for _ in 0..<50 where lowBattery.isActive { await Task.yield() }
+        #expect(!lowBattery.isActive)
+    }
+
     @Test func launchingBelowTheFinalWarningShowsItWithoutAPeek() {
         let model = model()
         model.apply(onBattery(7))

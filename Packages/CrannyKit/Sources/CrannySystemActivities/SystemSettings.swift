@@ -27,10 +27,16 @@ nonisolated struct LowBatteryThresholds: Equatable, Sendable {
     /// The highest threshold when there is more than one (Settings shows it as "First warning").
     var firstWarning: Int? { values.count > 1 ? values.first : nil }
 
-    /// True while the final warning must stay visible.
-    func isCritical(_ state: BatteryState) -> Bool {
+    /// True while the final warning must be visible: on battery at or below the final threshold.
+    ///
+    /// - Parameter shownFor: the final threshold the warning on screen was raised for, if any. While that is still
+    ///   the final threshold, the warning keeps the hysteresis of `PowerTransitions`: it stays until power is
+    ///   connected or the level rises `PowerTransitions.rearmMargin` above the threshold (exactly when the
+    ///   threshold could alert again), so a level wobbling 10 ↔ 11 % never hides and re-shows it.
+    func isCritical(_ state: BatteryState, shownFor: Int? = nil) -> Bool {
         guard let final, state.hasBattery, !state.isPluggedIn else { return false }
-        return state.percent <= final
+        let limit = shownFor == final ? final + PowerTransitions.rearmMargin - 1 : final
+        return state.percent <= limit
     }
 
     /// The thresholds after Settings changed the first warning (nil = off). A first warning at or below the

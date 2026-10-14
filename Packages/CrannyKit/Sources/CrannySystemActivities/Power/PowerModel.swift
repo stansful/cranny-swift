@@ -19,6 +19,8 @@ private let log = Log.logger(.system)
     private let read: @Sendable () async -> BatteryState
     private let observer: (any PowerChangeObserving)?
     private var transitions = PowerTransitions()
+    /// The final threshold the persistent warning on screen belongs to (nil while none is shown).
+    private var criticalThreshold: Int?
     private var generation = 0
     private var thresholdsToken: ObservationToken?
 
@@ -87,8 +89,10 @@ private let log = Log.logger(.system)
     }
 
     /// Keeps the final warning on screen while it applies, and removes any warning once power is connected.
+    /// A final warning on screen keeps the reducer's hysteresis (`isCritical(_:shownFor:)`), so a level that
+    /// wobbles across the threshold never makes it flicker; a changed final threshold is judged afresh.
     private func syncLowBattery(_ state: BatteryState, thresholds: LowBatteryThresholds) {
-        let critical = thresholds.isCritical(state)
+        let critical = thresholds.isCritical(state, shownFor: lowBattery.isPersistent ? criticalThreshold : nil)
         if critical {
             let content = LowBatteryContent(state, level: .critical)
             if lowBattery.isActive {
@@ -103,6 +107,7 @@ private let log = Log.logger(.system)
                 lowBattery.update(LowBatteryContent(state, level: content.level))
             }
         }
+        criticalThreshold = lowBattery.isPersistent ? thresholds.final : nil
     }
 
     private func thresholdsChanged() {
