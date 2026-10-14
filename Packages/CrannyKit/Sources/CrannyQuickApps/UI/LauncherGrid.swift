@@ -1,5 +1,9 @@
 // CrannyQuickApps/UI/LauncherGrid.swift — tiles placed on the card's cells (column-major), the "+N" and "+"
 // tiles, keyboard focus and arrows, and drag-to-reorder in edit mode. Positions animate with `listReorder`.
+//
+// Keyboard (DESIGN.md §7.3, §16): the arrows walk every stop the card shows — tiles, "+N", "+" (`LauncherFocus`);
+// ↩ / Space open a tile or pop up the "+N" / "+" menu under its tile; in edit mode ⌥ + arrow moves a tile and ⌫
+// removes it, keeping the focus on the tile that takes its place.
 import CrannyCore
 import SwiftUI
 
@@ -13,9 +17,15 @@ struct LauncherGrid: View {
     let metrics: LauncherMetrics
     let interactive: Bool
     let redacted: Bool
+    /// On screen in the Nook (not a widget-library preview): the grid tells the model which tiles it shows, so a
+    /// shortcut in "+N" or on a hidden page reports its result in the notch instead (`QuickAppsModel.present`).
+    var reportsVisibleTiles = false
 
     @State private var drag: Drag?
-    @FocusState private var focus: TileID?
+    @State private var launcherID = UUID()
+    @State private var addMenu = MenuAnchor()
+    @State private var overflowMenu = MenuAnchor()
+    @FocusState private var focus: LauncherFocus?
 
     /// A tile being dragged in edit mode: where it started and where it would land.
     private struct Drag: Equatable {
@@ -26,21 +36,20 @@ struct LauncherGrid: View {
     }
 
     var body: some View {
-        let editing = model.isEditing && interactive
-        let showsAdd = interactive && (editing || tiles.isEmpty)
-        let slots = layout.slots(tileCount: tiles.count, showsAddTile: showsAdd)
+        let slots = self.slots
         let shown = previewOrder
         let tileMetrics = TileMetrics(tile: metrics.tile, showsLabels: model.showsLabels)
+        let visible = LauncherLayout.tilesShown(slots, tileIDs: tiles.map(\.id))
         ZStack(alignment: .topLeading) {
             ForEach(items(slots: slots, shown: shown)) { item in
                 switch item {
                 case .tile(let tile, let index, let position):
                     let isDragged = drag?.id == tile.id
                     LauncherTileView(tile: tile, index: index, count: tiles.count, model: model, metrics: tileMetrics,
-                                     interactive: interactive, redacted: redacted, isFocused: focus == tile.id,
+                                     interactive: interactive, redacted: redacted, isFocused: focus == .tile(tile.id),
                                      onDrag: { dragChanged(tile, from: index, $0) }, onDragEnd: dragEnded)
                         .focusable(interactive, interactions: .activate)
-                        .focused($focus, equals: tile.id)
+                        .focused($focus, equals: .tile(tile.id))
                         .focusEffectDisabled()
                         .scaleEffect(isDragged && !theme.reduceMotion ? 1.06 : 1)
                         .crannyElevation(Elevation.lifted, amount: isDragged ? 1 : 0)
@@ -50,10 +59,18 @@ struct LauncherGrid: View {
                         .transition(.quickAppsTile(reduceMotion: theme.reduceMotion))
                 case .overflow(let first, let count, let position):
                     OverflowTile(tiles: Array(shown[first...]), count: count, model: model, metrics: tileMetrics,
-                                 interactive: interactive, redacted: redacted)
+                                 interactive: interactive, redacted: redacted, anchor: overflowMenu)
+                        .focusable(interactive, interactions: .activate)
+                        .focused($focus, equals: .overflow)
+                        .focusEffectDisabled()
+                        .crannyFocusRing(focus == .overflow, radius: Radius.tile)
                         .offset(at(position))
                 case .add(let position):
-                    AddTile(model: model, metrics: tileMetrics)
+                    AddTile(model: model, metrics: tileMetrics, anchor: addMenu)
+                        .focusable(interactive, interactions: .activate)
+                        .focused($focus, equals: .add)
+                        .focusEffectDisabled()
+                        .crannyFocusRing(focus == .add, radius: Radius.tile)
                         .offset(at(position))
                         .transition(.quickAppsTile(reduceMotion: theme.reduceMotion))
                 }
@@ -63,10 +80,21 @@ struct LauncherGrid: View {
         .coordinateSpace(.named(Self.space))
         .animation(theme.animation(.listReorder), value: shown.map(\.id))
         .animation(theme.animation(.listReorder), value: slots)
-        .onKeyPress(phases: .down) { press in handleKey(press) }
+        .onKeyPress(phases: .down) { press in handleKey(press, slots: slots, shown: shown) }
         .onChange(of: drag?.target) { old, new in
             if old != nil, new != nil, old != new { model.haptics.play(.alignment) }
         }
+        .onChange(of: focus) { _, new in if new == .add { model.prepareShortcutList() } }
+        .onChange(of: visible, initial: true) { _, visible in
+            if reportsVisibleTiles { model.present(visible, by: launcherID) }
+        }
+        .onDisappear { model.withdrawTiles(of: launcherID) }
+    }
+
+    /// What each position shows: tiles, then "+N" when they do not fit, then "+" in edit mode (or when empty).
+    private var slots: [LauncherLayout.Slot] {
+        let showsAdd = interactive && (model.isEditing || tiles.isEmpty)
+        return layout.slots(tileCount: tiles.count, showsAddTile: showsAdd)
     }
 
     /// One positioned element; identity follows the tile, so a reorder MOVES views instead of replacing them.
@@ -126,19 +154,14 @@ struct LauncherGrid: View {
         return order
     }
 
-    /// Tiles that can be reordered by dragging (not the "+N" and "+" positions).
+    /// Tile positions a drag can land on in edit mode (not the "+N" and "+" positions).
     private var reorderLimit: Int {
-        let slots = layout.slots(tileCount: tiles.count, showsAddTile: true)
-        return slots.reduce(0) { count, slot in if case .tile = slot { count + 1 } else { count } }
+        LauncherLayout.tileSlotCount(layout.slots(tileCount: tiles.count, showsAddTile: true))
     }
 
     private func dragChanged(_ tile: LauncherTile, from index: Int, _ value: DragGesture.Value) {
         let from = drag?.from ?? tiles.firstIndex(of: tile) ?? index
-        let start = layout.origin(of: from, metrics: metrics)
-        let centre = CGPoint(x: start.x + metrics.tile / 2 + value.translation.width,
-                             y: start.y + metrics.tile / 2 + value.translation.height)
-        let target = layout.slot(at: CGPoint(x: centre.x - metrics.tile / 2, y: centre.y - metrics.tile / 2),
-                                 metrics: metrics, limit: reorderLimit)
+        let target = layout.dropTarget(from: from, translation: value.translation, metrics: metrics, limit: reorderLimit)
         drag = Drag(id: tile.id, from: from, translation: value.translation, target: target)
     }
 
@@ -150,10 +173,11 @@ struct LauncherGrid: View {
         }
     }
 
-    // MARK: Keyboard (arrows within, ↩ / Space open, ⌥ arrows move in edit mode)
+    // MARK: Keyboard
 
-    private func handleKey(_ press: KeyPress) -> KeyPress.Result {
-        guard interactive, let focus, let index = tiles.firstIndex(where: { $0.id == focus }) else { return .ignored }
+    private func handleKey(_ press: KeyPress, slots: [LauncherLayout.Slot], shown: [LauncherTile]) -> KeyPress.Result {
+        guard interactive, let focus else { return .ignored }
+        let editing = model.isEditing
         let direction: LauncherLayout.MoveDirection? = switch press.key {
         case .upArrow: .up
         case .downArrow: .down
@@ -161,20 +185,35 @@ struct LauncherGrid: View {
         case .rightArrow: .right
         default: nil
         }
-        if let direction, let next = layout.neighbour(of: index, direction, count: min(tiles.count, reorderLimit)) {
-            if press.modifiers.contains(.option) && model.isEditing {
-                withAnimation(theme.animation(.listReorder)) { model.move(focus, toVisibleIndex: next) }
-            } else {
-                self.focus = tiles[next].id
+        if let direction {
+            if editing, press.modifiers.contains(.option) {
+                guard case .tile(let id) = focus, let index = tiles.firstIndex(where: { $0.id == id }),
+                      let target = layout.moveTarget(of: index, direction, slots: slots) else { return .ignored }
+                withAnimation(theme.animation(.listReorder)) { model.move(id, toVisibleIndex: target) }
+                return .handled
             }
+            let stops = LauncherLayout.focusStops(slots, tileIDs: shown.map(\.id))
+            guard let next = layout.focus(from: focus, direction, stops: stops) else { return .ignored }
+            self.focus = next
             return .handled
         }
         if press.key == .return || press.key == .space {
-            if !model.isEditing { model.activate(tiles[index]) }
+            switch focus {
+            case .tile(let id):
+                if !editing, let tile = tiles.first(where: { $0.id == id }) { model.activate(tile) }
+            case .overflow:
+                guard let first = slots.lazy.compactMap({ slot -> Int? in
+                    if case .overflow(let first, _) = slot { first } else { nil }
+                }).first else { break }
+                OverflowTile.showMenu(tiles: Array(shown[first...]), model: model, redacted: redacted, anchor: overflowMenu)
+            case .add:
+                AddTile.showMenu(model: model, anchor: addMenu)
+            }
             return .handled
         }
-        if press.key == .delete && model.isEditing {
-            model.remove(focus)
+        if press.key == .delete, editing, case .tile(let id) = focus, let index = tiles.firstIndex(where: { $0.id == id }) {
+            self.focus = LauncherLayout.focusAfterRemoving(at: index, from: tiles.map(\.id))
+            withAnimation(theme.animation(.listReorder)) { model.remove(id) }
             return .handled
         }
         return .ignored

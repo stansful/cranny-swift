@@ -76,8 +76,9 @@ struct LauncherTileView: View {
             }
         case .shortcut(let entry):
             TileContent(metrics: metrics, label: label, isRunning: false) {
-                ShortcutTileFace(entry: entry, state: model.runs.state(of: entry.id), metrics: metrics,
-                                 redacted: redacted, isLowPower: model.environment.isLowPowerMode)
+                ShortcutTileFace(entry: entry, state: model.runs.state(of: entry.id), metrics: metrics, redacted: redacted,
+                                 frameInterval: RunningRing.frameInterval(
+                                    model.environment.effectBudget(isOpen: true, isOnScreen: true, reduceMotion: theme.reduceMotion)))
             }
         }
     }
@@ -96,7 +97,7 @@ struct LauncherTileView: View {
     private var helpText: String {
         switch runState {
         case .running:
-            String(localized: "\(displayName) — click to stop", bundle: .module, comment: "Quick Apps: tooltip of a running shortcut (shortcut name)")
+            String(localized: "\(displayName) — click to stop", bundle: .module, comment: "Quick Apps: a running shortcut's tooltip and \"+N\" menu row (shortcut name)")
         case .failed(let error):
             "\(displayName)\n\(error.localizedDescription)"
         case .idle, .succeeded:

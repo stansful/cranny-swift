@@ -2,7 +2,8 @@
 //
 // Tiles are grid cells, so the grid is laid out on the WHOLE card and pulled back over the card padding the
 // shell applies (`.padding(-cardPadding)`); the card still clips and fills. States: content · empty (one line +
-// "Add App…") · loading (nothing for the first lookup, ≤ 300 ms) · drop target armed (an app dragged over it).
+// "Add App…") · loading (nothing for the first lookup, ≤ 300 ms) · drop target armed (apps, and only apps, dragged
+// over it: a drag that also holds other files goes to the Tray, see `QuickAppsModel.acceptDrop`).
 import CrannyCore
 import SwiftUI
 import UniformTypeIdentifiers
@@ -34,7 +35,8 @@ struct LauncherView: View {
             } else {
                 LauncherGrid(model: model, tiles: tiles, layout: layout,
                              metrics: LauncherMetrics(cardSize: card, columns: layout.columns, rows: layout.rows, cell: grid.cell),
-                             interactive: interactive, redacted: context.redactsPersonalData)
+                             interactive: interactive, redacted: context.redactsPersonalData,
+                             reportsVisibleTiles: !context.isPreview)
                     .frame(width: card.width, height: card.height, alignment: .topLeading)
                     .padding(-padding)
             }
@@ -59,7 +61,10 @@ struct LauncherView: View {
 
     private var chooseApps: @MainActor () -> Void { { [model] in model.chooseApps() } }
 
-    private var isDropTarget: Bool { zones?.armedDropZone == Self.dropZone }
+    private var isDropTarget: Bool {
+        guard let zones, zones.armedDropZone == Self.dropZone else { return false }
+        return QuickAppsModel.dragAddsApps(zones.draggedTypes)
+    }
 }
 
 /// DESIGN.md §6.8 loading: nothing for the first 300 ms, then a quiet ring (the first app lookup is ≈ 10 ms).

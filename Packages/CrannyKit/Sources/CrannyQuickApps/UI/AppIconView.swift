@@ -36,15 +36,16 @@ struct AppIconView: View {
         .accessibilityHidden(true)
     }
 
-    /// The icon as an NSImage for an NSMenu row (cached icon, else LaunchServices' own).
-    @MainActor static func menuImage(for app: ResolvedApp, catalog: AppCatalog, size: CGFloat = 16) -> NSImage {
-        let pixels = Int(size * 2)
-        if let cached = catalog.cachedIcon(at: app.url, pixelSize: pixels) {
-            return NSImage(cgImage: cached, size: NSSize(width: size, height: size))
+    /// Pixel size of an NSMenu row's 16-pt icon (2×). `OverflowTile` renders these off the main actor in advance.
+    static let menuPixels = 32
+
+    /// The icon as an NSImage for an NSMenu row, from the cache only (no I/O on the main actor): the menu size, else
+    /// any size already rendered (the tile's), else none.
+    @MainActor static func menuImage(for app: ResolvedApp, catalog: AppCatalog, size: CGFloat = 16) -> NSImage? {
+        guard let icon = catalog.cachedIcon(at: app.url, pixelSize: menuPixels) ?? catalog.anyCachedIcon(at: app.url) else {
+            return nil
         }
-        let image = NSWorkspace.shared.icon(forFile: app.url.path)
-        image.size = NSSize(width: size, height: size)
-        return image
+        return NSImage(cgImage: icon, size: NSSize(width: size, height: size))
     }
 }
 

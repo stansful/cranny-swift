@@ -15,6 +15,13 @@ nonisolated enum ShortcutRunState: Equatable, Sendable {
     case failed(QuickAppsError)
 
     var isRunning: Bool { if case .running = self { true } else { false } }
+    var hasFailed: Bool { if case .failed = self { true } else { false } }
+
+    /// What the "+N" tile shows for the shortcuts it holds: running while any runs, else the first failure, else
+    /// a success, else nothing.
+    static func combined(_ states: [ShortcutRunState]) -> ShortcutRunState {
+        states.first(where: \.isRunning) ?? states.first(where: \.hasFailed) ?? (states.contains(.succeeded) ? .succeeded : .idle)
+    }
 }
 
 /// How a run ended.

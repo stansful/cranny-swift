@@ -1,5 +1,9 @@
 // CrannyQuickApps/UI/AddTile.swift — the trailing "+" tile in edit mode (and the only tile of an empty one-column
-// launcher): a dashed squircle that pops up "Add App…" and the user's Shortcuts.app shortcuts (DESIGN.md §7.3).
+// launcher): a dashed squircle that drops down "Add App…" and the user's Shortcuts.app shortcuts (DESIGN.md §7.3).
+//
+// Energy: the Shortcuts list is read only when the menu is about to be used — the pointer over "+", keyboard focus
+// on it, or the menu opening (`QuickAppsModel.prepareShortcutList`, at most once a minute) — never because the
+// tile is on screen. The shortcut submenu follows the list live, so a menu opened mid-read fills in.
 import AppKit
 import CrannyCore
 import SwiftUI
@@ -8,11 +12,13 @@ struct AddTile: View {
     @Environment(\.cranny) private var theme
     let model: QuickAppsModel
     let metrics: TileMetrics
+    /// Where the menu drops down (the grid also opens it from the keyboard).
+    let anchor: MenuAnchor
 
     var body: some View {
         let p = theme.palette
         let title = String(localized: "Add to Quick Apps", bundle: .module, comment: "Quick Apps: the + tile (tooltip, VoiceOver)")
-        Button { PopUpMenu.show(AddMenu.entries(model: model)) } label: {
+        Button { Self.showMenu(model: model, anchor: anchor) } label: {
             TileContent(metrics: metrics, label: model.showsLabels ? String(localized: "Add", bundle: .module, comment: "Quick Apps: add (open panel confirm button, name under the + tile)") : nil,
                         isRunning: false) {
                 RoundedRectangle(cornerRadius: metrics.squircleRadius, style: .continuous)
@@ -26,11 +32,17 @@ struct AddTile: View {
             }
         }
         .buttonStyle(TileButtonStyle(metrics: metrics))
-        .focusable(false)
+        .focusable(false)                       // the grid makes the tile itself focusable (arrows)
+        .background(MenuAnchorView(anchor: anchor))
         .help(title)
         .accessibilityLabel(Text(verbatim: title))
-        // Read the Shortcuts list before the menu can open (≈ 20 ms; skipped if read within the last minute).
-        .task { await model.shortcutsCatalog.refresh(maximumAge: 60) }
+        .onHover { inside in if inside { model.prepareShortcutList() } }
+    }
+
+    /// Drops the add menu down under the tile (click, ↩ / Space on the focused tile, VoiceOver).
+    static func showMenu(model: QuickAppsModel, anchor: MenuAnchor?) {
+        model.prepareShortcutList()
+        PopUpMenu.show(AddMenu.entries(model: model), anchor: anchor)
     }
 }
 
@@ -40,7 +52,7 @@ struct AddTile: View {
         var entries = [
             MenuEntry(String(localized: "Add App…", bundle: .module, comment: "Quick Apps: add an app with the open panel")) { model.chooseApps() },
             MenuEntry(String(localized: "Add Shortcut", bundle: .module, comment: "Quick Apps: submenu listing Shortcuts.app shortcuts"),
-                      submenu: shortcutEntries(model: model)),
+                      liveSubmenu: { shortcutEntries(model: model) }),
             .separator,
         ]
         if model.isEditing {
@@ -54,13 +66,16 @@ struct AddTile: View {
         return entries
     }
 
-    private static func shortcutEntries(model: QuickAppsModel) -> [MenuEntry] {
+    /// The shortcut submenu for the catalog as it is now (it reads observable state: the menu rebuilds on change).
+    static func shortcutEntries(model: QuickAppsModel) -> [MenuEntry] {
         let catalog = model.shortcutsCatalog
         let available = catalog.shortcuts.filter { !model.isAdded(shortcut: $0.id) }
+        let redacted = model.environment.isDemoMode
         if !available.isEmpty {
             return available.map { info in
                 let entry = ShortcutEntry(id: info.id, name: info.name)
-                return MenuEntry(entry.displayName, image: ShortcutGlyph.menuImage(for: entry)) { model.add(shortcut: info) }
+                return MenuEntry(redacted ? QuickAppsModel.neutralShortcutName : entry.displayName,
+                                 image: ShortcutMenuImage.image(for: entry, redacted: redacted)) { model.add(shortcut: info) }
             }
         }
         switch catalog.state {
@@ -79,7 +94,7 @@ struct AddTile: View {
 
 #Preview("Add tile") {
     let model = QuickAppsPreview.model()
-    AddTile(model: model, metrics: TileMetrics(tile: 56, showsLabels: false))
+    AddTile(model: model, metrics: TileMetrics(tile: 56, showsLabels: false), anchor: MenuAnchor())
         .padding(Space.l)
         .background(.black)
         .crannyThemeRoot(CrannyTheme())
