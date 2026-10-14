@@ -141,7 +141,7 @@ private let log = Log.logger(.onboarding)
     }
 
     private func enter(_ step: WelcomeStep) {
-        stage.height = WelcomeMetrics.stageHeight(for: step)
+        stage.height = WelcomeMetrics.stageHeight(for: step, hasPermissionRows: step != .permissions || !permissionRows.isEmpty)
         switch step {
         case .hello:
             services.notch.flash(symbol: StageGreeting.symbol, label: Self.greeting)

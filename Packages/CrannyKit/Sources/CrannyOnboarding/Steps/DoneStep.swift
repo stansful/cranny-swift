@@ -8,17 +8,14 @@ import SwiftUI
 struct DoneStep: View {
     @Bindable var flow: WelcomeFlow
 
-    private static let switchesWidth: CGFloat = 190
-
     var body: some View {
         VStack(alignment: .leading, spacing: Space.l) {
             StepHeader(title: String(localized: "You're set", bundle: .module, comment: "Welcome step 6: headline"),
                        message: String(localized: "Cranny waits at the top of your screen. A few keys worth knowing:",
                                        bundle: .module, comment: "Welcome step 6: sentence under the headline, before the cheat sheet"))
-            HStack(alignment: .top, spacing: Space.xxl) {
-                CheatSheet(entries: flow.cheatSheet)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                VStack(alignment: .leading, spacing: Space.m) {
+            CheatSheet(entries: flow.cheatSheet)
+            VStack(alignment: .leading, spacing: Space.s) {
+                HStack(spacing: Space.xxxl) {
                     Toggle(isOn: $flow.launchesAtLogin) {
                         Text("Open at login", bundle: .module, comment: "Welcome step 6: launch at login switch")
                     }
@@ -26,28 +23,40 @@ struct DoneStep: View {
                     Toggle(isOn: $flow.checksForUpdates) {
                         Text("Check for updates", bundle: .module, comment: "Welcome step 6: daily update check switch")
                     }
-                    Text("Only the update check uses the network.", bundle: .module,
-                         comment: "Welcome step 6: footnote under the update switch")
-                        .font(.caption).foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .toggleStyle(.switch)
                 .controlSize(.small)
-                .frame(width: Self.switchesWidth, alignment: .leading)
+                Text(verbatim: footnote)
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+        }
+    }
+
+    /// The login item's own situation first (it needs approval, or cannot be used), else what updates do.
+    private var footnote: String {
+        switch flow.loginItem {
+        case .requiresApproval:
+            String(localized: "To open at login, allow Cranny in System Settings ▸ General ▸ Login Items.", bundle: .module,
+                   comment: "Welcome step 6: footnote when macOS waits for the login item to be approved")
+        case .unavailable(let reason):
+            reason
+        case .enabled, .disabled:
+            String(localized: "Updates are only checked, never installed. Nothing else uses the network.", bundle: .module,
+                   comment: "Welcome step 6: footnote under the switches")
         }
     }
 }
 
-/// Six keys in two columns: key cap, then what it does (labels aligned on one edge per column).
+/// Six keys in two columns across the width: key cap, then what it does (labels aligned per column).
 private struct CheatSheet: View {
     let entries: [CheatSheetEntry]
 
     var body: some View {
         let half = (entries.count + 1) / 2
         HStack(alignment: .top, spacing: Space.xl) {
-            column(Array(entries.prefix(half)))
-            column(Array(entries.dropFirst(half)))
+            column(Array(entries.prefix(half))).frame(maxWidth: .infinity, alignment: .leading)
+            column(Array(entries.dropFirst(half))).frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 

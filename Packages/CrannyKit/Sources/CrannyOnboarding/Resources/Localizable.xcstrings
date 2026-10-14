@@ -535,17 +535,6 @@
         }
       }
     },
-    "Only the update check uses the network." : {
-      "comment" : "Welcome step 6: footnote under the update switch",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "В сеть обращается только проверка обновлений."
-          }
-        }
-      }
-    },
     "Open at login" : {
       "comment" : "Welcome step 6: launch at login switch",
       "localizations" : {
@@ -1036,6 +1025,17 @@
         }
       }
     },
+    "To open at login, allow Cranny in System Settings ▸ General ▸ Login Items." : {
+      "comment" : "Welcome step 6: footnote when macOS waits for the login item to be approved",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Чтобы Cranny открывался при входе, разрешите это: Системные настройки ▸ Основные ▸ Объекты входа."
+          }
+        }
+      }
+    },
     "To-dos" : {
       "comment" : "Welcome, layouts: widget name",
       "localizations" : {
@@ -1065,6 +1065,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Попробуйте жесты"
+          }
+        }
+      }
+    },
+    "Updates are only checked, never installed. Nothing else uses the network." : {
+      "comment" : "Welcome step 6: footnote under the switches",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Обновления только проверяются, но не устанавливаются. Больше ничто не обращается к сети."
           }
         }
       }

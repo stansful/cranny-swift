@@ -175,6 +175,7 @@ import Testing
         #expect(gateway.requested.isEmpty)                       // nothing is asked on its own
         let rows = flow.permissionRows
         #expect(rows.map(\.group) == [.calendar, .accessibility, .automation, .bluetooth])
+        #expect(flow.stage.height == WelcomeMetrics.compactStageHeight)      // the rows get the room
         #expect(flow.state(of: rows[0]) == .granted)
 
         let automation = try #require(rows.first { $0.group == .automation })
@@ -192,9 +193,20 @@ import Testing
 
     // MARK: Endings
 
+    @Test func aPermissionStepWithoutRowsKeepsTheFullStage() {
+        let registry = ModuleRegistry(services: .preview())                  // no module declared anything
+        let flow = WelcomeFlow(registry: registry, permissions: StaticPermissionGateway(), coach: RecordingTipPresenter(),
+                               stage: makeStage(registry), initialStep: .permissions, version: "9.9.9") { _ in }
+        flow.start(reduceMotion: true)
+        #expect(flow.permissionRows.isEmpty)
+        #expect(flow.stage.height == WelcomeMetrics.stageHeight)
+        flow.stop()
+    }
+
     @Test func doneRecordsOpensOnceAndTurnsOnLaunchAtLogin() throws {
         let (flow, registry, _, outcomes) = makeFlow(step: .done)
         flow.start(reduceMotion: true)
+        #expect(flow.stage.height == WelcomeMetrics.compactStageHeight)
         #expect(flow.isLastStep)
         #expect(flow.launchesAtLogin)                            // on by default on the first run
         flow.finish(.done)
