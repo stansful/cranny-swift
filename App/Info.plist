@@ -15,6 +15,9 @@
 		<string>en</string>
 		<string>ru</string>
 	</array>
+	<!-- Metal effects run on the integrated GPU of dual-GPU Macs and never force the discrete one on (WP11). -->
+	<key>NSSupportsAutomaticGraphicsSwitching</key>
+	<true/>
 	<!-- "owner/repo" for the GitHub Releases update check. Empty = update check disabled. -->
 	<key>CrannyGitHubRepository</key>
 	<string></string>
@@ -36,14 +39,14 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Cranny analyzes audio levels to animate the music visualizer. Audio is never recorded or stored.</string>
 	<key>NSDesktopFolderUsageDescription</key>
-	<string>Cranny keeps the files you drop on the notch in its Tray.</string>
+	<string>Cranny keeps the files you drop on the notch in its Tray and saves pipeline results next to them or in Downloads.</string>
 	<key>NSDocumentsFolderUsageDescription</key>
-	<string>Cranny keeps the files you drop on the notch in its Tray.</string>
+	<string>Cranny keeps the files you drop on the notch in its Tray and saves pipeline results next to them or in Downloads.</string>
 	<key>NSDownloadsFolderUsageDescription</key>
-	<string>Cranny keeps the files you drop on the notch in its Tray.</string>
+	<string>Cranny keeps the files you drop on the notch in its Tray and saves pipeline results next to them or in Downloads.</string>
 	<key>NSRemovableVolumesUsageDescription</key>
-	<string>Cranny keeps the files you drop on the notch in its Tray.</string>
+	<string>Cranny keeps the files you drop on the notch in its Tray and saves pipeline results next to them or in Downloads.</string>
 	<key>NSNetworkVolumesUsageDescription</key>
-	<string>Cranny keeps the files you drop on the notch in its Tray.</string>
+	<string>Cranny keeps the files you drop on the notch in its Tray and saves pipeline results next to them or in Downloads.</string>
 </dict>
 </plist>

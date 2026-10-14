@@ -134,13 +134,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Cranny keeps the files you drop on the notch in its Tray."
+            "value" : "Cranny keeps the files you drop on the notch in its Tray and saves pipeline results next to them or in Downloads."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cranny хранит в Лотке файлы, которые вы перетаскиваете на вырез экрана."
+            "value" : "Cranny хранит в Лотке файлы, которые вы перетаскиваете на вырез экрана, и сохраняет результаты конвейеров рядом с ними или в папке «Загрузки»."
           }
         }
       }
@@ -152,13 +152,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Cranny keeps the files you drop on the notch in its Tray."
+            "value" : "Cranny keeps the files you drop on the notch in its Tray and saves pipeline results next to them or in Downloads."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cranny хранит в Лотке файлы, которые вы перетаскиваете на вырез экрана."
+            "value" : "Cranny хранит в Лотке файлы, которые вы перетаскиваете на вырез экрана, и сохраняет результаты конвейеров рядом с ними или в папке «Загрузки»."
           }
         }
       }
@@ -170,13 +170,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Cranny keeps the files you drop on the notch in its Tray."
+            "value" : "Cranny keeps the files you drop on the notch in its Tray and saves pipeline results next to them or in Downloads."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cranny хранит в Лотке файлы, которые вы перетаскиваете на вырез экрана."
+            "value" : "Cranny хранит в Лотке файлы, которые вы перетаскиваете на вырез экрана, и сохраняет результаты конвейеров рядом с ними или в папке «Загрузки»."
           }
         }
       }
@@ -206,13 +206,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Cranny keeps the files you drop on the notch in its Tray."
+            "value" : "Cranny keeps the files you drop on the notch in its Tray and saves pipeline results next to them or in Downloads."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cranny хранит в Лотке файлы, которые вы перетаскиваете на вырез экрана."
+            "value" : "Cranny хранит в Лотке файлы, которые вы перетаскиваете на вырез экрана, и сохраняет результаты конвейеров рядом с ними или в папке «Загрузки»."
           }
         }
       }
@@ -224,13 +224,13 @@
         "en" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Cranny keeps the files you drop on the notch in its Tray."
+            "value" : "Cranny keeps the files you drop on the notch in its Tray and saves pipeline results next to them or in Downloads."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cranny хранит в Лотке файлы, которые вы перетаскиваете на вырез экрана."
+            "value" : "Cranny хранит в Лотке файлы, которые вы перетаскиваете на вырез экрана, и сохраняет результаты конвейеров рядом с ними или в папке «Загрузки»."
           }
         }
       }
