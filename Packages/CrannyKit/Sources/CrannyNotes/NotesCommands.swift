@@ -1,5 +1,6 @@
 // CrannyNotes/NotesCommands.swift — ⌘K: "New note" and "Open ‹title›" for every note (DESIGN.md §6.4).
-// In-memory filtering only: the palette queries on every keystroke.
+// Offered only while the Notes widget is on a page, because both show the note there. In-memory filtering only:
+// the palette queries on every keystroke.
 import CrannyCore
 import Foundation
 
@@ -14,6 +15,7 @@ final class NotesCommands: PaletteCommandProvider {
     }
 
     func commands(matching query: String) -> [PaletteCommand] {
+        guard model.notesPage != nil else { return [] }
         let kind = NotesStrings.notes
         var result = [PaletteCommand(id: "notes.new", title: NotesStrings.newNote, kind: kind, symbol: "plus",
                                      keywords: [kind]) { [model] in model.createAndReveal() }]

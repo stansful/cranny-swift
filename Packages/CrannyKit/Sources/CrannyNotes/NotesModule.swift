@@ -1,6 +1,7 @@
 // CrannyNotes/NotesModule.swift — the module's single entry point (ARCHITECTURE.md §3.4, §10.6): the Notes widget,
-// the "notes" type-to-capture target, the New note shortcut, ⌘K commands, loading at launch and the final save at
-// quit. `register(in:)` stays cheap: models and contributions only; the folder is read in `onLaunch`.
+// the "notes" type-to-capture target (shown in the Notes widget), the New note shortcut, ⌘K commands, loading at
+// launch and the final save at quit. `register(in:)` stays cheap: models and contributions only; the folder is read
+// in `onLaunch`.
 import CrannyCore
 import Foundation
 
@@ -16,10 +17,14 @@ public enum NotesModule: FeatureModule {
         let services = registry.services
         let model = NotesModel(settings: services.settings, notch: services.notch, store: NotesStore(paths: services.paths))
         registry.add(widget: NotesWidget(model: model, settings: services.settings))
-        registry.add(captureTarget: CaptureTarget(id: "notes", title: NotesStrings.notes, symbol: "note.text") { characters in
+        registry.add(captureTarget: CaptureTarget(id: "notes", title: NotesStrings.notes, symbol: "note.text",
+                                                  widget: .notes) { characters in
             model.capture(characters)
         })
-        registry.add(shortcut: GlobalShortcut(id: .newNote, title: NotesStrings.newNote) { model.createAndReveal() })
+        // Notes on no page: no hidden note; Settings ▸ Layout & Widgets is where the widget is added.
+        registry.add(shortcut: GlobalShortcut(id: .newNote, title: NotesStrings.newNote) {
+            if !model.createAndReveal() { services.app.openSettings(.nookAndWidgets) }
+        })
         registry.add(commands: NotesCommands(model: model) {
             services.environment.isDemoMode && services.settings[CoreSettings.demoRedactsCalendar]
         })

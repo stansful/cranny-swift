@@ -17,7 +17,8 @@ public enum TodosModule: FeatureModule {
         let model = TodosModel(services: registry.services)
         registry.add(widget: TodosWidget(model: model))
         registry.add(commands: TodosCommands(model: model))
-        registry.add(captureTarget: CaptureTarget(id: captureTargetID, title: TodosStrings.title, symbol: "checklist") { text in
+        registry.add(captureTarget: CaptureTarget(id: captureTargetID, title: TodosStrings.title, symbol: "checklist",
+                                                  widget: .todos) { text in
             model.capture(text)
         })
         registry.onLaunch { await model.start() }

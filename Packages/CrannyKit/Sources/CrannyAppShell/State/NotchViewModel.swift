@@ -160,10 +160,8 @@ import Foundation
 
     private func reduce(_ input: NotchInput) {
         var input = input
-        // Only pages that exist are opened: a module page whose module is not registered, or a deleted user
-        // page, falls back to the last page (and that to the first grid page), so a tab is always selected.
         switch input {
-        case let .open(page?, focus, reason) where !pageExists(page): input = .open(page: nil, focus: focus, reason: reason)
+        case let .open(page, focus, reason): input = resolvedOpen(page: page, focus: focus, reason: reason)
         case .selectPage(let page) where !pageExists(page): return
         default: break
         }
@@ -175,6 +173,27 @@ import Foundation
         }
         for effect in effects { perform(effect) }
         syncScene(config: config)
+    }
+
+    /// What an open request shows. Only pages that exist are opened: a module page whose module is not registered,
+    /// or a deleted user page, falls back to the last page (and that to the first grid page), so a tab is always
+    /// selected. A focused widget is shown (`NotchControl.open(focus:)`): when the page that would open does not
+    /// hold it, the grid page that does opens instead, whatever page the caller named ("Show today's events" asks
+    /// for Home, the widget may be on another page). A widget that is on no page cannot take focus.
+    private func resolvedOpen(page: PageID?, focus: WidgetID?, reason: OpenReason) -> NotchInput {
+        var page = page.flatMap { pageExists($0) ? $0 : nil }
+        var focus = focus
+        if let widget = focus {
+            let shown = page ?? state.openState?.page ?? currentConfig().lastPage
+            if !self.page(shown, holds: widget) {
+                if let holder = self.page(containing: widget) {
+                    page = holder
+                } else if isGridPage(shown) {
+                    focus = nil
+                }
+            }
+        }
+        return .open(page: page, focus: focus, reason: reason)
     }
 
     private func applyLineup(_ next: Lineup) {
