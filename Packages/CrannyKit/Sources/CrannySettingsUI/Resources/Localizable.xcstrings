@@ -371,6 +371,17 @@
         }
       }
     },
+    "Activities beside the notch step aside when the pointer heads for menu bar items next to them." : {
+      "comment" : "Settings ▸ Live Activities: footnote of Make way for the menu bar",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Активности у выреза уступают место, когда указатель направляется к соседним пунктам строки меню."
+          }
+        }
+      }
+    },
     "Activity" : {
       "comment" : "Settings preview stage: state picker segment (a live activity in compact)",
       "localizations" : {
@@ -938,7 +949,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cranny запрашивает разрешение, только когда вы включаете функцию, которой оно нужно, и работает без любого из них."
+            "value" : "Cranny запрашивает разрешение, только когда вы включаете функцию, которой оно нужно. Без разрешений Cranny тоже работает."
           }
         }
       }
@@ -993,7 +1004,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cranny закрывается не сразу и никогда — пока вы печатаете или перетаскиваете."
+            "value" : "Cranny закрывается не сразу и не закроется, пока вы печатаете или перетаскиваете."
           }
         }
       }
@@ -1147,7 +1158,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Бросить файл"
+            "value" : "Перетащить файл"
           }
         }
       }
@@ -1609,7 +1620,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Проходить мимо с ⌥"
+            "value" : "Не открывать при удержании ⌥"
           }
         }
       }
@@ -3419,7 +3430,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Сквозь открытую панель ниже строки меню виден рабочий стол. Выключено при уменьшении прозрачности."
+            "value" : "Сквозь открытую панель ниже строки меню виден рабочий стол. Отключается, если включено «Понизить прозрачность»."
           }
         }
       }
@@ -3431,17 +3442,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Обучение проходит на настоящем вырезе и занимает около минуты."
-          }
-        }
-      }
-    },
-    "The wings step aside when the pointer heads for menu bar items next to them." : {
-      "comment" : "Settings ▸ Live Activities: footnote of Make way for the menu bar",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Крылья отходят, когда указатель направляется к соседним пунктам строки меню."
           }
         }
       }
@@ -3805,7 +3805,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Если в Системных настройках включено уменьшение движения, формы плавно проявляются вместо перемещения."
+            "value" : "Если в Системных настройках включено «Уменьшить движение», формы проявляются на месте, а не перемещаются."
           }
         }
       }

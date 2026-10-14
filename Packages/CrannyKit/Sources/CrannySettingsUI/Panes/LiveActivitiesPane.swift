@@ -191,8 +191,8 @@ private struct ActivityBehaviourSection: View {
                       footnote: String(localized: "Folds the activity back into the notch; the satellite stays.", bundle: .module,
                                        comment: "Settings ▸ Live Activities: footnote of Fold away after"), style: .menu)
             ToggleRow(info: ActivitiesRows.menuBarCourtesy, settings: settings, key: CoreSettings.menuBarCourtesy,
-                      footnote: String(localized: "The wings step aside when the pointer heads for menu bar items next to them.", bundle: .module,
-                                       comment: "Settings ▸ Live Activities: footnote of Make way for the menu bar"))
+                      footnote: String(localized: "Activities beside the notch step aside when the pointer heads for menu bar items next to them.",
+                                       bundle: .module, comment: "Settings ▸ Live Activities: footnote of Make way for the menu bar"))
         } header: {
             Text("Behaviour", bundle: .module, comment: "Settings ▸ Live Activities: section header of the global rows")
         }
