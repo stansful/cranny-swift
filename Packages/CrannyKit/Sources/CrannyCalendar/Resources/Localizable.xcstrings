@@ -118,10 +118,52 @@
     "+%lld more" : {
       "comment" : "Calendar widget: events below the visible list (\"+3 more\")",
       "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+%lld more"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "+%lld more"
+                }
+              }
+            }
+          }
+        },
         "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ещё %lld"
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "ещё %lld"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "ещё %lld"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "ещё %lld"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "ещё %lld"
+                }
+              }
+            }
           }
         }
       }
@@ -228,10 +270,52 @@
     "Calendars: 0 of %lld shown" : {
       "comment" : "Calendar widget: every calendar is hidden in Settings",
       "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Calendars: 0 of %lld shown"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Calendars: 0 of %lld shown"
+                }
+              }
+            }
+          }
+        },
         "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Календари: показано 0 из %lld"
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Календари: показано 0 из %lld"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Календари: показано 0 из %lld"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Календари: показано 0 из %lld"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Календари: показано 0 из %lld"
+                }
+              }
+            }
           }
         }
       }

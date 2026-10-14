@@ -83,15 +83,22 @@ struct TodosModuleTests {
     }
 
     /// DESIGN.md §17: sentence case, also when a label starts with a number in English ("3 left" → "Осталось 3").
+    /// A plural key is read formatted (its raw value is the `%#@…@` format).
     @Test func russianLabelsAreSentenceCase() throws {
         let russian = try russianBundle()
+        let ru = Locale(identifier: "ru")
         for key in Self.keys where key != "todo task add" {               // search keywords, not a label
-            let value = russian.localizedString(forKey: key, value: nil, table: "Localizable")
+            let raw = russian.localizedString(forKey: key, value: nil, table: "Localizable")
+            let value = raw.contains("%#@") ? String(format: raw, locale: ru, 3) : raw
             let letter = value.first { $0.isLetter }
             let first = try #require(letter, "\(key)")
             #expect(first.isUppercase, "ru for \(key) starts in lower case: \(value)")
         }
+        // Plural variations like every count (ARCHITECTURE.md §8.7 rule 3): the verb agrees with the implied «задача».
         let count = russian.localizedString(forKey: "%lld left", value: nil, table: "Localizable")
-        #expect(String(format: count, 3) == "Осталось 3")
+        #expect(String(format: count, locale: ru, 1) == "Осталась 1")
+        #expect(String(format: count, locale: ru, 3) == "Осталось 3")
+        #expect(String(format: count, locale: ru, 5) == "Осталось 5")
+        #expect(String(format: count, locale: ru, 21) == "Осталась 21")
     }
 }

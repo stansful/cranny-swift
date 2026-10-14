@@ -820,10 +820,52 @@
     "The helper answered in %lld ms, but sound is playing and it sees nothing. Try the Apple Events fallback." : {
       "comment" : "Settings ▸ Media: test result; argument is a round-trip time in milliseconds",
       "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The helper answered in %lld ms, but sound is playing and it sees nothing. Try the Apple Events fallback."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The helper answered in %lld ms, but sound is playing and it sees nothing. Try the Apple Events fallback."
+                }
+              }
+            }
+          }
+        },
         "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Помощник ответил за %lld мс, но звук играет, а он ничего не видит. Попробуйте запасной путь через Apple Events."
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Помощник ответил за %lld мс, но звук играет, а он ничего не видит. Попробуйте запасной путь через Apple Events."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Помощник ответил за %lld мс, но звук играет, а он ничего не видит. Попробуйте запасной путь через Apple Events."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Помощник ответил за %lld мс, но звук играет, а он ничего не видит. Попробуйте запасной путь через Apple Events."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Помощник ответил за %lld мс, но звук играет, а он ничего не видит. Попробуйте запасной путь через Apple Events."
+                }
+              }
+            }
           }
         }
       }
@@ -831,10 +873,52 @@
     "The helper answered in %lld ms. Play something to check that it appears." : {
       "comment" : "Settings ▸ Media: test result when nothing plays; argument is a round-trip time in milliseconds",
       "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The helper answered in %lld ms. Play something to check that it appears."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "The helper answered in %lld ms. Play something to check that it appears."
+                }
+              }
+            }
+          }
+        },
         "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Помощник ответил за %lld мс. Включите что-нибудь, чтобы проверить, что оно появится."
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Помощник ответил за %lld мс. Включите что-нибудь, чтобы проверить, что оно появится."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Помощник ответил за %lld мс. Включите что-нибудь, чтобы проверить, что оно появится."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Помощник ответил за %lld мс. Включите что-нибудь, чтобы проверить, что оно появится."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Помощник ответил за %lld мс. Включите что-нибудь, чтобы проверить, что оно появится."
+                }
+              }
+            }
           }
         }
       }
@@ -965,14 +1049,70 @@
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "new",
-            "value" : "Working: the helper answered in %1$lld ms and sees %2$@."
+            "state" : "translated",
+            "value" : "Working: the helper answered in %1$#@milliseconds@ and sees %2$@."
+          },
+          "substitutions" : {
+            "milliseconds" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg ms"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg ms"
+                    }
+                  }
+                }
+              }
+            }
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Работает: помощник ответил за %1$lld мс и видит «%2$@»."
+            "value" : "Работает: помощник ответил за %1$#@milliseconds@ и видит «%2$@»."
+          },
+          "substitutions" : {
+            "milliseconds" : {
+              "argNum" : 1,
+              "formatSpecifier" : "lld",
+              "variations" : {
+                "plural" : {
+                  "few" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg мс"
+                    }
+                  },
+                  "many" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg мс"
+                    }
+                  },
+                  "one" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg мс"
+                    }
+                  },
+                  "other" : {
+                    "stringUnit" : {
+                      "state" : "translated",
+                      "value" : "%arg мс"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -980,10 +1120,52 @@
     "Working: the helper answered in %lld ms and sees a player." : {
       "comment" : "Settings ▸ Media: test result when the player has no name; argument is a round-trip time in milliseconds",
       "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Working: the helper answered in %lld ms and sees a player."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Working: the helper answered in %lld ms and sees a player."
+                }
+              }
+            }
+          }
+        },
         "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Работает: помощник ответил за %lld мс и видит плеер."
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Работает: помощник ответил за %lld мс и видит плеер."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Работает: помощник ответил за %lld мс и видит плеер."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Работает: помощник ответил за %lld мс и видит плеер."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Работает: помощник ответил за %lld мс и видит плеер."
+                }
+              }
+            }
           }
         }
       }

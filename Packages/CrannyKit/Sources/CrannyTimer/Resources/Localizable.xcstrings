@@ -384,6 +384,24 @@
     "Start %lld-minute timer" : {
       "comment" : "Command palette and preset chips (VoiceOver): starts a timer of whole minutes",
       "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Start %lld-minute timer"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Start %lld-minute timer"
+                }
+              }
+            }
+          }
+        },
         "ru" : {
           "variations" : {
             "plural" : {
