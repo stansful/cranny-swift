@@ -80,9 +80,11 @@ extension CameraDevice {
 /// Key-value observes the CLASS property `AVCaptureDevice.systemPreferredCamera`. Swift's key-path `observe`
 /// works on instances only, so this uses classic KVO. `onChange` may run on any thread (it hops to main).
 private nonisolated final class PreferredCameraObserver: NSObject, @unchecked Sendable {
-    // Immutable after init; `invalidate` runs once, on the main actor (thread-safety of the two fields).
+    // `onChange` and `target` are immutable; `isObserving` is only touched by init, `invalidate` and deinit, which
+    // all run on the main actor (the owner, AVCameraDiscovery, is main-actor) — hence `@unchecked Sendable`.
     private let onChange: @Sendable () -> Void
     private let target: AnyObject = AVCaptureDevice.self
+    private var isObserving = true
     private static let keyPath = "systemPreferredCamera"
 
     init(onChange: @escaping @Sendable () -> Void) {
@@ -91,7 +93,14 @@ private nonisolated final class PreferredCameraObserver: NSObject, @unchecked Se
         target.addObserver(self, forKeyPath: Self.keyPath, options: [.new], context: nil)
     }
 
-    func invalidate() { target.removeObserver(self, forKeyPath: Self.keyPath) }
+    /// Unregisters (once). A registered observer must never outlive itself, so deinit calls it too.
+    func invalidate() {
+        guard isObserving else { return }
+        isObserving = false
+        target.removeObserver(self, forKeyPath: Self.keyPath)
+    }
+
+    deinit { invalidate() }
 
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey: Any]?,
                                context: UnsafeMutableRawPointer?) {
