@@ -1,5 +1,5 @@
-// Input policies of the shell: two-finger swipes reach activities as physical finger directions (DESIGN.md §4.4).
-// No windows, no posted input.
+// Input policies of the shell: two-finger swipes reach activities as physical finger directions (DESIGN.md §4.4),
+// and an open nobody is looking at closes after a glance (ARCHITECTURE.md §4.4). No windows, no posted input.
 import AppKit
 import CrannyCore
 import CrannyNotchUI
@@ -50,5 +50,59 @@ func swipesReachActivitiesAsPhysicalDirections(_ invert: Bool) {
     let canvas = CGRect(origin: .zero, size: scene.layout.canvasSize)
     for sample in leftSwipe() { _ = router.handle(sample, at: CGPoint(x: canvas.midX, y: 10), canvas: canvas) }
     #expect(probe.gestures == [.swipeLeft])
+}
+
+// MARK: - Unattended opens (C-SHELL-9)
+
+private func reduce(_ s: NotchMachineState, _ input: NotchInput, config: NotchMachineConfig = NotchMachineConfig())
+    -> (NotchMachineState, [NotchEffect]) {
+    NotchMachine.reduce(s, input, now: 100, config: config)
+}
+
+/// Welcome's Done, the Tray opening after a slow drop: opened by code with the pointer elsewhere, the panel stays for
+/// a glance and then closes like one the pointer left; the pointer coming in keeps it.
+@Test func anOpenNobodyLooksAtClosesAfterAGlance() {
+    for reason in [OpenReason.programmatic, .drag, .activity] {
+        var (s, fx) = reduce(NotchMachineState(), .open(page: .tray, focus: nil, reason: reason))
+        #expect(s.isOpen && fx.contains(.schedule(.grace, after: NotchMachine.unattendedOpenGrace)), "\(reason)")
+        (s, _) = reduce(s, .timerElapsed(.grace))
+        #expect(s.isClosed, "\(reason)")
+    }
+    var (s, _) = reduce(NotchMachineState(), .open(page: nil, focus: nil, reason: .programmatic))
+    (s, _) = reduce(s, .pointerEntered)                                         // the user came to look
+    #expect(!s.timers.contains(.grace))
+    (s, _) = reduce(s, .timerElapsed(.grace))
+    #expect(s.isOpen)
+}
+
+/// Keyboard opens are key (they close when they resign), clicks were made by the pointer or VoiceOver, and VoiceOver
+/// users navigate without the pointer; pinned, held or "Close when the pointer leaves" off: it stays.
+@Test func anOpenThatSomeoneUsesHasNoGlanceTimer() {
+    func armsGrace(_ input: NotchInput, _ state: NotchMachineState = NotchMachineState(),
+                   config: NotchMachineConfig = NotchMachineConfig()) -> Bool {
+        reduce(state, input, config: config).0.timers.contains(.grace)
+    }
+    #expect(!armsGrace(.hotKey))
+    #expect(!armsGrace(.open(page: nil, focus: nil, reason: .keyboard)))
+    #expect(!armsGrace(.open(page: nil, focus: nil, reason: .click)))
+    var voiceOver = NotchMachineConfig()
+    voiceOver.voiceOverRunning = true
+    #expect(!armsGrace(.open(page: nil, focus: nil, reason: .programmatic), config: voiceOver))
+    var stays = NotchMachineConfig()
+    stays.closeOnLeave = false
+    #expect(!armsGrace(.open(page: nil, focus: nil, reason: .programmatic), config: stays))
+    var pinned = NotchMachineState()
+    pinned.pinned = true
+    #expect(!armsGrace(.open(page: nil, focus: nil, reason: .programmatic), pinned))
+    var held = NotchMachineState()
+    held.holds = ["preview"]
+    #expect(!armsGrace(.open(page: nil, focus: nil, reason: .programmatic), held))
+    var inside = NotchMachineState()
+    inside.hover = .inside
+    #expect(!armsGrace(.open(page: nil, focus: nil, reason: .programmatic), inside))
+    var tray = NotchMachineConfig()
+    tray.acceptsFileDrags = true
+    let catching = reduce(NotchMachineState(), .fileDragEntered([.pdf]), config: tray).0
+    #expect(catching.isCatching && !catching.timers.contains(.grace))           // the catch state has its own return
 }
 

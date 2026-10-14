@@ -15,6 +15,11 @@ nonisolated enum NotchMachine {
     /// A dwell that elapsed while the pointer was still too fast looks again after at least this long (the pointer
     /// monitor holds a speed for 50 ms after the last event), so an Instant hover delay never spins.
     static let dwellRetryFloor: TimeInterval = 0.05
+    /// An open the pointer did not cause, with the pointer elsewhere (Welcome's Done, the Tray opening after a slow
+    /// drop, a module's `open`), stays this long for a glance, then closes like a panel the pointer left. The pointer
+    /// coming in keeps it. Not for keyboard opens (the panel is key and closes when it resigns), clicks (the pointer
+    /// or VoiceOver pressed it) or while VoiceOver runs (its users navigate without the pointer).
+    static let unattendedOpenGrace: TimeInterval = 3
 
     /// How long the pointer must rest before the dwell decides (§4.3): the quick-peek dwell over compact (it does
     /// not depend on the hover delay, DESIGN.md §4.6), else the hover delay; at least 0.40 s in a full-screen Space
@@ -199,6 +204,11 @@ nonisolated struct NotchReduction {
             if previous.page != page { fx.append(.emit(.pageChanged(page))) }
         } else {
             fx.append(.emit(.opened(reason)))
+        }
+        // Nobody's pointer is on it: nothing else would ever close it (`pointerLeft` needs the pointer to come in first).
+        if ![.keyboard, .click].contains(reason), !config.voiceOverRunning, s.hover == .outside, !s.isCatching,
+           NotchMachine.mayAutoClose(s, config: config) {
+            schedule(.grace, NotchMachine.unattendedOpenGrace)
         }
     }
 
