@@ -1,44 +1,64 @@
 // CrannyAppShell/Input/HotKeyCenter.swift — system-wide shortcuts with Carbon `RegisterEventHotKey` on the
 // application event target: no Accessibility permission (ARCHITECTURE.md §4.10, verified on macOS 27).
-// Intra-shell interface fixed by WP0 (§10.0): `apply(_:bindings:)`, `state(_:)`; it re-applies itself when
-// `CoreSettings.shortcuts` changes, so `AppControl.setShortcut` only writes the key. WP13.
+// Intra-shell interface fixed by WP0 (§10.0): `apply(_:bindings:)`, `state(_:)`. It re-applies itself when
+// `CoreSettings.shortcuts` changes (Reset All, Undo, any writer); `AppControl.setShortcut` writes the key and
+// calls `reapply()` so it can return the resulting state at once. `states` is observed: Settings ▸ Keyboard
+// re-renders when a shortcut turns `.conflict` or `.off`. WP13.
 import AppKit
 import Carbon
 import CrannyCore
 import Foundation
+import Observation
 import os
 
 private let log = Log.logger(.input)
 
-@MainActor final class HotKeyCenter {
+@MainActor @Observable final class HotKeyCenter {
     /// Carbon delivers hot keys through a C callback without context: route by id through this table.
     private static var actions: [UInt32: @MainActor () -> Void] = [:]
     private static var handlerInstalled = false
     private static var nextID: UInt32 = 1
 
-    private var registered: [ShortcutID: (ref: EventHotKeyRef, id: UInt32)] = [:]
-    private var states: [ShortcutID: ShortcutState] = [:]
-    private var token: ObservationToken?
+    /// The state of every shortcut after the last `apply` (observed by views through `state(_:)`).
+    private(set) var states: [ShortcutID: ShortcutState] = [:]
+    @ObservationIgnored private var registered: [ShortcutID: (ref: EventHotKeyRef, id: UInt32)] = [:]
+    @ObservationIgnored private weak var registry: ModuleRegistry?
+    /// What the last `apply` registered, so the settings observer skips a change `reapply()` already applied.
+    @ObservationIgnored private var applied: (ids: [ShortcutID], bindings: [ShortcutID: KeyCombo?])?
+    @ObservationIgnored private var token: ObservationToken?
 
     /// Registers the registry's shortcuts now and again whenever the user's bindings change.
     func start(registry: ModuleRegistry) {
+        self.registry = registry
         let settings = registry.services.settings
-        apply(registry.shortcuts, bindings: settings[CoreSettings.shortcuts])
+        reapply()
         token = observe({ settings[CoreSettings.shortcuts] }) { [weak self] bindings in
-            self?.apply(registry.shortcuts, bindings: bindings)
+            guard let self, let registry = self.registry else { return }
+            guard self.applied?.ids != registry.shortcuts.map(\.id) || self.applied?.bindings != bindings else { return }
+            self.apply(registry.shortcuts, bindings: bindings)
         }
+    }
+
+    /// Re-registers the registry's shortcuts with the current bindings right away and returns the states
+    /// (`AppControl.setShortcut` returns the resulting state, §3.9).
+    @discardableResult func reapply() -> [ShortcutID: ShortcutState] {
+        guard let registry else { return states }
+        return apply(registry.shortcuts, bindings: registry.services.settings[CoreSettings.shortcuts])
     }
 
     /// (Re-)registers every shortcut with its effective combination; returns the resulting states.
     @discardableResult
     func apply(_ shortcuts: [GlobalShortcut], bindings: [ShortcutID: KeyCombo?]) -> [ShortcutID: ShortcutState] {
         unregisterAll()
+        applied = (shortcuts.map(\.id), bindings)
+        var next: [ShortcutID: ShortcutState] = [:]
+        defer { if states != next { states = next } }        // one observable change per apply
         guard Self.installHandler() else {
-            for shortcut in shortcuts { states[shortcut.id] = .conflict }
-            return states
+            for shortcut in shortcuts { next[shortcut.id] = .conflict }
+            return next
         }
         for shortcut in shortcuts {
-            guard let combo = Self.effectiveCombo(for: shortcut, bindings: bindings) else { states[shortcut.id] = .off; continue }
+            guard let combo = Self.effectiveCombo(for: shortcut, bindings: bindings) else { next[shortcut.id] = .off; continue }
             let id = Self.nextID
             Self.nextID += 1
             var ref: EventHotKeyRef?
@@ -48,13 +68,13 @@ private let log = Log.logger(.input)
             if status == noErr, let ref {
                 registered[shortcut.id] = (ref, id)
                 Self.actions[id] = shortcut.perform
-                states[shortcut.id] = .registered
+                next[shortcut.id] = .registered
             } else {
                 log.info("hot key \(shortcut.id.rawValue, privacy: .public) not registered (\(status, privacy: .public))")
-                states[shortcut.id] = .conflict
+                next[shortcut.id] = .conflict
             }
         }
-        return states
+        return next
     }
 
     func state(_ id: ShortcutID) -> ShortcutState { states[id] ?? .off }
@@ -62,6 +82,8 @@ private let log = Log.logger(.input)
     func stop() {
         token?.cancel()
         unregisterAll()
+        applied = nil
+        states = [:]
     }
 
     // MARK: Pure helpers (unit-tested)
@@ -89,7 +111,6 @@ private let log = Log.logger(.input)
             Self.actions[entry.id] = nil
         }
         registered.removeAll()
-        states.removeAll()
     }
 
     private static func installHandler() -> Bool {

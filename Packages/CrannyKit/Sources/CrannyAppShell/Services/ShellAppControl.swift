@@ -16,7 +16,8 @@ import Observation
     @ObservationIgnored private weak var overlay: OverlayCoordinator?
     @ObservationIgnored private weak var settingsWindow: SettingsWindowController?
     @ObservationIgnored private weak var welcomeWindow: WelcomeWindowController?
-    @ObservationIgnored private var hotKeys: HotKeyCenter?
+    /// Observable itself: `shortcutState(_:)` reads its `states`, so views refresh when a registration changes.
+    private var hotKeys: HotKeyCenter?
 
     init() {}
 
@@ -31,9 +32,11 @@ import Observation
     func setLaunchAtLogin(_ enabled: Bool) {}              // WP16: LoginItemController (SMAppService.mainApp, §7.9)
     func checkForUpdates() {}                               // WP16: UpdateChecker (GitHub Releases, §7.11)
     func shortcutState(_ id: ShortcutID) -> ShortcutState { hotKeys?.state(id) ?? .off }
-    /// Writes the binding only: `HotKeyCenter` observes `CoreSettings.shortcuts` and re-registers (§10.0).
+    /// Writes the binding, re-registers at once and returns the resulting state (§3.9). `HotKeyCenter` also
+    /// observes `CoreSettings.shortcuts` for every other writer (Reset All, Undo) and skips this change.
     @discardableResult func setShortcut(_ id: ShortcutID, _ combo: KeyCombo?) -> ShortcutState {
         settings?[CoreSettings.shortcuts][id] = .some(combo)
+        hotKeys?.reapply()
         return shortcutState(id)
     }
     func openSettings(_ page: SettingsPageID?) { settingsWindow?.show(page: page) }

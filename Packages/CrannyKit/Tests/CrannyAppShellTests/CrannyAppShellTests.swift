@@ -1,6 +1,7 @@
 import AppKit
 import CrannyCore
 import CrannyNotchUI
+import Observation
 import Testing
 @testable import CrannyAppShell
 
@@ -165,6 +166,29 @@ private func run(_ inputs: [NotchInput], from start: NotchMachineState = NotchMa
     #expect(registry.shortcuts.first?.defaultCombo == .openNookDefault)
     #expect(registry.activity(.flash)?.kind.defaultPriority == .alert)
     #expect(registry.activity(.flash)?.activity.isActive == false)
+}
+
+/// `AppControl.setShortcut` returns the RESULTING state (§3.9), and `shortcutState` is observable for Settings.
+@Test func setShortcutReturnsTheResultingStateAndViewsRefresh() throws {
+    let registry = ModuleRegistry(services: .preview())
+    registry.add(shortcut: GlobalShortcut(id: .togglePin, title: "Pin") {})
+    let overlay = OverlayCoordinator(registry: registry, environment: ShellEnvironment())
+    let control = ShellAppControl()
+    control.connect(settings: registry.services.settings, overlay: overlay, settingsWindow: SettingsWindowController(registry: registry),
+                    welcomeWindow: WelcomeWindowController(registry: registry), hotKeys: overlay.hotKeys)
+    overlay.hotKeys.start(registry: registry)
+    defer { overlay.hotKeys.stop() }
+    #expect(control.shortcutState(.togglePin) == .off)                                 // no default combo
+
+    nonisolated final class Flag: @unchecked Sendable { var fired = false }              // written on the main actor only
+    let flag = Flag()
+    withObservationTracking { _ = control.shortcutState(.togglePin) } onChange: { flag.fired = true }
+    // ⌃⌥⇧⌘F19: a combination nobody uses, so the test never collides with a real shortcut.
+    let combo = KeyCombo(keyCode: 80, modifiers: [.control, .option, .shift, .command], display: "⌃⌥⇧⌘F19")
+    #expect(control.setShortcut(.togglePin, combo) == .registered)
+    #expect(flag.fired)
+    #expect(control.setShortcut(.togglePin, nil) == .off)
+    #expect(control.shortcutState(.togglePin) == .off)
 }
 
 @Test func flashActivityShowsAndExpires() async throws {
