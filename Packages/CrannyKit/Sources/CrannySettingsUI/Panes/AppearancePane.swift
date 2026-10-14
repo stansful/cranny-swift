@@ -37,7 +37,7 @@ struct AppearancePane: View {
                     Choice(value: .off, label: String(localized: "Off", bundle: .module, comment: "Settings: option that turns something off (a timeout, a display)")),
                     Choice(value: .subtle, label: String(localized: "Subtle", bundle: .module, comment: "Settings ▸ Appearance ▸ Ambient light: option")),
                     Choice(value: .vivid, label: String(localized: "Vivid", bundle: .module, comment: "Settings ▸ Appearance ▸ Ambient light: option")),
-                ], footnote: String(localized: "Light in the colour of what is playing or happening, only while Cranny is open.", bundle: .module,
+                ], footnote: String(localized: "Light in the color of what is playing or happening, only while Cranny is open.", bundle: .module,
                                     comment: "Settings ▸ Appearance: footnote of Ambient light"))
                 ChoiceRow(AppearanceRows.effect, settings: settings, key: CoreSettings.effect, choices: [
                     Choice(value: .aurora, label: String(localized: "Aurora", bundle: .module, comment: "Settings ▸ Appearance ▸ Effect: option")),
@@ -47,7 +47,7 @@ struct AppearancePane: View {
                                     comment: "Settings ▸ Appearance: footnote of Effect"))
                     .disabled(ambience == .off)
                 ToggleRow(info: AppearanceRows.albumGlow, settings: settings, key: CoreSettings.albumGlow,
-                          footnote: String(localized: "A soft halo in the album's colour behind the artwork.", bundle: .module,
+                          footnote: String(localized: "A soft halo in the album’s color behind the artwork.", bundle: .module,
                                            comment: "Settings ▸ Appearance: footnote of Album glow"))
                 ToggleRow(info: AppearanceRows.underglow, settings: settings, key: CoreSettings.underglow,
                           footnote: String(localized: "With Vivid light, a glow spills onto the desktop under Cranny.", bundle: .module,

@@ -7,7 +7,7 @@ enum AppearanceRows {
     static var accent: SettingsRowInfo {
         SettingsRowInfo(.appearance, "accent",
                         title: String(localized: "Accent", bundle: .module, comment: "Settings ▸ Appearance: accent colour picker"),
-                        keywords: [String(localized: "colour", bundle: .module, comment: "Settings search: keyword for Accent")])
+                        keywords: [String(localized: "color", bundle: .module, comment: "Settings search: keyword for Accent")])
     }
     static var textSize: SettingsRowInfo {
         SettingsRowInfo(.appearance, "textSize",

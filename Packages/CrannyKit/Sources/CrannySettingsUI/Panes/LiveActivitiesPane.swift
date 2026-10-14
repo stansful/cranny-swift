@@ -139,10 +139,10 @@ private struct ActivityRow: View {
     }
 
     private static var moveUpTitle: Text {
-        Text("Move up", bundle: .module, comment: "Settings ▸ Live Activities: context menu item and VoiceOver action that raises an activity")
+        Text("Move Up", bundle: .module, comment: "Settings ▸ Live Activities: context menu item and VoiceOver action that raises an activity")
     }
     private static var moveDownTitle: Text {
-        Text("Move down", bundle: .module, comment: "Settings ▸ Live Activities: context menu item and VoiceOver action that lowers an activity")
+        Text("Move Down", bundle: .module, comment: "Settings ▸ Live Activities: context menu item and VoiceOver action that lowers an activity")
     }
 
     /// Whether the kind can move one place up (−1) or down (+1) within its class.
@@ -194,7 +194,7 @@ private struct ActivityBehaviourSection: View {
                       footnote: String(localized: "The wings step aside when the pointer heads for menu bar items next to them.", bundle: .module,
                                        comment: "Settings ▸ Live Activities: footnote of Make way for the menu bar"))
         } header: {
-            Text("Behaviour", bundle: .module, comment: "Settings ▸ Live Activities: section header of the global rows")
+            Text("Behavior", bundle: .module, comment: "Settings ▸ Live Activities: section header of the global rows")
         }
     }
 }

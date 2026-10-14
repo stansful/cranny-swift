@@ -39,7 +39,7 @@ struct LoginItemRow: View {
     private func footnote(_ state: LoginItemState) -> String? {
         switch state {
         case .requiresApproval:
-            String(localized: "Allow Cranny in System Settings ▸ Login Items to finish.", bundle: .module,
+            String(localized: "To finish, allow Cranny under Login Items in System Settings.", bundle: .module,
                    comment: "Settings ▸ General: footnote while the login item waits for approval")
         case .unavailable(let reason): reason
         case .enabled, .disabled: nil

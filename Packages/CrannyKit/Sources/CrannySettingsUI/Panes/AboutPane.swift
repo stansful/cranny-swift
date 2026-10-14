@@ -24,8 +24,8 @@ enum AboutRows {
     }
     static var acknowledgements: SettingsRowInfo {
         SettingsRowInfo(.about, "acknowledgements",
-                        title: String(localized: "Acknowledgements", bundle: .module, comment: "Settings ▸ About: section header"),
-                        keywords: [String(localized: "licence", bundle: .module, comment: "Settings search: keyword for the licence and acknowledgements")])
+                        title: String(localized: "Acknowledgments", bundle: .module, comment: "Settings ▸ About: section header"),
+                        keywords: [String(localized: "license", bundle: .module, comment: "Settings search: keyword for the licence and acknowledgements")])
     }
 
     static var all: [SettingsRowInfo] { [updates, tutorial, welcome, acknowledgements] }
@@ -122,7 +122,7 @@ private struct Acknowledgements: View {
     private var entries: [Entry] {
         [
             Entry(name: "mediaremote-adapter", license: "BSD-3-Clause", url: URL(string: "https://github.com/ungive/mediaremote-adapter"),
-                  note: String(localized: "Showed that Now Playing can still be read from a helper hosted in the system's Perl.", bundle: .module,
+                  note: String(localized: "Showed that Now Playing can still be read from a helper hosted in the system’s Perl.", bundle: .module,
                                comment: "Settings ▸ About ▸ Acknowledgements: what Cranny learned from mediaremote-adapter")),
             Entry(name: "volumeHUD", license: "MIT", url: URL(string: "https://github.com/dannystewart/volumeHUD"),
                   note: String(localized: "Showed how to replace the system volume overlay so only one is ever shown.", bundle: .module,
