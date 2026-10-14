@@ -10,7 +10,7 @@ import Testing
 
 nonisolated private let snapshotDirectory = ProcessInfo.processInfo.environment["CRANNY_SNAPSHOT_DIR"]
 
-@Suite(.enabled(if: snapshotDirectory != nil, "set CRANNY_SNAPSHOT_DIR to render"))
+@Suite(.enabled(if: snapshotDirectory != nil, "set CRANNY_SNAPSHOT_DIR to render"), .serialized)
 struct LauncherSnapshot {
     private let states: [String: ShortcutRunState] = [
         QuickAppsPreview.sampleShortcuts[0].id: .running(since: Date().addingTimeInterval(-3)),
@@ -58,6 +58,41 @@ struct LauncherSnapshot {
             let rep = NSBitmapImageRep(cgImage: image)
             let png = try #require(rep.representation(using: .png, properties: [:]))
             try png.write(to: URL(fileURLWithPath: directory).appending(path: "\(name).png"))
+        }
+    }
+
+    /// Settings views hold AppKit-backed controls (lists, fields, switches) that `ImageRenderer` cannot draw:
+    /// host them in an off-screen window (never ordered front) and cache its display.
+    @Test func renderSettings() async throws {
+        let directory = try #require(snapshotDirectory)
+        try FileManager.default.createDirectory(atPath: directory, withIntermediateDirectories: true)
+        let model = QuickAppsPreview.model(apps: AppEntry.defaults.map(\.bundleID) + ["com.example.not-installed"])
+        await model.shortcutsCatalog.refresh()
+        await warmIcons(model, theme: CrannyTheme())
+        for tile in model.tiles { if case .app(let app) = tile { _ = await model.catalog.icon(at: app.url, pixelSize: 48) } }
+        let views: [(String, AnyView, CGSize)] = [
+            ("20-settings-pane", AnyView(ShortcutsSettingsPane(model: model)), CGSize(width: 640, height: 640)),
+            ("21-shortcut-picker", AnyView(ShortcutPicker(model: model)), CGSize(width: 320, height: 352)),
+            ("22-appearance-editor", AnyView(ShortcutAppearanceEditor(model: model, id: QuickAppsPreview.sampleShortcuts[1].id)), CGSize(width: 330, height: 330)),
+            ("23-widget-options", AnyView(LauncherOptions(model: model)), CGSize(width: 240, height: 130)),
+        ]
+        for appearance in [NSAppearance.Name.aqua, .darkAqua] {
+            for (name, view, size) in views {
+                let window = NSWindow(contentRect: CGRect(origin: .zero, size: size), styleMask: [.borderless], backing: .buffered, defer: false)
+                window.isReleasedWhenClosed = false
+                window.appearance = NSAppearance(named: appearance)
+                let host = NSHostingView(rootView: view.frame(width: size.width, height: size.height).background(Color(nsColor: .windowBackgroundColor)))
+                host.frame = CGRect(origin: .zero, size: size)
+                window.contentView = host
+                try await Task.sleep(for: .milliseconds(300))       // let `.task`s and layout settle
+                host.layoutSubtreeIfNeeded()
+                let rep = try #require(host.bitmapImageRepForCachingDisplay(in: host.bounds))
+                host.cacheDisplay(in: host.bounds, to: rep)
+                let png = try #require(rep.representation(using: .png, properties: [:]))
+                let suffix = appearance == .darkAqua ? "dark" : "light"
+                try png.write(to: URL(fileURLWithPath: directory).appending(path: "\(name)-\(suffix).png"))
+                window.close()
+            }
         }
     }
 

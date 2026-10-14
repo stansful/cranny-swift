@@ -21,3 +21,9 @@ struct LauncherKeyboardShortcuts: View {
         .accessibilityHidden(true)          // VoiceOver gets the shortcut as each tile's hint instead
     }
 }
+
+#Preview("Keyboard shortcuts (invisible)") {
+    // Draws nothing by design: the preview only proves it lays out at zero size next to the launcher.
+    QuickAppsPreview.widget(cells: 2)
+        .background(LauncherKeyboardShortcuts(model: QuickAppsPreview.model(), tiles: QuickAppsPreview.model().tiles))
+}

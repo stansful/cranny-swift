@@ -2,6 +2,7 @@
 import CrannyCore
 import Foundation
 import Testing
+import UniformTypeIdentifiers
 @testable import CrannyQuickApps
 
 private let morning = ShortcutEntry(id: "0D7A5B52-6A0E-4C38-9C1F-3E2F1B6D9A01", name: "Morning routine")
@@ -181,4 +182,28 @@ private let resize = ShortcutEntry(id: "5C1B1E0B-2B7A-4E59-8D3B-7A0C1F3E2D02", n
     h.model.toggleRun(morning)
     h.model.stop()
     #expect(await waitUntil { !h.model.runs.hasRunningShortcuts })
+}
+
+@Test func droppingAppsOnTheLauncherAddsThem() async {
+    let h = ModelHarness(installed: ["a"], apps: ["a"])
+    await h.model.start()
+    let apps = DropPayload(fileURLs: ["/Applications/b.app", "/Applications/a.app"].map { URL(fileURLWithPath: $0) },
+                           contentTypes: [.applicationBundle])
+    #expect(await h.model.acceptDrop(apps))
+    #expect(h.model.appEntries.map(\.bundleID) == ["a", "b"])
+    // Not an app: left for the shell's fallback (the Tray).
+    let document = DropPayload(fileURLs: [URL(fileURLWithPath: "/tmp/notes.txt")], contentTypes: [.plainText])
+    #expect(await h.model.acceptDrop(document) == false)
+    h.model.stop()
+}
+
+@Test func aShortcutRunFromThePaletteFlashesEvenWhileOpen() async {
+    // Not on the launcher, so no tile can show the result.
+    let other = ShortcutEntry(id: "7F6E5D4C-3B2A-4190-8F7E-6D5C4B3A2905", name: "Clean Desktop")
+    let h = ModelHarness(apps: [], shortcuts: [])
+    await h.model.start()
+    h.notch.emit(.opened(.keyboard))
+    h.model.toggleRun(other)
+    #expect(await waitUntil { h.notch.calls.contains("flash(checkmark.circle.fill)") })
+    h.model.stop()
 }

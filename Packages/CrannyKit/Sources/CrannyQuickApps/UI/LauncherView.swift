@@ -48,15 +48,11 @@ struct LauncherView: View {
         .contentShape(Rectangle())
         .onTapGesture { if model.isEditing { withAnimation(theme.animation(.commit)) { model.isEditing = false } } }
         .contextMenu { if interactive { LauncherEditMenuItems(model: model) } }
-        .crannyDropZone(Self.dropZone, accepts: [.application]) { payload in
-            // Taken when it held at least one app (already on the launcher or not); other files are left alone.
-            let apps = await model.catalog.apps(at: payload.fileURLs)
-            withAnimation(theme.animation(.listReorder)) { _ = model.add(apps) }
-            return !apps.isEmpty
-        }
+        .crannyDropZone(Self.dropZone, accepts: [.application]) { payload in await model.acceptDrop(payload) }
         .background { if interactive { LauncherKeyboardShortcuts(model: model, tiles: tiles) } }
         .animation(theme.animation(.commit), value: isDropTarget)
         .animation(theme.animation(.listReorder), value: model.isEditing)
+        .animation(theme.animation(.listReorder), value: tiles.map(\.id))
         .onChange(of: isDropTarget) { _, armed in if armed { model.haptics.play(.alignment) } }
     }
 

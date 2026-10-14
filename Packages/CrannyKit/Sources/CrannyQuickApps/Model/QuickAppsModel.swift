@@ -160,14 +160,14 @@ nonisolated private let log = Log.logger(.quickApps)
         case .succeeded:
             announce(String(localized: "\(entry.displayName) finished", bundle: .module,
                             comment: "Quick Apps: VoiceOver announcement after a shortcut ran (shortcut name)"))
-            if !isPanelOpen {
+            if showsResultInNotch(entry) {
                 notch.flash(symbol: "checkmark.circle.fill",
                             label: String(localized: "Done", bundle: .module, comment: "Notch flash after a shortcut ran (≤ 12 characters)"))
             }
         case .failed:
             announce(String(localized: "\(entry.displayName) failed", bundle: .module,
                             comment: "Quick Apps: VoiceOver announcement after a shortcut failed (shortcut name)"))
-            if !isPanelOpen {
+            if showsResultInNotch(entry) {
                 notch.flash(symbol: "exclamationmark",
                             label: String(localized: "Failed", bundle: .module, comment: "Notch flash after a shortcut failed (≤ 12 characters)"))
             }
@@ -181,6 +181,12 @@ nonisolated private let log = Log.logger(.quickApps)
         case .cancelled:
             break
         }
+    }
+
+    /// A tile shows its own result while the panel is open; otherwise (panel closed, or a shortcut run from ⌘K
+    /// that has no tile) the notch flashes it.
+    private func showsResultInNotch(_ entry: ShortcutEntry) -> Bool {
+        !isPanelOpen || !isAdded(shortcut: entry.id)
     }
 
     private func announce(_ message: String) {

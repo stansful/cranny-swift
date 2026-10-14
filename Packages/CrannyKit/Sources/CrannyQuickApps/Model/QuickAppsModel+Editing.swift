@@ -14,6 +14,14 @@ extension QuickAppsModel {
         add(await catalog.apps(at: urls))
     }
 
+    /// A file drop on the launcher (`.crannyDropZone(accepts: [.application])`): adds the apps among the files.
+    /// Taken (true) when it held at least one app, new or not; other files are left for the shell's fallback.
+    func acceptDrop(_ payload: DropPayload) async -> Bool {
+        let apps = await catalog.apps(at: payload.fileURLs)
+        add(apps)
+        return !apps.isEmpty
+    }
+
     @discardableResult
     func add(_ apps: [ResolvedApp]) -> Int {
         var entries = appEntries
