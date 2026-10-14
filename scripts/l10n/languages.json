@@ -35,7 +35,7 @@
     "englishName": "Arabic",
     "nativeName": "العربية",
     "rtl": true,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "zero",
       "one",
@@ -74,7 +74,7 @@
     "englishName": "Catalan",
     "nativeName": "català",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "one",
       "many",
@@ -107,7 +107,7 @@
     "englishName": "Czech",
     "nativeName": "čeština",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "one",
       "few",
@@ -142,7 +142,7 @@
     "englishName": "Danish",
     "nativeName": "dansk",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "one",
       "other"
@@ -173,7 +173,7 @@
     "englishName": "German",
     "nativeName": "Deutsch",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "one",
       "other"
@@ -206,7 +206,7 @@
     "englishName": "Greek",
     "nativeName": "Ελληνικά",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "one",
       "other"
@@ -238,7 +238,7 @@
     "englishName": "Spanish",
     "nativeName": "español",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "one",
       "many",
@@ -272,7 +272,7 @@
     "englishName": "Finnish",
     "nativeName": "suomi",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "one",
       "other"
@@ -304,7 +304,7 @@
     "englishName": "French",
     "nativeName": "français",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "one",
       "many",
@@ -337,7 +337,7 @@
     "englishName": "Hebrew",
     "nativeName": "עברית",
     "rtl": true,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "one",
       "two",
@@ -371,7 +371,7 @@
     "englishName": "Hindi",
     "nativeName": "हिन्दी",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "one",
       "other"
@@ -401,7 +401,7 @@
     "englishName": "Croatian",
     "nativeName": "hrvatski",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "one",
       "few",
@@ -431,7 +431,7 @@
     "englishName": "Hungarian",
     "nativeName": "magyar",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "one",
       "other"
@@ -463,7 +463,7 @@
     "englishName": "Indonesian",
     "nativeName": "Indonesia",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "other"
     ],
@@ -491,7 +491,7 @@
     "englishName": "Italian",
     "nativeName": "italiano",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "one",
       "many",
@@ -524,7 +524,7 @@
     "englishName": "Japanese",
     "nativeName": "日本語",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "other"
     ],
@@ -554,7 +554,7 @@
     "englishName": "Korean",
     "nativeName": "한국어",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "other"
     ],
@@ -583,7 +583,7 @@
     "englishName": "Malay",
     "nativeName": "Bahasa Melayu",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "other"
     ],
@@ -611,7 +611,7 @@
     "englishName": "Norwegian Bokmål",
     "nativeName": "norsk bokmål",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "one",
       "other"
@@ -643,7 +643,7 @@
     "englishName": "Dutch",
     "nativeName": "Nederlands",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "one",
       "other"
@@ -674,7 +674,7 @@
     "englishName": "Polish",
     "nativeName": "polski",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "one",
       "few",
@@ -709,7 +709,7 @@
     "englishName": "Portuguese (Brazil)",
     "nativeName": "português (Brasil)",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "one",
       "many",
@@ -740,7 +740,7 @@
     "englishName": "Portuguese (Portugal)",
     "nativeName": "português (Portugal)",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "one",
       "many",
@@ -773,7 +773,7 @@
     "englishName": "Romanian",
     "nativeName": "română",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "one",
       "few",
@@ -837,7 +837,7 @@
     "englishName": "Slovak",
     "nativeName": "slovenčina",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "one",
       "few",
@@ -871,7 +871,7 @@
     "englishName": "Slovenian",
     "nativeName": "slovenščina",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "one",
       "two",
@@ -902,7 +902,7 @@
     "englishName": "Swedish",
     "nativeName": "svenska",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "one",
       "other"
@@ -933,7 +933,7 @@
     "englishName": "Thai",
     "nativeName": "ไทย",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "other"
     ],
@@ -962,7 +962,7 @@
     "englishName": "Turkish",
     "nativeName": "Türkçe",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "one",
       "other"
@@ -995,7 +995,7 @@
     "englishName": "Ukrainian",
     "nativeName": "українська",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "one",
       "few",
@@ -1027,7 +1027,7 @@
     "englishName": "Vietnamese",
     "nativeName": "Tiếng Việt",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "other"
     ],
@@ -1055,7 +1055,7 @@
     "englishName": "Chinese, Simplified",
     "nativeName": "简体中文",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "other"
     ],
@@ -1085,7 +1085,7 @@
     "englishName": "Chinese, Traditional",
     "nativeName": "繁體中文",
     "rtl": false,
-    "shipped": false,
+    "shipped": true,
     "pluralCategories": [
       "other"
     ],

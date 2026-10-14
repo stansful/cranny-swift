@@ -2,9 +2,9 @@
 
 Cranny's text lives in String Catalogs: one per CrannyKit target
 (`Packages/CrannyKit/Sources/<Target>/Resources/Localizable.xcstrings`) plus `App/InfoPlist.xcstrings` (the
-permission prompts). English is the source; Russian is complete and reviewed. These tools let you translate all
-of it as one JSON file, check it, and write it back. They need only the Python 3 that ships with macOS
-(`/usr/bin/python3`, standard library) and no Xcode.
+permission prompts). English is the source; the other 34 languages of `languages.json` are complete and
+reviewed. These tools let you translate all of it as one JSON file, check it, and write it back. They need only
+the Python 3 that ships with macOS (`/usr/bin/python3`, standard library) and no Xcode.
 
 | Command | Does |
 |---|---|

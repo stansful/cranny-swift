@@ -27,7 +27,7 @@ Free and open source (MIT), no account, no analytics.
 - **Settings you can see** — a live preview of the real notch views, search, per-row reset, and a Welcome window with a
   one-minute tutorial.
 - **Respectful** — Reduce Motion, Reduce Transparency, Increase Contrast, keyboard-only use and VoiceOver labels and
-  actions throughout; zero work while closed; English and Russian.
+  actions throughout; zero work while closed; in 35 languages.
 
 ## Install
 

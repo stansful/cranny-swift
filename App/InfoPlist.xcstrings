@@ -5,13 +5,211 @@
       "comment" : "Bundle display name",
       "extractionState" : "extracted_with_value",
       "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "Cranny"
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "ms" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
         "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "sl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny"
+          }
+        },
+        "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cranny"
@@ -23,16 +221,214 @@
       "comment" : "Privacy - AppleEvents Sending Usage Description",
       "extractionState" : "extracted_with_value",
       "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يتحكم Cranny في تطبيقَي \"الموسيقى\" و Spotify لعرض ما يتم تشغيله وتغييره عندما يكون مصدر الوسائط في النظام غير متوفر."
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El Cranny controla l’app Música i l’Spotify per mostrar i canviar el que s’està reproduint quan la font multimèdia del sistema no està disponible."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Když systémový zdroj médií není k dispozici, Cranny ovládá aplikace Hudba a Spotify, aby bylo možné zobrazit a změnit, co právě hraje."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny styrer Musik og Spotify for at vise og ændre, hvad der afspilles, når systemets mediekilde ikke er tilgængelig."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny steuert „Musik“ und Spotify, um anzuzeigen und zu ändern, was gerade läuft, wenn die Medienquelle des Systems nicht verfügbar ist."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το Cranny ελέγχει τη «Μουσική» και το Spotify για να εμφανίζει και να αλλάζει ό,τι παίζει, όταν η πηγή πολυμέσων του συστήματος δεν είναι διαθέσιμη."
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "Cranny controls Music and Spotify to show and change what is playing when the system media source is unavailable."
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny controla Música y Spotify para mostrar y cambiar lo que se está reproduciendo cuando la fuente multimedia del sistema no está disponible."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny ohjaa Musiikki- ja Spotify-appeja näyttääkseen, mitä toistetaan, ja vaihtaakseen kappaletta, kun järjestelmän medialähde ei ole käytettävissä."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny contrôle les apps Musique et Spotify pour afficher et modifier la lecture en cours quand la source multimédia du système n’est pas disponible."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כשמקור המדיה של המערכת אינו זמין, Cranny שולט ב״מוזיקה״ וב-Spotify כדי להציג את מה שמתנגן ולשנות אותו."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "जब सिस्टम का मीडिया सोर्स उपलब्ध नहीं होता, तब क्या चल रहा है यह दिखाने और बदलने के लिए Cranny संगीत ऐप और Spotify को नियंत्रित करता है।"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny upravlja aplikacijama Glazba i Spotify kako bi prikazao i mijenjao ono što se reproducira kad izvor medija sustava nije dostupan."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Cranny vezérli a Zene és a Spotify appot, hogy megjelenítse és módosítsa az éppen szóló tartalmat, ha a rendszer médiaforrása nem érhető el."
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny mengontrol “Musik” dan Spotify untuk menampilkan dan mengganti apa yang sedang diputar saat sumber media sistem tidak tersedia."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny controlla le app Musica e Spotify per mostrare e cambiare ciò che è in riproduzione quando la sorgente multimediale di sistema non è disponibile."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "システムのメディアソースを利用できないときに再生中の曲を表示したり切り替えたりするため、Crannyは“ミュージック”とSpotifyを操作します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "시스템 미디어 소스를 사용할 수 없을 때 Cranny는 음악 앱과 Spotify를 제어하여 재생 중인 항목을 표시하고 변경합니다."
+          }
+        },
+        "ms" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny mengawal app Muzik dan Spotify untuk menunjukkan dan menukar perkara yang sedang dimainkan apabila sumber media sistem tidak tersedia."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny styrer Musikk og Spotify for å vise og endre det som spilles når systemets mediekilde ikke er tilgjengelig."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny bedient Muziek en Spotify om te tonen wat er speelt en dat te wijzigen als de mediabron van het systeem niet beschikbaar is."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny steruje aplikacjami Muzyka i Spotify, aby pokazywać i zmieniać odtwarzane utwory, gdy systemowe źródło multimediów jest niedostępne."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Cranny controla os apps Música e Spotify para mostrar e alterar o que está tocando quando a fonte de mídia do sistema não está disponível."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Cranny controla a aplicação Música e o Spotify para mostrar e alterar o que está a ser reproduzido quando a fonte multimédia do sistema não está disponível."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny controlează aplicațiile Muzică și Spotify pentru a afișa și schimba ce se redă atunci când sursa multimedia a sistemului nu este disponibilă."
+          }
+        },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cranny управляет приложениями «Музыка» и Spotify, чтобы показывать и переключать треки, когда системный источник медиа недоступен."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keď systémový zdroj médií nie je k dispozícii, Cranny ovláda apky Hudba a Spotify – zobrazuje, čo sa práve prehráva, a umožňuje to zmeniť."
+          }
+        },
+        "sl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny upravlja aplikaciji Glasba in Spotify, da prikaže in spremeni, kaj se predvaja, ko sistemski vir predstavnosti ni na voljo."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny styr Musik och Spotify för att visa och ändra det som spelas när systemets mediekälla inte är tillgänglig."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny ควบคุมแอปเพลงและ Spotify เพื่อแสดงและเปลี่ยนสิ่งที่กำลังเล่นเมื่อแหล่งสื่อของระบบไม่พร้อมใช้งาน"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny, sistem medya kaynağı kullanılamadığında çalan içeriği göstermek ve değiştirmek için Müzik ve Spotify uygulamalarını denetler."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny керує програмами «Музика» і Spotify, щоб показувати й перемикати те, що грає, коли системне джерело медіа недоступне."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny điều khiển ứng dụng Nhạc và Spotify để hiển thị và thay đổi nội dung đang phát khi nguồn phương tiện của hệ thống không khả dụng."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "系统媒体来源不可用时，Cranny会控制“音乐”和Spotify，以显示和切换正在播放的内容。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny會在系統媒體來源無法使用時，控制「音樂」和Spotify來顯示及更改正在播放的內容。"
           }
         }
       }
@@ -41,16 +437,214 @@
       "comment" : "Privacy - Audio Capture Usage Description",
       "extractionState" : "extracted_with_value",
       "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يستمع Cranny إلى إخراج صوت النظام لتحريك المؤثر المرئي للموسيقى. لا يتم تسجيل الصوت أو تخزينه أبدًا."
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El Cranny escolta la sortida d’àudio del sistema per animar el visualitzador de música. L’àudio no es grava ni s’emmagatzema mai."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny poslouchá systémový zvukový výstup kvůli animaci hudebního vizualizéru. Zvuk se nikdy nenahrává ani neukládá."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny lytter til systemets lydudgang for at animere musikvisualiseringen. Lyd bliver aldrig optaget eller gemt."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny hört die Audioausgabe des Systems, um den Musik-Visualizer zu animieren. Audio wird nie aufgezeichnet oder gespeichert."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το Cranny ακούει την έξοδο ήχου του συστήματος για να κινεί την οπτικοποίηση της μουσικής. Ο ήχος δεν εγγράφεται ούτε αποθηκεύεται ποτέ."
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "Cranny listens to system audio output to animate the music visualizer. Audio is never recorded or stored."
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny escucha la salida de audio del sistema para animar el visualizador de música. El audio nunca se graba ni se guarda."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny kuuntelee järjestelmän äänen ulostuloa animoidakseen musiikkivisualisoijaa. Ääntä ei koskaan nauhoiteta eikä tallenneta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny écoute la sortie audio du système pour animer le visualiseur de musique. L’audio n’est jamais enregistré ni conservé."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כדי להנפיש את הוויזואלייזר, Cranny מאזין לשמע שהמערכת מנגנת. השמע לעולם אינו מוקלט ואינו נשמר."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "संगीत विज़ुअलाइज़र को ऐनिमेट करने के लिए Cranny सिस्टम का ऑडियो आउटपुट सुनता है। ऑडियो कभी रिकॉर्ड या स्टोर नहीं किया जाता।"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny sluša izlaz zvuka sustava kako bi animirao glazbeni vizualizator. Zvuk se nikad ne snima niti sprema."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Cranny a rendszer hangkimenetét figyeli a zenevizualizáló animálásához. A hangot soha nem rögzíti és nem tárolja."
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny mendengarkan output audio sistem untuk menganimasikan visualisasi musik. Audio tidak pernah direkam atau disimpan."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny ascolta l’uscita audio di sistema per animare il visualizzatore musicale. L’audio non viene mai registrato né archiviato."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crannyは、音楽ビジュアライザを動かすためにシステムのオーディオ出力を解析します。オーディオが録音または保存されることはありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny는 음악 비주얼라이저를 움직이기 위해 시스템 오디오 출력을 듣습니다. 오디오는 녹음되거나 저장되지 않습니다."
+          }
+        },
+        "ms" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny mendengar output audio sistem untuk menganimasikan pentampak muzik. Audio tidak sekali-kali dirakam atau disimpan."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny lytter til systemets lydutgang for å animere musikkvisualiseringen. Lyd blir aldri tatt opp eller lagret."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny luistert naar de audio-uitvoer van het systeem om de muziekvisualisatie te laten bewegen. Audio wordt nooit opgenomen of bewaard."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny analizuje dźwięk systemowy, aby animować wizualizator muzyki. Dźwięk nigdy nie jest nagrywany ani przechowywany."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Cranny escuta a saída de áudio do sistema para animar o visualizador de música. O áudio nunca é gravado nem armazenado."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Cranny ouve a saída de áudio do sistema para animar o visualizador de música. O áudio nunca é gravado nem guardado."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny ascultă ieșirea audio a sistemului pentru a anima vizualizatorul muzicii. Sunetul nu este niciodată înregistrat sau stocat."
+          }
+        },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cranny анализирует системный звук, чтобы анимировать визуализатор музыки. Звук никогда не записывается и не сохраняется."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny počúva systémový zvukový výstup a podľa neho animuje hudobný vizualizér. Zvuk sa nikdy nenahráva ani neukladá."
+          }
+        },
+        "sl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny posluša sistemski zvočni izhod, da animira glasbeni vizualizator. Zvok se nikoli ne snema ali shranjuje."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny lyssnar på systemets ljudutgång för att animera musikvisualiseraren. Ljud spelas aldrig in och sparas aldrig."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny ฟังสัญญาณเสียงออกของระบบเพื่อทำให้ตัวแสดงภาพเสียงเคลื่อนไหว เสียงจะไม่ถูกบันทึกหรือจัดเก็บ"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny, müzik görselleştiricisini canlandırmak için sistem ses çıkışını dinler. Ses hiçbir zaman kaydedilmez veya saklanmaz."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny слухає системний звук, щоб анімувати музичний візуалізатор. Звук ніколи не записується й не зберігається."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny nghe âm thanh đầu ra của hệ thống để tạo chuyển động cho hiệu ứng sóng nhạc. Âm thanh không bao giờ được ghi lại hay lưu trữ."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny会监听系统音频输出，让音乐可视化效果随之律动。音频绝不会被录制或存储。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny會聆聽系統音訊輸出，讓音樂視覺效果隨之律動。絕不會錄製或儲存音訊。"
           }
         }
       }
@@ -59,16 +653,214 @@
       "comment" : "Privacy - Bluetooth Always Usage Description",
       "extractionState" : "extracted_with_value",
       "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يعرض Cranny اتصال أجهزة Bluetooth، مثل سماعات الرأس، ومستوى شحن بطارياتها."
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El Cranny mostra quan es connecten dispositius Bluetooth, com ara auriculars, i quin nivell de bateria tenen."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny zobrazuje připojení zařízení Bluetooth, například sluchátek, a stav jejich baterie."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny viser, når Bluetooth-enheder som hovedtelefoner tilsluttes, og deres batteriniveau."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny zeigt an, wenn sich Bluetooth-Geräte wie Kopfhörer verbinden, und wie voll ihre Batterie ist."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το Cranny εμφανίζει πότε συνδέονται συσκευές Bluetooth, όπως ακουστικά, και τη στάθμη της μπαταρίας τους."
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "Cranny shows when Bluetooth devices such as headphones connect, and their battery level."
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny muestra cuándo se conectan dispositivos Bluetooth, como unos auriculares, y su nivel de batería."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny näyttää, kun Bluetooth-laitteet, kuten kuulokkeet, yhdistyvät, ja kertoo niiden akun varaustason."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny indique quand des appareils Bluetooth, comme des écouteurs, se connectent, ainsi que leur niveau de batterie."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "כשמכשירי Bluetooth, כמו אוזניות, מתחברים, Cranny מציג זאת יחד עם רמת הסוללה שלהם."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny दिखाता है कि हेडफ़ोन जैसे Bluetooth डिवाइस कब कनेक्ट होते हैं, और उनकी बैटरी का स्तर।"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny prikazuje kada se povežu Bluetooth uređaji, poput slušalica, i njihovu razinu baterije."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Cranny megjeleníti, ha Bluetooth-eszközök, például fejhallgatók csatlakoznak, valamint az akkumulátoruk töltöttségét."
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny menampilkan saat perangkat Bluetooth seperti headphone terhubung, beserta level baterainya."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny mostra quando si connettono dispositivi Bluetooth, come le cuffie, e il loro livello di batteria."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crannyは、ヘッドフォンなどのBluetoothデバイスの接続と、そのバッテリー残量を表示します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny는 헤드폰 같은 Bluetooth 기기가 연결되면 이를 표시하고, 기기의 배터리 잔량도 보여줍니다."
+          }
+        },
+        "ms" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny menunjukkan apabila peranti Bluetooth seperti fon kepala bersambung, beserta paras baterinya."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny viser når Bluetooth-enheter som hodetelefoner kobles til, og batterinivået deres."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny toont wanneer Bluetooth-apparaten zoals een koptelefoon verbinding maken, en hun batterijniveau."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny pokazuje, kiedy łączą się urządzenia Bluetooth, takie jak słuchawki, oraz poziom ich baterii."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Cranny mostra quando dispositivos Bluetooth, como fones de ouvido, se conectam e o nível da bateria deles."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Cranny mostra quando dispositivos Bluetooth, como auscultadores, se ligam e o respetivo nível de bateria."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny afișează conectarea dispozitivelor Bluetooth, precum căștile, și nivelul bateriei acestora."
+          }
+        },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cranny показывает подключение Bluetooth-устройств, например наушников, и уровень их заряда."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny zobrazuje pripojenie zariadení Bluetooth, napríklad slúchadiel, a stav ich batérie."
+          }
+        },
+        "sl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny pokaže, kdaj se povežejo naprave Bluetooth, kot so slušalke, in kakšna je raven napolnjenosti njihove baterije."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny visar när Bluetooth-enheter, till exempel hörlurar, ansluts och vilken batterinivå de har."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny แสดงเมื่ออุปกรณ์บลูทูธ เช่น หูฟัง เชื่อมต่อ พร้อมระดับแบตเตอรี่ของอุปกรณ์"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny, kulaklık gibi Bluetooth aygıtlarının ne zaman bağlandığını ve pil düzeylerini gösterir."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny показує підключення Bluetooth-пристроїв, як-от навушників, і рівень їхнього заряду."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny hiển thị khi các thiết bị Bluetooth như tai nghe kết nối, cùng với mức pin của chúng."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "耳机等蓝牙设备连接时，Cranny会显示提示及设备的电池电量。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny會顯示耳機等藍牙裝置的連線狀態及電量。"
           }
         }
       }
@@ -77,16 +869,214 @@
       "comment" : "Privacy - Calendars Full Access Usage Description",
       "extractionState" : "extracted_with_value",
       "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يعرض Cranny أحداثك القادمة وروابط الاجتماعات في النتوء، ولا يعدّلها ولا يرفعها أبدًا."
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El Cranny mostra els propers esdeveniments i els enllaços de les reunions a l’osca. No els modifica ni els puja mai."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny ve výřezu zobrazuje vaše nadcházející události a odkazy na schůzky. Nikdy je neupravuje ani nikam neodesílá."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny viser dine kommende begivenheder og mødelinks i notchen. Den ændrer eller uploader dem aldrig."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny zeigt deine anstehenden Ereignisse und Meeting-Links in der Notch an. Es bearbeitet sie nie und lädt sie nie hoch."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το Cranny εμφανίζει τα επερχόμενα γεγονότα σας και τους συνδέσμους συσκέψεων στην εγκοπή. Δεν τα επεξεργάζεται ούτε τα αποστέλλει ποτέ."
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "Cranny shows your upcoming events and meeting links in the notch. It never edits or uploads them."
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny muestra tus próximos eventos y enlaces de reuniones en la muesca. Nunca los modifica ni los sube."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny näyttää tulevat tapahtumasi ja kokouslinkit lovessa. Se ei koskaan muokkaa eikä lähetä niitä."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny affiche vos prochains événements et liens de réunion dans l’encoche. Il ne les modifie ni ne les envoie jamais."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "במגרעת יוצגו האירועים הקרובים שלך והקישורים לפגישות. Cranny לעולם אינו עורך או מעלה אותם."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny नॉच में आपके आने वाले इवेंट और मीटिंग लिंक दिखाता है। वह उन्हें न तो कभी बदलता है, न ही अपलोड करता है।"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny prikazuje vaše nadolazeće događaje i poveznice na sastanke u izrezu. Nikad ih ne mijenja niti prenosi."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Cranny a kivágásban megjeleníti a közelgő eseményeit és a megbeszélések linkjeit. Soha nem módosítja és nem tölti fel őket."
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny menampilkan acara mendatang dan tautan rapat Anda di notch. Cranny tidak pernah mengubah atau mengunggahnya."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny mostra i tuoi prossimi eventi e i link alle riunioni nella tacca. Non li modifica né li carica mai online."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crannyは、今後のイベントとミーティングのリンクをノッチに表示します。イベントを編集したりアップロードしたりすることはありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny는 다가오는 이벤트와 회의 링크를 노치에 표시합니다. 이벤트를 편집하거나 업로드하지 않습니다."
+          }
+        },
+        "ms" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny menunjukkan peristiwa akan datang dan pautan mesyuarat anda pada takuk. Cranny tidak sekali-kali mengedit atau memuat naiknya."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny viser kommende hendelser og møtelenker i hakket. Den endrer dem aldri og laster dem aldri opp."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny toont je komende afspraken en vergaderlinks in de notch. Ze worden nooit gewijzigd of geüpload."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny pokazuje nadchodzące wydarzenia i łącza do spotkań w wycięciu ekranu. Nigdy ich nie zmienia ani nie wysyła."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Cranny mostra seus próximos eventos e links de reunião no notch. Ele nunca os edita nem envia."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Cranny mostra os seus próximos eventos e as ligações das reuniões no entalhe. Nunca os altera nem os envia."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny afișează în decupaj evenimentele următoare și linkurile întâlnirilor. Nu le editează și nu le încarcă niciodată."
+          }
+        },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cranny показывает ближайшие события и ссылки на встречи в вырезе экрана. Он никогда не изменяет и не отправляет их."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny zobrazuje vo výreze vaše nadchádzajúce udalosti a odkazy na stretnutia. Nikdy ich neupravuje ani neodosiela."
+          }
+        },
+        "sl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny v zarezi prikazuje vaše prihajajoče dogodke in povezave do sestankov. Nikoli jih ne ureja ali nalaga v splet."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny visar dina kommande händelser och möteslänkar i notchen. Den ändrar dem aldrig och laddar aldrig upp dem."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny แสดงกิจกรรมที่กำลังจะมาถึงและลิงก์การประชุมที่รอยบาก โดยจะไม่แก้ไขหรืออัปโหลดกิจกรรมเหล่านั้น"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny, yaklaşan etkinliklerinizi ve toplantı bağlantılarınızı çentikte gösterir. Bunları hiçbir zaman düzenlemez veya karşıya yüklemez."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny показує ваші найближчі події та посилання на зустрічі у вирізі екрана. Він ніколи не змінює й не вивантажує їх."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny hiển thị các sự kiện sắp tới và liên kết cuộc họp trên tai thỏ. Cranny không bao giờ sửa hoặc tải chúng lên."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny会在刘海中显示你即将开始的日程和会议链接，绝不会编辑或上传它们。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny會在瀏海中顯示你即將到來的行程和會議連結。Cranny絕不會編輯或上傳這些資料。"
           }
         }
       }
@@ -95,16 +1085,214 @@
       "comment" : "Privacy - Calendars Usage Description (legacy)",
       "extractionState" : "extracted_with_value",
       "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يعرض Cranny أحداثك القادمة وروابط الاجتماعات في النتوء، ولا يعدّلها ولا يرفعها أبدًا."
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El Cranny mostra els propers esdeveniments i els enllaços de les reunions a l’osca. No els modifica ni els puja mai."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny ve výřezu zobrazuje vaše nadcházející události a odkazy na schůzky. Nikdy je neupravuje ani nikam neodesílá."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny viser dine kommende begivenheder og mødelinks i notchen. Den ændrer eller uploader dem aldrig."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny zeigt deine anstehenden Ereignisse und Meeting-Links in der Notch an. Es bearbeitet sie nie und lädt sie nie hoch."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το Cranny εμφανίζει τα επερχόμενα γεγονότα σας και τους συνδέσμους συσκέψεων στην εγκοπή. Δεν τα επεξεργάζεται ούτε τα αποστέλλει ποτέ."
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "Cranny shows your upcoming events and meeting links in the notch. It never edits or uploads them."
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny muestra tus próximos eventos y enlaces de reuniones en la muesca. Nunca los modifica ni los sube."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny näyttää tulevat tapahtumasi ja kokouslinkit lovessa. Se ei koskaan muokkaa eikä lähetä niitä."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny affiche vos prochains événements et liens de réunion dans l’encoche. Il ne les modifie ni ne les envoie jamais."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "במגרעת יוצגו האירועים הקרובים שלך והקישורים לפגישות. Cranny לעולם אינו עורך או מעלה אותם."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny नॉच में आपके आने वाले इवेंट और मीटिंग लिंक दिखाता है। वह उन्हें न तो कभी बदलता है, न ही अपलोड करता है।"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny prikazuje vaše nadolazeće događaje i poveznice na sastanke u izrezu. Nikad ih ne mijenja niti prenosi."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Cranny a kivágásban megjeleníti a közelgő eseményeit és a megbeszélések linkjeit. Soha nem módosítja és nem tölti fel őket."
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny menampilkan acara mendatang dan tautan rapat Anda di notch. Cranny tidak pernah mengubah atau mengunggahnya."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny mostra i tuoi prossimi eventi e i link alle riunioni nella tacca. Non li modifica né li carica mai online."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crannyは、今後のイベントとミーティングのリンクをノッチに表示します。イベントを編集したりアップロードしたりすることはありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny는 다가오는 이벤트와 회의 링크를 노치에 표시합니다. 이벤트를 편집하거나 업로드하지 않습니다."
+          }
+        },
+        "ms" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny menunjukkan peristiwa akan datang dan pautan mesyuarat anda pada takuk. Cranny tidak sekali-kali mengedit atau memuat naiknya."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny viser kommende hendelser og møtelenker i hakket. Den endrer dem aldri og laster dem aldri opp."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny toont je komende afspraken en vergaderlinks in de notch. Ze worden nooit gewijzigd of geüpload."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny pokazuje nadchodzące wydarzenia i łącza do spotkań w wycięciu ekranu. Nigdy ich nie zmienia ani nie wysyła."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Cranny mostra seus próximos eventos e links de reunião no notch. Ele nunca os edita nem envia."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Cranny mostra os seus próximos eventos e as ligações das reuniões no entalhe. Nunca os altera nem os envia."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny afișează în decupaj evenimentele următoare și linkurile întâlnirilor. Nu le editează și nu le încarcă niciodată."
+          }
+        },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cranny показывает ближайшие события и ссылки на встречи в вырезе экрана. Он никогда не изменяет и не отправляет их."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny zobrazuje vo výreze vaše nadchádzajúce udalosti a odkazy na stretnutia. Nikdy ich neupravuje ani neodosiela."
+          }
+        },
+        "sl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny v zarezi prikazuje vaše prihajajoče dogodke in povezave do sestankov. Nikoli jih ne ureja ali nalaga v splet."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny visar dina kommande händelser och möteslänkar i notchen. Den ändrar dem aldrig och laddar aldrig upp dem."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny แสดงกิจกรรมที่กำลังจะมาถึงและลิงก์การประชุมที่รอยบาก โดยจะไม่แก้ไขหรืออัปโหลดกิจกรรมเหล่านั้น"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny, yaklaşan etkinliklerinizi ve toplantı bağlantılarınızı çentikte gösterir. Bunları hiçbir zaman düzenlemez veya karşıya yüklemez."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny показує ваші найближчі події та посилання на зустрічі у вирізі екрана. Він ніколи не змінює й не вивантажує їх."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny hiển thị các sự kiện sắp tới và liên kết cuộc họp trên tai thỏ. Cranny không bao giờ sửa hoặc tải chúng lên."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny会在刘海中显示你即将开始的日程和会议链接，绝不会编辑或上传它们。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny會在瀏海中顯示你即將到來的行程和會議連結。Cranny絕不會編輯或上傳這些資料。"
           }
         }
       }
@@ -113,16 +1301,214 @@
       "comment" : "Privacy - Camera Usage Description",
       "extractionState" : "extracted_with_value",
       "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يعرض Cranny معاينة الكاميرا في أداة \"المرآة\". لا يتم تسجيل الفيديو أبدًا."
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El Cranny mostra una previsualització de la càmera al giny Mirall. El vídeo no es grava mai."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny zobrazuje náhled kamery ve widgetu Zrcadlo. Video se nikdy nenahrává."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny viser et kameraeksempel i widgetten Spejl. Video bliver aldrig optaget."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny zeigt im Widget „Spiegel“ eine Kameravorschau an. Video wird nie aufgezeichnet."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το Cranny εμφανίζει μια προεπισκόπηση της κάμερας στο widget «Καθρέφτης». Το βίντεο δεν εγγράφεται ποτέ."
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "Cranny shows a camera preview in the Mirror widget. Video is never recorded."
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny muestra la imagen de la cámara en el widget Espejo. El vídeo nunca se graba."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny näyttää kameran esikatselun Peili-widgetissä. Videota ei koskaan tallenneta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny affiche un aperçu de la caméra dans le widget Miroir. La vidéo n’est jamais enregistrée."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "בווידג׳ט ״ראי״ של Cranny מוצגת תצוגה מקדימה של המצלמה. הווידאו לעולם אינו מוקלט."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny दर्पण विजेट में कैमरा प्रीव्यू दिखाता है। वीडियो कभी रिकॉर्ड नहीं किया जाता।"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny prikazuje pretpregled kamere u widgetu Ogledalo. Video se nikad ne snima."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Cranny kamera-előnézetet jelenít meg a Tükör widgetben. Videót soha nem rögzít."
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny menampilkan pratinjau kamera di widget Cermin. Video tidak pernah direkam."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny mostra un’anteprima della fotocamera nel widget Specchio. Il video non viene mai registrato."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crannyは、ミラーウィジェットにカメラのプレビューを表示します。ビデオが録画されることはありません。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny는 거울 위젯에 카메라 미리보기를 표시합니다. 비디오는 녹화되지 않습니다."
+          }
+        },
+        "ms" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny menunjukkan pratonton kamera dalam widget Cermin. Video tidak sekali-kali dirakam."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny viser en kameraforhåndsvisning i Speil-widgeten. Video blir aldri tatt opp."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny toont een camerabeeld in de Spiegel-widget. Video wordt nooit opgenomen."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny pokazuje podgląd z kamery w widżecie Lusterko. Wideo nigdy nie jest nagrywane."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Cranny mostra uma prévia da câmera no widget Espelho. O vídeo nunca é gravado."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Cranny mostra a imagem da câmara no widget Espelho. O vídeo nunca é gravado."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny afișează imaginea camerei în widgetul Oglindă. Nu înregistrează niciodată video."
+          }
+        },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cranny показывает изображение с камеры в виджете «Зеркало». Видео никогда не записывается."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny zobrazuje vo widgete Zrkadlo obraz z kamery. Video sa nikdy nenahráva."
+          }
+        },
+        "sl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny prikazuje predogled kamere v gradniku Ogledalo. Video se nikoli ne snema."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny visar en kameraförhandsvisning i widgeten Spegel. Video spelas aldrig in."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny แสดงภาพตัวอย่างจากกล้องในวิดเจ็ตกระจก วิดีโอจะไม่ถูกบันทึก"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny, Ayna araç takımında kamera önizlemesi gösterir. Video hiçbir zaman kaydedilmez."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny показує зображення з камери у віджеті «Дзеркало». Відео ніколи не записується."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny hiển thị bản xem trước camera trong tiện ích Gương. Video không bao giờ được ghi lại."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny会在“镜子”小组件中显示摄像头预览，绝不会录制视频。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny會在「鏡子」小工具中顯示相機預覽。絕不會錄製影片。"
           }
         }
       }
@@ -131,16 +1517,214 @@
       "comment" : "Privacy - Desktop Folder Usage Description",
       "extractionState" : "extracted_with_value",
       "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يحتفظ Cranny على الرف بالملفات التي تفلتها على النتوء، ويحفظ نتائج السلاسل بجوارها أو في \"التنزيلات\"."
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El Cranny guarda a la safata els arxius que deixes anar a l’osca i desa els resultats de les cadenes al costat d’aquests arxius o a Descàrregues."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny uchovává soubory, které přetáhnete na výřez, ve své přihrádce a výsledky postupů ukládá vedle nich nebo do složky Stahování."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny opbevarer de filer, du trækker til notchen, på sin hylde og gemmer resultater af handlingskæder ved siden af dem eller i Overførsler."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny bewahrt die Dateien, die du auf der Notch ablegst, in seiner Ablage auf und sichert Ergebnisse von Abläufen daneben oder im Ordner „Downloads“."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το Cranny κρατά στο ράφι του τα αρχεία που αφήνετε στην εγκοπή και αποθηκεύει τα αποτελέσματα των αλυσίδων δίπλα τους ή στις «Λήψεις»."
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "Cranny keeps the files you drop on the notch in its Tray and saves pipeline results next to them or in Downloads."
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny conserva en su bandeja los archivos que sueltas en la muesca y guarda los resultados de los flujos junto a ellos o en Descargas."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny säilyttää loveen pudottamasi tiedostot hyllyllään ja tallentaa työnkulkujen tulokset niiden viereen tai Lataukset-kansioon."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny garde sur son étagère les fichiers que vous déposez sur l’encoche et enregistre les résultats des chaînes à côté d’eux ou dans Téléchargements."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקבצים שגוררים אל המגרעת נשמרים על המדף של Cranny, ותוצאות התהליכים נשמרות לצידם או בתיקיה ״הורדות״."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "आप नॉच पर जो फ़ाइलें ड्रॉप करते हैं, Cranny उन्हें अपनी ट्रे में रखता है और पाइपलाइन के परिणाम उनके बगल में या डाउनलोड फ़ोल्डर में सेव करता है।"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny na svojoj polici čuva datoteke koje ispustite na izrez i sprema rezultate cjevovoda pokraj njih ili u mapu Preuzimanja."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Cranny a kivágásra húzott fájlokat a polcán tárolja, a műveletsorok eredményeit pedig melléjük vagy a Letöltések mappába menti."
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File yang Anda seret ke notch disimpan Cranny di Rak, dan hasil alur disimpan di sebelah file tersebut atau di folder Unduhan."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny conserva sul suo ripiano i file che rilasci sulla tacca e salva i risultati delle sequenze accanto agli originali o in Download."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crannyは、ノッチにドロップしたファイルをトレイに保持し、パイプラインの結果をそのファイルと同じ場所または“ダウンロード”フォルダに保存します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny는 노치에 놓은 파일을 선반에 보관하고, 파이프라인 결과를 원본 옆이나 ‘다운로드’ 폴더에 저장합니다."
+          }
+        },
+        "ms" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fail yang anda lepaskan pada takuk disimpan oleh Cranny di Raknya, dan hasil aliran kerja diletakkan di sebelah fail tersebut atau dalam folder Muat Turun."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filer du slipper på hakket, havner på Crannys hylle. Cranny lagrer resultater fra arbeidsflyter ved siden av dem eller i Nedlastinger."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny bewaart de bestanden die je op de notch neerzet in de lade, en zet resultaten van werkstromen ernaast of in Downloads."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny przechowuje na półce pliki upuszczone na wycięcie ekranu i zachowuje wyniki potoków obok nich lub w folderze Pobrane rzeczy."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Cranny guarda na Bandeja os arquivos que você solta no notch e salva os resultados dos fluxos ao lado deles ou em Downloads."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Cranny guarda na bandeja os ficheiros que larga no entalhe e grava os resultados das sequências junto a eles ou na pasta Descargas."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny păstrează pe raft fișierele pe care le plasați pe decupaj și salvează rezultatele fluxurilor lângă ele sau în dosarul Descărcări."
+          }
+        },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cranny хранит на полке файлы, которые вы перетаскиваете на вырез экрана, и сохраняет результаты конвейеров рядом с ними или в папке «Загрузки»."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny uchováva na svojej polici súbory, ktoré potiahnete na výrez, a výsledky postupov ukladá vedľa nich alebo do priečinka Stiahnuté."
+          }
+        },
+        "sl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny datoteke, ki jih spustite na zarezo, hrani na svoji polici, rezultate cevovodov pa shrani poleg njih ali v mapo Prenosi."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny lägger filerna du släpper på notchen på sin hylla och sparar resultat från flöden bredvid dem eller i Hämtade filer."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny เก็บไฟล์ที่คุณวางบนรอยบากไว้ในถาด และบันทึกผลลัพธ์ของไปป์ไลน์ไว้ข้างไฟล์เหล่านั้นหรือใน “รายการดาวน์โหลด”"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny, çentiğe bıraktığınız dosyaları Raf’ında tutar ve iş akışı sonuçlarını bunların yanına veya İndirilenler’e kaydeder."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny тримає на своїй полиці файли, які ви перетягуєте на виріз екрана, і зберігає результати конвеєрів поруч із ними або в папці «Викачане»."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny giữ các tệp bạn thả vào tai thỏ trong Khay và lưu kết quả của quy trình bên cạnh các tệp đó hoặc trong thư mục Tải về."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny会将你拖到刘海上的文件保存在暂存区，并将处理流程的结果存储到原文件所在的文件夹或“下载”文件夹中。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny會將你拖放到瀏海上的檔案保留在托盤中，並將流程的處理結果儲存在檔案旁或「下載項目」中。"
           }
         }
       }
@@ -149,16 +1733,214 @@
       "comment" : "Privacy - Documents Folder Usage Description",
       "extractionState" : "extracted_with_value",
       "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يحتفظ Cranny على الرف بالملفات التي تفلتها على النتوء، ويحفظ نتائج السلاسل بجوارها أو في \"التنزيلات\"."
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El Cranny guarda a la safata els arxius que deixes anar a l’osca i desa els resultats de les cadenes al costat d’aquests arxius o a Descàrregues."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny uchovává soubory, které přetáhnete na výřez, ve své přihrádce a výsledky postupů ukládá vedle nich nebo do složky Stahování."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny opbevarer de filer, du trækker til notchen, på sin hylde og gemmer resultater af handlingskæder ved siden af dem eller i Overførsler."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny bewahrt die Dateien, die du auf der Notch ablegst, in seiner Ablage auf und sichert Ergebnisse von Abläufen daneben oder im Ordner „Downloads“."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το Cranny κρατά στο ράφι του τα αρχεία που αφήνετε στην εγκοπή και αποθηκεύει τα αποτελέσματα των αλυσίδων δίπλα τους ή στις «Λήψεις»."
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "Cranny keeps the files you drop on the notch in its Tray and saves pipeline results next to them or in Downloads."
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny conserva en su bandeja los archivos que sueltas en la muesca y guarda los resultados de los flujos junto a ellos o en Descargas."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny säilyttää loveen pudottamasi tiedostot hyllyllään ja tallentaa työnkulkujen tulokset niiden viereen tai Lataukset-kansioon."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny garde sur son étagère les fichiers que vous déposez sur l’encoche et enregistre les résultats des chaînes à côté d’eux ou dans Téléchargements."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקבצים שגוררים אל המגרעת נשמרים על המדף של Cranny, ותוצאות התהליכים נשמרות לצידם או בתיקיה ״הורדות״."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "आप नॉच पर जो फ़ाइलें ड्रॉप करते हैं, Cranny उन्हें अपनी ट्रे में रखता है और पाइपलाइन के परिणाम उनके बगल में या डाउनलोड फ़ोल्डर में सेव करता है।"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny na svojoj polici čuva datoteke koje ispustite na izrez i sprema rezultate cjevovoda pokraj njih ili u mapu Preuzimanja."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Cranny a kivágásra húzott fájlokat a polcán tárolja, a műveletsorok eredményeit pedig melléjük vagy a Letöltések mappába menti."
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File yang Anda seret ke notch disimpan Cranny di Rak, dan hasil alur disimpan di sebelah file tersebut atau di folder Unduhan."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny conserva sul suo ripiano i file che rilasci sulla tacca e salva i risultati delle sequenze accanto agli originali o in Download."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crannyは、ノッチにドロップしたファイルをトレイに保持し、パイプラインの結果をそのファイルと同じ場所または“ダウンロード”フォルダに保存します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny는 노치에 놓은 파일을 선반에 보관하고, 파이프라인 결과를 원본 옆이나 ‘다운로드’ 폴더에 저장합니다."
+          }
+        },
+        "ms" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fail yang anda lepaskan pada takuk disimpan oleh Cranny di Raknya, dan hasil aliran kerja diletakkan di sebelah fail tersebut atau dalam folder Muat Turun."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filer du slipper på hakket, havner på Crannys hylle. Cranny lagrer resultater fra arbeidsflyter ved siden av dem eller i Nedlastinger."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny bewaart de bestanden die je op de notch neerzet in de lade, en zet resultaten van werkstromen ernaast of in Downloads."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny przechowuje na półce pliki upuszczone na wycięcie ekranu i zachowuje wyniki potoków obok nich lub w folderze Pobrane rzeczy."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Cranny guarda na Bandeja os arquivos que você solta no notch e salva os resultados dos fluxos ao lado deles ou em Downloads."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Cranny guarda na bandeja os ficheiros que larga no entalhe e grava os resultados das sequências junto a eles ou na pasta Descargas."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny păstrează pe raft fișierele pe care le plasați pe decupaj și salvează rezultatele fluxurilor lângă ele sau în dosarul Descărcări."
+          }
+        },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cranny хранит на полке файлы, которые вы перетаскиваете на вырез экрана, и сохраняет результаты конвейеров рядом с ними или в папке «Загрузки»."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny uchováva na svojej polici súbory, ktoré potiahnete na výrez, a výsledky postupov ukladá vedľa nich alebo do priečinka Stiahnuté."
+          }
+        },
+        "sl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny datoteke, ki jih spustite na zarezo, hrani na svoji polici, rezultate cevovodov pa shrani poleg njih ali v mapo Prenosi."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny lägger filerna du släpper på notchen på sin hylla och sparar resultat från flöden bredvid dem eller i Hämtade filer."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny เก็บไฟล์ที่คุณวางบนรอยบากไว้ในถาด และบันทึกผลลัพธ์ของไปป์ไลน์ไว้ข้างไฟล์เหล่านั้นหรือใน “รายการดาวน์โหลด”"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny, çentiğe bıraktığınız dosyaları Raf’ında tutar ve iş akışı sonuçlarını bunların yanına veya İndirilenler’e kaydeder."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny тримає на своїй полиці файли, які ви перетягуєте на виріз екрана, і зберігає результати конвеєрів поруч із ними або в папці «Викачане»."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny giữ các tệp bạn thả vào tai thỏ trong Khay và lưu kết quả của quy trình bên cạnh các tệp đó hoặc trong thư mục Tải về."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny会将你拖到刘海上的文件保存在暂存区，并将处理流程的结果存储到原文件所在的文件夹或“下载”文件夹中。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny會將你拖放到瀏海上的檔案保留在托盤中，並將流程的處理結果儲存在檔案旁或「下載項目」中。"
           }
         }
       }
@@ -167,16 +1949,214 @@
       "comment" : "Privacy - Downloads Folder Usage Description",
       "extractionState" : "extracted_with_value",
       "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يحتفظ Cranny على الرف بالملفات التي تفلتها على النتوء، ويحفظ نتائج السلاسل بجوارها أو في \"التنزيلات\"."
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El Cranny guarda a la safata els arxius que deixes anar a l’osca i desa els resultats de les cadenes al costat d’aquests arxius o a Descàrregues."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny uchovává soubory, které přetáhnete na výřez, ve své přihrádce a výsledky postupů ukládá vedle nich nebo do složky Stahování."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny opbevarer de filer, du trækker til notchen, på sin hylde og gemmer resultater af handlingskæder ved siden af dem eller i Overførsler."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny bewahrt die Dateien, die du auf der Notch ablegst, in seiner Ablage auf und sichert Ergebnisse von Abläufen daneben oder im Ordner „Downloads“."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το Cranny κρατά στο ράφι του τα αρχεία που αφήνετε στην εγκοπή και αποθηκεύει τα αποτελέσματα των αλυσίδων δίπλα τους ή στις «Λήψεις»."
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "Cranny keeps the files you drop on the notch in its Tray and saves pipeline results next to them or in Downloads."
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny conserva en su bandeja los archivos que sueltas en la muesca y guarda los resultados de los flujos junto a ellos o en Descargas."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny säilyttää loveen pudottamasi tiedostot hyllyllään ja tallentaa työnkulkujen tulokset niiden viereen tai Lataukset-kansioon."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny garde sur son étagère les fichiers que vous déposez sur l’encoche et enregistre les résultats des chaînes à côté d’eux ou dans Téléchargements."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקבצים שגוררים אל המגרעת נשמרים על המדף של Cranny, ותוצאות התהליכים נשמרות לצידם או בתיקיה ״הורדות״."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "आप नॉच पर जो फ़ाइलें ड्रॉप करते हैं, Cranny उन्हें अपनी ट्रे में रखता है और पाइपलाइन के परिणाम उनके बगल में या डाउनलोड फ़ोल्डर में सेव करता है।"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny na svojoj polici čuva datoteke koje ispustite na izrez i sprema rezultate cjevovoda pokraj njih ili u mapu Preuzimanja."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Cranny a kivágásra húzott fájlokat a polcán tárolja, a műveletsorok eredményeit pedig melléjük vagy a Letöltések mappába menti."
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File yang Anda seret ke notch disimpan Cranny di Rak, dan hasil alur disimpan di sebelah file tersebut atau di folder Unduhan."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny conserva sul suo ripiano i file che rilasci sulla tacca e salva i risultati delle sequenze accanto agli originali o in Download."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crannyは、ノッチにドロップしたファイルをトレイに保持し、パイプラインの結果をそのファイルと同じ場所または“ダウンロード”フォルダに保存します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny는 노치에 놓은 파일을 선반에 보관하고, 파이프라인 결과를 원본 옆이나 ‘다운로드’ 폴더에 저장합니다."
+          }
+        },
+        "ms" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fail yang anda lepaskan pada takuk disimpan oleh Cranny di Raknya, dan hasil aliran kerja diletakkan di sebelah fail tersebut atau dalam folder Muat Turun."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filer du slipper på hakket, havner på Crannys hylle. Cranny lagrer resultater fra arbeidsflyter ved siden av dem eller i Nedlastinger."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny bewaart de bestanden die je op de notch neerzet in de lade, en zet resultaten van werkstromen ernaast of in Downloads."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny przechowuje na półce pliki upuszczone na wycięcie ekranu i zachowuje wyniki potoków obok nich lub w folderze Pobrane rzeczy."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Cranny guarda na Bandeja os arquivos que você solta no notch e salva os resultados dos fluxos ao lado deles ou em Downloads."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Cranny guarda na bandeja os ficheiros que larga no entalhe e grava os resultados das sequências junto a eles ou na pasta Descargas."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny păstrează pe raft fișierele pe care le plasați pe decupaj și salvează rezultatele fluxurilor lângă ele sau în dosarul Descărcări."
+          }
+        },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cranny хранит на полке файлы, которые вы перетаскиваете на вырез экрана, и сохраняет результаты конвейеров рядом с ними или в папке «Загрузки»."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny uchováva na svojej polici súbory, ktoré potiahnete na výrez, a výsledky postupov ukladá vedľa nich alebo do priečinka Stiahnuté."
+          }
+        },
+        "sl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny datoteke, ki jih spustite na zarezo, hrani na svoji polici, rezultate cevovodov pa shrani poleg njih ali v mapo Prenosi."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny lägger filerna du släpper på notchen på sin hylla och sparar resultat från flöden bredvid dem eller i Hämtade filer."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny เก็บไฟล์ที่คุณวางบนรอยบากไว้ในถาด และบันทึกผลลัพธ์ของไปป์ไลน์ไว้ข้างไฟล์เหล่านั้นหรือใน “รายการดาวน์โหลด”"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny, çentiğe bıraktığınız dosyaları Raf’ında tutar ve iş akışı sonuçlarını bunların yanına veya İndirilenler’e kaydeder."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny тримає на своїй полиці файли, які ви перетягуєте на виріз екрана, і зберігає результати конвеєрів поруч із ними або в папці «Викачане»."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny giữ các tệp bạn thả vào tai thỏ trong Khay và lưu kết quả của quy trình bên cạnh các tệp đó hoặc trong thư mục Tải về."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny会将你拖到刘海上的文件保存在暂存区，并将处理流程的结果存储到原文件所在的文件夹或“下载”文件夹中。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny會將你拖放到瀏海上的檔案保留在托盤中，並將流程的處理結果儲存在檔案旁或「下載項目」中。"
           }
         }
       }
@@ -185,16 +2165,214 @@
       "comment" : "Privacy - Network Volumes Usage Description",
       "extractionState" : "extracted_with_value",
       "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يحتفظ Cranny على الرف بالملفات التي تفلتها على النتوء، ويحفظ نتائج السلاسل بجوارها أو في \"التنزيلات\"."
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El Cranny guarda a la safata els arxius que deixes anar a l’osca i desa els resultats de les cadenes al costat d’aquests arxius o a Descàrregues."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny uchovává soubory, které přetáhnete na výřez, ve své přihrádce a výsledky postupů ukládá vedle nich nebo do složky Stahování."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny opbevarer de filer, du trækker til notchen, på sin hylde og gemmer resultater af handlingskæder ved siden af dem eller i Overførsler."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny bewahrt die Dateien, die du auf der Notch ablegst, in seiner Ablage auf und sichert Ergebnisse von Abläufen daneben oder im Ordner „Downloads“."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το Cranny κρατά στο ράφι του τα αρχεία που αφήνετε στην εγκοπή και αποθηκεύει τα αποτελέσματα των αλυσίδων δίπλα τους ή στις «Λήψεις»."
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "Cranny keeps the files you drop on the notch in its Tray and saves pipeline results next to them or in Downloads."
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny conserva en su bandeja los archivos que sueltas en la muesca y guarda los resultados de los flujos junto a ellos o en Descargas."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny säilyttää loveen pudottamasi tiedostot hyllyllään ja tallentaa työnkulkujen tulokset niiden viereen tai Lataukset-kansioon."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny garde sur son étagère les fichiers que vous déposez sur l’encoche et enregistre les résultats des chaînes à côté d’eux ou dans Téléchargements."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקבצים שגוררים אל המגרעת נשמרים על המדף של Cranny, ותוצאות התהליכים נשמרות לצידם או בתיקיה ״הורדות״."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "आप नॉच पर जो फ़ाइलें ड्रॉप करते हैं, Cranny उन्हें अपनी ट्रे में रखता है और पाइपलाइन के परिणाम उनके बगल में या डाउनलोड फ़ोल्डर में सेव करता है।"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny na svojoj polici čuva datoteke koje ispustite na izrez i sprema rezultate cjevovoda pokraj njih ili u mapu Preuzimanja."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Cranny a kivágásra húzott fájlokat a polcán tárolja, a műveletsorok eredményeit pedig melléjük vagy a Letöltések mappába menti."
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File yang Anda seret ke notch disimpan Cranny di Rak, dan hasil alur disimpan di sebelah file tersebut atau di folder Unduhan."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny conserva sul suo ripiano i file che rilasci sulla tacca e salva i risultati delle sequenze accanto agli originali o in Download."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crannyは、ノッチにドロップしたファイルをトレイに保持し、パイプラインの結果をそのファイルと同じ場所または“ダウンロード”フォルダに保存します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny는 노치에 놓은 파일을 선반에 보관하고, 파이프라인 결과를 원본 옆이나 ‘다운로드’ 폴더에 저장합니다."
+          }
+        },
+        "ms" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fail yang anda lepaskan pada takuk disimpan oleh Cranny di Raknya, dan hasil aliran kerja diletakkan di sebelah fail tersebut atau dalam folder Muat Turun."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filer du slipper på hakket, havner på Crannys hylle. Cranny lagrer resultater fra arbeidsflyter ved siden av dem eller i Nedlastinger."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny bewaart de bestanden die je op de notch neerzet in de lade, en zet resultaten van werkstromen ernaast of in Downloads."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny przechowuje na półce pliki upuszczone na wycięcie ekranu i zachowuje wyniki potoków obok nich lub w folderze Pobrane rzeczy."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Cranny guarda na Bandeja os arquivos que você solta no notch e salva os resultados dos fluxos ao lado deles ou em Downloads."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Cranny guarda na bandeja os ficheiros que larga no entalhe e grava os resultados das sequências junto a eles ou na pasta Descargas."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny păstrează pe raft fișierele pe care le plasați pe decupaj și salvează rezultatele fluxurilor lângă ele sau în dosarul Descărcări."
+          }
+        },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cranny хранит на полке файлы, которые вы перетаскиваете на вырез экрана, и сохраняет результаты конвейеров рядом с ними или в папке «Загрузки»."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny uchováva na svojej polici súbory, ktoré potiahnete na výrez, a výsledky postupov ukladá vedľa nich alebo do priečinka Stiahnuté."
+          }
+        },
+        "sl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny datoteke, ki jih spustite na zarezo, hrani na svoji polici, rezultate cevovodov pa shrani poleg njih ali v mapo Prenosi."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny lägger filerna du släpper på notchen på sin hylla och sparar resultat från flöden bredvid dem eller i Hämtade filer."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny เก็บไฟล์ที่คุณวางบนรอยบากไว้ในถาด และบันทึกผลลัพธ์ของไปป์ไลน์ไว้ข้างไฟล์เหล่านั้นหรือใน “รายการดาวน์โหลด”"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny, çentiğe bıraktığınız dosyaları Raf’ında tutar ve iş akışı sonuçlarını bunların yanına veya İndirilenler’e kaydeder."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny тримає на своїй полиці файли, які ви перетягуєте на виріз екрана, і зберігає результати конвеєрів поруч із ними або в папці «Викачане»."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny giữ các tệp bạn thả vào tai thỏ trong Khay và lưu kết quả của quy trình bên cạnh các tệp đó hoặc trong thư mục Tải về."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny会将你拖到刘海上的文件保存在暂存区，并将处理流程的结果存储到原文件所在的文件夹或“下载”文件夹中。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny會將你拖放到瀏海上的檔案保留在托盤中，並將流程的處理結果儲存在檔案旁或「下載項目」中。"
           }
         }
       }
@@ -203,16 +2381,214 @@
       "comment" : "Privacy - Removable Volumes Usage Description",
       "extractionState" : "extracted_with_value",
       "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "يحتفظ Cranny على الرف بالملفات التي تفلتها على النتوء، ويحفظ نتائج السلاسل بجوارها أو في \"التنزيلات\"."
+          }
+        },
+        "ca" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El Cranny guarda a la safata els arxius que deixes anar a l’osca i desa els resultats de les cadenes al costat d’aquests arxius o a Descàrregues."
+          }
+        },
+        "cs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny uchovává soubory, které přetáhnete na výřez, ve své přihrádce a výsledky postupů ukládá vedle nich nebo do složky Stahování."
+          }
+        },
+        "da" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny opbevarer de filer, du trækker til notchen, på sin hylde og gemmer resultater af handlingskæder ved siden af dem eller i Overførsler."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny bewahrt die Dateien, die du auf der Notch ablegst, in seiner Ablage auf und sichert Ergebnisse von Abläufen daneben oder im Ordner „Downloads“."
+          }
+        },
+        "el" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Το Cranny κρατά στο ράφι του τα αρχεία που αφήνετε στην εγκοπή και αποθηκεύει τα αποτελέσματα των αλυσίδων δίπλα τους ή στις «Λήψεις»."
+          }
+        },
         "en" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "Cranny keeps the files you drop on the notch in its Tray and saves pipeline results next to them or in Downloads."
           }
         },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny conserva en su bandeja los archivos que sueltas en la muesca y guarda los resultados de los flujos junto a ellos o en Descargas."
+          }
+        },
+        "fi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny säilyttää loveen pudottamasi tiedostot hyllyllään ja tallentaa työnkulkujen tulokset niiden viereen tai Lataukset-kansioon."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny garde sur son étagère les fichiers que vous déposez sur l’encoche et enregistre les résultats des chaînes à côté d’eux ou dans Téléchargements."
+          }
+        },
+        "he" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "הקבצים שגוררים אל המגרעת נשמרים על המדף של Cranny, ותוצאות התהליכים נשמרות לצידם או בתיקיה ״הורדות״."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "आप नॉच पर जो फ़ाइलें ड्रॉप करते हैं, Cranny उन्हें अपनी ट्रे में रखता है और पाइपलाइन के परिणाम उनके बगल में या डाउनलोड फ़ोल्डर में सेव करता है।"
+          }
+        },
+        "hr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny na svojoj polici čuva datoteke koje ispustite na izrez i sprema rezultate cjevovoda pokraj njih ili u mapu Preuzimanja."
+          }
+        },
+        "hu" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A Cranny a kivágásra húzott fájlokat a polcán tárolja, a műveletsorok eredményeit pedig melléjük vagy a Letöltések mappába menti."
+          }
+        },
+        "id" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File yang Anda seret ke notch disimpan Cranny di Rak, dan hasil alur disimpan di sebelah file tersebut atau di folder Unduhan."
+          }
+        },
+        "it" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny conserva sul suo ripiano i file che rilasci sulla tacca e salva i risultati delle sequenze accanto agli originali o in Download."
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crannyは、ノッチにドロップしたファイルをトレイに保持し、パイプラインの結果をそのファイルと同じ場所または“ダウンロード”フォルダに保存します。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny는 노치에 놓은 파일을 선반에 보관하고, 파이프라인 결과를 원본 옆이나 ‘다운로드’ 폴더에 저장합니다."
+          }
+        },
+        "ms" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fail yang anda lepaskan pada takuk disimpan oleh Cranny di Raknya, dan hasil aliran kerja diletakkan di sebelah fail tersebut atau dalam folder Muat Turun."
+          }
+        },
+        "nb" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Filer du slipper på hakket, havner på Crannys hylle. Cranny lagrer resultater fra arbeidsflyter ved siden av dem eller i Nedlastinger."
+          }
+        },
+        "nl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny bewaart de bestanden die je op de notch neerzet in de lade, en zet resultaten van werkstromen ernaast of in Downloads."
+          }
+        },
+        "pl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny przechowuje na półce pliki upuszczone na wycięcie ekranu i zachowuje wyniki potoków obok nich lub w folderze Pobrane rzeczy."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Cranny guarda na Bandeja os arquivos que você solta no notch e salva os resultados dos fluxos ao lado deles ou em Downloads."
+          }
+        },
+        "pt-PT" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Cranny guarda na bandeja os ficheiros que larga no entalhe e grava os resultados das sequências junto a eles ou na pasta Descargas."
+          }
+        },
+        "ro" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny păstrează pe raft fișierele pe care le plasați pe decupaj și salvează rezultatele fluxurilor lângă ele sau în dosarul Descărcări."
+          }
+        },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cranny хранит на полке файлы, которые вы перетаскиваете на вырез экрана, и сохраняет результаты конвейеров рядом с ними или в папке «Загрузки»."
+          }
+        },
+        "sk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny uchováva na svojej polici súbory, ktoré potiahnete na výrez, a výsledky postupov ukladá vedľa nich alebo do priečinka Stiahnuté."
+          }
+        },
+        "sl" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny datoteke, ki jih spustite na zarezo, hrani na svoji polici, rezultate cevovodov pa shrani poleg njih ali v mapo Prenosi."
+          }
+        },
+        "sv" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny lägger filerna du släpper på notchen på sin hylla och sparar resultat från flöden bredvid dem eller i Hämtade filer."
+          }
+        },
+        "th" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny เก็บไฟล์ที่คุณวางบนรอยบากไว้ในถาด และบันทึกผลลัพธ์ของไปป์ไลน์ไว้ข้างไฟล์เหล่านั้นหรือใน “รายการดาวน์โหลด”"
+          }
+        },
+        "tr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny, çentiğe bıraktığınız dosyaları Raf’ında tutar ve iş akışı sonuçlarını bunların yanına veya İndirilenler’e kaydeder."
+          }
+        },
+        "uk" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny тримає на своїй полиці файли, які ви перетягуєте на виріз екрана, і зберігає результати конвеєрів поруч із ними або в папці «Викачане»."
+          }
+        },
+        "vi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny giữ các tệp bạn thả vào tai thỏ trong Khay và lưu kết quả của quy trình bên cạnh các tệp đó hoặc trong thư mục Tải về."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny会将你拖到刘海上的文件保存在暂存区，并将处理流程的结果存储到原文件所在的文件夹或“下载”文件夹中。"
+          }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny會將你拖放到瀏海上的檔案保留在托盤中，並將流程的處理結果儲存在檔案旁或「下載項目」中。"
           }
         }
       }
