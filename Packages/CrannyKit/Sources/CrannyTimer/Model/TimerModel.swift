@@ -25,7 +25,8 @@ private let log = Log.logger(.timer)
     private(set) var spokenSeconds = 0
 
     @ObservationIgnored private let settings: SettingsStore
-    @ObservationIgnored private let dependencies: TimerDependencies
+    /// Clock, scheduler, sound, file and shell ports (read by tests to check what a sample can touch).
+    @ObservationIgnored let dependencies: TimerDependencies
     @ObservationIgnored private var lastMinuteSignalled = true
     @ObservationIgnored private var writeSequence = 0
     /// Set by the first user change; a slow launch restore never overwrites it.

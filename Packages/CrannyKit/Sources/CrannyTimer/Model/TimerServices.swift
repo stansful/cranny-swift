@@ -15,11 +15,13 @@ private let log = Log.logger(.timer)
     func cancel()
 }
 
-/// One `Task.sleep` to the deadline (ARCHITECTURE.md §9.1 rule 7: sleep to deadlines, never repeating timers).
-/// The sleep uses the continuous clock, so it also elapses while the Mac sleeps; the model re-checks the wall clock
-/// on wake and on clock changes anyway.
+/// One `Task.sleep` to the deadline (ARCHITECTURE.md §9.1 rule 7: sleep to deadlines, never repeating timers, and
+/// cancel on deinit). The sleep uses the continuous clock, so it also elapses while the Mac sleeps; the model
+/// re-checks the wall clock on wake and on clock changes anyway.
 @MainActor final class SleepingWakeScheduler: TimerWakeScheduling {
-    private var task: Task<Void, Never>?
+    /// The pending wake-up. Its owner (a model, so also every sample model of Settings, onboarding and previews)
+    /// going away cancels it: nothing sleeps on for a model that no longer exists.
+    private(set) var task: Task<Void, Never>?
 
     func schedule(at date: Date, _ action: @escaping @MainActor () -> Void) {
         task?.cancel()
@@ -34,6 +36,8 @@ private let log = Log.logger(.timer)
         task?.cancel()
         task = nil
     }
+
+    deinit { task?.cancel() }
 }
 
 // MARK: - The "timer done" sound

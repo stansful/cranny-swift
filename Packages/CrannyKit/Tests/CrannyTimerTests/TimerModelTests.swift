@@ -221,7 +221,7 @@ import Testing
         #expect(h.model.state.total == 1500)
     }
 
-    @Test func samplesNeverPersistOrPlaySounds() {
+    @Test func samplesShowTheirState() {
         let running = TimerModel.sample(.running(left: 272, total: 300))
         #expect(running.state.isRunning)
         #expect(running.state.displayedSeconds(at: running.now) <= 272)
@@ -230,5 +230,35 @@ import Testing
         #expect(done.doneRevision == 1)
         let setup = TimerModel.sample(.setup(seconds: 360))
         #expect(setup.setupDuration == 360)
+    }
+
+    @Test func samplesNeverPersistOrPlaySounds() throws {
+        // A sample whose deadline has just passed: reconciling finishes it as a real run would.
+        let sample = TimerModel.sample(.running(left: -1, total: 60))
+        #expect(sample.dependencies.file == nil)                                // nothing is read or written
+        #expect(sample.dependencies.isDemoMode())                               // the done sound is muted
+        let sound = try #require(sample.dependencies.sound as? SilentTimerSound)
+        sample.reconcile()
+        #expect(sample.state.isDone)
+        #expect(sample.doneRevision == 1)                                       // the "Timer done" activity would show
+        #expect(sound.played.isEmpty)
+    }
+
+    @Test func aSampleModelLeavesNoWakeUpBehind() throws {
+        var model: TimerModel? = .sample(.running(left: 272, total: 300))      // its last minute is 212 s away
+        weak let scheduler = model?.dependencies.scheduler as? SleepingWakeScheduler
+        let task = try #require(scheduler?.task)
+        #expect(!task.isCancelled)
+        model = nil
+        #expect(scheduler == nil)
+        #expect(task.isCancelled)
+    }
+
+    @Test func aSchedulerCancelsItsPendingWakeUpWhenItGoesAway() throws {
+        var scheduler: SleepingWakeScheduler? = SleepingWakeScheduler()
+        scheduler?.schedule(at: Date().addingTimeInterval(3600)) {}
+        let task = try #require(scheduler?.task)
+        scheduler = nil
+        #expect(task.isCancelled)
     }
 }
