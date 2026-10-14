@@ -102,7 +102,6 @@ public nonisolated enum CoreSettings {
     // Displays
     public static let displaySelection = SettingKey<DisplaySelection>(.displays, "selection", default: .builtIn)
     public static let perDisplay = SettingKey<[DisplayKey: DisplayPreferences]>(.displays, "perDisplay", default: [:])
-    public static let notchFit = SettingKey<[String: NotchFit]>(.displays, "notchFit", default: [:])
 
     // Appearance
     public static let accent = SettingKey<AccentSource>(.appearance, "accent", default: .automatic)
@@ -119,6 +118,9 @@ public nonisolated enum CoreSettings {
     public static let widgetStyle = SettingKey<WidgetStyle>(.appearance, "widgetStyle", default: .cards)
     public static let density = SettingKey<NookDensity>(.appearance, "density", default: .standard)
     public static let panelPaddingTune = SettingKey<Double>(.appearance, "panelPaddingTune", default: 0)  // ±4 pt
+    /// Appearance ▸ Notch fit, per display model: in the Appearance namespace so "Reset Appearance…" resets it and
+    /// "Reset General…" (which resets `.displays`) keeps it (DESIGN.md §11.1).
+    public static let notchFit = SettingKey<[String: NotchFit]>(.appearance, "notchFit", default: [:])
     public static let noNotchStyle = SettingKey<NoNotchStyle>(.appearance, "noNotchStyle", default: .floatingIsland)
     public static let handleVisibility = SettingKey<HandleVisibility>(.appearance, "handleVisibility", default: .visible)
     public static let typingEffect = SettingKey<Bool>(.appearance, "typingEffect", default: true)

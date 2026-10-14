@@ -2,6 +2,8 @@
 // General, Appearance, Keyboard, Layout & Widgets, Live Activities, Gestures, Permissions, About.
 // Module panes (HUD, Media, Calendar, Shortcuts, Tray) come from `registry.settingsPages`.
 // WP0: the sidebar entries are final; most detail views are placeholders until WP14.
+// "Reset ‹Pane›…" namespaces follow the rows each pane shows (DESIGN.md §11.1): General = general, displays
+// (Show on + per-display table) and updates; Appearance = appearance, which includes Notch fit.
 import AppKit
 import CrannyCore
 import Foundation
@@ -18,7 +20,7 @@ enum ShellPanes {
         }
         return [
             page(.general, String(localized: "General", bundle: .module, comment: "Settings sidebar: pane name"), "gearshape.fill", .gray, .top, 0,
-                 namespaces: [.general, .displays], preview: .closed) { AnyView(GeneralPane(settings: settings)) },
+                 namespaces: [.general, .displays, .updates], preview: .closed) { AnyView(GeneralPane(settings: settings)) },
             page(.appearance, String(localized: "Appearance", bundle: .module, comment: "Settings sidebar: pane name"), "paintbrush.fill", .purple, .top, 1,
                  namespaces: [.appearance], preview: .open) { AnyView(PlaceholderPane()) },
             page(.keyboard, String(localized: "Keyboard", bundle: .module, comment: "Settings sidebar: pane name"), "keyboard", .indigo, .top, 2,

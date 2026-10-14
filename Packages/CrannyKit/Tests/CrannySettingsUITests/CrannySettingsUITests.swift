@@ -20,3 +20,23 @@ import Testing
     #expect(SettingsSearch.filter(pages, query: "VOLUME").map(\.id) == [.hud])
     #expect(SettingsSearch.filter(pages, query: "  ").count == pages.count)
 }
+
+/// "Reset ‹Pane›…" resets exactly the namespaces of the rows the pane shows (DESIGN.md §11.1).
+@Test func paneResetsCoverTheirOwnRows() throws {
+    let registry = ModuleRegistry(services: .preview())
+    let settings = registry.services.settings
+    let panes = ShellPanes.all(registry: registry)
+    let general = try #require(panes.first { $0.id == .general })
+    let appearance = try #require(panes.first { $0.id == .appearance })
+    #expect(general.namespaces == [.general, .displays, .updates])               // Updates rows live in General
+    #expect(appearance.namespaces == [.appearance])
+
+    settings[CoreSettings.notchFit] = ["1552-41001": NotchFit(widthTune: 2, radiusTune: 1)]
+    settings[CoreSettings.includesPrereleases] = true
+    settings[CoreSettings.displaySelection] = .all
+    for namespace in general.namespaces { settings.reset(module: namespace) }
+    #expect(!settings[CoreSettings.includesPrereleases] && settings[CoreSettings.displaySelection] == .builtIn)
+    #expect(settings[CoreSettings.notchFit]["1552-41001"]?.widthTune == 2)        // the calibration is Appearance's
+    for namespace in appearance.namespaces { settings.reset(module: namespace) }
+    #expect(settings[CoreSettings.notchFit].isEmpty)
+}
