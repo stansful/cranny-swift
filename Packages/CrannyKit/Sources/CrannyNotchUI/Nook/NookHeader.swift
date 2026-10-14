@@ -122,6 +122,7 @@ struct HeaderRowLayout: Layout {
 /// the design owner's decision for open issue 4 (band controls need ≥ 32 × 24, the glyph stays 28). Its
 /// shortcut is bound by `NookHiddenShortcuts`; the button shows it as a hold-⌘ hint and a VoiceOver hint.
 private struct HeaderButton: View {
+    @Environment(\.cranny) private var theme
     let symbol: String
     let isOn: Bool
     let shortcut: NookShortcut
@@ -131,7 +132,7 @@ private struct HeaderButton: View {
     var body: some View {
         Button(action: action) {
             HintSwap(shortcut: shortcut) {
-                Image(systemName: symbol).contentTransition(.symbolEffect(.replace))
+                Image(systemName: symbol).contentTransition(theme.symbolReplace)
             }
         }
         .buttonStyle(HeaderIconButtonStyle(role: isOn ? .filled : .plain))

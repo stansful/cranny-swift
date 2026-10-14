@@ -39,13 +39,14 @@ struct CardOverflowMenu: View {
                 .foregroundStyle(theme.palette.tertiaryLabel)
                 .frame(width: CardOverflowMenu.size, height: CardOverflowMenu.size)
                 .background(Circle().fill(theme.palette.control))
+                // The 28 × 24 target belongs to the menu's own label: outside the Menu it would not widen the button.
+                .frame(width: HitTarget.nook.width, height: HitTarget.nook.height, alignment: .topTrailing)
+                .contentShape(Rectangle())
         }
         .menuStyle(.button)
         .buttonStyle(.plain)
         .menuIndicator(.hidden)
         .fixedSize()
-        .frame(width: HitTarget.nook.width, height: HitTarget.nook.height, alignment: .topTrailing)
-        .contentShape(Rectangle())
         .help(String(localized: "More", bundle: .module, comment: "Widget card: the ⋯ button that opens the card's menu"))
         .accessibilityLabel(Text("More", bundle: .module, comment: "Widget card: the ⋯ button that opens the card's menu"))
     }
