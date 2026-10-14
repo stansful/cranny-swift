@@ -93,6 +93,12 @@ nonisolated enum ReleaseEndpoint: String, Codable, Sendable {
 nonisolated enum UpdateRequest {
     /// A GET with GitHub's media type, a fixed product User-Agent (GitHub requires one; it carries no version,
     /// machine or user identifier), the stored ETag when there is one, and no cookies or caches.
+    ///
+    /// Every header on the wire (captured with a local server on macOS 27): `User-Agent: Cranny`,
+    /// `Accept: application/vnd.github+json`, `X-GitHub-Api-Version: 2022-11-28`, `If-None-Match` (only with a
+    /// cached ETag), `Accept-Language: en`, plus the system's `Accept-Encoding` (compression) and, over HTTP/1.1,
+    /// `Connection`. Accept-Language is pinned because CFNetwork would otherwise send the user's preferred
+    /// language (a fingerprinting signal); an explicit value replaces the system's.
     static func make(url: URL, etag: String?) -> URLRequest {
         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
         request.httpMethod = "GET"
@@ -100,6 +106,7 @@ nonisolated enum UpdateRequest {
         request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
         request.setValue("2022-11-28", forHTTPHeaderField: "X-GitHub-Api-Version")
         request.setValue("Cranny", forHTTPHeaderField: "User-Agent")
+        request.setValue("en", forHTTPHeaderField: "Accept-Language")
         if let etag, !etag.isEmpty { request.setValue(etag, forHTTPHeaderField: "If-None-Match") }
         return request
     }

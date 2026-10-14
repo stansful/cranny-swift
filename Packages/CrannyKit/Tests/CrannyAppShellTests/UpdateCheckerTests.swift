@@ -138,7 +138,9 @@ private func page(_ tag: String) throws -> URL { try #require(URL(string: "https
     #expect(request.value(forHTTPHeaderField: "If-None-Match") == "W/\"abc\"")
     #expect(request.value(forHTTPHeaderField: "Accept") == "application/vnd.github+json")
     #expect(request.value(forHTTPHeaderField: "User-Agent") == "Cranny")
-    #expect(request.allHTTPHeaderFields?.keys.sorted() == ["Accept", "If-None-Match", "User-Agent", "X-GitHub-Api-Version"])
+    // Pinned, so CFNetwork does not send the user's preferred language instead (it would: "ru" on this Mac).
+    #expect(request.value(forHTTPHeaderField: "Accept-Language") == "en")
+    #expect(request.allHTTPHeaderFields?.keys.sorted() == ["Accept", "Accept-Language", "If-None-Match", "User-Agent", "X-GitHub-Api-Version"])
     #expect(UpdateRequest.make(url: latest, etag: nil).value(forHTTPHeaderField: "If-None-Match") == nil)
 }
 
