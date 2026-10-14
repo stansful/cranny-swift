@@ -33,6 +33,18 @@ nonisolated struct DelightPlayback: Equatable, Sendable {
         moment != nil && serial > lastPlayed
     }
 
+    /// Frame interval of a moment drawn with a clock (ember burst, charge sweep): the effect budget's rate, 30 fps
+    /// on AC and 20 on battery (DESIGN.md §5.6 rule 6); nil (paused) while the panel is covered, the screen is
+    /// locked, the displays sleep or a full-screen app is in front. Low Power Mode does not pause them: a moment
+    /// lasts ≤ 1 s and Low Power is exactly when its SwiftUI design is drawn (DESIGN.md §5.5 "Engines"). Pure.
+    static func frameInterval(_ budget: EffectBudget) -> Double? {
+        var moment = budget
+        moment.isOpen = true
+        moment.lowPower = false
+        moment.reduceMotion = false
+        return moment.minimumInterval
+    }
+
     /// Seconds since the start, clamped to the lifetime.
     func elapsed(at date: Date) -> Double { min(max(date.timeIntervalSince(startedAt), 0), lifetime) }
     /// 0…1 through the lifetime.

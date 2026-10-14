@@ -133,6 +133,18 @@ private func kind(_ from: NotchPhase, _ to: NotchPhase, fromHUD: Bool = false, t
         #expect(Gulp.swallow + Gulp.recover == 0.25 && Gulp.depth == 3)
     }
 
+    @Test func momentsRunAtTheBudgetRateAndPauseWhenUnseen() {
+        func budget(onScreen: Bool = true, lowPower: Bool = false, fullScreen: Bool = false, battery: Bool = false) -> EffectBudget {
+            EffectBudget(isOpen: false, onScreen: onScreen, lowPower: lowPower, fullScreenFront: fullScreen,
+                         reduceMotion: true, onBattery: battery)
+        }
+        #expect(DelightPlayback.frameInterval(budget()) == 1.0 / 30)                  // compact too (not only open)
+        #expect(DelightPlayback.frameInterval(budget(battery: true)) == 1.0 / 20)
+        #expect(DelightPlayback.frameInterval(budget(lowPower: true)) == 1.0 / 30)    // the SwiftUI design still plays
+        #expect(DelightPlayback.frameInterval(budget(onScreen: false)) == nil)        // covered, locked, asleep
+        #expect(DelightPlayback.frameInterval(budget(fullScreen: true)) == nil)
+    }
+
     @Test func embersAreStatelessFanDownAndDie() {
         let size = EmberBurstView.size
         let a = EmberField.ember(7, time: 0.3, size: size, stopCount: 3)

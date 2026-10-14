@@ -13,8 +13,8 @@ import SwiftUI
 struct EmberBurstView: View {
     @Environment(\.cranny) private var theme
     let playback: DelightPlayback
-    /// `EffectBudget`-style frame interval: 1/30 s on AC, 1/20 s on battery.
-    let frameInterval: Double
+    /// `DelightPlayback.frameInterval`: 1/30 s on AC, 1/20 s on battery, nil (paused) while not visible.
+    let frameInterval: Double?
 
     static let size = CGSize(width: 280, height: 140)
 

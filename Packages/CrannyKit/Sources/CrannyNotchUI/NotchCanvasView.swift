@@ -72,7 +72,7 @@ private struct CanvasBody: View {
                     .transition(.opacity.animation(theme.animation(.contentOut)))
             }
             if let delight, delight.moment == .emberBurst {
-                EmberBurstView(playback: delight, frameInterval: frameInterval)
+                EmberBurstView(playback: delight, frameInterval: delightInterval)
                     .offset(y: shown.bottom)
             }
         }
@@ -149,10 +149,10 @@ private struct CanvasBody: View {
     /// The progress rim (Appearance ▸ Progress rim, Now Playing in compact) and the charge sweep.
     @ViewBuilder private func rim(_ geometry: NotchGeometry) -> some View {
         if let delight, delight.moment == .chargeSweep, model.phase == .compact || model.phase == .peek {
-            ChargeSweepRim(geometry: geometry, playback: delight, frameInterval: frameInterval)
+            ChargeSweepRim(geometry: geometry, playback: delight, frameInterval: delightInterval)
         } else if model.phase == .compact, model.primary == .nowPlaying, registry.services.settings[CoreSettings.progressRim],
                   let source = registry.services.nowPlaying {
-            PlaybackRim(geometry: geometry, source: source)
+            PlaybackRim(geometry: geometry, source: source, isOnScreen: budget.onScreen)
                 .transition(.opacity.animation(theme.animation(.contentSwap)))
         }
     }
@@ -170,8 +170,14 @@ private struct CanvasBody: View {
         return accent.legible(on: theme.palette.spec.cardOverBlack, ratio: theme.accentContrast).color
     }
 
-    /// One-shot moments run at the effect budget's rate: 30 fps on AC, 20 on battery (DESIGN.md §5.6 rule 6).
-    private var frameInterval: Double { registry.services.environment.isOnBattery ? 1.0 / 20 : 1.0 / 30 }
+    /// The energy budget of this canvas: on screen = not occluded (`isVisibleOnScreen`), not locked, displays awake.
+    private var budget: EffectBudget {
+        registry.services.environment.effectBudget(isOpen: model.phase != .hidden, isOnScreen: model.isVisibleOnScreen,
+                                                   reduceMotion: false)
+    }
+
+    /// One-shot moments' frame interval (`DelightPlayback.frameInterval`): nil while nobody can see them.
+    private var delightInterval: Double? { DelightPlayback.frameInterval(budget) }
 
     /// Hidden = alpha 0 (click-through). The handle on displays without a notch may be "Hidden until hover".
     private var surfaceOpacity: Double {

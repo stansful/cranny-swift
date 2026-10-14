@@ -39,15 +39,18 @@ extension StrokeWidth {
 }
 
 /// Playback progress of Now Playing along the rim. One redraw per second (`EffectClock`), only while the
-/// track plays and the compact shape is visible; a paused track draws a still line and costs nothing.
+/// track plays and the panel is on screen (not covered, not locked); otherwise it draws a still line and costs
+/// nothing.
 struct PlaybackRim: View {
     @Environment(\.cranny) private var theme
     let geometry: NotchGeometry
     let source: any NowPlayingSource
+    /// `EffectBudget.onScreen` of the canvas.
+    var isOnScreen = true
 
     var body: some View {
         if let playing = source.nowPlaying, let duration = playing.duration, duration > 0 {
-            EffectClock(minimumInterval: playing.isPlaying ? 1 : nil) { date in
+            EffectClock(minimumInterval: playing.isPlaying && isOnScreen ? 1 : nil) { date in
                 LowerRim(geometry: geometry, progress: playing.position(at: date) / duration, color: theme.accentColor)
             }
         }
@@ -60,7 +63,8 @@ struct ChargeSweepRim: View {
     @Environment(\.cranny) private var theme
     let geometry: NotchGeometry
     let playback: DelightPlayback
-    let frameInterval: Double
+    /// `DelightPlayback.frameInterval`: nil (paused) while not visible.
+    let frameInterval: Double?
 
     var body: some View {
         let green = theme.palette.success
