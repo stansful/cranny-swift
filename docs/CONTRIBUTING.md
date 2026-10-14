@@ -47,6 +47,7 @@ make test                                    # swift test (all test targets)
 cd Packages/CrannyKit && swift test --scratch-path .build-test --filter CrannyTimerTests
 make strings && make strings-check           # sync String Catalogs, then verify + copy rules (add Russian first)
 make copy-check                              # just the copy rules (scripts/lint-copy.py, no build)
+make l10n-check                              # shipped languages complete and valid (scripts/l10n/validate.py, no build)
 make probe-check                             # SDK name-collision probe is current
 make build && make smoke                     # universal Release app + launch smoke test (--diagnostics)
 make run                                     # Debug build + launch through LaunchServices
@@ -221,7 +222,7 @@ on: **`CRANNY_SNAPSHOT_DIR=<dir>`**. Each test target writes into its own folder
 | `Todos` | `TodosSnapshotTests` | The widget's states. |
 | `Notes` | `CrannyNotesTests.SnapshotGallery` | Cards with the real editor (Debug builds). |
 | `Media` | `CrannyMediaTests.SnapshotRenderTests` | The widget and the Now Playing presentations. |
-| `Timer`, `HUD`, `Mirror`, `Onboarding` | `TimerSnapshotTests`, `HUDRenderTests`, `MirrorResourceTests`, `RenderedSurfacesTests` | Render checks that always run; with the variable set they also write their PNGs (Onboarding: the Welcome steps and the longest Russian tutorial bubble). |
+| `Timer`, `HUD`, `Mirror`, `Onboarding` | `TimerSnapshotTests`, `HUDRenderTests`, `MirrorResourceTests`, `RenderedSurfacesTests` | Render checks that always run; with the variable set they also write their PNGs (Onboarding: the Welcome steps and the longest tutorial bubble in every language). |
 
 Package test processes resolve English for `String(localized:)`; the suites that render Russian say so above.
 
@@ -279,7 +280,13 @@ pass the module bundle (`Text("…", bundle: .module, comment: "…")`, `String(
 never bare `LocalizedStringKey` initializers inside the package. Keys are the English text, written to
 the copy rules below; every key has a comment `"<Surface>: <purpose>"` (one comment per key; a key used in
 two places shares one), Russian follows the glossary in ARCHITECTURE.md §8.7 with state `translated`.
-Formatting through `FormatStyle` only.
+Formatting through `FormatStyle` only. Every count gets plural variations in the catalog (English one/other,
+Russian one/few/many/other), also when English writes both forms alike; `make l10n-check` fails a count without
+them. Never choose words with `count == 1` for a number that is shown.
+**Other languages** (every UI language macOS ships, `scripts/l10n/languages.json`) come in through
+`scripts/l10n`: `export.py <lang>` writes one JSON file for translators, `validate.py` checks it, `import.py`
+writes it back, and `apple-terms.py <lang>` lists Apple's own names for Apple's apps and settings in that language.
+`scripts/l10n/README.md` is the translators' guide.
 Catalogs are JSON, so parallel branches conflict line by line; `.gitattributes` routes them to a
 per-key merge driver. Enable it once per clone:
 
@@ -307,7 +314,7 @@ git config merge.xcstrings.driver "python3 scripts/merge-xcstrings.py %O %A %B"
 - **Typography:** ’ for apostrophes and “ ” for quotes in English (never `'` or `"`), « » in Russian; `…` as
   one character, on a command that asks for more before it acts.
 - **Flash labels** (`NotchControl.flash`, the word in the compact wings) are one short word that must fit the wing
-  **by measured width**, never by a character count, in English and Russian (DESIGN.md §9.1, ruling E4). Let the
+  **by measured width**, never by a character count, in every language (DESIGN.md §9.1, ruling E4). Let the
   glyph carry the meaning ("Copied" / «Готово» beside `doc.on.doc`). List every new flash call, as written, in
   `FlashLabelCatalog` (`CrannyAppShellTests`): `FlashLabelFitTests` renders each listed label at every notch unit
   from 0.8 to 1.25 and fails if one does not fit, and `everyFlashCallIsListed` fails on a call that is not listed.
