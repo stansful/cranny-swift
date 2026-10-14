@@ -44,7 +44,8 @@ import Testing
     }
 
     @Test func presetMiniaturesKeepTheirProportions() {
-        let symbols: [WidgetID: String] = [.media: "music.note", .calendar: "calendar", .quickApps: "app.dashed",
+        let symbols: [WidgetID: String] = [.media: "music.note", .calendar: "calendar",
+                                           .quickApps: "square.2.layers.3d.fill",
                                            .notes: "note.text", .todos: "checklist", .timer: "timer", .mirror: "web.camera"]
         let scale = MiniPanel.scale(forWidth: 112)
         let row = HStack(spacing: Space.m) {

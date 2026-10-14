@@ -32,7 +32,7 @@ public extension ModuleRegistry {
         [
             .init(.media, "Media", "music.note", WidgetSizes(minimum: 4, preferred: 5, maximum: 6)),
             .init(.calendar, "Calendar", "calendar", WidgetSizes(minimum: 2, preferred: 3, maximum: 5)),
-            .init(.quickApps, "Quick Apps", "app.dashed", WidgetSizes(minimum: 1, preferred: 2, maximum: 6)),
+            .init(.quickApps, "Quick Apps", "square.2.layers.3d.fill", WidgetSizes(minimum: 1, preferred: 2, maximum: 6)),
             .init(.mirror, "Mirror", "web.camera", WidgetSizes(minimum: 2, preferred: 2, maximum: 3)),
             .init(.notes, "Notes", "note.text", WidgetSizes(minimum: 3, preferred: 4, maximum: 8)),
             .init(.todos, "To-dos", "checklist", WidgetSizes(minimum: 2, preferred: 3, maximum: 6)),

@@ -66,7 +66,8 @@ private struct MiniPanelBody: View {
 #Preview("Mini panels") {
     VStack(spacing: Space.l) {
         ForEach(NookPreset.allCases, id: \.self) { preset in
-            MiniPanel(items: preset.items, symbols: [.media: "music.note", .calendar: "calendar", .quickApps: "app.dashed",
+            MiniPanel(items: preset.items, symbols: [.media: "music.note", .calendar: "calendar",
+                                                     .quickApps: "square.2.layers.3d.fill",
                                                      .notes: "note.text", .todos: "checklist", .timer: "timer",
                                                      .mirror: "web.camera"],
                       scale: MiniPanel.scale(forWidth: 120))
