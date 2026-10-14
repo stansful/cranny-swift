@@ -1,7 +1,23 @@
 // CrannyCalendar/UI/CalendarFormat.swift — every date, time and duration the module shows, through `FormatStyle`
 // (12/24-hour clock and word order from the locale, DESIGN.md §17), and the localized phrases around them.
-// Durations are whole minutes chosen by `MinuteMath`; the formatter only spells them ("4m" / "4 мин").
+// Durations are whole minutes chosen by `MinuteMath`; the formatter only spells them ("4m" / "4 мин"). The band's
+// abbreviations take a `CalendarLanguage`, so tests check them in English and Russian (DESIGN.md §9.1).
 import Foundation
+
+/// Where the module's words and formats come from: the app's language (default), or one fixed localization of
+/// the catalog with its locale (tests of the band's abbreviations, which must fit their slot in both languages).
+struct CalendarLanguage {
+    let bundle: Bundle
+    let locale: Locale
+
+    static var app: CalendarLanguage { CalendarLanguage(bundle: .module, locale: .autoupdatingCurrent) }
+
+    /// The catalog's `code` localization ("en", "ru"), or nil when the module bundle has none.
+    static func named(_ code: String) -> CalendarLanguage? {
+        guard let path = Bundle.module.path(forResource: code, ofType: "lproj"), let bundle = Bundle(path: path) else { return nil }
+        return CalendarLanguage(bundle: bundle, locale: Locale(identifier: code))
+    }
+}
 
 enum CalendarFormat {
     // MARK: Dates and times
@@ -9,7 +25,9 @@ enum CalendarFormat {
     /// "10:30" / "10:30 AM".
     static func time(_ date: Date) -> String { date.formatted(.dateTime.hour().minute()) }
     /// "10:30" without AM/PM (the band has no room; context makes it unambiguous).
-    static func bandTime(_ date: Date) -> String { date.formatted(.dateTime.hour(.defaultDigits(amPM: .omitted)).minute()) }
+    static func bandTime(_ date: Date, language: CalendarLanguage = .app) -> String {
+        date.formatted(.dateTime.hour(.defaultDigits(amPM: .omitted)).minute().locale(language.locale))
+    }
     /// "10:30–11:00".
     static func timeRange(_ start: Date, _ end: Date) -> String {
         (start..<max(end, start)).formatted(.interval.hour().minute())
@@ -28,8 +46,8 @@ enum CalendarFormat {
     // MARK: Durations
 
     /// "4m", "1h 5m" / "4 мин", "1 ч 5 мин".
-    static func duration(minutes: Int) -> String {
-        Duration.seconds(max(minutes, 0) * 60).formatted(.units(allowed: [.hours, .minutes], width: .narrow))
+    static func duration(minutes: Int, language: CalendarLanguage = .app) -> String {
+        Duration.seconds(max(minutes, 0) * 60).formatted(.units(allowed: [.hours, .minutes], width: .narrow).locale(language.locale))
     }
     /// "4 minutes", "1 hour, 5 minutes" (VoiceOver).
     static func spokenDuration(minutes: Int) -> String {
@@ -43,10 +61,39 @@ enum CalendarFormat {
         let d = duration(minutes: minutes)
         return String(localized: "In \(d)", bundle: .module, comment: "Calendar widget: next event starts in a duration (\"In 4m\")")
     }
-    /// The band, Meeting soon: "in 4m" (Russian: "4 мин" — no room for "через").
-    static func bandStartsIn(minutes: Int) -> String {
-        let d = duration(minutes: minutes)
-        return String(localized: "in \(d)", bundle: .module, comment: "Meeting soon, in the notch band: starts in a duration (\"in 4m\"); keep it as short as possible")
+    /// The band, Meeting soon: "in 4m" (Russian: "4 мин" — no room for "через"). `compactLabel`, up to 30 minutes
+    /// (the longest lead time): fits the 48u medium slot in both languages (tested).
+    static func bandStartsIn(minutes: Int, language: CalendarLanguage = .app) -> String {
+        let d = duration(minutes: minutes, language: language)
+        return String(localized: "in \(d)", bundle: language.bundle, locale: language.locale,
+                      comment: "Meeting soon, in the notch band: starts in a duration (\"in 4m\"); keep it as short as possible")
+    }
+
+    /// The band, Meeting in progress, time left: "−12m" / "−12 мин", "−1:30" from an hour on. A sign instead of
+    /// "left", as the Media widget writes remaining time ("−2:11", DESIGN.md §7.1): "12m left" is 53 pt in
+    /// `compact` and the medium slot holds 48. The full phrase is in the peek and VoiceOver.
+    static func bandTimeLeft(minutes: Int, language: CalendarLanguage = .app) -> String {
+        let d = bandDuration(minutes: minutes, language: language)
+        return String(localized: "−\(d)", bundle: language.bundle, locale: language.locale,
+                      comment: "Meeting in progress, in the notch band: time left with a minus sign (\"−12m\", \"−1:30\"); at most 48 pt")
+    }
+
+    /// The band, Meeting in progress, time elapsed: "+12m" / "+12 мин", "+1:30" from an hour on.
+    static func bandTimeElapsed(minutes: Int, language: CalendarLanguage = .app) -> String {
+        let d = bandDuration(minutes: minutes, language: language)
+        return String(localized: "+\(d)", bundle: language.bundle, locale: language.locale,
+                      comment: "Meeting in progress, in the notch band: time elapsed with a plus sign (\"+12m\", \"+1:30\"); at most 48 pt")
+    }
+
+    /// The smallest scale the band's meeting value may shrink to (Russian "−59 мин" needs 0.87; 13 pt → 11 pt,
+    /// above the 10-pt floor of DESIGN.md §2.2). English never shrinks.
+    static let bandMinimumScale: CGFloat = 0.85
+
+    /// Minutes under an hour ("12m" / "12 мин"), then hours and minutes as "1:30": "1 ч 30 мин" is 69 pt.
+    private static func bandDuration(minutes: Int, language: CalendarLanguage) -> String {
+        let minutes = max(minutes, 0)
+        guard minutes >= 60 else { return duration(minutes: minutes, language: language) }
+        return Duration.seconds(minutes * 60).formatted(.time(pattern: .hourMinute).locale(language.locale))
     }
     /// Widget, live event: "Now · 12m left".
     static func nowWithTimeLeft(minutes: Int) -> String {

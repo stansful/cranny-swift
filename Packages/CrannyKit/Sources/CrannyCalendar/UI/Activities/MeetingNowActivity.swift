@@ -1,7 +1,7 @@
 // CrannyCalendar/UI/Activities/MeetingNowActivity.swift — "Meeting in progress" (DESIGN.md §9.2): P2 for the
-// whole event. Compact: an elapsed ring in the calendar colour | "12m left" (or elapsed, Settings ▸ Live
-// Activities). Peek: ring tile · title / 2-pt progress bar and time · Join. Text and ring tick once a minute,
-// only while drawn (`MinuteClock`).
+// whole event. Compact: an elapsed ring in the calendar colour | "−12m" left or "+12m" elapsed (Settings ▸ Live
+// Activities). Peek: ring tile · title / 2-pt progress bar and "12m left" · Join. Text and ring tick once a
+// minute, only while drawn (`MinuteClock`).
 import CrannyCore
 import Foundation
 import Observation
@@ -77,7 +77,9 @@ private struct MeetingRing: View {
     }
 }
 
-/// "12m left" (or "12m in"); drops the word when the slot is too narrow (Russian, long meetings).
+/// "−12m" (time left) or "+12m" (elapsed): one short form per setting, so the two never look alike and both fit
+/// the 48u medium slot (`CalendarFormat.bandTimeLeft`; widths tested in English and Russian). It may shrink a
+/// little rather than spill past the slot into the corner curve.
 private struct MeetingNowValue: View {
     @Environment(\.cranny) private var theme
     let activity: MeetingNowActivity
@@ -88,23 +90,16 @@ private struct MeetingNowValue: View {
             MinuteClock(anchor: remaining ? event.end : event.start) { tick in
                 let now = activity.model.displayNow(tick)
                 let minutes = remaining ? max(MinuteMath.minutesUntil(event.end, from: now), 1) : MinuteMath.minutesSince(event.start, to: now)
-                ViewThatFits(in: .horizontal) {
-                    value(remaining ? CalendarFormat.timeLeft(minutes: minutes) : CalendarFormat.timeElapsed(minutes: minutes), minutes)
-                    value(CalendarFormat.duration(minutes: minutes), minutes)
-                }
+                Text(remaining ? CalendarFormat.bandTimeLeft(minutes: minutes) : CalendarFormat.bandTimeElapsed(minutes: minutes))
+                    .crannyFont(.compact)
+                    .lineLimit(1)
+                    .minimumScaleFactor(CalendarFormat.bandMinimumScale)
+                    .contentTransition(.numericText(countsDown: remaining))
+                    .animation(theme.animation(.contentSwap), value: minutes)
             }
             .foregroundStyle(theme.palette.label)
             .accessibilityHidden(true)
         }
-    }
-
-    private func value(_ text: String, _ minutes: Int) -> some View {
-        Text(text)
-            .crannyFont(.compact)
-            .lineLimit(1)
-            .fixedSize()
-            .contentTransition(.numericText(countsDown: activity.display == .remaining))
-            .animation(theme.animation(.contentSwap), value: minutes)
     }
 }
 

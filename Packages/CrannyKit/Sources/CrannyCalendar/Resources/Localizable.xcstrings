@@ -104,6 +104,17 @@
         }
       }
     },
+    "+%@" : {
+      "comment" : "Meeting in progress, in the notch band: time elapsed with a plus sign (\"+12m\", \"+1:30\"); at most 48 pt",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+%@"
+          }
+        }
+      }
+    },
     "+%lld more" : {
       "comment" : "Calendar widget: events below the visible list (\"+3 more\")",
       "localizations" : {
@@ -943,6 +954,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "расписание"
+          }
+        }
+      }
+    },
+    "−%@" : {
+      "comment" : "Meeting in progress, in the notch band: time left with a minus sign (\"−12m\", \"−1:30\"); at most 48 pt",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "−%@"
           }
         }
       }
