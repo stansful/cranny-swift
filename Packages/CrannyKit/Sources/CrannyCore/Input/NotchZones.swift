@@ -109,6 +109,15 @@ public extension View {
                           onUpdate: @escaping @MainActor (SwipeUpdate) -> Void) -> some View {
         modifier(ScrollZoneModifier(id: id, axis: axis, onUpdate: onUpdate))
     }
+    /// Declares a two-finger scroll target for a VALUE (timer ±1 min, a scrubber seek): `.tracking(axis,
+    /// translation:)` for every sample of a touch sequence (translation since the touch began, +y = fingers moving
+    /// down), `.cancelled` when it ends, never `.committed`. The gesture zones of `crannyScrollZone` commit once per
+    /// touch and then go silent, so a long scroll over a value could move it only once; the view turns the travel
+    /// into detents. Routing is unchanged (`NotchZones.scroll`, fed by the shell).
+    func crannyContinuousScrollZone(_ id: ScrollZoneID, axis: SwipeAxis,
+                                    onUpdate: @escaping @MainActor (SwipeUpdate) -> Void) -> some View {
+        modifier(ScrollZoneModifier(id: id, axis: axis, onUpdate: onUpdate, commits: false))
+    }
 }
 
 struct DropZoneModifier: ViewModifier {

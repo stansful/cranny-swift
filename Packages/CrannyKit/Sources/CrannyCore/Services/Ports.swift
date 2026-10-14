@@ -224,6 +224,14 @@ public nonisolated enum MediaCommand: Sendable, Equatable {
     @discardableResult func send(_ command: MediaCommand) async -> Bool
 }
 
+/// Optional health facts of the `NowPlayingSource` for `--diagnostics` (ARCHITECTURE.md §6.5: the media source in
+/// use, its state, the blocked-helper heuristic). The shell reads it with
+/// `registry.services.nowPlaying as? any NowPlayingDiagnostics`; a source that does not conform reports nothing.
+@MainActor public protocol NowPlayingDiagnostics: AnyObject {
+    /// Stable keys and plain values ("media.provider": "perl"). Never track titles, artists or app names.
+    var diagnostics: [String: String] { get }
+}
+
 // MARK: - Tray (implemented by CrannyTray)
 
 /// What the shell needs from the Tray: its badge, the drag catch view and the fallback drop.

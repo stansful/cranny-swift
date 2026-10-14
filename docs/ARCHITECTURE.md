@@ -224,20 +224,30 @@ Everything in this section is the **contract** between work packages. The code b
 | `CrannyCore.swift` | Module overview, `PermissionKind.title` (Core's only localized strings) | A.9 |
 | `DesignSystem/Color.swift`, `Typography.swift`, `Layout.swift`, `Motion.swift`, `Notch.swift`, `Theme.swift`, `Components.swift` | **Verbatim from DESIGN.md** §2.1–§4.2 and Appendix A, with three amendments (§3.2) | DESIGN.md |
 | `DesignSystem/AmbientPalette.swift` | `AmbientPalette` (+ `extract(from:)`) and `EffectBudget`, moved out of DESIGN.md Appendix B so Media, Effects and the shell share them. `AuroraField` lives in `CrannyEffects`. | DESIGN.md App. B |
-| `DesignSystem/SharedComponents.swift` | `WidgetStateView`, `CrannyChipButtonStyle`, `Scrubber`, `MarqueeText` | A.8 |
-| `DesignSystem/EffectClock.swift` | `EffectClock`: the frame clock of continuously animated views, woken only at the budget interval (added by WP0) | 9.2, A.11 |
+| `DesignSystem/SharedComponents.swift` | `WidgetStateView`, `CrannyChipButtonStyle`, `CrannyLinkButtonStyle`, `Scrubber`, `MarqueeText` | A.8 |
+| `DesignSystem/EffectClock.swift` | `EffectClock` (the frame clock of continuously animated views, woken only at the budget interval; optional restart key), `FramePacing`, `AlignedClock` (minute-resolution text) | 9.2, A.11 |
+| `DesignSystem/Symbols.swift` | `CrannySymbol`: every SF Symbol name allowed by DESIGN.md §14.1, checked by a test | DESIGN.md §14.1 |
 | `Contracts/Identifiers.swift` | `CrannyID<Tag>` and all well-known IDs | 3.3 |
 | `Contracts/FeatureModule.swift` | `FeatureModule`, `ModuleRegistry` | 3.4 |
 | `Contracts/Widget.swift` | `NookWidget`, `WidgetSizes`, `WidgetContext`, `AnyNookWidget`, `PageDescriptor` | 3.5 |
 | `Contracts/LiveActivity.swift` | `LiveActivity`, `ActivityPriority`, `ActivityKind`, `ActivityAction`, `ActivityGesture`, `DelightMoment`, `RegisteredActivity` | 3.6 |
 | `Contracts/Contributions.swift` | `SettingsPage`, `PaletteCommand(Provider)`, `KeyCombo`, `GlobalShortcut`, `CaptureTarget`, `PermissionUse` | 3.7 |
 | `Contracts/NotchContext.swift` | `NotchPhase`, `OpenReason`, `NotchContext`, environment entries, `.notchMatched` | 3.8 |
+| `Contracts/PreviewWidgets.swift` | `ModuleRegistry.addPreviewStandIns()`: the well-known widgets for previews and tests without feature modules | 3.4 |
 | `Services/Ports.swift`, `Services/CrannyServices.swift` | Ports, media models, the service hub, public test doubles | 3.9 |
+| `Services/Announcer.swift` | `Announcer` (`services.announcer`): VoiceOver announcements under one app-wide 10-s limit | DESIGN.md §16 |
 | `Input/NotchZones.swift`, `Input/SwipeTracker.swift` | Drop/scroll zone registry and modifiers; pure swipe state machine | 3.10, A.3–A.4 |
 | `Settings/SettingsStore.swift`, `Settings/CoreSettings.swift` | Typed settings; shell-level keys and value types | 3.11, A.1–A.2 |
+| `Settings/InMemoryDefaults.swift` | `InMemoryDefaults`: settings for previews, tests and samples that never touch ~/Library/Preferences | 3.11 |
+| `Settings/SettingRowConventions.swift` | `crannySettingRow`, `crannyChangedDot`, `crannyResetToDefault`, `PermissionStatusPill`: the Settings-window row conventions for shell and module panes | DESIGN.md §11.1, §11.3 |
 | `Permissions/PermissionsCenter.swift` | The only TCC query/request code | 3.12, A.5 |
-| `Platform/Platform.swift`, `Platform/Concurrency.swift` | `Log`, `Haptics`, `AppPaths`, `JSONFileStore`, `AppInfo`, `SemanticVersion`, `observe(_:onChange:)`, `Debouncer`, `ProcessRunner` | 3.13, A.6–A.7 |
+| `Platform/Platform.swift`, `Platform/Concurrency.swift` | `Log`, `Haptics`, `AppPaths`, `JSONFileStore`, `AppInfo`, `SemanticVersion`, `observe(_:onChange:)`, `Debouncer`, `ProcessRunner`, `Duration.timeInterval` | 3.13, A.6–A.7 |
+| `Platform/JSONDocumentFile.swift` | `JSONDocumentFile`: a document on disk that tells missing from unreadable, sets corrupt files aside, writes in revision order (also synchronously at quit) | 3.13 |
+| `Platform/LaunchArguments.swift` | `LaunchArguments`: `--diagnostics` and the Debug QA hooks (docs/CONTRIBUTING.md) | — |
+| `Platform/AudioHAL.swift` | `AudioHAL`: typed Core Audio HAL reads (HUD, Media, System Activities) | 7.1 |
+| `Platform/AppIdentity.swift`, `Platform/ProtectedLocations.swift` | `AppIdentityResolver` (bundle ID → name and icon, off the main actor) and the guard that keeps Cranny from reading prompt-protected folders | 9.2, 10.15 |
 | `Resources/Localizable.xcstrings` | Core's catalog (en + ru) | 8.7 |
+| `Additions/` | Staging for additive change requests made while packages work in parallel (`<WPnn or phase>-<Topic>.swift`, §10.0). Before a release each is folded into the folder above that fits its topic and the file is deleted. | 10.0 |
 
 ### 3.2 Design system placement and the three amendments
 
@@ -1407,6 +1417,14 @@ public nonisolated enum MediaCommand: Sendable, Equatable {
     var audioEnergy: Double { get }
     /// Sends a command to the player; true when the player accepted it.
     @discardableResult func send(_ command: MediaCommand) async -> Bool
+}
+
+/// Optional health facts of the `NowPlayingSource` for `--diagnostics` (ARCHITECTURE.md §6.5: the media source in
+/// use, its state, the blocked-helper heuristic). The shell reads it with
+/// `registry.services.nowPlaying as? any NowPlayingDiagnostics`; a source that does not conform reports nothing.
+@MainActor public protocol NowPlayingDiagnostics: AnyObject {
+    /// Stable keys and plain values ("media.provider": "perl"). Never track titles, artists or app names.
+    var diagnostics: [String: String] { get }
 }
 
 // MARK: - Tray (implemented by CrannyTray)

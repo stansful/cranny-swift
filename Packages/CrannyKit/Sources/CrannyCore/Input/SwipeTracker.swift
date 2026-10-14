@@ -156,3 +156,17 @@ public nonisolated struct SwipeTracker: Sendable {
         x = 0; y = 0; locked = nil; fired = false; lastSample = nil; previousSample = nil
     }
 }
+
+public extension SwipeTracker {
+    /// A tracker that never commits (no distance or velocity is enough): the recognizer of continuous scroll zones
+    /// (`crannyContinuousScrollZone`).
+    static func continuous(axis: SwipeAxis) -> SwipeTracker {
+        var tracker = SwipeTracker(axis: axis)
+        tracker.horizontalCommit = .infinity
+        tracker.downCommit = .infinity
+        tracker.upCommit = .infinity
+        tracker.horizontalVelocity = .infinity
+        tracker.verticalVelocity = .infinity
+        return tracker
+    }
+}
