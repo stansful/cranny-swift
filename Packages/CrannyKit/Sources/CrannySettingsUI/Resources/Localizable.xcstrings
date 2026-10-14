@@ -1,0 +1,144 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "About" : {
+      "comment" : "Settings pane",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "О программе"
+          }
+        }
+      }
+    },
+    "Appearance" : {
+      "comment" : "Settings pane",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Оформление"
+          }
+        }
+      }
+    },
+    "Close when the pointer leaves" : {
+      "comment" : "Settings ▸ General row",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрывать, когда указатель уходит"
+          }
+        }
+      }
+    },
+    "Free and open source under the MIT License." : {
+      "comment" : "Settings ▸ About",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Бесплатное приложение с открытым исходным кодом по лицензии MIT."
+          }
+        }
+      }
+    },
+    "General" : {
+      "comment" : "Settings pane",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Основные"
+          }
+        }
+      }
+    },
+    "Gestures" : {
+      "comment" : "Settings pane",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Жесты"
+          }
+        }
+      }
+    },
+    "Keyboard" : {
+      "comment" : "Settings pane",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Клавиатура"
+          }
+        }
+      }
+    },
+    "Layout & Widgets" : {
+      "comment" : "Settings pane (code id `nook`)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Раскладка и виджеты"
+          }
+        }
+      }
+    },
+    "Live Activities" : {
+      "comment" : "Settings pane",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Активности"
+          }
+        }
+      }
+    },
+    "Nothing to set here yet." : {
+      "comment" : "Settings: placeholder pane",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Здесь пока нечего настраивать."
+          }
+        }
+      }
+    },
+    "Permissions" : {
+      "comment" : "Settings pane",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Разрешения"
+          }
+        }
+      }
+    },
+    "Version %@ (%@)" : {
+      "comment" : "Settings ▸ About: marketing version and build",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Version %1$@ (%2$@)"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Версия %1$@ (%2$@)"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

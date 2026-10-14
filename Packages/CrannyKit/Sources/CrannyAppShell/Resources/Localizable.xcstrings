@@ -1,0 +1,94 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "About Cranny" : {
+      "comment" : "Menu bar item",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "О программе Cranny"
+          }
+        }
+      }
+    },
+    "Confirmations" : {
+      "comment" : "Live Activities pane: the shell's short confirmations (e.g. \"Path copied\")",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подтверждения"
+          }
+        }
+      }
+    },
+    "Hi" : {
+      "comment" : "Debug visual QA: sample activity label",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Привет"
+          }
+        }
+      }
+    },
+    "Keep Cranny Open" : {
+      "comment" : "Menu bar item (checked while pinned)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрепить Cranny"
+          }
+        }
+      }
+    },
+    "Keep Cranny open" : {
+      "comment" : "Global shortcut name (Settings ▸ Keyboard)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрепить Cranny"
+          }
+        }
+      }
+    },
+    "Open Cranny" : {
+      "comment" : "Menu bar item; global shortcut name (Settings ▸ Keyboard)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть Cranny"
+          }
+        }
+      }
+    },
+    "Quit Cranny" : {
+      "comment" : "Menu bar item",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Завершить Cranny"
+          }
+        }
+      }
+    },
+    "Settings…" : {
+      "comment" : "Menu bar item",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки…"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

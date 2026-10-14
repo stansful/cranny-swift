@@ -1,0 +1,39 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Continue" : {
+      "comment" : "Onboarding button",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Продолжить"
+          }
+        }
+      }
+    },
+    "Look up. That's Cranny." : {
+      "comment" : "Welcome headline",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Посмотрите наверх. Это Cranny."
+          }
+        }
+      }
+    },
+    "Your music, calendar, files and shortcuts live in the notch, one glance away." : {
+      "comment" : "Welcome: one sentence about what Cranny does",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Музыка, календарь, файлы и быстрые команды — в вырезе экрана, на расстоянии одного взгляда."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}

@@ -1,0 +1,160 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "Calendar" : {
+      "comment" : "Widget placeholder name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Календарь"
+          }
+        }
+      }
+    },
+    "Command palette" : {
+      "comment" : "Open panel: header button (⌘K)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Палитра команд"
+          }
+        }
+      }
+    },
+    "Files" : {
+      "comment" : "Widget placeholder name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Файлы"
+          }
+        }
+      }
+    },
+    "Home" : {
+      "comment" : "Open panel: the built-in widget page (tab)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Главная"
+          }
+        }
+      }
+    },
+    "Keep Cranny open" : {
+      "comment" : "Open panel: pin button (⌘P)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Закрепить Cranny"
+          }
+        }
+      }
+    },
+    "Media" : {
+      "comment" : "Widget placeholder name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Медиа"
+          }
+        }
+      }
+    },
+    "Mirror" : {
+      "comment" : "Widget placeholder name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Зеркало"
+          }
+        }
+      }
+    },
+    "Notes" : {
+      "comment" : "Widget placeholder name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Заметки"
+          }
+        }
+      }
+    },
+    "Nothing here yet" : {
+      "comment" : "Open panel: page placeholder",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Здесь пока пусто"
+          }
+        }
+      }
+    },
+    "Open" : {
+      "comment" : "VoiceOver action on the collapsed notch",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть"
+          }
+        }
+      }
+    },
+    "Quick Apps" : {
+      "comment" : "Widget placeholder name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Быстрые приложения"
+          }
+        }
+      }
+    },
+    "Settings" : {
+      "comment" : "Open panel: header button (⌘,)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Настройки"
+          }
+        }
+      }
+    },
+    "Timer" : {
+      "comment" : "Widget placeholder name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Таймер"
+          }
+        }
+      }
+    },
+    "To-dos" : {
+      "comment" : "Widget placeholder name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Задачи"
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
