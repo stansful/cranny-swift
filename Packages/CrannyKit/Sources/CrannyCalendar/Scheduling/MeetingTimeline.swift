@@ -1,0 +1,75 @@
+// CrannyCalendar/Scheduling/MeetingTimeline.swift — the pure core of the meeting activities (ARCHITECTURE.md
+// §7.4, DESIGN.md §9.2): which event is "soon" or "in progress" at an instant, and the next instant at which
+// that answer (or anything the widget shows) can change. Everything is absolute `Date`s, so daylight-saving
+// and time-zone changes cannot shift a boundary; only the fetch window depends on the calendar.
+import Foundation
+
+nonisolated enum MeetingTimeline {
+    /// How long a new "Meeting soon" stage stays a P1 alert before it settles to P2 (DESIGN.md §9.2:
+    /// "P1 when it appears, then P2"). Long enough for the auto-peek and a glance.
+    static let alertHold: TimeInterval = 60
+    /// The second alert: one minute before the start.
+    static let lastMinute: TimeInterval = 60
+
+    nonisolated enum Stage: String, Equatable, Sendable {
+        /// From `leadMinutes` before the start.
+        case lead
+        /// The last minute before the start (a second meaningful change).
+        case lastMinute
+    }
+
+    nonisolated struct Soon: Equatable, Sendable {
+        var event: EventSnapshot
+        var stage: Stage
+        /// When the current stage began (its alert lasts `alertHold` from here).
+        var stageStart: Date
+        var alertUntil: Date { stageStart.addingTimeInterval(MeetingTimeline.alertHold) }
+        /// Identity of a "meaningful change": a new event, or the same event entering its last minute.
+        var key: String { event.id + "|" + stage.rawValue }
+    }
+
+    nonisolated struct State: Equatable, Sendable {
+        var soon: Soon?
+        /// The event in progress (the one that started last when several overlap).
+        var current: EventSnapshot?
+        static let none = State()
+    }
+
+    /// The meeting state at `now`. `events` must already be filtered; all-day events and birthdays never count.
+    static func state(events: [EventSnapshot], now: Date, leadMinutes: Int) -> State {
+        let lead = leadInterval(leadMinutes)
+        let timed = events.filter(\.isTimed)
+        let current = timed.filter { $0.isInProgress(at: now) }
+            .max { ($0.start, $1.end) < ($1.start, $0.end) }
+        let soon = timed.filter { $0.start > now && $0.start.timeIntervalSince(now) <= lead }
+            .min(by: EventFilter.order)
+            .map { event -> Soon in
+                let untilStart = event.start.timeIntervalSince(now)
+                let stage: Stage = untilStart <= lastMinute ? .lastMinute : .lead
+                let stageStart = stage == .lastMinute ? event.start.addingTimeInterval(-lastMinute) : event.start.addingTimeInterval(-lead)
+                return Soon(event: event, stage: stage, stageStart: stageStart)
+            }
+        return State(soon: soon, current: current)
+    }
+
+    /// The next instant after `now` at which `state(…)`, an alert's priority, or a widget row's role changes:
+    /// each timed event's lead start, last minute, start and end, plus the end of the current alert.
+    /// nil = nothing ahead in `events` (no timer at all: ARCHITECTURE.md §9.2).
+    static func nextBoundary(events: [EventSnapshot], now: Date, leadMinutes: Int) -> Date? {
+        let lead = leadInterval(leadMinutes)
+        var next: Date?
+        func consider(_ date: Date) { if date > now, next.map({ date < $0 }) ?? true { next = date } }
+        for event in events where event.isTimed {
+            consider(event.start.addingTimeInterval(-lead))
+            consider(event.start.addingTimeInterval(-lastMinute))
+            consider(event.start)
+            consider(event.end)
+        }
+        if let soon = state(events: events, now: now, leadMinutes: leadMinutes).soon { consider(soon.alertUntil) }
+        return next
+    }
+
+    static func leadInterval(_ minutes: Int) -> TimeInterval {
+        TimeInterval(min(max(minutes, CalendarSettings.leadRange.lowerBound), CalendarSettings.leadRange.upperBound) * 60)
+    }
+}
