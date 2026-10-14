@@ -48,6 +48,16 @@ public func observe<T: Equatable>(_ value: @escaping @MainActor () -> T,
     }
 }
 
+// MARK: - Durations
+
+public extension Duration {
+    /// Seconds as a `TimeInterval`, for `Date` and `DispatchTime` arithmetic and for logging.
+    var timeInterval: TimeInterval {
+        let (seconds, attoseconds) = components
+        return Double(seconds) + Double(attoseconds) / 1e18
+    }
+}
+
 // MARK: - Debounce
 
 /// Trailing debounce on the main actor (note autosave, settings-driven rebuilds).
@@ -178,9 +188,7 @@ private nonisolated final class ProcessBox: @unchecked Sendable {   // `process`
             return true
         }
         guard interrupted else { return }
-        let (seconds, attoseconds) = grace.components
-        let delay = Double(seconds) + Double(attoseconds) / 1e18
-        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + delay) { [self] in terminate() }
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + grace.timeInterval) { [self] in terminate() }
     }
 }
 

@@ -132,8 +132,7 @@ import SwiftUI
     private var unfinishedLaunchHooks: [ModuleID: Int] = [:]
 
     private func launchHookFinished(_ module: ModuleID, after duration: Duration) {
-        let (seconds, attoseconds) = duration.components
-        let milliseconds = Double(seconds) * 1000 + Double(attoseconds) / 1e15
+        let milliseconds = duration.timeInterval * 1000
         Log.logger(.app).info("launch hook of \(module.rawValue, privacy: .public) took \(milliseconds, format: .fixed(precision: 1), privacy: .public) ms")
         unfinishedLaunchHooks[module, default: 1] -= 1
         if unfinishedLaunchHooks[module] == 0 { launchedModules.insert(module) }

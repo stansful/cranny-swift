@@ -143,8 +143,29 @@ private struct Document: Codable, Equatable, Sendable {
 @Test func effectClockKeepsItsCadenceAndNeverBursts() {
     let clock = ContinuousClock()
     let start = clock.now
-    let next = EffectClock<EmptyView>.nextDeadline(after: start, now: start.advanced(by: .milliseconds(5)), interval: 1.0 / 30)
+    let next = FramePacing.nextDeadline(after: start, now: start.advanced(by: .milliseconds(5)), interval: 1.0 / 30)
     #expect(next == start.advanced(by: .seconds(1.0 / 30)))                          // on time: one interval later
     let late = start.advanced(by: .seconds(2))                                         // woke from sleep 2 s late
-    #expect(EffectClock<EmptyView>.nextDeadline(after: start, now: late, interval: 0.05) == late.advanced(by: .seconds(0.05)))
+    #expect(FramePacing.nextDeadline(after: start, now: late, interval: 0.05) == late.advanced(by: .seconds(0.05)))
 }
+
+@Test func alignedClockWakesWhenTheShownValueChanges() {
+    let anchor = Date(timeIntervalSinceReferenceDate: 800_000_000)                    // an event's start
+    // 4 min 30 s before the start ("in 5m"): next change at 4 min before, plus 20 ms.
+    #expect(AlignedClock<EmptyView>.nextTick(after: anchor.addingTimeInterval(-270), anchor: anchor)
+            == anchor.addingTimeInterval(-240 + 0.02))
+    #expect(AlignedClock<EmptyView>.nextTick(after: anchor.addingTimeInterval(190), anchor: anchor)
+            == anchor.addingTimeInterval(240 + 0.02))
+    // Default anchor: wall-clock minutes (the reference date is on a minute boundary in every time zone).
+    let date = Date(timeIntervalSinceReferenceDate: 60 * 1000 + 41)
+    #expect(AlignedClock<EmptyView>.nextTick(after: date, anchor: Date(timeIntervalSinceReferenceDate: 0))
+            == Date(timeIntervalSinceReferenceDate: 60 * 1001 + 0.02))
+    #expect(AlignedClock<EmptyView>.nextTick(after: anchor, anchor: anchor, period: 1) == anchor.addingTimeInterval(1.02))
+}
+
+@Test func durationsConvertToSeconds() {
+    #expect(Duration.milliseconds(1500).timeInterval == 1.5)
+    #expect(Duration.seconds(-2).timeInterval == -2)
+    #expect(Duration.zero.timeInterval == 0)
+}
+
