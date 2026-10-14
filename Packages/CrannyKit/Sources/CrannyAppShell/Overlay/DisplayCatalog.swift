@@ -42,9 +42,11 @@ nonisolated enum DisplayCatalog {
             chosen = matching.isEmpty ? [primary].compactMap { $0 } : matching
         }
         return chosen.compactMap { display in
-            let style = perDisplay[display.key]?.style ?? noNotchStyle
-            if !display.hasNotch && style == .off { return nil }
-            return PanelPlacement(key: display.key, style: style)
+            // One rule with the Settings stage (Core, WP14): an explicit per-display Off hides Cranny on any display;
+            // the no-notch style applies only where there is no notch.
+            guard DisplayPreferences.showsCranny(perDisplay[display.key], noNotchStyle: noNotchStyle,
+                                                 hasNotch: display.hasNotch) else { return nil }
+            return PanelPlacement(key: display.key, style: perDisplay[display.key]?.style ?? noNotchStyle)
         }
     }
 

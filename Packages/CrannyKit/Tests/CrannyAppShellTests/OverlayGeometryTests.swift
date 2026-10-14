@@ -105,11 +105,13 @@ private func placed(_ displays: [DisplayDescriptor], _ selection: DisplaySelecti
     #expect(placed([external, builtIn], .custom(["gone"])) == ["external"])    // none connected: the primary
 }
 
-@Test func styleOffRemovesOnlyDisplaysWithoutANotch() {
+@Test func styleOffFollowsDisplayPreferencesShowsCranny() {
     var off = DisplayPreferences(style: .off)
     off.showsPeeks = false
     #expect(placed([external, builtIn, side], .all, perDisplay: ["side": off]) == ["external", "built-in"])
-    #expect(placed([external, builtIn], .all, style: .off) == ["built-in"])     // a hardware notch is always drawn
+    #expect(placed([external, builtIn], .all, style: .off) == ["built-in"])     // the no-notch style skips a notch
+    // An explicit per-display Off hides Cranny on a notched display too (the rule Settings' stage uses, WP14).
+    #expect(placed([external, builtIn], .all, perDisplay: ["built-in": DisplayPreferences(style: .off)]) == ["external"])
     let attached = DisplayCatalog.placements(for: [side], selection: .all, perDisplay: ["side": DisplayPreferences(style: .attached)],
                                              noNotchStyle: .floatingIsland)
     #expect(attached == [PanelPlacement(key: "side", style: .attached)])
