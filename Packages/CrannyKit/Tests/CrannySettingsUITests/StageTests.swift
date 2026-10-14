@@ -1,3 +1,4 @@
+import AppKit
 import CoreGraphics
 import CrannyCore
 import CrannyNotchUI
@@ -136,6 +137,72 @@ private let cast = StageCast(ongoing: [.nowPlaying, .timerRunning], available: [
     stage.applyAppearance(animated: false)
     #expect(stage.model.theme.density == .roomy && stage.model.theme.motion == .lively)
     #expect(stage.model.layout.grid.density == .roomy)
+}
+
+@Test func crannyIsOffOnlyWhereTheShellHidesIt() {
+    // Automatic style: the no-notch style decides only where there is no notch.
+    #expect(DisplayPreferences.showsCranny(nil, noNotchStyle: .off, hasNotch: true))
+    #expect(!DisplayPreferences.showsCranny(nil, noNotchStyle: .off, hasNotch: false))
+    #expect(DisplayPreferences.showsCranny(nil, noNotchStyle: .attached, hasNotch: false))
+    // An explicit per-display style wins, on any display.
+    #expect(!DisplayPreferences.showsCranny(DisplayPreferences(style: .off), noNotchStyle: .floatingIsland, hasNotch: true))
+    #expect(DisplayPreferences.showsCranny(DisplayPreferences(style: .attached), noNotchStyle: .off, hasNotch: false))
+}
+
+@Test func notchedStageStaysOnWhenOnlyTheNoNotchStyleIsOff() {
+    let registry = ModuleRegistry(services: .preview())
+    let stage = StageController(registry: registry, state: .open)
+    stage.currentScreen = nil                                                   // `.reference`: a notched display
+    registry.services.settings[CoreSettings.noNotchStyle] = .off
+    stage.applyAppearance(animated: false)
+    #expect(stage.model.layout.metrics.hasNotch)
+    #expect(!stage.isOffOnDisplay)
+}
+
+/// Settings changed while the stage was stopped (About, Permissions, a hidden window) show when it starts again.
+@Test func stageCatchesUpWithChangesMadeWhileStopped() {
+    let registry = ModuleRegistry(services: .preview())
+    let settings = registry.services.settings
+    let stage = StageController(registry: registry, state: .open)
+    stage.start()
+    stage.stop()
+    settings[CoreSettings.density] = .roomy
+    settings[CoreSettings.pages] = [NookPreset.minimal.page]
+    stage.start()
+    #expect(stage.model.theme.density == .roomy)
+    #expect(stage.model.openColumns == StageScript.openColumns(items: NookPreset.minimal.page.items, sizes: { registry.widget($0)?.sizes },
+                                                               maxColumns: stage.model.layout.maxColumns))
+    #expect(stage.model.openColumns != 10)
+    stage.stop()
+}
+
+/// Stopping during a Motion replay (its Closed beat) settles on the picker state at once.
+@Test func stoppingDuringAMotionReplaySettles() async throws {
+    let registry = ModuleRegistry(services: .preview())
+    let stage = StageController(registry: registry, state: .open)
+    stage.start()
+    registry.services.settings[CoreSettings.motion] = .lively
+    for _ in 0..<20 { await Task.yield() }
+    if !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
+        #expect(stage.model.phase == .idle)                                     // the replay's Closed beat
+    }
+    stage.stop()
+    #expect(stage.model.phase == .open)
+    try await Task.sleep(for: .milliseconds(550))                               // the cancelled replay never lands
+    #expect(stage.model.phase == .open)
+}
+
+/// A chip whose activity the user turned off is not offered (it would do nothing).
+@Test func chipsFollowTheLiveActivityToggles() {
+    let registry = ModuleRegistry(services: .preview())
+    let settings = registry.services.settings
+    let stage = StageController(registry: registry, state: .closed)
+    #expect(stage.availableChips == SimulateChip.allCases)
+    settings[CoreSettings.activityPreferences] = [.nowPlaying: ActivityPreference(isEnabled: false, peeksOnChange: false),
+                                                  .meetingSoon: ActivityPreference(isEnabled: false, peeksOnChange: false)]
+    #expect(stage.availableChips == [.timer, .volume, .dropFile])
+    stage.simulate(.songChange)
+    #expect(stage.playing == nil)
 }
 
 // MARK: - Wallpaper

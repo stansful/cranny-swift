@@ -35,6 +35,7 @@ import SwiftUI
     @ObservationIgnored private var samples: [ActivityID: any LiveActivity] = [:]
     @ObservationIgnored private var tokens: [ObservationToken] = []
     @ObservationIgnored private var script: Task<Void, Never>?
+    @ObservationIgnored private var wallpaperTask: Task<Void, Never>?
     @ObservationIgnored private var screenObserver: (any NSObjectProtocol)?
     @ObservationIgnored private var lastMotion: MotionPersonality
     /// A Motion change is replaying the entrance: settings refreshes wait for it.
@@ -57,10 +58,14 @@ import SwiftUI
 
     // MARK: Lifecycle
 
-    /// Starts following settings and display changes (call when the stage appears).
+    /// Starts following settings and display changes (call when the stage appears). Settings may have changed while
+    /// the stage was stopped (Undo of Reset All on About, ⌘E in the notch, the menu bar), so it re-applies them first.
     func start() {
         guard tokens.isEmpty else { return }
         let settings = registry.services.settings
+        lastMotion = settings[CoreSettings.motion]
+        chooseScreen()
+        applyAppearance(animated: false)
         tokens.append(observe({ [weak self] in self?.appearanceInputs() }) { [weak self] _ in
             self?.applyAppearance(animated: true)
         })
@@ -75,15 +80,19 @@ import SwiftUI
                 self?.applyAppearance(animated: false)
             }
         }
-        Task { await loadWallpaper() }
+        wallpaperTask?.cancel()
+        wallpaperTask = Task { [weak self] in await self?.loadWallpaper() }
     }
 
-    /// Stops observing and cancels a playing chip (the stage disappeared or its window is hidden).
+    /// Stops observing and cancels a playing chip or Motion replay, settling on the picker state (the stage
+    /// disappeared or its window is hidden).
     func stop() {
         tokens.forEach { $0.cancel() }
         tokens.removeAll()
         if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
         screenObserver = nil
+        wallpaperTask?.cancel()
+        wallpaperTask = nil
         cancelScript(settle: true)
     }
 
@@ -129,9 +138,11 @@ import SwiftUI
         }
     }
 
-    /// Chips offered: those whose sample exists (Drop file always).
+    /// Chips offered: those whose activity has a sample and is turned on in Live Activities (Drop file always), so
+    /// every chip shown plays something.
     var availableChips: [SimulateChip] {
-        SimulateChip.allCases.filter { $0.activity.map { samples[$0] != nil } ?? true }
+        let available = cast.available
+        return SimulateChip.allCases.filter { $0.activity.map(available.contains) ?? true }
     }
 
     /// "Show on Notch": the picker state on the real notch for 5 s (§11.2).
@@ -216,14 +227,15 @@ import SwiftUI
         apply(currentScene, animated: animated)
     }
 
+    /// Cancels a chip or a Motion replay; `settle` puts the picker state back at once (both leave the stage on a
+    /// scene of their own).
     private func cancelScript(settle: Bool) {
+        let wasPlaying = playing != nil || isReplaying
         script?.cancel()
         script = nil
         isReplaying = false
-        if playing != nil {
-            playing = nil
-            if settle { apply(currentScene, animated: false) }
-        }
+        if playing != nil { playing = nil }
+        if wasPlaying && settle { apply(currentScene, animated: false) }
     }
 
     /// A new Motion personality replays the current state's entrance, so the difference is visible (not under

@@ -40,7 +40,7 @@ enum SimulateChip: String, CaseIterable, Identifiable {
 struct StageCast: Equatable {
     /// Enabled ongoing (P2) samples in the user's order: the compact primary and the satellite.
     var ongoing: [ActivityID]
-    /// Every sample the stage holds (chips are offered only for these).
+    /// Every sample whose activity is turned on (chips are offered only for these).
     var available: Set<ActivityID>
 }
 

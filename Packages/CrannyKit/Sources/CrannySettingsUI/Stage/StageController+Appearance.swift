@@ -29,14 +29,18 @@ extension StageController {
         let settings = registry.services.settings
         let metrics = currentScreen.map(NotchMetrics.measure) ?? .reference
         let key = currentScreen.flatMap(ThemeResolver.displayKey)
-        let style = key.flatMap { settings[CoreSettings.perDisplay][$0]?.style } ?? settings[CoreSettings.noNotchStyle]
+        let preferences = key.flatMap { settings[CoreSettings.perDisplay][$0] }
+        let noNotchStyle = settings[CoreSettings.noNotchStyle]
+        let style = preferences?.style ?? noNotchStyle
+        // The same rule as the shell's panels: the no-notch style never turns off a notched display.
+        let shows = DisplayPreferences.showsCranny(preferences, noNotchStyle: noNotchStyle, hasNotch: metrics.hasNotch)
         let layout = ThemeResolver.layout(metrics: metrics, displayModel: currentScreen.flatMap(ThemeResolver.displayModelKey),
                                           style: style == .off ? .floatingIsland : style, settings: settings,
                                           textSize: settings[CoreSettings.textSize], density: settings[CoreSettings.density],
                                           widgetStyle: settings[CoreSettings.widgetStyle])
         let theme = ThemeResolver.theme(settings: settings, albumAccent: registry.services.nowPlaying?.palette?.accent,
                                         notchUnit: metrics.unit, isFloatingDisplay: layout.isFloating)
-        return StageAppearance(layout: layout, theme: theme, isOff: style == .off)
+        return StageAppearance(layout: layout, theme: theme, isOff: !shows)
     }
 
     func castInputs() -> StageCastInputs {
@@ -75,7 +79,11 @@ extension StageController {
     func loadWallpaper() async {
         guard let screen = currentScreen else { return }
         let miniature = await WallpaperSource.miniature(for: screen)
-        withAnimation(.easeOut(duration: 0.25)) { wallpaper = miniature }
+        guard !Task.isCancelled else { return }
+        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        withAnimation(CrannyMotion.animation(.contentSwap, personality: model.theme.motion, reduceMotion: reduceMotion)) {
+            wallpaper = miniature
+        }
     }
 
     /// One sample per activity: the module's `makeSample()`, else the stage's stand-in for well-known activities.
