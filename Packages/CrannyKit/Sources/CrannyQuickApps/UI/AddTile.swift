@@ -65,7 +65,7 @@ struct AddTile: View {
         }
         switch catalog.state {
         case .idle, .loading:
-            return [MenuEntry(disabled: String(localized: "Loading…", bundle: .module, comment: "Quick Apps: shortcut submenu while the list is read"))]
+            return [MenuEntry(disabled: String(localized: "Loading…", bundle: .module, comment: "Quick Apps: loading (widget while apps are looked up, shortcut submenu while the list is read)"))]
         case .failed(let error):
             return [MenuEntry(disabled: error.localizedDescription)]
         case .loaded:

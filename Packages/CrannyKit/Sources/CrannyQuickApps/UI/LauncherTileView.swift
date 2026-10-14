@@ -37,6 +37,7 @@ struct LauncherTileView: View {
             } else {
                 Button { model.activate(tile) } label: { content }
                     .buttonStyle(TileButtonStyle(metrics: metrics))
+                    .focusable(false)                       // the grid makes the tile itself focusable (arrows)
                     .disabled(!interactive)
             }
         }

@@ -33,8 +33,19 @@ import Observation
         let mine = generation
         let resolver = resolver
         let unique = Array(Set(bundleIDs))
+        let known = apps
         let found = await withTaskGroup(of: (String, ResolvedApp?).self) { group in
-            for id in unique { group.addTask { (id, await resolver.resolve(id)) } }
+            for id in unique {
+                group.addTask {
+                    if let app = await resolver.resolve(id) { return (id, app) }
+                    // An app added from a drop or the open panel that LaunchServices has not registered yet (a fresh
+                    // download): keep it while its bundle is still where it was found.
+                    if let previous = known[id], let app = await resolver.app(at: previous.url), app.bundleID == id {
+                        return (id, app)
+                    }
+                    return (id, nil)
+                }
+            }
             var result: [(String, ResolvedApp?)] = []
             for await pair in group { result.append(pair) }
             return result

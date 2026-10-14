@@ -24,7 +24,7 @@ struct LauncherView: View {
         let layout = LauncherLayout(columns: context.cells, rows: context.rows)
         ZStack {
             if !model.isReady {
-                Color.clear
+                DelayedLoading()
             } else if tiles.isEmpty && !model.isEditing && context.cells > 1 {
                 WidgetStateView(.empty, symbol: "app.dashed",
                                 message: String(localized: "Drag apps here", bundle: .module, comment: "Quick Apps widget: empty state"),
@@ -59,6 +59,25 @@ struct LauncherView: View {
     private var chooseApps: @MainActor () -> Void { { [model] in model.chooseApps() } }
 
     private var isDropTarget: Bool { zones?.armedDropZone == Self.dropZone }
+}
+
+/// DESIGN.md §6.8 loading: nothing for the first 300 ms, then a quiet ring (the first app lookup is ≈ 10 ms).
+private struct DelayedLoading: View {
+    @State private var isLate = false
+    var body: some View {
+        ZStack {
+            if isLate {
+                WidgetStateView(.loading, symbol: "app.dashed",
+                                message: String(localized: "Loading…", bundle: .module, comment: "Quick Apps: loading (widget while apps are looked up, shortcut submenu while the list is read)"))
+                    .transition(.opacity)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .task {
+            try? await Task.sleep(for: .milliseconds(300))
+            isLate = true
+        }
+    }
 }
 
 #Preview("Launcher · 2 cells") {

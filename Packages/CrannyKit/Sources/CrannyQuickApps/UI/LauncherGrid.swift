@@ -47,7 +47,7 @@ struct LauncherGrid: View {
                         .zIndex(isDragged ? 1 : 0)
                         .offset(offset(for: tile, at: position))
                         .transaction { if isDragged { $0.animation = nil } }
-                        .transition(.crannyTile(reduceMotion: theme.reduceMotion))
+                        .transition(.quickAppsTile(reduceMotion: theme.reduceMotion))
                 case .overflow(let first, let count, let position):
                     OverflowTile(tiles: Array(shown[first...]), count: count, model: model, metrics: tileMetrics,
                                  interactive: interactive, redacted: redacted)
@@ -55,7 +55,7 @@ struct LauncherGrid: View {
                 case .add(let position):
                     AddTile(model: model, metrics: tileMetrics)
                         .offset(at(position))
-                        .transition(.crannyTile(reduceMotion: theme.reduceMotion))
+                        .transition(.quickAppsTile(reduceMotion: theme.reduceMotion))
                 }
             }
         }
@@ -183,7 +183,7 @@ struct LauncherGrid: View {
 
 extension AnyTransition {
     /// A tile arriving or leaving: grows from 0.6 with a fade (opacity only under Reduce Motion).
-    static func crannyTile(reduceMotion: Bool) -> AnyTransition {
+    static func quickAppsTile(reduceMotion: Bool) -> AnyTransition {
         reduceMotion ? .opacity : .scale(scale: 0.6).combined(with: .opacity)
     }
 }

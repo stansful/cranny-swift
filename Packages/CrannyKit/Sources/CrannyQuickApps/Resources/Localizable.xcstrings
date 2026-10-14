@@ -354,7 +354,7 @@
       }
     },
     "Loading…" : {
-      "comment" : "Quick Apps: shortcut submenu while the list is read",
+      "comment" : "Quick Apps: loading (widget while apps are looked up, shortcut submenu while the list is read)",
       "localizations" : {
         "ru" : {
           "stringUnit" : {

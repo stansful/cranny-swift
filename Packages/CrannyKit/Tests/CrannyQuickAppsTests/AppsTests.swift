@@ -93,3 +93,12 @@ import Testing
     let icon = try #require(await resolver.icon(at: finder.url, pixelSize: 64))
     #expect(icon.width == 64)
 }
+
+@Test func anAddedAppLaunchServicesDoesNotKnowYetStays() async {
+    // "fresh" is not registered (resolve fails) but its bundle is where the drop found it.
+    let catalog = AppCatalog(resolver: FakeResolver([]))
+    catalog.insert(FakeResolver.app("fresh"))
+    await catalog.refresh(["fresh", "gone"])
+    #expect(catalog.app("fresh") != nil)
+    #expect(catalog.isMissing("gone"))
+}
