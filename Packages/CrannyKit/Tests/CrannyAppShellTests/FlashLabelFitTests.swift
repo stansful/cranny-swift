@@ -1,5 +1,6 @@
 // Every flash label fits the compact wing (design ruling E4, ARCHITECTURE.md §10.20 #26): each label the modules and
-// the shell show in the flash, in English and Russian, drawn by `FlashActivity` in its wing at the notch units of
+// the shell show in the flash, in every language the String Catalogs are compiled into (a new language is measured
+// as soon as its translations are merged), drawn by `FlashActivity` in its wing at the notch units of
 // every whole-point band height from 0.8 to 1.25. The fit is measured, never counted in characters («Скопировано» has
 // 11 characters and is 88 pt wide at 1u). A label that fits no wing leaves the glyph alone in the wings and stays in
 // the peek row and for VoiceOver. No windows are shown.
@@ -14,6 +15,18 @@ import Testing
 /// The notch units of whole-point band heights (`NotchMetrics.unit`, 0.8–1.25). `WingTextMetrics` decides at a
 /// finer grid; rendering every one of those would take too long.
 private let bandUnits: [CGFloat] = [0.8] + (26...40).map { CGFloat($0) / 32 }
+
+/// Every language of the app's String Catalogs: the `.lproj` folders of the package resource bundles, which SwiftPM
+/// puts beside the shell's.
+nonisolated private let flashLanguages: [String] = {
+    let directory = Bundle.module.bundleURL.deletingLastPathComponent()
+    let bundles = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? []
+    let codes = bundles
+        .filter { $0.lastPathComponent.hasPrefix("CrannyKit_") && $0.pathExtension == "bundle" }
+        .compactMap(Bundle.init(url:))
+        .flatMap(\.localizations)
+    return Set(codes).subtracting(["Base"]).sorted()
+}()
 
 /// The shell's own labels (its `Bundle.module` is this file's).
 @MainActor private var shellLabels: [FlashLabelSource] {
@@ -75,19 +88,35 @@ private let bandUnits: [CGFloat] = [0.8] + (26...40).map { CGFloat($0) / 32 }
 }
 
 @MainActor @Suite("Flash labels fit the wing (ruling E4)") struct FlashLabelFitTests {
-    @Test(arguments: ["en", "ru"]) func everyFlashLabelFitsItsWing(language: String) throws {
+    @Test func everyCatalogLanguageIsMeasured() {
+        #expect(flashLanguages.contains("en") && flashLanguages.contains("ru"), "\(flashLanguages)")
+    }
+
+    /// One case per language; its failures are collected into one issue that names every label and its width.
+    @Test(arguments: flashLanguages) func everyFlashLabelFitsItsWing(language: String) throws {
+        var failures: [String] = []
         for source in allLabels {
             let label = try text(of: source, in: language)
             let flash = FlashActivity()
             flash.show(symbol: source.symbol, label: label, duration: 60)
-            #expect(flash.showsLabelInWings && FlashActivity.labelSlots.contains(flash.slot), "\(source) «\(label)» fits no wing")
+            guard flash.showsLabelInWings && FlashActivity.labelSlots.contains(flash.slot) else {
+                let widest = WingTextMetrics.notchUnits.map { WingTextMetrics.width(of: label, notchUnit: $0) }.max() ?? 0
+                failures.append("\(source) «\(label)» fits no wing (\(widest) pt at the widest unit)")
+                flash.hide()
+                continue
+            }
             for unit in bandUnits {
                 let (width, glyph, wing) = drawn(flash, unit: unit)
-                #expect(width > 0 && width <= wing, "«\(label)» at \(unit)u: \(width) pt in a \(wing)-pt wing")
-                #expect(glyph <= wing, "\(source.symbol) at \(unit)u: \(glyph) pt in a \(wing)-pt wing")
+                if !(width > 0 && width <= wing) {
+                    failures.append("«\(label)» at \(unit)u: \(width) pt in a \(wing)-pt wing")
+                }
+                if glyph > wing {
+                    failures.append("\(source.symbol) at \(unit)u: \(glyph) pt in a \(wing)-pt wing")
+                }
             }
             flash.hide()
         }
+        #expect(failures.isEmpty, "\(language): \(failures.count) problem(s): \(failures.joined(separator: "; "))")
     }
 
     /// The table names what the code shows: each accessor returns its key's English or Russian text, each call's
@@ -97,7 +126,7 @@ private let bandUnits: [CGFloat] = [0.8] + (26...40).map { CGFloat($0) / 32 }
             if source.module == nil {
                 #expect(source.sites.allSatisfy { $0.label == "\"\(source.key)\"" }, "\(source): not shown verbatim")
             } else if let current = source.current {
-                let texts = try ["en", "ru"].map { try text(of: source, in: $0) }
+                let texts = try flashLanguages.map { try text(of: source, in: $0) }
                 #expect(texts.contains(current), "\(source): the code shows «\(current)», the table expects \(texts)")
             } else {
                 #if DEBUG

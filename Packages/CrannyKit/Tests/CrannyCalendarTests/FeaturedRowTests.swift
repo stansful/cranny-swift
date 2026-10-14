@@ -7,8 +7,8 @@ import Testing
 
 /// DESIGN.md §16: Join always shows its glyph *and* its word in the Nook (§7.2 draws `[⦿ Join]` at 3 cells). A featured
 /// row offers its `FeaturedRowLayout`s to `ViewThatFits`, which picks the first whose ideal width fits (else the
-/// `overflow` layout); these tests measure each layout in English and Russian and check that the pick shows the word
-/// at every density and text size.
+/// `overflow` layout); these tests measure each layout in every language of the module's catalog and check that the
+/// pick shows the word at every density and text size.
 @Suite @MainActor struct FeaturedRowTests {
     private func language(_ code: String) throws -> CalendarLanguage { try #require(CalendarLanguage.named(code)) }
 
@@ -39,26 +39,29 @@ import Testing
         return cells >= 5 ? (content - 2 * Space.m - 1) / 2 : content
     }
 
-    @Test func joinKeepsItsWordAtEveryDensityAndTextSize() throws {
-        for code in ["en", "ru"] {
-            let lang = try language(code)
-            for textSize in CrannyTextSize.allCases {
-                for status in statuses(lang) {
-                    let ideal = FeaturedRowLayout.allCases.map { idealSize($0, status: status, link: true, code: code, textSize: textSize).width }
-                    for density in NookDensity.allCases {
-                        let grid = NookGrid(density: density, textSize: textSize)
-                        // Compact density's 5-cell columns (124 pt) are the one place Russian falls back to the glyph.
-                        let sizes = density == .compact ? [3, 4] : [3, 4, 5]
-                        for cells in sizes {
-                            let width = rowWidth(cells: cells, grid: grid)
-                            let pick = FeaturedRowLayout.allCases.indices.first { ideal[$0] <= width }
-                                .map { FeaturedRowLayout.allCases[$0] } ?? FeaturedRowLayout.overflow
-                            #expect(pick.showsJoinWord, "\(code) \(textSize) \(density) \(cells) cells (\(width) pt), \"\(status)\": \(ideal) → \(pick)")
+    /// One case per language; its failures are collected into one issue with the measured ideal widths.
+    @Test(arguments: bandLanguages) func joinKeepsItsWordAtEveryDensityAndTextSize(code: String) throws {
+        let lang = try language(code)
+        var failures: [String] = []
+        for textSize in CrannyTextSize.allCases {
+            for status in statuses(lang) {
+                let ideal = FeaturedRowLayout.allCases.map { idealSize($0, status: status, link: true, code: code, textSize: textSize).width }
+                for density in NookDensity.allCases {
+                    let grid = NookGrid(density: density, textSize: textSize)
+                    // Compact density's 5-cell columns (124 pt) are the one place Russian falls back to the glyph.
+                    let sizes = density == .compact ? [3, 4] : [3, 4, 5]
+                    for cells in sizes {
+                        let width = rowWidth(cells: cells, grid: grid)
+                        let pick = FeaturedRowLayout.allCases.indices.first { ideal[$0] <= width }
+                            .map { FeaturedRowLayout.allCases[$0] } ?? FeaturedRowLayout.overflow
+                        if !pick.showsJoinWord {
+                            failures.append("\(textSize) \(density) \(cells) cells (\(width) pt), \"\(status)\": \(ideal) → \(pick)")
                         }
                     }
                 }
             }
         }
+        #expect(failures.isEmpty, "\(code): \(failures.count) layout(s) lose the Join word: \(failures.joined(separator: "; "))")
     }
 
     /// The model above, checked against `ViewThatFits` itself (`FeaturedEventRow`'s `FeaturedRowChoice`).
@@ -91,15 +94,16 @@ import Testing
         }
     }
 
-    @Test func everyLayoutKeepsTheFeaturedRowHeight() throws {
-        for code in ["en", "ru"] {
-            let status = CalendarFormat.nowWithTimeLeft(minutes: 12, language: try language(code))
-            for layout in FeaturedRowLayout.allCases {
-                for link in [true, false] {
-                    #expect(idealSize(layout, status: status, link: link, code: code).height == AgendaScroll.featuredHeight, "\(code) \(layout) link: \(link)")
-                }
+    @Test(arguments: bandLanguages) func everyLayoutKeepsTheFeaturedRowHeight(code: String) throws {
+        let status = CalendarFormat.nowWithTimeLeft(minutes: 12, language: try language(code))
+        var failures: [String] = []
+        for layout in FeaturedRowLayout.allCases {
+            for link in [true, false] {
+                let height = idealSize(layout, status: status, link: link, code: code).height
+                if height != AgendaScroll.featuredHeight { failures.append("\(layout) link: \(link): \(height) pt") }
             }
         }
+        #expect(failures.isEmpty, "\(code), rows are \(AgendaScroll.featuredHeight) pt: \(failures.joined(separator: "; "))")
     }
 
     @Test func theRowsJoinWordIsShortTheTooltipAndPeekKeepTheFullWords() throws {

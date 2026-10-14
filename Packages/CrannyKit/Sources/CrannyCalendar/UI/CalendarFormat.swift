@@ -1,7 +1,7 @@
 // CrannyCalendar/UI/CalendarFormat.swift — every date, time and duration the module shows, through `FormatStyle`
 // (12/24-hour clock and word order from the locale, DESIGN.md §17), and the localized phrases around them.
 // Durations are whole minutes chosen by `MinuteMath`; the formatter only spells them ("4m" / "4 мин"). The band's
-// abbreviations take a `CalendarLanguage`, so tests check them in English and Russian (DESIGN.md §9.1).
+// abbreviations take a `CalendarLanguage`, so tests check them in every language of the catalog (DESIGN.md §9.1).
 import Foundation
 
 /// Where the module's words and formats come from: the app's language (default), or one fixed localization of

@@ -11,6 +11,26 @@ private let island = NotchLayout(metrics: PreviewDisplays.external)
 private let attached = NotchLayout(metrics: PreviewDisplays.external, noNotchStyle: .attached)
 private let notch = NotchLayout(metrics: .reference)
 
+/// Every language of the app's String Catalogs: the `.lproj` folders of the package resource bundles beside this
+/// module's (a new language is measured as soon as its translations are merged).
+nonisolated private let headerLanguages: [String] = {
+    let directory = Bundle.module.bundleURL.deletingLastPathComponent()
+    let bundles = (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)) ?? []
+    let codes = bundles
+        .filter { $0.lastPathComponent.hasPrefix("CrannyKit_") && $0.pathExtension == "bundle" }
+        .compactMap(Bundle.init(url:))
+        .flatMap(\.localizations)
+    return Set(codes).subtracting(["Base"]).sorted()
+}()
+
+/// `key` from `module`'s catalog in `code`, as the app shows it (the key when that bundle lacks the language).
+private func catalogText(_ key: String, module: String, _ code: String) -> String {
+    let url = Bundle.module.bundleURL.deletingLastPathComponent().appending(path: "CrannyKit_\(module).bundle")
+    guard let bundle = Bundle(url: url), let path = bundle.path(forResource: code, ofType: "lproj"),
+          let localized = Bundle(path: path) else { return key }
+    return localized.localizedString(forKey: key, value: key, table: "Localizable")
+}
+
 @MainActor @Suite("Middle label (open issue 3)") struct MiddleLabelTests {
     @Test func measuredOnlyWithoutANotch() {
         #expect(MiddleLabelMetrics.width(of: "Midnight Window", layout: notch) == 0)
@@ -75,31 +95,42 @@ private let notch = NotchLayout(metrics: .reference)
         #expect(HeaderRowLayout.sideWidth(width: 100, centre: 201) == 0)
     }
 
-    /// One to five pages (Home, three user pages, the Tray with a count), long titles, XL text: the track
-    /// always fits its side zone, collapsing to icons and then to the selected page plus a menu.
-    @Test func tabsAlwaysFitTheirZone() {
-        let titles = ["Главная", "Сосредоточение", "Рабочий стол", "Путешествия"]
+    @Test func everyCatalogLanguageIsMeasured() {
+        #expect(headerLanguages.contains("en") && headerLanguages.contains("ru"), "\(headerLanguages)")
+    }
+
+    /// One to five pages (Home and the Tray in the language, three long user pages, the Tray with a count), XL text:
+    /// the track always fits its side zone, collapsing to icons and then to the selected page plus a menu. The layout
+    /// editor's bar takes the other side: "N cells left" shortens to N when the zone is narrow.
+    @Test(arguments: headerLanguages) func tabsAlwaysFitTheirZone(code: String) {
+        let titles = [catalogText("Home", module: "CrannyNotchUI", code), "Сосредоточение", "Рабочий стол", "Путешествия"]
+        let tray = catalogText("Tray", module: "CrannyTray", code)
         let symbols = ["square.grid.2x2.fill", "note.text", "folder", "calendar"]
+        let side: CGFloat = 140
+        var failures: [String] = []
         for size in [CrannyTextSize.standard, .extraLarge] {
             var theme = CrannyTheme()
             theme.textSize = size
             for count in 1...5 {
                 var tabs = (0..<min(count, 4)).map { HeaderTab(id: PageID(rawValue: "p\($0)"), title: titles[$0], symbol: symbols[$0], badge: nil) }
-                if count == 5 { tabs.append(HeaderTab(id: .tray, title: "Полка", symbol: "tray.full.fill", badge: 128)) }
+                if count == 5 { tabs.append(HeaderTab(id: .tray, title: tray, symbol: "tray.full.fill", badge: 128)) }
                 let host = NSHostingController(rootView: HeaderTabsView(tabs: tabs, selected: tabs[0].id, select: { _ in })
-                    .crannyThemeRoot(theme))
-                let side: CGFloat = 140
+                    .crannyThemeRoot(theme).environment(\.locale, Locale(identifier: code)))
                 let width = host.sizeThatFits(in: CGSize(width: side, height: 32)).width
-                #expect(width <= side, "\(count) tabs at \(size): \(width) pt in a \(side)-pt zone")
+                if width > side { failures.append("\(count) tabs at \(size): \(width) pt") }
             }
         }
-        #expect(HeaderTabsView.menuTitle(HeaderTab(id: .tray, title: "Tray", symbol: "tray.full.fill", badge: 3)) == "Tray · 3")
-        // The layout editor's bar takes the other side: "N cells left" shortens to N when the zone is narrow.
         let (model, registry) = previewScene(.open, mode: .editLayout)
         let page = registry.services.settings[CoreSettings.pages][0]
         let bar = NSHostingController(rootView: EditLayoutBar(page: page, model: model, registry: registry, actions: NotchUIActions())
-            .crannyThemeRoot(CrannyTheme()))
-        #expect(bar.sizeThatFits(in: CGSize(width: 140, height: 32)).width <= 140)
+            .crannyThemeRoot(CrannyTheme()).environment(\.locale, Locale(identifier: code)))
+        let barWidth = bar.sizeThatFits(in: CGSize(width: side, height: 32)).width
+        if barWidth > side { failures.append("the layout editor bar: \(barWidth) pt") }
+        #expect(failures.isEmpty, "\(code) («\(titles[0])», «\(tray)»), \(side)-pt zone: \(failures.joined(separator: "; "))")
+    }
+
+    @Test func theMenuNamesThePageAndItsCount() {
+        #expect(HeaderTabsView.menuTitle(HeaderTab(id: .tray, title: "Tray", symbol: "tray.full.fill", badge: 3)) == "Tray · 3")
     }
 
     /// The header at its minimum width (N + 2 · 160) with five pages: nothing is drawn in the camera zone.

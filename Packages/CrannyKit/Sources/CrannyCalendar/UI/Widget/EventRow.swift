@@ -117,7 +117,7 @@ struct FeaturedRowChoice<Row: View>: View {
     }
 }
 
-/// One `FeaturedRowLayout` of a featured row, from its words alone (tests measure it in English and Russian).
+/// One `FeaturedRowLayout` of a featured row, from its words alone (tests measure it in every language of the catalog).
 struct FeaturedRowBody: View {
     @Environment(\.cranny) private var theme
     let layout: FeaturedRowLayout

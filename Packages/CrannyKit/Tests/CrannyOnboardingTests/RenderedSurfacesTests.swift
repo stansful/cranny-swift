@@ -9,6 +9,9 @@ import SwiftUI
 import Testing
 @testable import CrannyOnboarding
 
+/// Every language of the module's catalog (a new language is measured as soon as its translations are merged).
+nonisolated private let onboardingLanguages: [String] = Bundle.module.localizations.filter { $0 != "Base" }.sorted()
+
 @MainActor @Suite struct RenderedSurfacesTests {
     private func render(_ view: some View, name: String, scale: CGFloat = 2) -> NSImage? {
         renderImage(view, name: name, scale: scale).map { NSImage(cgImage: $0, size: NSSize(width: CGFloat($0.width) / scale,
@@ -89,22 +92,34 @@ import Testing
         #expect(coach.width < tour.width)                            // the coach mark hugs its single line
         #expect(coach.height < tour.height)
 
-        // The longest step sentence (step 5 while Cranny is closed), in Russian, wraps inside the same bubble.
-        let russian = try #require(Bundle.onboardingStrings("ru"))
-        let key = "Open Cranny, pin it with the pin button, then press Esc"
-        let longest = russian.localizedString(forKey: key, value: nil, table: nil)
-        #expect(longest != key)
-        model.content = TipContent(text: longest, keys: "esc", progress: "4 из 4", mark: .symbol("pin.fill"),
-                                   actionTitle: russian.localizedString(forKey: "Skip tutorial", value: nil, table: nil))
-        hosting.layoutSubtreeIfNeeded()
-        let long = hosting.intrinsicContentSize
-        #expect(long.width == tour.width)
-        #expect(long.height >= tour.height && long.height < 220)      // a line or so more, never a column of words
-        #expect(render(TipBubbleView(model: model).environment(\.colorScheme, .dark), name: "tip-longest-ru") != nil)
-
         let frame = TipPanelPresenter.frame(size: coach, under: CGRect(x: 1000, y: 1400, width: 200, height: 32))
         #expect(abs(frame.midX - 1100) <= 0.5)
         #expect(frame.maxY == 1400 - (WelcomeMetrics.tipGap - TipBubble.caretSize.height) + TipBubble.shadowMargin)
+    }
+
+    /// The longest step sentence (step 5 while Cranny is closed) wraps inside the same bubble in every language: the
+    /// bubble keeps its width and grows at most a line or so (Russian: one line more than the tour sample), never
+    /// into a column of words.
+    @Test(arguments: onboardingLanguages) func theLongestTipWrapsInTheBubble(code: String) throws {
+        // English is the catalog's source: without an en.lproj its keys are the text.
+        let strings = Bundle.onboardingStrings(code)
+        if code != "en" { #expect(strings != nil, "no \(code).lproj") }
+        func text(_ key: String) -> String { strings?.localizedString(forKey: key, value: key, table: nil) ?? key }
+        let model = TipModel(content: TipContent(text: "Swipe sideways with two fingers to change the track and more words to wrap",
+                                                 progress: "3 of 5", mark: .symbol("hand.draw.fill"), actionTitle: "Skip tutorial"))
+        let hosting = TipHostingView(rootView: TipBubbleView(model: model))
+        hosting.sizingOptions = [.intrinsicContentSize]
+        let tour = hosting.intrinsicContentSize
+        let key = "Open Cranny, pin it with the pin button, then press Esc"
+        let longest = text(key)
+        if code != "en" { #expect(longest != key, "\(code) has no translation of the longest step") }
+        model.content = TipContent(text: longest, keys: "esc", progress: String(format: text("%lld of %lld"), 4, 4),
+                                   mark: .symbol("pin.fill"), actionTitle: text("Skip tutorial"))
+        hosting.layoutSubtreeIfNeeded()
+        let long = hosting.intrinsicContentSize
+        #expect(long.width == tour.width && long.height < 220,
+                "\(code) «\(longest)»: \(long.width) × \(long.height) pt; the bubble is \(tour.width) wide and holds < 220 pt")
+        #expect(render(TipBubbleView(model: model).environment(\.colorScheme, .dark), name: "tip-longest-\(code)") != nil)
     }
 
     /// Every step draws the whole 640 × 480 window: the dark stage on top, at its height for the step, and the

@@ -3,7 +3,7 @@
 // already-localized label in the wings for 2.6 s — onboarding "Hi", the Tray's "Copied". The label must fit the wing
 // by measured width (design ruling E4): the slot is the narrowest that holds it at every notch unit
 // (`WingTextMetrics`), and a label that fits none leaves the glyph alone in the wings, while the peek row and VoiceOver
-// keep it (`FlashLabelFitTests` renders every flash label in English and Russian). The shell's own confirmations
+// keep it (`FlashLabelFitTests` renders every flash label in every language of the catalogs). The shell's own confirmations
 // (Pause Live Activities, Resume) add a `detail` sentence, drawn in the flash's peek row, in the open header while the
 // panel is open (`OpenHeaderActivity`) and read by VoiceOver, and outlast the pause they confirm (`outlastsPause`).
 import CrannyCore

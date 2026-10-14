@@ -78,7 +78,7 @@ private struct MeetingRing: View {
 }
 
 /// "−12m" (time left) or "+12m" (elapsed): one short form per setting, so the two never look alike and both fit
-/// the 48u medium slot (`CalendarFormat.bandTimeLeft`; widths tested in English and Russian). It may shrink a
+/// the 48u medium slot (`CalendarFormat.bandTimeLeft`; widths tested in every language of the catalog). It may shrink a
 /// little rather than spill past the slot into the corner curve.
 private struct MeetingNowValue: View {
     @Environment(\.cranny) private var theme

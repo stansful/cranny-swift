@@ -59,7 +59,7 @@ public nonisolated enum NotchEvent: Sendable, Equatable {
     /// by measured width, not by a character count: the `compact` style (13-pt semibold rounded × notch unit) within
     /// the wide slot's 72u at every notch unit, in every language (about 8 Cyrillic letters). The shell draws the glyph
     /// alone when it does not fit and keeps the label for the peek row and VoiceOver; list a new label in the shell's
-    /// `FlashLabelCatalog`, whose test renders every flash label in English and Russian.
+    /// `FlashLabelCatalog`, whose test renders every flash label in every language of the catalogs.
     func flash(symbol: String, label: String)
     /// Calls `handler` for every `NotchEvent`; keep the returned ID to remove it.
     @discardableResult func addEventObserver(_ handler: @escaping @MainActor (NotchEvent) -> Void) -> UUID

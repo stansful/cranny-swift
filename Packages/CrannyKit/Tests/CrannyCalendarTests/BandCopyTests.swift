@@ -5,8 +5,12 @@ import SwiftUI
 import Testing
 @testable import CrannyCalendar
 
-/// The band's words, resolved from the module's catalog in English and Russian, and measured in their text style
-/// against the 48u medium slot (DESIGN.md §9.1: compact text only as abbreviations tested in both languages).
+/// Every language the module's catalog is compiled into (new languages are measured as soon as they are merged);
+/// the featured-row tests use it too.
+nonisolated let bandLanguages: [String] = Bundle.module.localizations.filter { $0 != "Base" }.sorted()
+
+/// The band's words, resolved from the module's catalog in every language, and measured in their text style
+/// against the 48u medium slot (DESIGN.md §9.1: compact text only as abbreviations tested in every language).
 @Suite @MainActor struct BandCopyTests {
     /// The content width of a medium slot at notch unit 1: 68 − 12 (outer) − 8 (camera gap), as `CompactSlots`.
     private let slot = SlotWidth.medium.points(unit: 1) - 12 - 8
@@ -24,28 +28,37 @@ import Testing
         #expect(slot == 48)
     }
 
+    @Test func everyCatalogLanguageIsMeasured() {
+        #expect(bandLanguages.contains("en") && bandLanguages.contains("ru"), "\(bandLanguages)")
+    }
+
     @Test func meetingSoonStartsIn() throws {
         let en = try language("en"), ru = try language("ru")
         #expect(CalendarFormat.bandStartsIn(minutes: 4, language: en) == "in 4m")
         #expect(CalendarFormat.bandStartsIn(minutes: 4, language: ru) == "4 мин")          // no room for "через"
-        // Every lead time (1–30 min) fits beside the camera in `compactLabel` (the dot drops first, by layout).
-        for minutes in CalendarSettings.leadRange {
-            for (code, lang) in [("en", en), ("ru", ru)] {
-                let text = CalendarFormat.bandStartsIn(minutes: minutes, language: lang)
-                #expect(width(text, .compactLabel) <= slot, "\(code) \(text)")
-            }
-        }
     }
 
-    @Test func meetingSoonStartTimeFits() throws {
-        for code in ["en", "ru"] {
-            let lang = try language(code)
-            for hour in [0, 9, 10, 12, 23] {
-                let text = CalendarFormat.bandTime(T.date(h: hour, 59), language: lang)
-                #expect(!text.contains("AM") && !text.contains("PM"), "\(code) \(text)")
-                #expect(width(text, .compact) <= slot, "\(code) \(text)")
-            }
+    /// Every lead time (1–30 min) fits beside the camera in `compactLabel` (the dot drops first, by layout).
+    @Test(arguments: bandLanguages) func meetingSoonStartsInFits(code: String) throws {
+        let lang = try language(code)
+        let failures = CalendarSettings.leadRange.compactMap { minutes -> String? in
+            let text = CalendarFormat.bandStartsIn(minutes: minutes, language: lang)
+            let measured = width(text, .compactLabel)
+            return measured <= slot ? nil : "«\(text)» \(measured) pt"
         }
+        #expect(failures.isEmpty, "\(code), \(slot)-pt slot: \(failures.joined(separator: "; "))")
+    }
+
+    @Test(arguments: bandLanguages) func meetingSoonStartTimeFits(code: String) throws {
+        let lang = try language(code)
+        var failures: [String] = []
+        for hour in [0, 9, 10, 12, 23] {
+            let text = CalendarFormat.bandTime(T.date(h: hour, 59), language: lang)
+            if text.contains("AM") || text.contains("PM") { failures.append("«\(text)» has AM/PM") }
+            let measured = width(text, .compact)
+            if measured > slot { failures.append("«\(text)» \(measured) pt") }
+        }
+        #expect(failures.isEmpty, "\(code), \(slot)-pt slot: \(failures.joined(separator: "; "))")
     }
 
     @Test func meetingInProgressForms() throws {
@@ -64,21 +77,29 @@ import Testing
         }
     }
 
-    @Test func meetingInProgressFitsTheSlot() throws {
-        let en = try language("en"), ru = try language("ru")
+    /// English never shrinks; other languages may shrink to `bandMinimumScale` below an hour ("−59 мин"); "−1:30"
+    /// never shrinks.
+    @Test(arguments: bandLanguages) func meetingInProgressFitsTheSlot(code: String) throws {
+        let lang = try language(code)
+        var failures: [String] = []
         for minutes in durations {
-            for text in [CalendarFormat.bandTimeLeft(minutes: minutes, language: en), CalendarFormat.bandTimeElapsed(minutes: minutes, language: en)] {
-                #expect(width(text, .compact) <= slot, "en \(text)")                   // English never shrinks
-            }
-            for text in [CalendarFormat.bandTimeLeft(minutes: minutes, language: ru), CalendarFormat.bandTimeElapsed(minutes: minutes, language: ru)] {
+            for text in [CalendarFormat.bandTimeLeft(minutes: minutes, language: lang),
+                         CalendarFormat.bandTimeElapsed(minutes: minutes, language: lang)] {
                 let full = width(text, .compact)
-                #expect(full * CalendarFormat.bandMinimumScale <= slot, "ru \(text): \(full) pt")
-                if minutes >= 60 { #expect(full <= slot, "ru \(text)") }             // "−1:30" never shrinks
+                let mayShrink = code != "en" && minutes < 60
+                let drawn = mayShrink ? full * CalendarFormat.bandMinimumScale : full
+                if drawn > slot {
+                    failures.append("«\(text)» \(full) pt" + (mayShrink ? " (× \(CalendarFormat.bandMinimumScale) = \(drawn))" : ""))
+                }
             }
         }
-        // Why the band does not say "12m left" (DESIGN.md §9.2): it is wider than the slot even in English.
-        #expect(width(phraseLeft(12, en), .compact) > slot)
-        #expect(width(phraseLeft(12, ru), .compact) > slot)
+        #expect(failures.isEmpty, "\(code), \(slot)-pt slot: \(failures.joined(separator: "; "))")
+    }
+
+    /// Why the band does not say "12m left" (DESIGN.md §9.2): it is wider than the slot even in English.
+    @Test func theFullPhraseDoesNotFitTheSlot() throws {
+        #expect(width(phraseLeft(12, try language("en")), .compact) > slot)
+        #expect(width(phraseLeft(12, try language("ru")), .compact) > slot)
     }
 
     /// The peek's and VoiceOver's "12m left" / "ещё 12 мин", from the catalog.
