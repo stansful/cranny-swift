@@ -261,23 +261,39 @@ import Foundation
 /// Encodes as a plain JSON string and can be a JSON dictionary key (`CodingKeyRepresentable`).
 public nonisolated struct CrannyID<Tag>: RawRepresentable, Hashable, Sendable, Codable, CodingKeyRepresentable,
                                          ExpressibleByStringLiteral, CustomStringConvertible, Comparable {
+    /// The persisted string. Never rename one that shipped.
     public let rawValue: String
+    /// An identifier from its raw string.
     public init(rawValue: String) { self.rawValue = rawValue }
+    /// An identifier from its raw string.
     public init(_ rawValue: String) { self.rawValue = rawValue }
+    /// An identifier from a literal (`let id: WidgetID = "timer.clock"`).
     public init(stringLiteral value: String) { self.rawValue = value }
+    /// The raw string.
     public var description: String { rawValue }
+    /// Raw-string order (stable sorting in diagnostics and tests).
     public static func < (a: Self, b: Self) -> Bool { a.rawValue < b.rawValue }
 }
 
+/// Phantom tag of `ModuleID`.
 public nonisolated enum ModuleTag {}
+/// Phantom tag of `WidgetID`.
 public nonisolated enum WidgetTag {}
+/// Phantom tag of `ActivityID`.
 public nonisolated enum ActivityTag {}
+/// Phantom tag of `PageID`.
 public nonisolated enum PageTag {}
+/// Phantom tag of `SettingsPageID`.
 public nonisolated enum SettingsPageTag {}
+/// Phantom tag of `CommandID`.
 public nonisolated enum CommandTag {}
+/// Phantom tag of `ShortcutID`.
 public nonisolated enum ShortcutTag {}
+/// Phantom tag of `DropZoneID`.
 public nonisolated enum DropZoneTag {}
+/// Phantom tag of `ScrollZoneID`.
 public nonisolated enum ScrollZoneTag {}
+/// Phantom tag of `DisplayKey`.
 public nonisolated enum DisplayTag {}
 
 /// Namespace of a module or of a shell settings group: "timer", "appearance". Prefix of settings keys and log categories.
@@ -288,10 +304,15 @@ public typealias WidgetID = CrannyID<WidgetTag>
 public typealias ActivityID = CrannyID<ActivityTag>
 /// A page in the Nook header ("nook", "tray", or a user page "page.<uuid>").
 public typealias PageID = CrannyID<PageTag>
+/// A Settings pane ("general", "tray").
 public typealias SettingsPageID = CrannyID<SettingsPageTag>
+/// A ⌘K command ("timer.start.25").
 public typealias CommandID = CrannyID<CommandTag>
+/// A global shortcut ("notes.new").
 public typealias ShortcutID = CrannyID<ShortcutTag>
+/// A file drop zone of the canvas ("tray.keep").
 public typealias DropZoneID = CrannyID<DropZoneTag>
+/// A two-finger scroll zone of the canvas ("media.track.artwork").
 public typealias ScrollZoneID = CrannyID<ScrollZoneTag>
 /// `CGDisplayCreateUUIDFromDisplayID` string: stable across reconnects and reboots (display IDs are not).
 public typealias DisplayKey = CrannyID<DisplayTag>
@@ -388,7 +409,9 @@ public extension CrannyID where Tag == ShortcutTag {
 
 /// Matched-geometry identifiers shared across layers (compact slot → peek row → widget).
 public nonisolated enum MatchedID {
+    /// The album artwork: band → peek row → Media widget.
     public static let mediaArtwork = "media.artwork"
+    /// The countdown ring: band → peek row → Timer widget.
     public static let timerRing = "timer.ring"
 }
 ```
@@ -534,8 +557,7 @@ import SwiftUI
     private var unfinishedLaunchHooks: [ModuleID: Int] = [:]
 
     private func launchHookFinished(_ module: ModuleID, after duration: Duration) {
-        let (seconds, attoseconds) = duration.components
-        let milliseconds = Double(seconds) * 1000 + Double(attoseconds) / 1e15
+        let milliseconds = duration.timeInterval * 1000
         Log.logger(.app).info("launch hook of \(module.rawValue, privacy: .public) took \(milliseconds, format: .fixed(precision: 1), privacy: .public) ms")
         unfinishedLaunchHooks[module, default: 1] -= 1
         if unfinishedLaunchHooks[module] == 0 { launchedModules.insert(module) }
@@ -557,13 +579,18 @@ import SwiftUI
 
 /// Allowed widths in grid cells (DESIGN.md §6.7). Height is always the grid height (2 rows; 3 in Notes focus).
 public nonisolated struct WidgetSizes: Equatable, Sendable {
+    /// The narrowest the widget can be.
     public let minimum: Int
+    /// The width it gets when added.
     public let preferred: Int
+    /// The widest it can be.
     public let maximum: Int
+    /// Sizes with 1 ≤ minimum ≤ preferred ≤ maximum (anything else is a programmer error).
     public init(minimum: Int, preferred: Int, maximum: Int) {
         precondition(1 <= minimum && minimum <= preferred && preferred <= maximum, "invalid widget sizes")
         self.minimum = minimum; self.preferred = preferred; self.maximum = maximum
     }
+    /// `cells` within these sizes.
     public func clamp(_ cells: Int) -> Int { min(max(cells, minimum), maximum) }
 }
 
@@ -585,6 +612,7 @@ public nonisolated struct WidgetContext: Equatable, Sendable {
     /// Demo mode with redaction: replace personal text (event titles, note text) with neutral placeholders.
     public var redactsPersonalData: Bool
 
+    /// A context; everything but the size defaults to an ordinary open Nook.
     public init(cells: Int, rows: Int = 2, contentSize: CGSize, isEditingLayout: Bool = false,
                 isFocused: Bool = false, isPreview: Bool = false, redactsPersonalData: Bool = false) {
         self.cells = cells; self.rows = rows; self.contentSize = contentSize
@@ -597,9 +625,12 @@ public nonisolated struct WidgetContext: Equatable, Sendable {
 /// The shell wraps `makeBody` in the card chrome (`crannyCard`, hover, overflow menu, focus section,
 /// VoiceOver container labelled `title`) — widgets draw content only, never their own card.
 @MainActor public protocol NookWidget: AnyObject {
+    /// The widget's content view.
     associatedtype Content: View
+    /// The options popover's view (`EmptyView` = no options).
     associatedtype Options: View = EmptyView
 
+    /// The widget's identifier (persisted in layouts).
     var id: WidgetID { get }
     /// Localized, sentence case ("To-dos"). Also the VoiceOver container label.
     var title: String { get }
@@ -607,10 +638,12 @@ public nonisolated struct WidgetContext: Equatable, Sendable {
     var symbol: String { get }
     /// One localized line for the widget library.
     var summary: String { get }
+    /// Allowed widths in cells.
     var sizes: WidgetSizes { get }
     /// `true` for widgets whose content IS the card (Mirror preview): no padding, no smoked fill.
     var isFrameless: Bool { get }
 
+    /// The content for `context` (the shell draws the card around it).
     @ViewBuilder func makeBody(context: WidgetContext) -> Content
     /// Per-widget options shown in a popover (Settings ▸ Layout & Widgets and the card's ⋯ menu).
     @ViewBuilder func makeOptions() -> Options
@@ -627,38 +660,53 @@ public extension NookWidget where Options == EmptyView {
 /// Type-erased widget stored by the registry.
 @MainActor public final class AnyNookWidget: Identifiable {
     public let base: any NookWidget
+    /// The widget's identifier.
     public var id: WidgetID { base.id }
+    /// Localized title (VoiceOver container label, widget library).
     public var title: String { base.title }
+    /// Library and collapsed-tab glyph.
     public var symbol: String { base.symbol }
+    /// One localized line for the widget library.
     public var summary: String { base.summary }
+    /// Allowed widths in cells.
     public var sizes: WidgetSizes { base.sizes }
+    /// The content is the card (no padding, no smoked fill).
     public var isFrameless: Bool { base.isFrameless }
+    /// The widget has options (`makeOptions()` is not `EmptyView`): the card shows them in its ⋯ menu.
     public let hasOptions: Bool
     private let body: @MainActor (WidgetContext) -> AnyView
     private let options: @MainActor () -> AnyView
 
+    /// Wraps `widget` (the registry does this in `add(widget:)`).
     public init<W: NookWidget>(_ widget: W) {
         base = widget
         hasOptions = W.Options.self != EmptyView.self
         body = { AnyView(widget.makeBody(context: $0)) }
         options = { AnyView(widget.makeOptions()) }
     }
+    /// The widget's content for `context`.
     public func makeBody(context: WidgetContext) -> AnyView { body(context) }
+    /// The widget's options view.
     public func makeOptions() -> AnyView { options() }
 }
 
 /// A full-width page in the Nook header provided by a module (the Tray page).
 /// The Nook grid page and user pages are owned by the shell (`CoreSettings.pages`).
 public struct PageDescriptor: Identifiable {
+    /// The page's identifier (the header tab, `NotchControl.open(page:)`).
     public let id: PageID
+    /// The tab title, localized.
     public let title: String
+    /// The tab glyph.
     public let symbol: String
     /// Sort key among module pages (the grid page "nook" always comes first).
     public let order: Int
     /// `micro` count badge in the header ("3"), nil = none. Read inside SwiftUI bodies (observable).
     public let badge: @MainActor () -> Int?
+    /// Builds the page for the open Nook (full width).
     public let makeView: @MainActor (WidgetContext) -> AnyView
 
+    /// A page; no badge by default.
     public init(id: PageID, title: String, symbol: String, order: Int,
                 badge: @escaping @MainActor () -> Int? = { nil },
                 makeView: @escaping @MainActor (WidgetContext) -> AnyView) {
@@ -684,6 +732,7 @@ public nonisolated enum ActivityPriority: Int, Comparable, Codable, Sendable, Ca
     case alert = 1      // P1: meeting soon, timer done, low battery, device connected, charging
     case ongoing = 2    // P2: meeting in progress, timer running, now playing
     case passive = 3    // P3: paused media
+    /// More important first (`.hud` < `.alert` < `.ongoing` < `.passive`).
     public static func < (a: Self, b: Self) -> Bool { a.rawValue < b.rawValue }
 }
 
@@ -702,16 +751,24 @@ public nonisolated enum ActivityGesture: Sendable, Equatable {
 
 /// Static description of an activity, shown in Settings ▸ Live Activities.
 public nonisolated struct ActivityKind: Identifiable, Hashable, Sendable {
+    /// The activity this describes (equals `LiveActivity.id`).
     public let id: ActivityID
+    /// The owning module (Settings groups the kinds by it).
     public let module: ModuleID
-    public let title: String               // localized ("Now Playing")
+    /// The kind's name in Settings ▸ Live Activities, localized ("Now playing").
+    public let title: String
+    /// The kind's glyph in Settings.
     public let symbol: String
+    /// The priority class before the user reorders (DESIGN.md §9.4).
     public let defaultPriority: ActivityPriority
+    /// Whether the kind shows until the user turns it off.
     public let isEnabledByDefault: Bool
     /// Whether "Peek on change" is offered for this kind, and its default.
     public let canPeekOnChange: Bool
+    /// The default of "Peek on change" when `canPeekOnChange`.
     public let peeksOnChangeByDefault: Bool
 
+    /// A kind; enabled by default, without "Peek on change" unless asked.
     public init(id: ActivityID, module: ModuleID, title: String, symbol: String, defaultPriority: ActivityPriority,
                 isEnabledByDefault: Bool = true, canPeekOnChange: Bool = false, peeksOnChangeByDefault: Bool = false) {
         self.id = id; self.module = module; self.title = title; self.symbol = symbol
@@ -733,10 +790,15 @@ public nonisolated enum DelightMoment: String, Sendable, Equatable, CaseIterable
 
 /// A named action: VoiceOver custom action, keyboard/peek control, and the satellite/peek click targets.
 public struct ActivityAction: Identifiable {
+    /// Stable identifier (VoiceOver action order, tests).
     public let id: String
-    public let title: String               // localized ("Join meeting")
+    /// The action's name, localized ("Join meeting").
+    public let title: String
+    /// The glyph of its peek or satellite control, if it has one.
     public let symbol: String?
+    /// Runs the action (on the main actor).
     public let perform: @MainActor () -> Void
+    /// An action.
     public init(id: String, title: String, symbol: String? = nil, perform: @escaping @MainActor () -> Void) {
         self.id = id; self.title = title; self.symbol = symbol; self.perform = perform
     }
@@ -749,15 +811,22 @@ public struct ActivityAction: Identifiable {
 /// no free text in compact except tested `compactLabel` abbreviations; at most ONE interactive control
 /// in compact (Join); peek rows have ≤ 3 controls with ≥ 28-pt hit targets.
 @MainActor public protocol LiveActivity: AnyObject {
+    /// The left wing's view.
     associatedtype Leading: View
+    /// The right wing's view.
     associatedtype Trailing: View
+    /// The satellite's view.
     associatedtype Minimal: View
+    /// The peek row's view.
     associatedtype Row: View
 
+    /// Equals the kind's id (`registry.add(activity:kind:)` checks it).
     var id: ActivityID { get }
     /// Shown at all (still subject to user toggles, pause, dismissal and full-screen policy).
     var isActive: Bool { get }
+    /// The current priority class (it may change: a meeting soon becomes a meeting in progress).
     var priority: ActivityPriority { get }
+    /// How wide each wing is (DESIGN.md §3.3).
     var slot: SlotWidth { get }
     /// Increment on every MEANINGFUL change (new track, last minute, meeting started, device connected).
     /// Undoes a swipe-up dismissal and, if the kind peeks on change (or priority is `.alert`), auto-peeks once.
@@ -770,8 +839,11 @@ public struct ActivityAction: Identifiable {
     var opensWidget: WidgetID? { get }
     /// Floating-island displays only: optional label in the middle (`compactLabel`, ≤ 160 pt), e.g. track title.
     var middleLabel: String? { get }
-    var accessibilityLabel: String { get }      // "Now playing: Midnight Window by The Example Band"
-    var accessibilityValue: String? { get }     // "2 minutes 11 seconds left"
+    /// The VoiceOver label ("Now playing: Midnight Window by The Example Band").
+    var accessibilityLabel: String { get }
+    /// The VoiceOver value ("2 minutes 11 seconds left").
+    var accessibilityValue: String? { get }
+    /// Named actions: VoiceOver custom actions, peek controls and satellite clicks.
     var actions: [ActivityAction] { get }
     /// Played once by CrannyNotchUI when `revision` changes while this activity is visible (§5.5 caps apply).
     var delight: DelightMoment? { get }
@@ -779,9 +851,13 @@ public struct ActivityAction: Identifiable {
     /// Return true if handled (Now Playing: next/previous track). Called on the main actor.
     func handle(_ gesture: ActivityGesture) -> Bool
 
+    /// The left wing, trailing-aligned against the camera.
     @ViewBuilder func compactLeading() -> Leading
+    /// The right wing, leading-aligned against the camera.
     @ViewBuilder func compactTrailing() -> Trailing
+    /// The satellite: one glyph, ring or artwork.
     @ViewBuilder func minimal() -> Minimal
+    /// One 52-pt peek row.
     @ViewBuilder func peekRow() -> Row
 }
 
@@ -808,13 +884,16 @@ public extension LiveActivity {
 
 /// What the registry stores for each activity.
 public struct RegisteredActivity: Identifiable {
+    /// The static description.
     public let kind: ActivityKind
+    /// The module's live instance (the one fixed object it flips `isActive` on).
     public let activity: any LiveActivity
     /// A self-contained instance with sample data (Settings "Simulate" chips, onboarding stage). Never
     /// touches the module's real model. nil = the kind cannot be simulated.
     public let makeSample: (@MainActor () -> any LiveActivity)?
     /// Extra rows under this activity in Settings ▸ Live Activities (module-owned keys, e.g. meeting lead time).
     public let makeOptions: (@MainActor () -> AnyView)?
+    /// The activity's identifier.
     public var id: ActivityID { kind.id }
 }
 ```
@@ -834,12 +913,14 @@ import SwiftUI
 /// Sidebar group in the Settings window (DESIGN.md §11.1).
 public nonisolated enum SettingsGroup: Int, Comparable, Sendable {
     case top = 0, notch = 1, features = 2, bottom = 3
+    /// Sidebar order: top, notch, features, bottom.
     public static func < (a: Self, b: Self) -> Bool { a.rawValue < b.rawValue }
 }
 
 /// The system colour behind the white glyph of a sidebar icon (20 × 20, r 5).
 public nonisolated enum SettingsIconTint: String, Sendable {
     case gray, purple, indigo, blue, pink, teal, orange, red, green
+    /// The system colour behind the white glyph.
     public var color: Color {
         switch self {
         case .gray: .gray
@@ -860,12 +941,20 @@ public nonisolated enum PreviewStageState: String, Sendable, CaseIterable {
     case closed, activity, peek, open, hud
 }
 
+/// A Settings pane contributed with `registry.add(settingsPage:)` (DESIGN.md §11.1). The shell lays out the
+/// sidebar, the search index and the preview stage; the module supplies the view.
 public struct SettingsPage: Identifiable {
+    /// Stable identifier (deep links: `AppControl.openSettings(_:)`, `--qa-settings`).
     public let id: SettingsPageID
-    public let title: String                 // localized
+    /// The sidebar title, already localized.
+    public let title: String
+    /// The sidebar glyph (DESIGN.md §14.1).
     public let symbol: String
+    /// The colour behind the sidebar glyph.
     public let tint: SettingsIconTint
+    /// The sidebar group the pane belongs to.
     public let group: SettingsGroup
+    /// Sort key within the group.
     public let order: Int
     /// Localized search terms. Shell panes are indexed by their row labels; a MODULE pane is an opaque view,
     /// so it must list its row labels here too ("volume" → HUD, "lead time" → Calendar).
@@ -874,8 +963,10 @@ public struct SettingsPage: Identifiable {
     public var namespaces: [ModuleID]
     /// nil = no preview stage (Permissions, About).
     public let previewState: PreviewStageState?
+    /// Builds the pane (an ordinary Settings window view: system controls, `crannySettingRow` conventions).
     public let makeView: @MainActor () -> AnyView
 
+    /// A pane; `namespaces` empty = the registering module, `previewState` nil = no preview stage.
     public init(id: SettingsPageID, title: String, symbol: String, tint: SettingsIconTint, group: SettingsGroup,
                 order: Int, keywords: [String] = [], namespaces: [ModuleID] = [], previewState: PreviewStageState? = .open,
                 makeView: @escaping @MainActor () -> AnyView) {
@@ -887,14 +978,23 @@ public struct SettingsPage: Identifiable {
 
 // MARK: - Command palette (⌘K)
 
+/// One ⌘K result. Providers build them on every keystroke, so they are plain values.
 public struct PaletteCommand: Identifiable {
+    /// Stable identifier (ranking memory, tests).
     public let id: CommandID
-    public let title: String                 // "Start 25-minute timer"
-    public let kind: String                  // "Timer" (caption, tertiary)
+    /// The action, localized, sentence case ("Start 25-minute timer").
+    public let title: String
+    /// The owner, shown as a tertiary caption ("Timer").
+    public let kind: String
+    /// The result's glyph.
     public let symbol: String
+    /// Extra localized search terms.
     public let keywords: [String]
+    /// The key combination shown as a key cap, if the action has one.
     public let shortcut: KeyCombo?
+    /// Runs the command (the palette closes first).
     public let perform: @MainActor () -> Void
+    /// A command.
     public init(id: CommandID, title: String, kind: String, symbol: String, keywords: [String] = [],
                 shortcut: KeyCombo? = nil, perform: @escaping @MainActor () -> Void) {
         self.id = id; self.title = title; self.kind = kind; self.symbol = symbol
@@ -904,6 +1004,7 @@ public struct PaletteCommand: Identifiable {
 
 /// Queried on every keystroke in the palette: must be fast (in-memory filtering only).
 @MainActor public protocol PaletteCommandProvider: AnyObject {
+    /// The commands that match `query` (empty = the provider's suggestions), ranked by the palette.
     func commands(matching query: String) -> [PaletteCommand]
 }
 
@@ -912,18 +1013,28 @@ public struct PaletteCommand: Identifiable {
 /// A key combination in Carbon terms (virtual key code + modifiers) so the shell can register it
 /// with `RegisterEventHotKey` (no Accessibility permission needed; verified on macOS 27).
 public nonisolated struct KeyCombo: Codable, Hashable, Sendable {
+    /// Modifier keys, independent of Carbon's bit layout (the shell converts them).
     public nonisolated struct Modifiers: OptionSet, Codable, Hashable, Sendable {
+        /// The option bits.
         public let rawValue: Int
+        /// Modifiers from raw bits.
         public init(rawValue: Int) { self.rawValue = rawValue }
+        /// ⌘
         public static let command = Modifiers(rawValue: 1 << 0)
+        /// ⌥
         public static let option = Modifiers(rawValue: 1 << 1)
+        /// ⌃
         public static let control = Modifiers(rawValue: 1 << 2)
+        /// ⇧
         public static let shift = Modifiers(rawValue: 1 << 3)
     }
-    public var keyCode: UInt16          // kVK_* (Carbon HIToolbox/Events.h)
+    /// The virtual key code, a `kVK_*` constant (Carbon HIToolbox/Events.h).
+    public var keyCode: UInt16
+    /// The modifier keys held with it.
     public var modifiers: Modifiers
     /// Display string for key caps ("⌃⌥N"), built by the caller from the current keyboard layout.
     public var display: String
+    /// A combination with its key-cap text.
     public init(keyCode: UInt16, modifiers: Modifiers, display: String) {
         self.keyCode = keyCode; self.modifiers = modifiers; self.display = display
     }
@@ -934,10 +1045,15 @@ public nonisolated struct KeyCombo: Codable, Hashable, Sendable {
 /// A system-wide shortcut contributed by a module ("New note"). The shell registers it and stores the
 /// user's binding in `CoreSettings.shortcuts`; `defaultCombo == nil` means "off until the user sets one".
 public struct GlobalShortcut: Identifiable {
+    /// Stable identifier; the user's binding is stored under it in `CoreSettings.shortcuts`.
     public let id: ShortcutID
+    /// The action's name in Settings ▸ Keyboard, localized.
     public let title: String
+    /// The binding until the user changes it; nil = off.
     public let defaultCombo: KeyCombo?
+    /// Runs the action when the shortcut fires (on the main actor).
     public let perform: @MainActor () -> Void
+    /// A shortcut, off by default unless `defaultCombo` is set.
     public init(id: ShortcutID, title: String, defaultCombo: KeyCombo? = nil, perform: @escaping @MainActor () -> Void) {
         self.id = id; self.title = title; self.defaultCombo = defaultCombo; self.perform = perform
     }
@@ -946,8 +1062,11 @@ public struct GlobalShortcut: Identifiable {
 /// Type-to-capture (DESIGN.md §7.5): if the Nook was opened by the keyboard and nothing is focused, the
 /// first printable keys go to the target the user chose (Notes or To-dos).
 public struct CaptureTarget: Identifiable {
-    public let id: String                   // "notes", "todos"
+    /// The value stored in `CoreSettings.typeToCapture` ("notes", "todos").
+    public let id: String
+    /// The target's name in Settings ▸ Keyboard, localized.
     public let title: String
+    /// The target's glyph.
     public let symbol: String
     /// Receives the first characters; must create the item, focus its editor and return the widget to focus.
     public let capture: @MainActor (String) -> WidgetID
@@ -958,7 +1077,9 @@ public struct CaptureTarget: Identifiable {
 
 /// A permission a module may request, with its localized one-line reason (Permissions pane, onboarding).
 public nonisolated struct PermissionUse: Hashable, Sendable {
+    /// The permission.
     public let kind: PermissionKind
+    /// The module that may ask for it.
     public let module: ModuleID
     public let reason: String               // "Show your events in Cranny. Cranny never edits or uploads them."
     public init(kind: PermissionKind, module: ModuleID, reason: String) {
@@ -986,16 +1107,24 @@ public nonisolated enum NotchPhase: String, Sendable, Codable {
     case open       // the Nook
 }
 
+/// Why the Nook opened (`NotchEvent.opened`, focus and type-to-capture rules).
 public nonisolated enum OpenReason: String, Sendable, Codable {
     case hover, click, keyboard, swipe, drag, activity, programmatic, tutorial
 }
 
+/// The facts a notch view may depend on, in the environment (`@Environment(\.notchContext)`).
 public nonisolated struct NotchContext: Equatable, Sendable {
+    /// The visible presentation.
     public var phase: NotchPhase = .idle
+    /// Geometry of this display's notch and grid.
     public var layout: NotchLayout = NotchLayout(metrics: .reference)
+    /// The display the canvas is on (nil on stages and in previews).
     public var display: DisplayKey?
+    /// Why the Nook opened, while it is open.
     public var openReason: OpenReason?
+    /// The page shown while open.
     public var page: PageID?
+    /// The widget that has keyboard focus or is in a focus mode.
     public var focusedWidget: WidgetID?
     /// Settings preview stage, onboarding stage or `#Preview`: no side effects.
     public var isPreview = false
@@ -1005,11 +1134,13 @@ public nonisolated struct NotchContext: Equatable, Sendable {
     public var showsCommandHints = false
     /// The last interaction was the keyboard: draw `crannyFocusRing`s.
     public var keyboardNavigation = false
+    /// Closed, reference layout, no display.
     public init() {}
 }
 
 /// Named coordinate space of the fixed canvas (top-left origin). Zones report frames in it.
 public nonisolated enum NotchCoordinateSpace {
+    /// The coordinate space's name (`.named(NotchCoordinateSpace.name)`).
     public static let name = "cranny.canvas"
 }
 
@@ -1059,21 +1190,33 @@ import UniformTypeIdentifiers
 
 // MARK: - NotchControl (implemented by CrannyAppShell)
 
+/// What happened to the panel, delivered to `NotchControl.addEventObserver(_:)` on the main actor.
 public nonisolated enum NotchEvent: Sendable, Equatable {
+    /// The Nook opened, and why.
     case opened(OpenReason)
+    /// The Nook closed.
     case closed
+    /// Pin (⌘P) turned on or off.
     case pinned(Bool)
+    /// The open Nook shows another page.
     case pageChanged(PageID)
+    /// A drop on the notch was kept (the Tray took `count` files).
     case filesCaught(count: Int)
+    /// A two-finger swipe over a compact or peek activity that it did not handle itself.
     case activityGesture(ActivityID, ActivityGesture)
+    /// Hold-⌘ hints appeared (onboarding counts it as a completed step).
     case commandHintsShown
+    /// The ⌘K palette opened.
     case paletteOpened
 }
 
+/// Commands to the notch panel and its events. Implemented by CrannyAppShell; tests use `PreviewNotchControl`.
 @MainActor public protocol NotchControl: AnyObject {
     /// Opens on the pointer's display. `focus` scrolls/highlights a widget and gives it keyboard focus.
     func open(page: PageID?, focus: WidgetID?, reason: OpenReason)
+    /// Closes the Nook (unless pinned or held open).
     func close()
+    /// Pins or unpins the open Nook (⌘P).
     func togglePinned()
     /// Keeps the Nook open while `true` for `reason` (e.g. "notes.editing"). Every `true` needs a `false`.
     func setHoldOpen(_ hold: Bool, reason: String)
@@ -1094,7 +1237,9 @@ public nonisolated enum NotchEvent: Sendable, Equatable {
     /// Shows a transient P1 compact activity (glyph + short label, 2.6 s) on the pointer display — onboarding
     /// "Hi", "Path copied". Ignored while paused or hidden. `label` is already localized; ≤ 12 characters.
     func flash(symbol: String, label: String)
+    /// Calls `handler` for every `NotchEvent`; keep the returned ID to remove it.
     @discardableResult func addEventObserver(_ handler: @escaping @MainActor (NotchEvent) -> Void) -> UUID
+    /// Stops calling the observer registered under `id`.
     func removeEventObserver(_ id: UUID)
 }
 
@@ -1102,15 +1247,23 @@ public nonisolated enum NotchEvent: Sendable, Equatable {
 
 /// Observable facts about the machine. Read inside SwiftUI bodies or `observe(_:onChange:)`.
 @MainActor public protocol SystemEnvironment: AnyObject, Observable {
+    /// The session is locked (nothing animates, nothing peeks).
     var isScreenLocked: Bool { get }
+    /// Every display is asleep.
     var areDisplaysAsleep: Bool { get }
+    /// Low Power Mode is on (effects fall back to the static halo).
     var isLowPowerMode: Bool { get }
+    /// The machine's thermal state (serious or critical counts as low power).
     var thermalState: ProcessInfo.ThermalState { get }
+    /// Running on battery (effects pace at 20 fps instead of 30).
     var isOnBattery: Bool { get }
+    /// The frontmost app (excluded-app checks).
     var frontmostBundleID: String? { get }
     /// A full-screen app (or an excluded app) is in front on the pointer's display.
     var isFullScreenInFront: Bool { get }
+    /// General ▸ Demo mode is on: no personal data in screenshots, no sounds.
     var isDemoMode: Bool { get }
+    /// The menu bar extra's "Pause Live Activities" is in effect.
     var areLiveActivitiesPaused: Bool { get }
     /// Built-in or Magic Trackpad present (onboarding gesture step, haptics copy).
     var hasTrackpad: Bool { get }
@@ -1127,28 +1280,43 @@ public extension SystemEnvironment {
 
 // MARK: - AppControl (implemented by CrannyAppShell; used by Settings, Onboarding, menu bar)
 
+/// Whether Cranny opens at login (`SMAppService.mainApp`), or why it cannot say.
 public nonisolated enum LoginItemState: Sendable, Equatable { case enabled, disabled, requiresApproval, unavailable(String) }
+/// The update check's state, for Settings ▸ About and the menu bar extra.
 public nonisolated enum UpdateState: Sendable, Equatable {
     case idle, checking, upToDate
     case available(version: String, notesURL: URL)
     case failed(String)
 }
+/// A global shortcut is off, registered, or taken by another app.
 public nonisolated enum ShortcutState: Sendable, Equatable { case off, registered, conflict }
 
+/// App-level actions for Settings, onboarding and the menu bar extra. Implemented by CrannyAppShell; tests use
+/// `PreviewAppControl`.
 @MainActor public protocol AppControl: AnyObject, Observable {
+    /// Whether Cranny opens at login.
     var loginItem: LoginItemState { get }
+    /// Registers or unregisters the login item (General ▸ Open at login).
     func setLaunchAtLogin(_ enabled: Bool)
+    /// The last update check's state.
     var update: UpdateState { get }
+    /// Checks for an update now ("Check for Updates…").
     func checkForUpdates()
+    /// The registration state of a global shortcut.
     func shortcutState(_ id: ShortcutID) -> ShortcutState
     /// Stores the binding (nil = off) and re-registers it; returns the resulting state.
     @discardableResult func setShortcut(_ id: ShortcutID, _ combo: KeyCombo?) -> ShortcutState
+    /// Opens Settings, at `page` if given.
     func openSettings(_ page: SettingsPageID?)
+    /// Shows the Welcome window.
     func showWelcome()
+    /// Starts the interactive tutorial in the real notch.
     func startTutorial()
     /// Plays a preview stage state on the real notch for 5 s ("Show on Notch").
     func showOnNotch(_ state: PreviewStageState)
+    /// Resets every setting (content is kept; Settings offers a 10-s Undo).
     func resetAllSettings()
+    /// Quits Cranny (the modules' terminate hooks run first).
     func quit()
 }
 
@@ -1156,23 +1324,40 @@ public nonisolated enum ShortcutState: Sendable, Equatable { case off, registere
 
 /// Anchored position: `elapsed` is valid at `timestamp`; interpolate locally, never poll the provider.
 public nonisolated struct NowPlaying: Equatable, Sendable {
+    /// The player app (nil when unknown, e.g. a web page in a browser without a helper).
     public var bundleID: String?
+    /// The hosting app when `bundleID` is a helper process (a browser for a web player).
     public var parentBundleID: String?
+    /// The player's display name as the source reports it.
     public var appName: String?
+    /// The track title.
     public var title: String
+    /// The artist, if any.
     public var artist: String?
+    /// The album, if any.
     public var album: String?
-    public var duration: TimeInterval?        // nil = live stream
+    /// The track length in seconds; nil = a live stream.
+    public var duration: TimeInterval?
+    /// Seconds played at `timestamp`.
     public var elapsed: TimeInterval
+    /// When `elapsed` was true.
     public var timestamp: Date
+    /// Playback rate (1 = normal speed).
     public var rate: Double
+    /// Playing (not paused).
     public var isPlaying: Bool
+    /// The source's identifier for the track, if it has one (preferred for `trackKey`).
     public var itemID: String?
+    /// The source's identifier for the artwork (artwork cache).
     public var artworkID: String?
+    /// Shuffle state, nil when the player does not report it.
     public var shuffle: ShuffleMode?
+    /// Repeat state, nil when the player does not report it.
     public var repeatMode: RepeatMode?
+    /// The player is Apple Music (its own controls and artwork rules).
     public var isMusicApp: Bool
 
+    /// A snapshot; `elapsed` is valid at `timestamp`.
     public init(bundleID: String?, title: String, artist: String? = nil, album: String? = nil,
                 duration: TimeInterval? = nil, elapsed: TimeInterval = 0, timestamp: Date = Date(),
                 rate: Double = 1, isPlaying: Bool, itemID: String? = nil) {
@@ -1180,6 +1365,7 @@ public nonisolated struct NowPlaying: Equatable, Sendable {
         self.duration = duration; self.elapsed = elapsed; self.timestamp = timestamp
         self.rate = rate; self.isPlaying = isPlaying; self.itemID = itemID; self.isMusicApp = false
     }
+    /// The position at `now`, interpolated from the anchor while playing and clamped to the duration.
     public func position(at now: Date = Date()) -> TimeInterval {
         let speed = rate > 0 ? rate : 1
         let p = isPlaying ? elapsed + now.timeIntervalSince(timestamp) * speed : elapsed
@@ -1189,9 +1375,12 @@ public nonisolated struct NowPlaying: Equatable, Sendable {
     public var trackKey: String { itemID ?? [bundleID ?? "", title, artist ?? "", album ?? ""].joined(separator: "|") }
 }
 
+/// Shuffle as MediaRemote reports it.
 public nonisolated enum ShuffleMode: Int, Codable, Sendable { case off = 1, albums = 2, tracks = 3 }
+/// Repeat as MediaRemote reports it.
 public nonisolated enum RepeatMode: Int, Codable, Sendable { case off = 1, one = 2, all = 3 }
 
+/// A command to the current player (`NowPlayingSource.send(_:)`).
 public nonisolated enum MediaCommand: Sendable, Equatable {
     case play, pause, togglePlayPause, nextTrack, previousTrack, skipForward15, skipBackward15
     case seek(to: TimeInterval)
@@ -1199,8 +1388,11 @@ public nonisolated enum MediaCommand: Sendable, Equatable {
     case setRepeat(RepeatMode)
 }
 
+/// The current track and its controls. Implemented by CrannyMedia (`services.nowPlaying`); read lazily, at use time.
 @MainActor public protocol NowPlayingSource: AnyObject, Observable {
+    /// The current track, nil when nothing plays or was paused long enough ago.
     var nowPlaying: NowPlaying? { get }
+    /// The current artwork, nil until loaded or when there is none.
     var artwork: CGImage? { get }
     /// `AmbientPalette.extract(from:)` of the artwork (cached per track); nil = no artwork yet.
     var palette: AmbientPalette? { get }
@@ -1208,11 +1400,14 @@ public nonisolated enum MediaCommand: Sendable, Equatable {
     var trackChangeCount: Int { get }
     /// 0…1 RMS (60 ms attack / 300 ms release) while the Live visualizer runs; otherwise 0.
     var audioEnergy: Double { get }
+    /// Sends a command to the player; true when the player accepted it.
     @discardableResult func send(_ command: MediaCommand) async -> Bool
 }
 
 // MARK: - Tray (implemented by CrannyTray)
 
+/// What the shell needs from the Tray: its badge, the drag catch view and the fallback drop.
+/// Implemented by CrannyTray (`services.tray`).
 @MainActor public protocol TrayIntake: AnyObject, Observable {
     /// Header badge on the Tray page.
     var itemCount: Int { get }
@@ -1231,19 +1426,32 @@ public nonisolated enum MediaCommand: Sendable, Equatable {
 import Foundation
 import Observation
 
+/// Everything a module may use besides its own code, created once by the shell and handed to every module as
+/// `registry.services`. Tests and previews use `CrannyServices.preview()`.
 @MainActor @Observable public final class CrannyServices {
+    /// Typed, observable settings (each module's keys and `CoreSettings`).
     public let settings: SettingsStore
+    /// The only place that queries or requests TCC permissions.
     public let permissions: PermissionsCenter
+    /// Trackpad haptics, already gated by Gestures ▸ Haptic feedback.
     public let haptics: Haptics
+    /// Where modules keep files (`directory(for:)`, `cacheDirectory(for:)`).
     public let paths: AppPaths
+    /// Commands to the panel and its events (implemented by the shell).
     public let notch: any NotchControl
+    /// Observable machine state: lock, sleep, power, full screen, Demo mode.
     public let environment: any SystemEnvironment
+    /// App-level actions: login item, updates, shortcuts, Settings and onboarding windows.
     public let app: any AppControl
     /// Set by CrannyMedia in `register(in:)`. Read lazily (at use time), never cache in `register`.
     public var nowPlaying: (any NowPlayingSource)?
     /// Set by CrannyTray in `register(in:)`.
     public var tray: (any TrayIntake)?
+    /// VoiceOver announcements with the app-wide limit of DESIGN.md §16 (one alert or result per 10 s). Tests replace
+    /// it with an `Announcer(post:now:)` that records.
+    public var announcer = Announcer()
 
+    /// The hub; the composition root builds the real one.
     public init(settings: SettingsStore, permissions: PermissionsCenter, haptics: Haptics, paths: AppPaths,
                 notch: any NotchControl, environment: any SystemEnvironment, app: any AppControl) {
         self.settings = settings; self.permissions = permissions; self.haptics = haptics; self.paths = paths
@@ -1262,61 +1470,103 @@ import Observation
 
 // MARK: - Test doubles (public: used by every module's tests and #Previews)
 
+/// A `NotchControl` that records calls and lets tests emit events (`calls`, `emit(_:)`).
 @MainActor public final class PreviewNotchControl: NotchControl {
     /// Every call, in order ("open(nook,timer.clock,click)", "close", "hold(true,notes.editing)").
     public private(set) var calls: [String] = []
     private var observers: [UUID: @MainActor (NotchEvent) -> Void] = [:]
+    /// A double with no calls recorded.
     public init() {}
+    /// Records "open(<page>,<widget>,<reason>)".
     public func open(page: PageID?, focus: WidgetID?, reason: OpenReason) {
         calls.append("open(\(page?.rawValue ?? "-"),\(focus?.rawValue ?? "-"),\(reason.rawValue))")
     }
+    /// Records "close".
     public func close() { calls.append("close") }
+    /// Records "togglePinned".
     public func togglePinned() { calls.append("togglePinned") }
+    /// Records "hold(<hold>,<reason>)".
     public func setHoldOpen(_ hold: Bool, reason: String) { calls.append("hold(\(hold),\(reason))") }
+    /// Records "focus(<widget>)".
     public func setFocusMode(_ widget: WidgetID?) { calls.append("focus(\(widget?.rawValue ?? "-"))") }
+    /// Records "peek(<activity>)".
     public func requestPeek(_ activity: ActivityID) { calls.append("peek(\(activity))") }
+    /// Records "key".
     public func requestKeyboardFocus() { calls.append("key") }
+    /// Records "calibration(<visible>)".
     public func setCalibrationOverlay(_ visible: Bool) { calls.append("calibration(\(visible))") }
+    /// No panel: nil.
     public func shapeFrameOnScreen() -> CGRect? { nil }
+    /// Records "airdrop(<count>)" and reports success.
     public func presentAirDrop(_ urls: [URL]) async -> Bool { calls.append("airdrop(\(urls.count))"); return true }
+    /// Records "share(<count>)".
     public func presentSharePicker(_ urls: [URL]) { calls.append("share(\(urls.count))") }
+    /// Records "flash(<symbol>)".
     public func flash(symbol: String, label: String) { calls.append("flash(\(symbol))") }
+    /// Registers `handler` for `emit(_:)`.
     public func addEventObserver(_ handler: @escaping @MainActor (NotchEvent) -> Void) -> UUID {
         let id = UUID(); observers[id] = handler; return id
     }
+    /// Unregisters an observer.
     public func removeEventObserver(_ id: UUID) { observers[id] = nil }
     /// Tests: simulate the shell emitting an event.
     public func emit(_ event: NotchEvent) { for o in observers.values { o(event) } }
 }
 
+/// A `SystemEnvironment` whose facts tests set directly (all quiet and on AC power by default).
 @MainActor @Observable public final class PreviewSystemEnvironment: SystemEnvironment {
+    /// See `SystemEnvironment.isScreenLocked`.
     public var isScreenLocked = false
+    /// See `SystemEnvironment.areDisplaysAsleep`.
     public var areDisplaysAsleep = false
+    /// See `SystemEnvironment.isLowPowerMode`.
     public var isLowPowerMode = false
+    /// See `SystemEnvironment.thermalState`.
     public var thermalState = ProcessInfo.ThermalState.nominal
+    /// See `SystemEnvironment.isOnBattery`.
     public var isOnBattery = false
+    /// See `SystemEnvironment.frontmostBundleID`.
     public var frontmostBundleID: String? = nil
+    /// See `SystemEnvironment.isFullScreenInFront`.
     public var isFullScreenInFront = false
+    /// See `SystemEnvironment.isDemoMode`.
     public var isDemoMode = false
+    /// See `SystemEnvironment.areLiveActivitiesPaused`.
     public var areLiveActivitiesPaused = false
+    /// See `SystemEnvironment.hasTrackpad`.
     public var hasTrackpad = true
     public init() {}
 }
 
+/// An `AppControl` that keeps its state in memory (login item, update state, shortcut bindings).
 @MainActor @Observable public final class PreviewAppControl: AppControl {
+    /// See `AppControl.loginItem`.
     public var loginItem: LoginItemState = .disabled
+    /// See `AppControl.update`.
     public var update: UpdateState = .idle
+    /// The bindings `setShortcut(_:_:)` stored.
     public var shortcuts: [ShortcutID: KeyCombo] = [:]
+    /// No login item, no update, no bindings.
     public init() {}
+    /// Sets `loginItem` to enabled or disabled.
     public func setLaunchAtLogin(_ enabled: Bool) { loginItem = enabled ? .enabled : .disabled }
+    /// Sets `update` to up to date.
     public func checkForUpdates() { update = .upToDate }
+    /// Registered when a binding is stored, else off.
     public func shortcutState(_ id: ShortcutID) -> ShortcutState { shortcuts[id] == nil ? .off : .registered }
+    /// Stores the binding.
     public func setShortcut(_ id: ShortcutID, _ combo: KeyCombo?) -> ShortcutState { shortcuts[id] = combo; return shortcutState(id) }
+    /// Does nothing.
     public func openSettings(_ page: SettingsPageID?) {}
+    /// Does nothing.
     public func showWelcome() {}
+    /// Does nothing.
     public func startTutorial() {}
+    /// Does nothing.
     public func showOnNotch(_ state: PreviewStageState) {}
+    /// Does nothing.
     public func resetAllSettings() {}
+    /// Does nothing.
     public func quit() {}
 }
 ```

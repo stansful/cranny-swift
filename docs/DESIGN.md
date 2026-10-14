@@ -3024,7 +3024,7 @@ public nonisolated struct EffectBudget: Equatable, Sendable {
         self.isOpen = isOpen; self.onScreen = onScreen; self.lowPower = lowPower
         self.fullScreenFront = fullScreenFront; self.reduceMotion = reduceMotion; self.onBattery = onBattery
     }
-    /// nil = paused → TimelineView stops ticking (zero cost). Reduce Motion FREEZES a resting frame.
+    /// nil = paused: the effect's clock (`EffectClock`) stops (zero cost). Reduce Motion FREEZES a resting frame.
     public var minimumInterval: Double? {
         guard isOpen, onScreen, !fullScreenFront, !reduceMotion, !lowPower else { return nil }
         return onBattery ? 1.0 / 20 : 1.0 / 30

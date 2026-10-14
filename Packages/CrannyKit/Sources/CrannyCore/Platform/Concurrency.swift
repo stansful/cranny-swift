@@ -64,7 +64,9 @@ public extension Duration {
 @MainActor public final class Debouncer {
     private let delay: Duration
     private var task: Task<Void, Never>?
+    /// A debouncer that waits `delay` after the last `schedule(_:)`.
     public init(delay: Duration) { self.delay = delay }
+    /// Runs `action` after the delay unless another `schedule` or `cancel` comes first.
     public func schedule(_ action: @escaping @MainActor () async -> Void) {
         task?.cancel()
         task = Task { [delay] in
@@ -73,24 +75,32 @@ public extension Duration {
             await action()
         }
     }
+    /// Drops the pending action.
     public func cancel() { task?.cancel(); task = nil }
 }
 
 // MARK: - Subprocesses
 
+/// What a finished command-line tool left: its exit status and both pipes.
 public nonisolated struct ProcessOutput: Sendable {
+    /// The exit status (or the signal that ended it).
     public let status: Int32
+    /// Everything written to standard output.
     public let stdout: Data
+    /// Everything written to standard error.
     public let stderr: Data
+    /// Exit status 0.
     public var succeeded: Bool { status == 0 }
 }
 
+/// The tool could not be started (the description says why).
 public nonisolated enum ProcessRunError: Error, Sendable { case launchFailed(String) }
 
 /// Runs a command-line tool off the main actor (`/usr/bin/shortcuts`, `/usr/bin/ditto`).
 /// Both pipes are drained while the process runs (no pipe-buffer deadlock). Cancelling the calling task
 /// terminates the process. Environment is minimal and explicit (never inherits PERL5LIB, DYLD_*).
 public nonisolated enum ProcessRunner {
+    /// Runs `executable` with `arguments` to completion; cancelling the task terminates it (SIGTERM).
     @concurrent
     public static func run(_ executable: String, _ arguments: [String],
                            environment: [String: String] = ["PATH": "/usr/bin:/bin", "LANG": "en_US.UTF-8"],

@@ -9,6 +9,7 @@ import CoreServices
 import EventKit
 import Observation
 
+/// A privacy permission a module may ask for (declared with `registry.declare(_:reason:)`).
 public nonisolated enum PermissionKind: Hashable, Codable, Sendable {
     case accessibility                  // HUD key interception (CGEventTap on NX_SYSDEFINED)
     case calendar                       // EventKit full access
@@ -31,19 +32,25 @@ public nonisolated enum PermissionKind: Hashable, Codable, Sendable {
     }
 }
 
+/// What macOS says about a permission (Settings shows it with `PermissionStatusPill`).
 public nonisolated enum PermissionStatus: String, Codable, Sendable {
     case notDetermined, granted, denied, restricted
     /// No query API (system audio recording) or the automation target is not running.
     case unknown
 }
 
+/// The one place that queries and requests permissions (`services.permissions`). Requests come only from an explicit
+/// user action (a widget's permission state, Settings ▸ Permissions, onboarding).
 @MainActor @Observable public final class PermissionsCenter {
+    /// The last known status of each permission (observable).
     public private(set) var statuses: [PermissionKind: PermissionStatus] = [:]
     @ObservationIgnored private var accessibilityWatch: Task<Void, Never>?
     @ObservationIgnored private var recorded: [PermissionKind: PermissionStatus] = [:]
 
+    /// Queries every permission once (cheap, never prompts).
     public init() { refresh() }
 
+    /// The last known status, querying it if it was never asked for.
     public func status(_ kind: PermissionKind) -> PermissionStatus {
         statuses[kind] ?? query(kind)
     }
@@ -82,6 +89,7 @@ public nonisolated enum PermissionStatus: String, Codable, Sendable {
         return s
     }
 
+    /// Opens the permission's page of Privacy & Security in System Settings.
     public func openSystemSettings(_ kind: PermissionKind) {
         if let url = kind.settingsURL { NSWorkspace.shared.open(url) }
     }

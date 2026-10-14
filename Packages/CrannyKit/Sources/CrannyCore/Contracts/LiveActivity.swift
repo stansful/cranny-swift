@@ -9,6 +9,7 @@ public nonisolated enum ActivityPriority: Int, Comparable, Codable, Sendable, Ca
     case alert = 1      // P1: meeting soon, timer done, low battery, device connected, charging
     case ongoing = 2    // P2: meeting in progress, timer running, now playing
     case passive = 3    // P3: paused media
+    /// More important first (`.hud` < `.alert` < `.ongoing` < `.passive`).
     public static func < (a: Self, b: Self) -> Bool { a.rawValue < b.rawValue }
 }
 
@@ -27,16 +28,24 @@ public nonisolated enum ActivityGesture: Sendable, Equatable {
 
 /// Static description of an activity, shown in Settings ▸ Live Activities.
 public nonisolated struct ActivityKind: Identifiable, Hashable, Sendable {
+    /// The activity this describes (equals `LiveActivity.id`).
     public let id: ActivityID
+    /// The owning module (Settings groups the kinds by it).
     public let module: ModuleID
-    public let title: String               // localized ("Now Playing")
+    /// The kind's name in Settings ▸ Live Activities, localized ("Now playing").
+    public let title: String
+    /// The kind's glyph in Settings.
     public let symbol: String
+    /// The priority class before the user reorders (DESIGN.md §9.4).
     public let defaultPriority: ActivityPriority
+    /// Whether the kind shows until the user turns it off.
     public let isEnabledByDefault: Bool
     /// Whether "Peek on change" is offered for this kind, and its default.
     public let canPeekOnChange: Bool
+    /// The default of "Peek on change" when `canPeekOnChange`.
     public let peeksOnChangeByDefault: Bool
 
+    /// A kind; enabled by default, without "Peek on change" unless asked.
     public init(id: ActivityID, module: ModuleID, title: String, symbol: String, defaultPriority: ActivityPriority,
                 isEnabledByDefault: Bool = true, canPeekOnChange: Bool = false, peeksOnChangeByDefault: Bool = false) {
         self.id = id; self.module = module; self.title = title; self.symbol = symbol
@@ -58,10 +67,15 @@ public nonisolated enum DelightMoment: String, Sendable, Equatable, CaseIterable
 
 /// A named action: VoiceOver custom action, keyboard/peek control, and the satellite/peek click targets.
 public struct ActivityAction: Identifiable {
+    /// Stable identifier (VoiceOver action order, tests).
     public let id: String
-    public let title: String               // localized ("Join meeting")
+    /// The action's name, localized ("Join meeting").
+    public let title: String
+    /// The glyph of its peek or satellite control, if it has one.
     public let symbol: String?
+    /// Runs the action (on the main actor).
     public let perform: @MainActor () -> Void
+    /// An action.
     public init(id: String, title: String, symbol: String? = nil, perform: @escaping @MainActor () -> Void) {
         self.id = id; self.title = title; self.symbol = symbol; self.perform = perform
     }
@@ -74,15 +88,22 @@ public struct ActivityAction: Identifiable {
 /// no free text in compact except tested `compactLabel` abbreviations; at most ONE interactive control
 /// in compact (Join); peek rows have ≤ 3 controls with ≥ 28-pt hit targets.
 @MainActor public protocol LiveActivity: AnyObject {
+    /// The left wing's view.
     associatedtype Leading: View
+    /// The right wing's view.
     associatedtype Trailing: View
+    /// The satellite's view.
     associatedtype Minimal: View
+    /// The peek row's view.
     associatedtype Row: View
 
+    /// Equals the kind's id (`registry.add(activity:kind:)` checks it).
     var id: ActivityID { get }
     /// Shown at all (still subject to user toggles, pause, dismissal and full-screen policy).
     var isActive: Bool { get }
+    /// The current priority class (it may change: a meeting soon becomes a meeting in progress).
     var priority: ActivityPriority { get }
+    /// How wide each wing is (DESIGN.md §3.3).
     var slot: SlotWidth { get }
     /// Increment on every MEANINGFUL change (new track, last minute, meeting started, device connected).
     /// Undoes a swipe-up dismissal and, if the kind peeks on change (or priority is `.alert`), auto-peeks once.
@@ -95,8 +116,11 @@ public struct ActivityAction: Identifiable {
     var opensWidget: WidgetID? { get }
     /// Floating-island displays only: optional label in the middle (`compactLabel`, ≤ 160 pt), e.g. track title.
     var middleLabel: String? { get }
-    var accessibilityLabel: String { get }      // "Now playing: Midnight Window by The Example Band"
-    var accessibilityValue: String? { get }     // "2 minutes 11 seconds left"
+    /// The VoiceOver label ("Now playing: Midnight Window by The Example Band").
+    var accessibilityLabel: String { get }
+    /// The VoiceOver value ("2 minutes 11 seconds left").
+    var accessibilityValue: String? { get }
+    /// Named actions: VoiceOver custom actions, peek controls and satellite clicks.
     var actions: [ActivityAction] { get }
     /// Played once by CrannyNotchUI when `revision` changes while this activity is visible (§5.5 caps apply).
     var delight: DelightMoment? { get }
@@ -104,9 +128,13 @@ public struct ActivityAction: Identifiable {
     /// Return true if handled (Now Playing: next/previous track). Called on the main actor.
     func handle(_ gesture: ActivityGesture) -> Bool
 
+    /// The left wing, trailing-aligned against the camera.
     @ViewBuilder func compactLeading() -> Leading
+    /// The right wing, leading-aligned against the camera.
     @ViewBuilder func compactTrailing() -> Trailing
+    /// The satellite: one glyph, ring or artwork.
     @ViewBuilder func minimal() -> Minimal
+    /// One 52-pt peek row.
     @ViewBuilder func peekRow() -> Row
 }
 
@@ -133,12 +161,15 @@ public extension LiveActivity {
 
 /// What the registry stores for each activity.
 public struct RegisteredActivity: Identifiable {
+    /// The static description.
     public let kind: ActivityKind
+    /// The module's live instance (the one fixed object it flips `isActive` on).
     public let activity: any LiveActivity
     /// A self-contained instance with sample data (Settings "Simulate" chips, onboarding stage). Never
     /// touches the module's real model. nil = the kind cannot be simulated.
     public let makeSample: (@MainActor () -> any LiveActivity)?
     /// Extra rows under this activity in Settings ▸ Live Activities (module-owned keys, e.g. meeting lead time).
     public let makeOptions: (@MainActor () -> AnyView)?
+    /// The activity's identifier.
     public var id: ActivityID { kind.id }
 }

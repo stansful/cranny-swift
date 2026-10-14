@@ -6,23 +6,39 @@ import Foundation
 /// Encodes as a plain JSON string and can be a JSON dictionary key (`CodingKeyRepresentable`).
 public nonisolated struct CrannyID<Tag>: RawRepresentable, Hashable, Sendable, Codable, CodingKeyRepresentable,
                                          ExpressibleByStringLiteral, CustomStringConvertible, Comparable {
+    /// The persisted string. Never rename one that shipped.
     public let rawValue: String
+    /// An identifier from its raw string.
     public init(rawValue: String) { self.rawValue = rawValue }
+    /// An identifier from its raw string.
     public init(_ rawValue: String) { self.rawValue = rawValue }
+    /// An identifier from a literal (`let id: WidgetID = "timer.clock"`).
     public init(stringLiteral value: String) { self.rawValue = value }
+    /// The raw string.
     public var description: String { rawValue }
+    /// Raw-string order (stable sorting in diagnostics and tests).
     public static func < (a: Self, b: Self) -> Bool { a.rawValue < b.rawValue }
 }
 
+/// Phantom tag of `ModuleID`.
 public nonisolated enum ModuleTag {}
+/// Phantom tag of `WidgetID`.
 public nonisolated enum WidgetTag {}
+/// Phantom tag of `ActivityID`.
 public nonisolated enum ActivityTag {}
+/// Phantom tag of `PageID`.
 public nonisolated enum PageTag {}
+/// Phantom tag of `SettingsPageID`.
 public nonisolated enum SettingsPageTag {}
+/// Phantom tag of `CommandID`.
 public nonisolated enum CommandTag {}
+/// Phantom tag of `ShortcutID`.
 public nonisolated enum ShortcutTag {}
+/// Phantom tag of `DropZoneID`.
 public nonisolated enum DropZoneTag {}
+/// Phantom tag of `ScrollZoneID`.
 public nonisolated enum ScrollZoneTag {}
+/// Phantom tag of `DisplayKey`.
 public nonisolated enum DisplayTag {}
 
 /// Namespace of a module or of a shell settings group: "timer", "appearance". Prefix of settings keys and log categories.
@@ -33,10 +49,15 @@ public typealias WidgetID = CrannyID<WidgetTag>
 public typealias ActivityID = CrannyID<ActivityTag>
 /// A page in the Nook header ("nook", "tray", or a user page "page.<uuid>").
 public typealias PageID = CrannyID<PageTag>
+/// A Settings pane ("general", "tray").
 public typealias SettingsPageID = CrannyID<SettingsPageTag>
+/// A ⌘K command ("timer.start.25").
 public typealias CommandID = CrannyID<CommandTag>
+/// A global shortcut ("notes.new").
 public typealias ShortcutID = CrannyID<ShortcutTag>
+/// A file drop zone of the canvas ("tray.keep").
 public typealias DropZoneID = CrannyID<DropZoneTag>
+/// A two-finger scroll zone of the canvas ("media.track.artwork").
 public typealias ScrollZoneID = CrannyID<ScrollZoneTag>
 /// `CGDisplayCreateUUIDFromDisplayID` string: stable across reconnects and reboots (display IDs are not).
 public typealias DisplayKey = CrannyID<DisplayTag>
@@ -133,6 +154,8 @@ public extension CrannyID where Tag == ShortcutTag {
 
 /// Matched-geometry identifiers shared across layers (compact slot → peek row → widget).
 public nonisolated enum MatchedID {
+    /// The album artwork: band → peek row → Media widget.
     public static let mediaArtwork = "media.artwork"
+    /// The countdown ring: band → peek row → Timer widget.
     public static let timerRing = "timer.ring"
 }

@@ -4,29 +4,48 @@
 import CoreGraphics
 import Foundation
 
+/// The axis a gesture locks to.
 public nonisolated enum SwipeAxis: Sendable, Equatable { case horizontal, vertical, any }
+/// The direction of a committed swipe, in physical finger motion.
 public nonisolated enum SwipeDirection: Sendable, Equatable { case left, right, up, down }
 
 /// Scroll phases (mirrors NSEvent.Phase without importing AppKit).
 public nonisolated struct SwipePhase: OptionSet, Sendable, Hashable {
+    /// The phase bits.
     public let rawValue: Int
+    /// Phases from raw bits.
     public init(rawValue: Int) { self.rawValue = rawValue }
+    /// Fingers touched down.
     public static let began = SwipePhase(rawValue: 1 << 0)
+    /// Fingers rest without moving.
     public static let stationary = SwipePhase(rawValue: 1 << 1)
+    /// Fingers moved.
     public static let changed = SwipePhase(rawValue: 1 << 2)
+    /// Fingers lifted.
     public static let ended = SwipePhase(rawValue: 1 << 3)
+    /// The system cancelled the sequence.
     public static let cancelled = SwipePhase(rawValue: 1 << 4)
+    /// Fingers touched down before any movement.
     public static let mayBegin = SwipePhase(rawValue: 1 << 5)
 }
 
+/// One scroll event, reduced to what the tracker needs (no AppKit).
 public nonisolated struct ScrollSample: Sendable, Equatable {
+    /// The event's phase.
     public var phase: SwipePhase
-    public var isMomentum: Bool            // momentumPhase non-empty: fingers already lifted → ignored
-    public var deltaX: CGFloat             // scrollingDeltaX
-    public var deltaY: CGFloat             // scrollingDeltaY
-    public var isPrecise: Bool             // hasPreciseScrollingDeltas (trackpad, Magic Mouse)
-    public var isInvertedFromDevice: Bool  // "natural scrolling": deltas already follow the fingers
+    /// Momentum scrolling (the fingers already lifted): ignored.
+    public var isMomentum: Bool
+    /// `scrollingDeltaX`.
+    public var deltaX: CGFloat
+    /// `scrollingDeltaY`.
+    public var deltaY: CGFloat
+    /// `hasPreciseScrollingDeltas`: a trackpad or Magic Mouse, not a wheel.
+    public var isPrecise: Bool
+    /// "Natural scrolling": the deltas already follow the fingers.
+    public var isInvertedFromDevice: Bool
+    /// The event's time in seconds (velocity).
     public var timestamp: TimeInterval
+    /// A sample.
     public init(phase: SwipePhase, isMomentum: Bool, deltaX: CGFloat, deltaY: CGFloat, isPrecise: Bool,
                 isInvertedFromDevice: Bool, timestamp: TimeInterval) {
         self.phase = phase; self.isMomentum = isMomentum; self.deltaX = deltaX; self.deltaY = deltaY
@@ -34,6 +53,7 @@ public nonisolated struct ScrollSample: Sendable, Equatable {
     }
 }
 
+/// What a sample means for the gesture.
 public nonisolated enum SwipeUpdate: Sendable, Equatable {
     /// Live finger travel along the locked axis (pt, +x = right, +y = down). Drive rubber-banding with it.
     case tracking(SwipeAxis, translation: CGFloat)
@@ -43,16 +63,23 @@ public nonisolated enum SwipeUpdate: Sendable, Equatable {
     case cancelled
 }
 
+/// Turns scroll samples into tracking, one commit per touch sequence, or a cancel (unit-testable, no AppKit).
 public nonisolated struct SwipeTracker: Sendable {
+    /// The axes this tracker accepts.
     public var axis: SwipeAxis
     /// Commit distances per direction (DESIGN.md `GestureSpec`).
     public var horizontalCommit: CGFloat = GestureSpec.trackSwipeCommit
+    /// Distance that commits a swipe down.
     public var downCommit: CGFloat = GestureSpec.pullOpen
+    /// Distance that commits a swipe up.
     public var upCommit: CGFloat = GestureSpec.pushClose
+    /// Release speed (pt/s) that commits a short horizontal swipe.
     public var horizontalVelocity: CGFloat = GestureSpec.trackSwipeVelocity
+    /// Release speed (pt/s) that commits a short vertical swipe.
     public var verticalVelocity: CGFloat = GestureSpec.verticalVelocity
     /// Settings ▸ Gestures ▸ Sensitivity (0.5…1.5): divides the distances.
     public var sensitivity: CGFloat = 1
+    /// Gestures ▸ Invert track swipe.
     public var invertHorizontal = false
 
     private var x: CGFloat = 0, y: CGFloat = 0
@@ -62,8 +89,10 @@ public nonisolated struct SwipeTracker: Sendable {
     private var lastSample: (t: TimeInterval, x: CGFloat, y: CGFloat)?
     private var previousSample: (t: TimeInterval, x: CGFloat, y: CGFloat)?
 
+    /// A tracker with the DESIGN.md distances.
     public init(axis: SwipeAxis) { self.axis = axis }
 
+    /// Feeds one sample; nil when it changes nothing visible.
     public mutating func handle(_ s: ScrollSample) -> SwipeUpdate? {
         guard !s.isMomentum, s.isPrecise, !s.phase.isEmpty else { return nil }
         if s.phase.contains(.began) || s.phase.contains(.mayBegin) { reset() }

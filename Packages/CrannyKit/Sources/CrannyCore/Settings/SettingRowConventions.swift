@@ -100,6 +100,7 @@ public struct PermissionStatusPill: View {
     /// A pill for `status`.
     public init(status: PermissionStatus) { self.status = status }
 
+    /// The pill.
     public var body: some View {
         let title = Self.title(status)
         let color = Self.color(status)

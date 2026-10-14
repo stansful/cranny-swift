@@ -8,22 +8,37 @@ import UniformTypeIdentifiers
 /// Files dropped on the notch. File promises (Photos, Mail, Safari) are already resolved to URLs
 /// by the shell (in a temporary directory) before a handler is called.
 public nonisolated struct DropPayload: Sendable {
+    /// The dropped files (promises already resolved into a temporary folder).
     public var fileURLs: [URL]
+    /// The types on the drag pasteboard.
     public var contentTypes: [UTType]
+    /// A payload.
     public init(fileURLs: [URL], contentTypes: [UTType]) { self.fileURLs = fileURLs; self.contentTypes = contentTypes }
 }
 
+/// The drop and scroll zones of one canvas. Views declare them (`crannyDropZone`, `crannyScrollZone`); the shell
+/// feeds drags and scroll events in and the zones receive them by geometry.
 @MainActor @Observable public final class NotchZones {
+    /// A file drop target.
     public struct DropZone {
+        /// The zone's identifier.
         public let id: DropZoneID
-        public var frame: CGRect                         // in NotchCoordinateSpace.name
+        /// Where it is, in `NotchCoordinateSpace.name`.
+        public var frame: CGRect
+        /// The types it takes (a drag must conform to one).
         public let accepts: [UTType]
+        /// Takes the drop; true when it kept it.
         public let perform: @MainActor (DropPayload) async -> Bool
     }
+    /// A two-finger scroll target.
     public struct ScrollZone {
+        /// The zone's identifier.
         public let id: ScrollZoneID
+        /// Where it is, in `NotchCoordinateSpace.name`.
         public var frame: CGRect
+        /// The axis it reacts to.
         public let axis: SwipeAxis
+        /// Receives tracking, commit and cancel updates.
         public let onUpdate: @MainActor (SwipeUpdate) -> Void
         /// false = a value zone (`crannyContinuousScrollZone`): never commits, `.tracking` for the whole touch.
         public var commits = true
@@ -38,21 +53,28 @@ public nonisolated struct DropPayload: Sendable {
     @ObservationIgnored private var trackers: [ScrollZoneID: SwipeTracker] = [:]
     @ObservationIgnored private var activeScrollZone: ScrollZoneID?
 
+    /// An empty registry (one per canvas).
     public init() {}
 
     // MARK: View side (via modifiers)
+    /// Adds or moves a drop zone (from `crannyDropZone`).
     public func setDropZone(_ zone: DropZone) { dropZones[zone.id] = zone }
+    /// Removes a drop zone (its view disappeared).
     public func removeDropZone(_ id: DropZoneID) { dropZones[id] = nil; if armedDropZone == id { armedDropZone = nil } }
+    /// Adds or moves a scroll zone (from `crannyScrollZone`).
     public func setScrollZone(_ zone: ScrollZone) { scrollZones[zone.id] = zone }
+    /// Removes a scroll zone and its gesture state.
     public func removeScrollZone(_ id: ScrollZoneID) { scrollZones[id] = nil; trackers[id] = nil }
 
     // MARK: Shell side (NotchRootView: NSDraggingDestination + NotchPanel.sendEvent)
+    /// A file drag moved: arms the innermost zone under `point` that accepts `types`.
     public func dragUpdated(at point: CGPoint, types: [UTType]) {
         draggedTypes = types
         armedDropZone = dropZones.values
             .filter { $0.frame.contains(point) && $0.accepts.contains { a in types.contains { $0.conforms(to: a) } } }
             .min { $0.frame.width * $0.frame.height < $1.frame.width * $1.frame.height }?.id   // innermost wins
     }
+    /// The drag left or ended without a drop.
     public func dragEnded() { draggedTypes = []; armedDropZone = nil }
     /// Delivers to the armed zone, else to `fallback` (normally `.trayKeep`). Returns false if nobody took it.
     public func performDrop(_ payload: DropPayload, fallback: DropZoneID? = .trayKeep) async -> Bool {
