@@ -15,12 +15,12 @@ struct TodosSnapshotTests {
     let directory = URL(fileURLWithPath: ProcessInfo.processInfo.environment["CRANNY_SNAPSHOTS"] ?? NSTemporaryDirectory())
 
     private func fixture(hidesCompleted: Bool = true) -> TodosModel {
-        let services = CrannyServices.preview()
+        let services = CrannyServices.testing()
         services.settings[TodosSettings.hidesCompleted] = hidesCompleted
         let titles = ["Reply to Sam about Friday", "Water the plants", "Book train tickets to Lyon", "Back up the laptop", "Renew passport"]
         var items = titles.map { Todo(title: $0) }
         items[2].isDone = true
-        return TodosModel.preview(items, services: services)
+        return TodosModel.testing(items, services: services)
     }
 
     private func card(_ model: TodosModel, cells: Int, theme: CrannyTheme = CrannyTheme(),
@@ -61,8 +61,8 @@ struct TodosSnapshotTests {
         try await write(card(fixture(), cells: 2), "03-two-cells")
         try await write(card(fixture(), cells: 4), "04-four-cells")
         try await write(card(fixture(), cells: 6), "05-six-cells")
-        try await write(card(TodosModel.preview([]), cells: 3), "06-empty")
-        let allDone = TodosModel.preview([Todo(title: "a", isDone: true)])
+        try await write(card(TodosModel.testing([]), cells: 3), "06-empty")
+        let allDone = TodosModel.testing([Todo(title: "a", isDone: true)])
         try await write(card(allDone, cells: 3), "07-all-done")
         var xl = CrannyTheme(); xl.textSize = .extraLarge
         try await write(card(fixture(), cells: 3, theme: xl), "08-extra-large-text")
@@ -70,10 +70,10 @@ struct TodosSnapshotTests {
         try await write(card(fixture(hidesCompleted: false), cells: 3, theme: contrast), "09-increase-contrast")
         var lively = CrannyTheme(); lively.accent = AccentSwatch.pink.rgb
         try await write(card(fixture(hidesCompleted: false), cells: 3, theme: lively), "10-pink-accent")
-        let preview = TodosModel.preview([])
+        let preview = TodosModel.testing([])
         try await write(TodosView(model: preview, context: WidgetContext(cells: 3, contentSize: CGSize(width: 160, height: 96), isPreview: true))
             .crannyCard(cells: 3).padding(Space.l).background(Color.black).crannyThemeRoot(CrannyTheme()), "11-stage-samples")
-        let drafting = TodosModel.preview(Array(fixture().items.prefix(2)))
+        let drafting = TodosModel.testing(Array(fixture().items.prefix(2)))
         drafting.beginNew(after: nil)
         try await write(card(drafting, cells: 3), "12-new-draft")
         try await write(card(fixture(), cells: 3, isFocused: true), "13-keyboard-focus")
@@ -124,7 +124,7 @@ struct TodosSnapshotTests {
         let model = fixture()
         let id = model.items[1].id
         let metrics = TodoMetrics(textSize: .standard)
-        let resting = TodosModel.preview([model.items[1]])
+        let resting = TodosModel.testing([model.items[1]])
         model.beginEditing(id)
         let content = VStack(alignment: .leading, spacing: 0) {
             TodoRow(todo: model.items[1], model: model, metrics: metrics, checkStyle: .draw, isReadOnly: false,

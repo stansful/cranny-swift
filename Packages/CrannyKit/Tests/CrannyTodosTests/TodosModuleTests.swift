@@ -8,7 +8,7 @@ import Testing
 @MainActor
 struct TodosModuleTests {
     @Test func registersWithoutSideEffects() throws {
-        let registry = ModuleRegistry(services: .preview())
+        let registry = ModuleRegistry(services: .testing())
         registry.register(TodosModule.self)
         #expect(TodosModule.id == .todos)
         #expect(registry.registeringModule == nil)
@@ -19,7 +19,7 @@ struct TodosModuleTests {
     }
 
     @Test func contributesTheWidgetCommandsAndCaptureTarget() throws {
-        let registry = ModuleRegistry(services: .preview())
+        let registry = ModuleRegistry(services: .testing())
         registry.register(TodosModule.self)
         let widget = try #require(registry.widget(.todos))
         #expect(widget.title == TodosStrings.title)
@@ -34,7 +34,7 @@ struct TodosModuleTests {
     }
 
     @Test func captureCreatesAToDo() throws {
-        let registry = ModuleRegistry(services: .preview())
+        let registry = ModuleRegistry(services: .testing())
         registry.register(TodosModule.self)
         let capture = try #require(registry.captureTargets.first)
         #expect(capture.capture("h") == .todos)
@@ -46,7 +46,7 @@ struct TodosModuleTests {
     }
 
     @Test func liveStorageIsTheModuleFile() {
-        let services = CrannyServices.preview()
+        let services = CrannyServices.testing()
         let model = TodosModel(services: services)
         #expect(model.store.phase == .loading)            // nothing read during registration
         #expect(TodoStorage(paths: services.paths).url.path.hasSuffix("/todos/todos.json"))

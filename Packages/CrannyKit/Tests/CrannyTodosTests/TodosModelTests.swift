@@ -18,7 +18,7 @@ struct TodosModelTests {
 
     init() {
         environment = PreviewSystemEnvironment()
-        services = .preview(environment: environment)
+        services = .testing(environment: environment)
     }
 
     private func model(_ titles: [String] = ["a", "b", "c"], linger: Duration = .milliseconds(10)) -> TodosModel {

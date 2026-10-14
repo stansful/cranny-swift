@@ -9,7 +9,7 @@ import Testing
 /// the field editor's key-binding commands (↩, ⌘↑, Esc, ⌫) reach the model as they do in the panel.
 @MainActor
 struct TodoEditorIntegrationTests {
-    let services = CrannyServices.preview()
+    let services = CrannyServices.testing()
 
     private func host(_ model: TodosModel) -> (NSWindow, NSHostingView<some View>) {
         let theme = CrannyTheme()
@@ -36,7 +36,7 @@ struct TodoEditorIntegrationTests {
     private func editor(_ window: NSWindow) -> NSTextView? { window.firstResponder as? NSTextView }
 
     @Test func theEditorFocusesItselfAndTypingReachesTheModel() async throws {
-        let model = TodosModel.preview([Todo(title: "a")], services: services)
+        let model = TodosModel.testing([Todo(title: "a")], services: services)
         let (window, host) = host(model)
         let id = model.beginNew(after: nil)
         try await settle(host)
@@ -48,7 +48,7 @@ struct TodoEditorIntegrationTests {
     }
 
     @Test func returnStartsTheNextRowAndMovesTheEditorThere() async throws {
-        let model = TodosModel.preview([Todo(title: "a"), Todo(title: "b")], services: services)
+        let model = TodosModel.testing([Todo(title: "a"), Todo(title: "b")], services: services)
         let (window, host) = host(model)
         let a = model.items[0].id
         model.beginEditing(a)
@@ -64,7 +64,7 @@ struct TodoEditorIntegrationTests {
     }
 
     @Test func commandArrowReordersWithoutLeavingTheEditor() async throws {
-        let model = TodosModel.preview([Todo(title: "a"), Todo(title: "b")], services: services)
+        let model = TodosModel.testing([Todo(title: "a"), Todo(title: "b")], services: services)
         let (window, host) = host(model)
         let b = model.items[1].id
         model.beginEditing(b)
@@ -78,7 +78,7 @@ struct TodoEditorIntegrationTests {
     }
 
     @Test func escapeStopsEditingAndSelectsTheRow() async throws {
-        let model = TodosModel.preview([Todo(title: "a")], services: services)
+        let model = TodosModel.testing([Todo(title: "a")], services: services)
         let (window, host) = host(model)
         let a = model.items[0].id
         model.beginEditing(a)
@@ -91,7 +91,7 @@ struct TodoEditorIntegrationTests {
     }
 
     @Test func deleteBackwardOnAnEmptyDraftReturnsToTheRowAbove() async throws {
-        let model = TodosModel.preview([Todo(title: "a")], services: services)
+        let model = TodosModel.testing([Todo(title: "a")], services: services)
         let (window, host) = host(model)
         let a = model.items[0].id
         model.beginNew(after: a)

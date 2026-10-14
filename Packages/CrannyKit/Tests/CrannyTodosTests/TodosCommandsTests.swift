@@ -9,10 +9,10 @@ struct TodosCommandsTests {
     let services: CrannyServices
     let environment = PreviewSystemEnvironment()
 
-    init() { services = .preview(environment: environment) }
+    init() { services = .testing(environment: environment) }
 
     private func model(_ titles: [String]) -> TodosModel {
-        TodosModel.preview(titles.map { Todo(title: $0) }, services: services)
+        TodosModel.testing(titles.map { Todo(title: $0) }, services: services)
     }
     private var notchCalls: [String] { (services.notch as? PreviewNotchControl)?.calls ?? [] }
     private func placeWidget(on page: PageID = .nook) {

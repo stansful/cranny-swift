@@ -9,7 +9,7 @@ import Testing
 /// never ordered in (`NSWindow.sendEvent`, in process; nothing reaches the system's event stream).
 @MainActor
 struct TodoListKeyboardTests {
-    let services = CrannyServices.preview()
+    let services = CrannyServices.testing()
 
     private func host(_ model: TodosModel) -> (NSWindow, NSView) {
         let theme = CrannyTheme()
@@ -59,7 +59,7 @@ struct TodoListKeyboardTests {
     }
 
     @Test func arrowsSpaceAndCommandArrowsDriveTheList() async throws {
-        let model = TodosModel.preview([Todo(title: "a"), Todo(title: "b"), Todo(title: "c")], services: services)
+        let model = TodosModel.testing([Todo(title: "a"), Todo(title: "b"), Todo(title: "c")], services: services)
         services.settings[TodosSettings.hidesCompleted] = false
         let (window, host) = host(model)
         try await settle(host)                                   // the widget has the keyboard: row "a" is selected
@@ -86,7 +86,7 @@ struct TodoListKeyboardTests {
     }
 
     @Test func clickingTheCircleChecksAndClickingTheTitleEdits() async throws {
-        let model = TodosModel.preview([Todo(title: "a"), Todo(title: "b")], services: services)
+        let model = TodosModel.testing([Todo(title: "a"), Todo(title: "b")], services: services)
         services.settings[TodosSettings.hidesCompleted] = false
         let (window, host) = host(model)
         // SwiftUI hit-tests only windows on the window list: put it there, far outside every screen (invisible).
@@ -105,7 +105,7 @@ struct TodoListKeyboardTests {
     }
 
     @Test func returnOnNewToDoStartsADraftAndCommandDeleteRemovesARow() async throws {
-        let model = TodosModel.preview([Todo(title: "a")], services: services)
+        let model = TodosModel.testing([Todo(title: "a")], services: services)
         let (window, host) = host(model)
         try await settle(host)
         try await press(.delete, command: true, in: window, host: host)  // ⌘⌫ on "a"
