@@ -113,6 +113,13 @@ pass the module bundle (`Text("…", bundle: .module, comment: "…")`, `String(
 never bare `LocalizedStringKey` initializers inside the package. Keys are the English text in sentence
 case, every key has a comment `"<Surface>: <purpose>"` (one comment per key), Russian follows the
 glossary in ARCHITECTURE.md §8.7 with state `translated`. Formatting through `FormatStyle` only.
+Catalogs are JSON, so parallel branches conflict line by line; `.gitattributes` routes them to a
+per-key merge driver. Enable it once per clone:
+
+```zsh
+git config merge.xcstrings.name "String Catalog union merge"
+git config merge.xcstrings.driver "python3 scripts/merge-xcstrings.py %O %A %B"
+```
 
 **Accessibility.** Every control has a localized label, every widget is a VoiceOver container, every
 live activity is one element with label, value and named actions. Nothing is hover-only. Honour Reduce

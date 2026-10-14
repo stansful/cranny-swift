@@ -1,0 +1,2 @@
+# String Catalogs merge per key and language (see scripts/merge-xcstrings.py)
+*.xcstrings merge=xcstrings
