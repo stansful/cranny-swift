@@ -1,6 +1,6 @@
 // Bridge NDJSON fixtures → NowPlaying (ARCHITECTURE.md §10.2 acceptance): full state, missing title, +inf duration
-// dropped, lenient MediaRemote values (out-of-range numbers too), artwork keyed by item, protocol messages,
-// malformed lines; the connection's line splitting and command/answer matching.
+// dropped, lenient MediaRemote values (out-of-range numbers too), artwork keyed by item, the elected player reported
+// before filters, protocol messages, malformed lines; the connection's line splitting and command/answer matching.
 import CrannyCore
 import Foundation
 import Testing
@@ -135,7 +135,7 @@ private let now = Date(timeIntervalSince1970: 1_800_000_000)
         }
         let events = provider.events(for: .state(state), at: now)
         let key = try #require(state.nowPlaying(receivedAt: now)?.trackKey)
-        #expect(events == [.nowPlaying(state.nowPlaying(receivedAt: now))])
+        #expect(events == [.electedPlayer(pid: 5, bundleID: "com.google.Chrome"), .nowPlaying(state.nowPlaying(receivedAt: now))])
         #expect(provider.events(for: .artwork(itemID: nil, data: png), at: now) == [.artwork(trackKey: key, data: png)])
         #expect(provider.events(for: .artwork(itemID: "other", data: png), at: now) == [.artwork(trackKey: "other", data: png)])
         #expect(provider.events(for: .pong, at: now).isEmpty)
@@ -149,6 +149,26 @@ private let now = Date(timeIntervalSince1970: 1_800_000_000)
     ])
     func commandLines(_ command: MediaCommand, _ expected: String) {
         #expect(MediaRemoteBridgeProvider.line(for: command) == expected)
+    }
+
+    @Test func theElectedPlayerIsReportedBeforeFiltersAndTitles() throws {
+        let provider = MediaRemoteBridgeProvider(host: .perl, dylib: URL(fileURLWithPath: "/nonexistent.dylib"))
+        // An untitled session (Telegram voice note): nothing playing, but the helper clearly sees a player.
+        guard case .state(let untitled)? = BridgeMessage.parse(line(#"{"t":"state","playing":true,"pid":812,"bundleIdentifier":"ru.keepcoder.Telegram"}"#)) else {
+            Issue.record("not a state"); return
+        }
+        #expect(provider.events(for: .state(untitled), at: now) == [.electedPlayer(pid: 812, bundleID: "ru.keepcoder.Telegram"), .nowPlaying(nil)])
+        // A browser tab: the hosting app names the player.
+        guard case .state(let tab)? = BridgeMessage.parse(line(#"{"t":"state","playing":true,"pid":9,"bundleIdentifier":"com.google.Chrome.helper","parentApplicationBundleIdentifier":"com.google.Chrome","title":"V"}"#)) else {
+            Issue.record("not a state"); return
+        }
+        #expect(provider.events(for: .state(tab), at: now).first == .electedPlayer(pid: 9, bundleID: "com.google.Chrome"))
+        // What a blocked helper reports.
+        guard case .state(let blocked)? = BridgeMessage.parse(line(#"{"t":"state","playing":false,"pid":0}"#)) else {
+            Issue.record("not a state"); return
+        }
+        #expect(provider.events(for: .state(blocked), at: now) == [.electedPlayer(pid: 0, bundleID: nil), .nowPlaying(nil)])
+        #expect(MediaRemoteBridgeProvider.refreshLine == "refresh state")    // state only: no artwork re-sent
     }
 }
 

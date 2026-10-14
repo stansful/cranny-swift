@@ -40,6 +40,10 @@ nonisolated enum ProviderFailure: Error, Equatable, Sendable {
 
 /// What a provider reports.
 nonisolated enum ProviderEvent: Sendable, Equatable {
+    /// The system's elected now-playing app exactly as the source reported it, before any filter and before
+    /// untitled sessions are dropped; sent right before each `.nowPlaying`. `pid` 0 = no elected app, which is
+    /// also what a blocked MediaRemote helper reports (R2 §5.4). Only the bridge providers know it.
+    case electedPlayer(pid: Int, bundleID: String?)
     /// A full snapshot; nil = nothing playing (no session, or a session without a title).
     case nowPlaying(NowPlaying?)
     /// Encoded artwork (JPEG/PNG/HEIC) for `trackKey` (`NowPlaying.trackKey`).

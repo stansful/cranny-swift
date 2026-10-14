@@ -1,6 +1,6 @@
 // MediaService with scripted providers and a manual clock: restart backoff 0.5/2/8 s, failover after 3 failures in
 // 60 s, optimistic commands and their confirmation (refresh, then the player's state again), track-change debounce,
-// filters, artwork cache (ARCHITECTURE.md §6.5, §10.2).
+// filters, the elected player before filters, artwork cache (ARCHITECTURE.md §6.5, §10.2).
 import CoreGraphics
 import CrannyCore
 import Foundation
@@ -305,6 +305,26 @@ import Testing
         await clock.advance(by: .milliseconds(600))
         #expect(service.artwork == nil)                                   // … then the missing-artwork tile
         #expect(service.palette == nil)
+    }
+
+    @Test func theElectedPlayerIsKeptBeforeFilters() async {
+        let clock = ManualClock(), perl = ScriptedProvider(kind: .perl), services = CrannyServices.preview()
+        let service = Fixtures.service([perl], clock: clock, services: services)
+        service.start()
+        await settle()
+        #expect(service.reportedPlayerPID == nil)                         // unknown until the first state
+        services.settings[MediaSettings.ignoredBundleIDs] = ["com.google.Chrome"]
+        perl.emit(.electedPlayer(pid: 42, bundleID: "com.google.Chrome"))
+        perl.emit(.nowPlaying(Fixtures.track("Video", bundleID: "com.google.Chrome")))
+        await settle()
+        #expect(service.nowPlaying == nil)                                // hidden by Ignore apps …
+        #expect(service.reportedPlayerPID == 42)                          // … but the helper saw it
+        #expect(service.reportedPlayerBundleID == "com.google.Chrome")
+        perl.emit(.unavailable(.exited(status: 9)))
+        await settle()
+        #expect(service.reportedPlayerPID == 42)                          // kept while restarting …
+        await clock.advance(by: .milliseconds(500))
+        #expect(service.reportedPlayerPID == nil)                         // … unknown again for the new helper
     }
 
     @Test func sampleSeedNeverStartsAProvider() async {

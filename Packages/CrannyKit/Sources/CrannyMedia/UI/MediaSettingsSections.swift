@@ -74,9 +74,13 @@ struct MediaSourceSection: View {
         }
         guard let roundTrip = await service.ping() else { testResult = MediaPaneStrings.testNoAnswer; return }
         let milliseconds = Int((roundTrip.timeInterval * 1000).rounded())
+        // What the helper sees, before Ignore apps / browser filters and untitled sessions are applied.
         if let np = service.nowPlaying {
             let app = PlayerApps.name(for: np.bundleID ?? np.parentBundleID ?? "", fallback: np.appName)
             testResult = MediaPaneStrings.testSeesPlayer(app, milliseconds)
+        } else if let pid = service.reportedPlayerPID, pid > 0 {
+            testResult = service.reportedPlayerBundleID.map { MediaPaneStrings.testSeesPlayer(PlayerApps.name(for: $0), milliseconds) }
+                ?? MediaPaneStrings.testSeesUnnamedPlayer(milliseconds)
         } else if AudioOutputMonitor.isOtherProcessRunningOutput() {
             testResult = MediaPaneStrings.testBlind(milliseconds)
         } else {

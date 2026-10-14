@@ -1,6 +1,8 @@
 // CrannyMedia/Health/BridgeHealthMonitor.swift — detects a silently blocked MediaRemote helper (R2 §5.4,
-// ARCHITECTURE.md §6.5): another app has been producing sound for more than 10 s while the helper reports
-// nothing playing → "degraded" (Settings ▸ Media suggests the Apple Events fallback; diagnostics show it).
+// ARCHITECTURE.md §6.5): another app has been producing sound for more than 10 s while the helper reports no
+// elected player at all (pid 0, what a blocked helper reports) → "degraded" (Settings ▸ Media suggests the Apple
+// Events fallback; diagnostics show it). What the helper reported counts, not what the UI shows: a session that
+// Ignore apps or "Show media from browsers" hides, or one without a title, proves the helper works.
 // One sleep to the 10-s deadline, restarted by changes; no polling.
 import CrannyCore
 import Foundation
@@ -23,14 +25,17 @@ private nonisolated let log = Log.logger(.media)
 
     init(service: MediaService) { self.service = service }
 
-    /// Starts the Core Audio listeners (`registry.onLaunch`).
-    func start() {
-        guard output == nil else { return }
-        let monitor = AudioOutputMonitor { [weak self] active in
-            Task { @MainActor in self?.outputChanged(active) }
+    /// Starts the Core Audio listeners (`registry.onLaunch`). Tests pass `listensToCoreAudio: false` and feed
+    /// `outputChanged(_:)` themselves.
+    func start(listensToCoreAudio: Bool = true) {
+        guard token == nil else { return }
+        if listensToCoreAudio {
+            let monitor = AudioOutputMonitor { [weak self] active in
+                Task { @MainActor in self?.outputChanged(active) }
+            }
+            output = monitor
+            monitor.start()
         }
-        output = monitor
-        monitor.start()
         token = observe({ [weak self] in self?.suspicious ?? false }) { [weak self] _ in self?.reevaluate() }
     }
 
@@ -47,9 +52,9 @@ private nonisolated let log = Log.logger(.media)
         reevaluate()
     }
 
-    /// Sound is playing, a bridge provider is running, and it reports nothing.
+    /// Sound is playing, a bridge provider is running, and it reports no elected player (pid 0).
     private var suspicious: Bool {
-        guard isOutputActive, service.nowPlaying == nil else { return false }
+        guard isOutputActive, service.reportedPlayerPID == 0 else { return false }
         switch service.status {
         case .running(.perl), .running(.ruby): return true
         default: return false

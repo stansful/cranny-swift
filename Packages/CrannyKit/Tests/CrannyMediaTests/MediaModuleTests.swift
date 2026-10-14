@@ -80,6 +80,7 @@ import Testing
         #expect(diagnostics["media.provider"] == "none")
         #expect(diagnostics["media.status"] == "idle")
         #expect(diagnostics["media.degraded"] == "false")
+        #expect(diagnostics["media.electedPlayer"] == "unknown")
         let sample = SampleMedia.previewService().diagnostics
         #expect(sample["media.session"] == "playing")
         #expect(!sample.values.contains { $0.contains(SampleMedia.title) || $0.contains(SampleMedia.artist) || $0.contains("Music") })

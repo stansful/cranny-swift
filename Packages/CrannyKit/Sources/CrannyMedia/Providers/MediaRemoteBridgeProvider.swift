@@ -114,7 +114,8 @@ nonisolated final class MediaRemoteBridgeProvider: MediaProvider, @unchecked Sen
         case .state(let state):
             let np = state.nowPlaying(receivedAt: now)
             lock.withLock { $0.lastTrackKey = np?.trackKey }
-            return [.nowPlaying(np)]
+            return [.electedPlayer(pid: max(state.pid, 0), bundleID: state.parentApplicationBundleIdentifier ?? state.bundleIdentifier),
+                    .nowPlaying(np)]
         case .artwork(let itemID, let data):
             guard let key = itemID ?? lock.withLock({ $0.lastTrackKey }) else { return [] }
             return [.artwork(trackKey: key, data: data)]

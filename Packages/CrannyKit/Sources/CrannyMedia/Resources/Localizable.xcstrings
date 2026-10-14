@@ -977,6 +977,17 @@
         }
       }
     },
+    "Working: the helper answered in %lld ms and sees a player." : {
+      "comment" : "Settings ▸ Media: test result when the player has no name; argument is a round-trip time in milliseconds",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Работает: помощник ответил за %lld мс и видит плеер."
+          }
+        }
+      }
+    },
     "back song" : {
       "comment" : "Command palette: extra search words for Previous track, space-separated (translate each word)",
       "localizations" : {

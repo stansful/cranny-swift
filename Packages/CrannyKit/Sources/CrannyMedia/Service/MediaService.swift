@@ -31,6 +31,11 @@ private nonisolated let log = Log.logger(.media)
     private(set) var lastSourceBundleID: String?
     /// Players seen this session, newest first (offered by Settings ▸ Media ▸ Ignore apps).
     private(set) var recentSources: [String] = []
+    /// The elected now-playing app as the bridge last reported it, before filters (nil = unknown: not a bridge
+    /// provider, or no state yet). 0 = none, which is also what a blocked helper reports (`BridgeHealthMonitor`).
+    private(set) var reportedPlayerPID: Int?
+    /// Bundle id of `reportedPlayerPID`'s app ("Test media detection" names it even when a filter hides it).
+    private(set) var reportedPlayerBundleID: String?
 
     @ObservationIgnored let settings: SettingsStore
     @ObservationIgnored let clock: any MediaClock
@@ -189,6 +194,8 @@ private nonisolated let log = Log.logger(.media)
         restartTask?.cancel(); restartTask = nil
         confirmation?.cancel(); confirmation = nil
         provider?.stop(); provider = nil
+        if reportedPlayerPID != nil { reportedPlayerPID = nil }
+        if reportedPlayerBundleID != nil { reportedPlayerBundleID = nil }
         guard factories.indices.contains(i) else {
             index = factories.count
             status = .unavailable
@@ -222,6 +229,9 @@ private nonisolated let log = Log.logger(.media)
 
     private func handle(_ event: ProviderEvent, kind: MediaProviderKind) {
         switch event {
+        case .electedPlayer(let pid, let bundleID):
+            if reportedPlayerPID != pid { reportedPlayerPID = pid }
+            if reportedPlayerBundleID != bundleID { reportedPlayerBundleID = bundleID }
         case .nowPlaying(let np):
             if status != .running(kind) { status = .running(kind) }
             ingest(np)

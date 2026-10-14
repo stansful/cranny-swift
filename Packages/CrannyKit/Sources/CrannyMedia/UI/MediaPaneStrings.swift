@@ -69,6 +69,10 @@ enum MediaPaneStrings {
         String(localized: "Working: the helper answered in \(milliseconds) ms and sees \(app).", bundle: .module,
                comment: "Settings ▸ Media: test result; arguments are a round-trip time in milliseconds and a player name")
     }
+    static func testSeesUnnamedPlayer(_ milliseconds: Int) -> String {
+        String(localized: "Working: the helper answered in \(milliseconds) ms and sees a player.", bundle: .module,
+               comment: "Settings ▸ Media: test result when the player has no name; argument is a round-trip time in milliseconds")
+    }
     static func testBlind(_ milliseconds: Int) -> String {
         String(localized: "The helper answered in \(milliseconds) ms, but sound is playing and it sees nothing. Try the Apple Events fallback.",
                bundle: .module, comment: "Settings ▸ Media: test result; argument is a round-trip time in milliseconds")
