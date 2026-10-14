@@ -73,7 +73,7 @@ final class MainAppLoginItem: LoginItemService {
     /// opens Login Items in System Settings, where the user finishes the job (Settings' "Open Login Items…").
     func setEnabled(_ enabled: Bool) {
         guard !Self.isTranslocated(bundleURL) else { refresh(); return }
-        hasRead = true                                         // every path below reads the status and sets `current`
+        hasRead = true                                         // every path below reads the status; `current` then holds the result
         let status = Self.state(for: service.status)
         if enabled {
             switch status {

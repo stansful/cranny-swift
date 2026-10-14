@@ -164,7 +164,7 @@ import Observation
         fullScreenDebouncer.schedule { [weak self] in self?.refreshFullScreen() }
     }
 
-    /// The Dock's process, looked up again only after it quit (the Dock restarts under a new PID).
+    /// The Dock's process, looked up again only after it quit (the Dock restarts under a new PID) or while none runs.
     private func dockPID() -> pid_t? {
         if let dock, !dock.isTerminated { return dock.processIdentifier }
         dock = NSRunningApplication.runningApplications(withBundleIdentifier: "com.apple.dock").first
