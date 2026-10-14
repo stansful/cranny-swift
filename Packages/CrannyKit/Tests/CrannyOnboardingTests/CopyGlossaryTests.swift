@@ -30,4 +30,18 @@ import Testing
             #expect(value.range(of: #"(^|[^а-яё])тур"#, options: [.regularExpression, .caseInsensitive]) == nil, "\(key) → \(value)")
         }
     }
+
+    @Test func aClickIsNazhatAsInApplesRussian() throws {
+        // macOS's own Russian says «Нажмите, чтобы…» for a click; Cranny's other catalogs do too (Quick Apps, To-dos,
+        // Notes). «Щёлкнуть» / «щелчок» would name the same act two ways, sometimes in one flow.
+        let table = try russian()
+        let clicks = table.filter { $0.key.range(of: "click", options: .caseInsensitive) != nil }
+        #expect(clicks.count >= 6)                                 // the Click card, the coach marks, step 1, VoiceOver
+        for (key, value) in clicks {
+            #expect(value.range(of: "нажм|нажат", options: [.regularExpression, .caseInsensitive]) != nil, "\(key) → \(value)")
+        }
+        for (key, value) in table {
+            #expect(value.range(of: "щ[её]лк|щ[её]лч", options: [.regularExpression, .caseInsensitive]) == nil, "\(key) → \(value)")
+        }
+    }
 }
