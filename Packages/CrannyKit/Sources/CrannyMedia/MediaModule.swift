@@ -40,11 +40,14 @@ public enum MediaModule: FeatureModule {
                 AnyView(MediaSettingsPane(service: service, health: health, services: services))
             })
         registry.add(commands: MediaCommands(service: service))
+        // One reason for every player, naming none: Settings ▸ Permissions shows it under "Automation: <player>",
+        // and onboarding's single Automation row shows the first reason for all the players together.
+        let automationReason = String(
+            localized: "Read what’s playing and control playback when the media helper can’t. Only if you turn on the Apple Events fallback.",
+            bundle: .module, comment: "Permissions pane: why Media may ask for Automation for a media app (the row names the app)")
         for player in ScriptablePlayer.installed(isInstalled) {
-            registry.declare(.automation(bundleID: player.bundleID), reason: String(
-                localized: "Read and control Music or Spotify when the media helper can’t. Only if you turn on the Apple Events fallback.",
-                bundle: .module, comment: "Permissions pane: why Media may ask for Automation"),
-                optIn: MediaSettings.allowAppleEvents)              // off by default: onboarding asks only while on
+            registry.declare(.automation(bundleID: player.bundleID), reason: automationReason,
+                             optIn: MediaSettings.allowAppleEvents)    // off by default: onboarding asks only while on
         }
         registry.declare(.systemAudioRecording, reason: String(
             localized: "Let the Live visualizer move with the sound. Cranny never records or saves audio.",

@@ -575,13 +575,13 @@
         }
       }
     },
-    "Read and control Music or Spotify when the media helper can’t. Only if you turn on the Apple Events fallback." : {
-      "comment" : "Permissions pane: why Media may ask for Automation",
+    "Read what’s playing and control playback when the media helper can’t. Only if you turn on the Apple Events fallback." : {
+      "comment" : "Permissions pane: why Media may ask for Automation for a media app (the row names the app)",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Чтобы читать «Музыку» или Spotify и управлять ими, когда помощник медиа не работает. Только если включён запасной путь через Apple Events."
+            "value" : "Чтобы узнавать, что играет, и управлять воспроизведением, когда помощник медиа не работает. Только если включён запасной путь через Apple Events."
           }
         }
       }

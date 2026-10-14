@@ -389,6 +389,16 @@ private enum Payload {
         #expect(automationIDs { _ in false } == [])
     }
 
+    /// Settings ▸ Permissions shows a reason under "Automation: <player>", and onboarding shows the first reason for
+    /// all players in one row: so one reason that names no player (in either language).
+    @Test func everyPlayerSharesAReasonThatNamesNoPlayer() {
+        let registry = ModuleRegistry(services: .preview())
+        registry.registerMedia(isInstalled: { _ in true })
+        let reasons = registry.permissionUses.compactMap { if case .automation = $0.kind { $0.reason } else { nil } }
+        #expect(reasons.count == 2 && Set(reasons).count == 1)
+        #expect(reasons.allSatisfy { reason in ["Music", "Музык", "Spotify"].allSatisfy { !reason.contains($0) } })
+    }
+
     @Test func systemAudioRecordingIsDeclaredEitherWay() {
         let registry = ModuleRegistry(services: .preview())
         registry.registerMedia(isInstalled: { _ in false })
