@@ -25,16 +25,40 @@ import Testing
         #expect(CrannyChipButtonStyle.height < HitTarget.nook.height)       // the drawn capsule stays 22 pt
     }
 
-    /// Clicks a chip 11.5 pt above its centre: outside the 22-pt capsule, inside the 24-pt button. In-process only
-    /// (`NSWindow.sendEvent` on an offscreen window, no system input), but it orders a window in, so it is opt-in.
-    @Test(.enabled(if: ProcessInfo.processInfo.environment["CRANNY_INTEGRATION"] == "1"))
-    func chipTakesClicksOutsideItsCapsule() throws {
+    /// An icon button smaller than the hit target (the Timer's 24-pt ring buttons, Notes' header) is a 28 × 24 button
+    /// around its well; the usual 28- and 32-pt buttons keep their size.
+    @Test func iconButtonsAreAtLeastTheNookHitTarget() {
+        func size(_ side: CGFloat, _ role: CrannyIconButtonStyle.Role = .plain) -> CGSize {
+            fittingSize(Button {} label: { Image(systemName: "stop.fill") }
+                .buttonStyle(CrannyIconButtonStyle(role, size: side)))
+        }
+        for role in [CrannyIconButtonStyle.Role.plain, .filled, .prominent] {
+            #expect(size(24, role) == CGSize(width: HitTarget.nook.width, height: HitTarget.nook.height))
+        }
+        #expect(size(20) == HitTarget.nook)
+        #expect(size(HitTarget.preferred) == CGSize(width: HitTarget.preferred, height: HitTarget.preferred))
+        #expect(size(HitTarget.band.width) == CGSize(width: HitTarget.band.width, height: HitTarget.band.width))
+    }
+
+    /// Clicks a chip 11.5 pt above its centre: outside the 22-pt capsule, inside the 24-pt button; and a 24-pt icon
+    /// button 13 pt beside its centre: outside its well, inside the 28-pt button. In-process only (`NSWindow.sendEvent`
+    /// on an offscreen window, no system input), but it orders a window in, so it is opt-in.
+    @Test(.enabled(if: ProcessInfo.processInfo.environment["CRANNY_INTEGRATION"] == "1"), arguments: [false, true])
+    func smallControlsTakeClicksAroundTheirVisual(iconButton: Bool) throws {
         final class Clicks { var count = 0 }
         let clicks = Clicks()
-        let root = Button { clicks.count += 1 } label: { Text(verbatim: "Clear") }
-            .buttonStyle(CrannyChipButtonStyle())
-            .frame(width: 200, height: 40)
-            .crannyThemeRoot(CrannyTheme())
+        let button = Button { clicks.count += 1 } label: {
+            if iconButton { Image(systemName: "stop.fill") } else { Text(verbatim: "Clear") }
+        }
+        let root = Group {
+            if iconButton {
+                button.buttonStyle(CrannyIconButtonStyle(.plain, size: 24))
+            } else {
+                button.buttonStyle(CrannyChipButtonStyle())
+            }
+        }
+        .frame(width: 200, height: 40)
+        .crannyThemeRoot(CrannyTheme())
         let window = NSWindow(contentRect: NSRect(x: -5000, y: -5000, width: 200, height: 40), styleMask: [.borderless],
                               backing: .buffered, defer: false)
         window.contentView = NSHostingView(rootView: root)
@@ -53,9 +77,14 @@ import Testing
             }
             return clicks.count
         }
-        #expect(try click(NSPoint(x: 100, y: 20)) == 1)                    // the capsule
-        #expect(try click(NSPoint(x: 100, y: 31.5)) == 1)                  // 0.5 pt beyond the capsule's edge
-        #expect(try click(NSPoint(x: 100, y: 34)) == 0)                    // beyond the 24-pt button
+        #expect(try click(NSPoint(x: 100, y: 20)) == 1)                    // the capsule or the well
+        if iconButton {
+            #expect(try click(NSPoint(x: 113, y: 20)) == 1)                // 1 pt beyond the 24-pt well
+            #expect(try click(NSPoint(x: 115, y: 20)) == 0)                // beyond the 28-pt button
+        } else {
+            #expect(try click(NSPoint(x: 100, y: 31.5)) == 1)              // 0.5 pt beyond the capsule's edge
+            #expect(try click(NSPoint(x: 100, y: 34)) == 0)                // beyond the 24-pt button
+        }
     }
 
     // MARK: Symbols (DESIGN.md §14.1)

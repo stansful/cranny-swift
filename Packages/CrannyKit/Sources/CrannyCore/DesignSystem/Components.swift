@@ -184,7 +184,10 @@ struct FocusRingModifier: ViewModifier {
 
 // MARK: - Buttons
 
-/// Icon button used everywhere in the notch. `.prominent` = the ONE primary action per card.
+/// Icon button used everywhere in the notch. `.prominent` = the ONE primary action per card. A well smaller than
+/// `HitTarget.nook` (the Timer's 24-pt ring buttons, Notes' header) is drawn centred in a button of at least 28 × 24
+/// that takes clicks over its whole frame, as `CrannyChipButtonStyle` does (DESIGN.md §2.3, §16): a frame or content
+/// shape added outside a `Button` does not widen it.
 public struct CrannyIconButtonStyle: ButtonStyle {
     public enum Role: Sendable { case plain, filled, prominent }
     public var role: Role
@@ -206,12 +209,14 @@ public struct CrannyIconButtonStyle: ButtonStyle {
             case .filled: configuration.isPressed ? p.controlPressed : hovered ? p.controlHover : p.control
             case .plain: configuration.isPressed ? p.controlPressed : hovered ? p.control : .clear
             }
+            let widened = size < HitTarget.nook.width || size < HitTarget.nook.height
             configuration.label
                 .font(.system(size: (size * 0.48).rounded(), weight: .semibold))
                 .foregroundStyle(role == .prominent ? p.onProminent : p.label)
                 .frame(width: size, height: size)
                 .background(CrannyButtonShape(theme.buttonShape).fill(fill))
-                .contentShape(CrannyButtonShape(theme.buttonShape))
+                .frame(minWidth: HitTarget.nook.width, minHeight: HitTarget.nook.height)
+                .contentShape(widened ? AnyShape(Rectangle()) : AnyShape(CrannyButtonShape(theme.buttonShape)))
                 .scaleEffect(configuration.isPressed && !theme.reduceMotion ? 0.94 : 1)
                 .opacity(enabled ? (configuration.isPressed && theme.reduceMotion ? 0.7 : 1) : 0.4)
                 .onHover { hovered = $0 }

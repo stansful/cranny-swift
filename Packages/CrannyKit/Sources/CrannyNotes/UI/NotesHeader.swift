@@ -82,8 +82,6 @@ struct HeaderButton: View {
         }
         .keyboardShortcut(shortcut)
         .buttonStyle(CrannyIconButtonStyle(isOn ? .filled : .plain, size: HitTarget.nook.height))
-        .frame(width: HitTarget.nook.width, height: HitTarget.nook.height)
-        .contentShape(Rectangle())
         .help(label)
         .accessibilityLabel(Text(label))
         .accessibilityAddTraits(isOn ? .isSelected : [])

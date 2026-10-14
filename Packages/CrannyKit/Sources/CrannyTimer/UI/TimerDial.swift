@@ -85,7 +85,6 @@ struct TimerDial: View {
             case .idle:
                 Button(action: model.startSetup) { Text(TimerCopy.start) }
                     .buttonStyle(CrannyChipButtonStyle(tint: p.warning, prominent: true))
-                    .timerHitTarget()
             case .running, .paused:
                 ZStack {
                     if showsControls {
@@ -109,7 +108,6 @@ struct TimerDial: View {
                     TimerStopButton(model: model, size: TimerMetrics.ringButton, role: .filled)
                     Button(action: model.addMinute) { Text(verbatim: "+1") }
                         .buttonStyle(CrannyIconButtonStyle(.filled, size: TimerMetrics.ringButton))
-                        .timerHitTarget()
                         .help(TimerCopy.addMinute)
                         .accessibilityLabel(Text(TimerCopy.addMinute))
                 }

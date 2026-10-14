@@ -26,13 +26,9 @@ struct DeleteConfirmationView: View {
                 Button { model.cancelDelete() } label: { Text(NotesStrings.cancel) }
                     .keyboardShortcut(.cancelAction)                            // Esc
                     .buttonStyle(CrannyChipButtonStyle())
-                    .frame(minWidth: HitTarget.nook.width, minHeight: HitTarget.nook.height)
-                    .contentShape(Rectangle())
                 Button { model.confirmDelete() } label: { Text(NotesStrings.delete) }
                     .keyboardShortcut(.defaultAction)                           // Return: the user chose Delete… already
                     .buttonStyle(CrannyChipButtonStyle(tint: p.danger, prominent: true))
-                    .frame(minWidth: HitTarget.nook.width, minHeight: HitTarget.nook.height)
-                    .contentShape(Rectangle())
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

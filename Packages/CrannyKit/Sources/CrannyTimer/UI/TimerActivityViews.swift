@@ -127,7 +127,6 @@ struct TimerDonePeekRow: View {
                 TimerAddMinuteChip(model: model)
                 Button(action: model.stop) { Text(TimerCopy.stopShort) }
                     .buttonStyle(CrannyChipButtonStyle(prominent: true))
-                    .timerHitTarget()
                     .accessibilityLabel(Text(TimerCopy.stop))
             }
         }
@@ -159,7 +158,6 @@ struct TimerPauseButton: View {
                 .contentTransition(theme.symbolReplace)
         }
         .buttonStyle(CrannyIconButtonStyle(.plain, size: size))
-        .timerHitTarget()
         .help(paused ? TimerCopy.resume : TimerCopy.pause)
         .accessibilityLabel(Text(paused ? TimerCopy.resume : TimerCopy.pause))
     }
@@ -172,7 +170,6 @@ struct TimerStopButton: View {
     var body: some View {
         Button(action: model.stop) { Image(systemName: "stop.fill") }
             .buttonStyle(CrannyIconButtonStyle(role, size: size))
-            .timerHitTarget()
             .help(TimerCopy.stop)
             .accessibilityLabel(Text(TimerCopy.stop))
     }
@@ -183,17 +180,8 @@ struct TimerAddMinuteChip: View {
     var body: some View {
         Button(action: model.addMinute) { Text(TimerCopy.plusOneMinute) }
             .buttonStyle(CrannyChipButtonStyle())
-            .timerHitTarget()
             .help(TimerCopy.addMinute)
             .accessibilityLabel(Text(TimerCopy.addMinute))
-    }
-}
-
-extension View {
-    /// At least 28 × 24 of clickable area around a smaller visual (DESIGN.md §16, `HitTarget.nook`).
-    func timerHitTarget() -> some View {
-        frame(minWidth: HitTarget.nook.width, minHeight: HitTarget.nook.height)
-            .contentShape(Rectangle())
     }
 }
 

@@ -159,8 +159,6 @@ private struct LowBatteryPeekRow: View {
                         Text(verbatim: SystemCopy.lowPowerModeButton)
                     }
                     .buttonStyle(CrannyChipButtonStyle(tint: p.caution))
-                    .frame(minHeight: HitTarget.nook.height)
-                    .contentShape(Rectangle())
                     .help(SystemCopy.batterySettings)
                 }
             }
