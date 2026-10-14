@@ -77,7 +77,7 @@ nonisolated enum ArchiveSteps {
     private static func runDitto(_ arguments: [String], cleaningUp partial: URL?, failure: TrayError) async throws {
         let result: ProcessOutput
         do {
-            result = try await ProcessRunner.run(ditto, arguments)
+            result = try await ProcessRunner.run(ditto, arguments, qualityOfService: .utility)   // a pipeline nobody waits on
         } catch {
             throw failure
         }

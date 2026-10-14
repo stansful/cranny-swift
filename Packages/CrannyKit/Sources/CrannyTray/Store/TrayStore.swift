@@ -39,7 +39,7 @@ private let log = Log.logger(.tray)
     @ObservationIgnored let directories: TrayDirectories
     @ObservationIgnored let thumbnails = ThumbnailCache()
     @ObservationIgnored var now: @MainActor () -> Date = { Date() }
-    @ObservationIgnored private let saver = Debouncer(delay: .milliseconds(300))
+    @ObservationIgnored private let saver = Debouncer(delay: .milliseconds(300), priority: .utility)   // background saves
     /// Bumped by every change to the index; `savedRevision` is the newest one known to be on disk. A save is
     /// counted only once its write finished, so the terminate hook also writes while a background save is in flight
     /// (`TrayIndexFile` drops that save if it lands afterwards).

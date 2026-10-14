@@ -1,9 +1,10 @@
 // CrannyTray/Store/TrayStore+Pipelines.swift — running pipelines on tray items or on files dropped on a pipeline zone
 // (DESIGN.md §8.2–§8.3): progress on the source tiles, cancellation, results slid in beside the source with an Undo
 // chip for 5 s, a `.generic` haptic and a VoiceOver announcement; errors as a one-line badge.
-// Runs are background work with a visible ring, so they run at `.utility` (efficiency cores, throttled under thermal
-// pressure and Low Power Mode). Progress ticks go to a per-job `TrayJobProgress` box, not to `jobs`, so a tick
-// re-renders only the views that show that job's ring; `jobs` changes only when a run starts, fails or ends.
+// Runs are background work with a visible ring, so they run at `.utility`, the `ditto` tool too (efficiency cores,
+// throttled under thermal pressure and Low Power Mode). Progress ticks go to a per-job `TrayJobProgress` box, not to
+// `jobs`, so a tick re-renders only the views that show that job's ring; `jobs` changes only when a run starts, fails
+// or ends.
 import CrannyCore
 import Foundation
 import Observation
