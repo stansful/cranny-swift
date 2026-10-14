@@ -45,6 +45,21 @@ import Testing
         #expect(soon.revision == 2)
     }
 
+    @Test func meetingSoonThatAppearsLateIsStillAnAlert() async {
+        // Lid opened 3 minutes before the meeting (lead 5): P1 for a minute from now, so the shell auto-peeks and
+        // announces it (a revision change peeks only for `.alert`; the kind does not peek on change).
+        time.now = T.date(h: 9, 57)
+        let m = await model([standup])
+        let soon = MeetingSoonActivity(model: m)
+        #expect(!MeetingSoonActivity.kind().canPeekOnChange)
+        #expect(soon.isActive)
+        #expect(soon.revision == 1)
+        #expect(soon.priority == .alert)
+        time.now = T.date(h: 9, 58)
+        m.scheduler.replan()
+        #expect(soon.priority == .ongoing)
+    }
+
     @Test func dismissHidesUntilTheNextMeaningfulChange() async {
         let m = await model([standup])
         let soon = MeetingSoonActivity(model: m)
@@ -105,6 +120,8 @@ import Testing
             services.settings[CalendarSettings.leadMinutes] = lead
             let soon = MeetingSoonActivity(model: .sample(services: services))
             #expect(soon.isActive, "lead \(lead)")
+            // The Settings "Simulate" chip and onboarding show the alert form, whatever the lead time.
+            #expect(soon.priority == .alert, "lead \(lead)")
             #expect(soon.model.isSample)
             #expect(soon.model.scheduler.nextWake == nil)
         }

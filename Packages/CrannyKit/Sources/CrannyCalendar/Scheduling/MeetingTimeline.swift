@@ -5,8 +5,8 @@
 import Foundation
 
 nonisolated enum MeetingTimeline {
-    /// How long a new "Meeting soon" stage stays a P1 alert before it settles to P2 (DESIGN.md §9.2:
-    /// "P1 when it appears, then P2"). Long enough for the auto-peek and a glance.
+    /// How long a "Meeting soon" stage stays a P1 alert after it is first shown, before it settles to P2
+    /// (DESIGN.md §9.2: "P1 when it appears, then P2"). Long enough for the auto-peek and a glance.
     static let alertHold: TimeInterval = 60
     /// The second alert: one minute before the start.
     static let lastMinute: TimeInterval = 60
@@ -21,9 +21,14 @@ nonisolated enum MeetingTimeline {
     nonisolated struct Soon: Equatable, Sendable {
         var event: EventSnapshot
         var stage: Stage
-        /// When the current stage began (its alert lasts `alertHold` from here).
+        /// When the current stage begins on the clock: the lead time, or one minute before the start.
         var stageStart: Date
-        var alertUntil: Date { stageStart.addingTimeInterval(MeetingTimeline.alertHold) }
+        /// When this stage was first shown. `stageStart` when Cranny was running on time; later when the stage
+        /// appears late — after a wake or a launch, for a meeting created or accepted within the lead time, or
+        /// when the lead time grows. The P1 alert is measured from here, so a late stage still alerts.
+        var shownAt: Date
+        /// The end of the P1 alert (auto-peek, VoiceOver announcement); P2 afterwards.
+        var alertUntil: Date { shownAt.addingTimeInterval(MeetingTimeline.alertHold) }
         /// Identity of a "meaningful change": a new event, or the same event entering its last minute.
         var key: String { event.id + "|" + stage.rawValue }
     }
@@ -37,7 +42,9 @@ nonisolated enum MeetingTimeline {
 
     /// The meeting state at `now`. `events` must already be filtered; only meeting-like events count (timed,
     /// under 12 hours: no all-day events, birthdays or multi-day blocks).
-    static func state(events: [EventSnapshot], now: Date, leadMinutes: Int) -> State {
+    /// - Parameter previous: the state of the last plan. A stage that was already showing keeps its `shownAt`;
+    ///   a new one is shown now.
+    static func state(events: [EventSnapshot], now: Date, leadMinutes: Int, previous: State = .none) -> State {
         let lead = leadInterval(leadMinutes)
         let timed = events.filter(\.isMeetingLike)
         let current = timed.filter { $0.isInProgress(at: now) }
@@ -47,8 +54,10 @@ nonisolated enum MeetingTimeline {
             .map { event -> Soon in
                 let untilStart = event.start.timeIntervalSince(now)
                 let stage: Stage = untilStart <= lastMinute ? .lastMinute : .lead
-                let stageStart = stage == .lastMinute ? event.start.addingTimeInterval(-lastMinute) : event.start.addingTimeInterval(-lead)
-                return Soon(event: event, stage: stage, stageStart: stageStart)
+                let stageStart = event.start.addingTimeInterval(-(stage == .lastMinute ? lastMinute : lead))
+                var soon = Soon(event: event, stage: stage, stageStart: stageStart, shownAt: max(stageStart, now))
+                if let shown = previous.soon, shown.key == soon.key { soon.shownAt = shown.shownAt }
+                return soon
             }
         return State(soon: soon, current: current)
     }
@@ -56,7 +65,8 @@ nonisolated enum MeetingTimeline {
     /// The next instant after `now` at which `state(…)`, an alert's priority, or a widget row's role changes:
     /// each timed event's lead start, last minute, start and end, plus the end of the current alert.
     /// nil = nothing ahead in `events` (no timer at all: ARCHITECTURE.md §9.2).
-    static func nextBoundary(events: [EventSnapshot], now: Date, leadMinutes: Int) -> Date? {
+    /// - Parameter state: the state at `now` (the scheduler's plan); computed afresh when nil.
+    static func nextBoundary(events: [EventSnapshot], now: Date, leadMinutes: Int, state: State? = nil) -> Date? {
         let lead = leadInterval(leadMinutes)
         var next: Date?
         func consider(_ date: Date) { if date > now, next.map({ date < $0 }) ?? true { next = date } }
@@ -66,7 +76,7 @@ nonisolated enum MeetingTimeline {
             consider(event.start)
             consider(event.end)
         }
-        if let soon = state(events: events, now: now, leadMinutes: leadMinutes).soon { consider(soon.alertUntil) }
+        if let soon = (state ?? self.state(events: events, now: now, leadMinutes: leadMinutes)).soon { consider(soon.alertUntil) }
         return next
     }
 

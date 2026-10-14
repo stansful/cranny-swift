@@ -1,6 +1,6 @@
 // CrannyCalendar/UI/Activities/MeetingSoonActivity.swift — "Meeting soon" (DESIGN.md §9.2): from the lead time
-// (default 5 min) until the start; a P1 alert for a minute when it appears and again at one minute (two
-// revisions), P2 in between. Compact: calendar dot + "in 4m" | Join pill (or the start time). Peek: tile ·
+// (default 5 min) until the start; a P1 alert for a minute from when it appears — on time, or late after a wake,
+// a launch or a meeting added inside the lead time — and again at one minute (two revisions), P2 in between. Compact: calendar dot + "in 4m" | Join pill (or the start time). Peek: tile ·
 // title / time and place · Join · Dismiss.
 import CrannyCore
 import Foundation
@@ -24,7 +24,7 @@ import SwiftUI
     let slot: SlotWidth = .medium
     var soon: MeetingTimeline.Soon? { model.scheduler.state.soon }
     var isActive: Bool { soon.map { $0.key != dismissedKey } ?? false }
-    /// P1 for `alertHold` after each stage begins (auto-peek, VoiceOver announcement), then P2.
+    /// P1 for `alertHold` after each stage is first shown (auto-peek, VoiceOver announcement), then P2.
     var priority: ActivityPriority {
         guard let soon else { return .ongoing }
         return model.scheduler.now < soon.alertUntil ? .alert : .ongoing

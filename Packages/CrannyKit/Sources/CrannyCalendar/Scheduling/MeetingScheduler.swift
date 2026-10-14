@@ -61,7 +61,7 @@ private let log = Log.logger(.calendar)
     func replan(scheduling: Bool = true) {
         let time = clock.now()
         let list = events(), lead = leadMinutes()
-        let next = MeetingTimeline.state(events: list, now: time, leadMinutes: lead)
+        let next = MeetingTimeline.state(events: list, now: time, leadMinutes: lead, previous: state)
 
         let newSoonKey = next.soon?.key
         if let newSoonKey, newSoonKey != soonKey { soonRevision += 1 }
@@ -73,7 +73,7 @@ private let log = Log.logger(.calendar)
         if now != time { now = time }
         if state != next { state = next }
         guard scheduling else { return }
-        schedule(MeetingTimeline.nextBoundary(events: list, now: time, leadMinutes: lead))
+        schedule(MeetingTimeline.nextBoundary(events: list, now: time, leadMinutes: lead, state: next))
     }
 
     // MARK: - Internals
@@ -85,16 +85,18 @@ private let log = Log.logger(.calendar)
         var trigger: Int
     }
 
+    /// Re-arms on every plan, even for the same boundary: the sleep runs on the continuous clock, so after the
+    /// wall clock was set (`.NSSystemClockDidChange` reloads the store, which re-plans) a delay computed before
+    /// the change would wake early or late by the size of the jump.
     private func schedule(_ boundary: Date?) {
-        guard boundary != nextWake || wake == nil else { return }
         wake?.cancel()
         wake = nil
-        nextWake = boundary
+        if nextWake != boundary { nextWake = boundary }
         guard let boundary else { return }
         // Land just after the boundary so `state(at:)` sees the new side of it.
         let delay = max(boundary.timeIntervalSince(clock.now()), 0) + 0.05
         wake = Task { [weak self, sleep] in
-            do { try await sleep(.milliseconds(Int64(delay * 1000))) } catch { return }
+            do { try await sleep(.milliseconds(Int64((delay * 1000).rounded()))) } catch { return }
             guard !Task.isCancelled, let self else { return }
             self.wake = nil
             self.replan()

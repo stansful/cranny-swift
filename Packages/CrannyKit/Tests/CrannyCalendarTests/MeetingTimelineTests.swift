@@ -27,6 +27,38 @@ import Testing
         #expect(MeetingTimeline.state(events: [meeting], now: T.date(h: 10, 15), leadMinutes: 5) == .none)
     }
 
+    @Test func aStageThatAppearsLateAlertsFromWhenItIsShown() throws {
+        // Woken, launched or the meeting created 3 minutes before the start, with a 5-minute lead: the stage began
+        // two minutes ago on the clock, but it is shown now, so the P1 alert lasts a minute from now.
+        let now = T.date(h: 9, 57)
+        let late = try #require(MeetingTimeline.state(events: [meeting], now: now, leadMinutes: 5).soon)
+        #expect(late.stage == .lead)
+        #expect(late.stageStart == T.date(h: 9, 55))
+        #expect(late.shownAt == now)
+        #expect(late.alertUntil == T.date(h: 9, 58))
+        #expect(MeetingTimeline.nextBoundary(events: [meeting], now: now, leadMinutes: 5, state: .init(soon: late)) == T.date(h: 9, 58))
+
+        // The next plan of the same stage keeps when it was shown: the alert settles to P2.
+        let later = try #require(MeetingTimeline.state(events: [meeting], now: T.date(h: 9, 58), leadMinutes: 5,
+                                                       previous: .init(soon: late)).soon)
+        #expect(later.shownAt == now)
+        #expect(later.alertUntil == T.date(h: 9, 58))
+        // The last minute is a new stage: shown on time, alerting again.
+        let last = try #require(MeetingTimeline.state(events: [meeting], now: T.date(h: 9, 59), leadMinutes: 5,
+                                                      previous: .init(soon: later)).soon)
+        #expect(last.stage == .lastMinute)
+        #expect(last.shownAt == T.date(h: 9, 59))
+        #expect(last.alertUntil == T.date(h: 10))
+    }
+
+    @Test func raisingTheLeadTimeNearAMeetingShowsANewStage() throws {
+        // Lead 1 at 09:57: nothing yet. Raised to 10 at 09:57: the lead stage appears now and alerts from now.
+        #expect(MeetingTimeline.state(events: [meeting], now: T.date(h: 9, 57), leadMinutes: 1).soon == nil)
+        let raised = try #require(MeetingTimeline.state(events: [meeting], now: T.date(h: 9, 57), leadMinutes: 10).soon)
+        #expect(raised.stageStart == T.date(h: 9, 50))
+        #expect(raised.alertUntil == T.date(h: 9, 58))
+    }
+
     @Test func oneMinuteLeadHasOnlyTheLastMinuteStage() {
         #expect(MeetingTimeline.state(events: [meeting], now: T.date(h: 9, 58), leadMinutes: 1).soon == nil)
         #expect(MeetingTimeline.state(events: [meeting], now: T.date(h: 9, 59, s: 30), leadMinutes: 1).soon?.stage == .lastMinute)
@@ -60,11 +92,14 @@ import Testing
     }
 
     @Test func boundariesWalkThroughTheMeeting() {
+        // As the scheduler does: each plan carries the previous state, so a stage keeps when it was shown.
         var now = T.date(h: 8)
+        var state = MeetingTimeline.state(events: [meeting], now: now, leadMinutes: 5)
         var visited: [Date] = []
-        while let next = MeetingTimeline.nextBoundary(events: [meeting], now: now, leadMinutes: 5) {
+        while let next = MeetingTimeline.nextBoundary(events: [meeting], now: now, leadMinutes: 5, state: state) {
             visited.append(next)
             now = next
+            state = MeetingTimeline.state(events: [meeting], now: now, leadMinutes: 5, previous: state)
         }
         #expect(visited == [T.date(h: 9, 55), T.date(h: 9, 56), T.date(h: 9, 59), T.date(h: 10), T.date(h: 10, 15)])
     }

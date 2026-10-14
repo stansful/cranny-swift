@@ -62,6 +62,44 @@ import Testing
         #expect(s.nextWake == nil)                          // nothing ahead: no task
     }
 
+    @Test func aMeetingSoonThatAppearsLateIsStillAnAlert() {
+        // The Mac wakes 3 minutes before a meeting (lead 5): a new stage, a revision, and a wake when its minute
+        // of P1 ends — not "already over" because the stage began on the clock two minutes earlier.
+        let s = scheduler([T.event("standup", start: T.date(h: 10), link: "https://zoom.us/j/1")])
+        time.now = T.date(h: 9, 57)
+        s.replan()
+        #expect(s.soonRevision == 1)
+        #expect(s.state.soon?.alertUntil == T.date(h: 9, 58))
+        #expect(s.nextWake == T.date(h: 9, 58))
+        time.now = T.date(h: 9, 58)
+        s.replan()
+        #expect(s.soonRevision == 1)                                   // same stage
+        #expect(s.state.soon?.alertUntil == T.date(h: 9, 58))           // shown at 09:57, not re-timed
+        #expect(s.nextWake == T.date(h: 9, 59))
+    }
+
+    @Test func aClockChangeReArmsTheWakeForTheSameBoundary() async throws {
+        // The wall clock jumps forward 10 minutes (`.NSSystemClockDidChange` reloads the store, which re-plans).
+        // The boundary is the same instant, but the sleep must be re-armed with the shorter delay.
+        let sleeps = SleepLog()
+        let trigger = FixtureEventsBox()
+        let event = T.event("call", start: T.date(h: 9, 30))
+        let s = MeetingScheduler(events: { [event] }, leadMinutes: { 5 }, clock: time.clock,
+                                 sleep: { duration in sleeps.append(duration); try await Task.sleep(for: .seconds(3600)) })
+        s.start(trigger: { trigger.events.count })
+        await settle()
+        #expect(s.nextWake == T.date(h: 9, 25))
+        #expect(sleeps.last == .milliseconds(25 * 60_000 + 50))
+
+        time.now = T.date(h: 9, 10)
+        trigger.events = [event]                                       // the reload after the clock change
+        await settle()
+        #expect(s.nextWake == T.date(h: 9, 25))
+        #expect(sleeps.last == .milliseconds(15 * 60_000 + 50))
+        #expect(sleeps.count == 2)
+        s.stop()
+    }
+
     @Test func eventChangesReplanThroughObservation() async {
         let store = FixtureEventsBox()
         let s = MeetingScheduler(events: { store.events }, leadMinutes: { 5 }, clock: time.clock, sleep: parked)
@@ -100,4 +138,13 @@ import Testing
 /// An observable list the scheduler reads.
 @MainActor @Observable final class FixtureEventsBox {
     var events: [EventSnapshot] = []
+}
+
+/// The delays a scheduler asked to sleep for. `@unchecked Sendable`: guarded by a lock (the sleep runs in a task).
+nonisolated final class SleepLog: @unchecked Sendable {
+    private let lock = NSLock()
+    private var values: [Duration] = []
+    func append(_ duration: Duration) { lock.withLock { values.append(duration) } }
+    var last: Duration? { lock.withLock { values.last } }
+    var count: Int { lock.withLock { values.count } }
 }
