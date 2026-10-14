@@ -66,11 +66,13 @@ private let log = Log.logger(.overlay)
         let settings = registry.services.settings
         tokens.append(observe({ Self.displayPolicy(settings) }) { [weak self] _ in self?.rebuildPanels() })
         startArbitration()
-        // §4.5: a tracking menu (a context menu in the panel, the menu bar extra's menu) holds the open panel.
+        // §4.5: a tracking menu (a context menu in the panel, a widget's menu, the menu bar extra's menu) holds the
+        // open panel. Delivered synchronously (`queue: nil`; AppKit posts them on the main thread): the main queue is
+        // not served while a menu tracks, so a queued observer would only run after the menu closed.
         menuObservers = [NSMenu.didBeginTrackingNotification, NSMenu.didEndTrackingNotification].map { name in
-            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] note in
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: nil) { [weak self] note in
                 let began = note.name == NSMenu.didBeginTrackingNotification
-                MainActor.assumeIsolated { self?.menuTracking(began: began) }          // queue: .main
+                MainActor.assumeIsolated { self?.menuTracking(began: began) }          // posted on the main thread
             }
         }
         pointer.start { [weak self] point, kind in self?.pointerEvent(point, kind: kind) }
@@ -232,10 +234,19 @@ private let log = Log.logger(.overlay)
         if !controllers.isEmpty { applyDisplayFacts() }
     }
 
-    /// Menus nest (submenus): hold while any tracking session is open.
-    private func menuTracking(began: Bool) {
+    /// Menus nest (submenus): hold while any tracking session is open. The panels learn where the pointer is when
+    /// the first one begins and the last one ends (`MenuLinger`), before the hold changes.
+    func menuTracking(began: Bool) {
+        let wasTracking = trackingMenus > 0
         trackingMenus = max(0, trackingMenus + (began ? 1 : -1))
-        setHoldOpen(trackingMenus > 0, reason: NotchMachineState.menuHold)
+        let tracking = trackingMenus > 0
+        if tracking != wasTracking {
+            let point = NSEvent.mouseLocation
+            for controller in controllers.values {
+                if tracking { controller.menuBegan(at: point) } else { controller.menuEnded(at: point) }
+            }
+        }
+        setHoldOpen(tracking, reason: NotchMachineState.menuHold)
     }
 
     // MARK: Events

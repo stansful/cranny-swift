@@ -18,6 +18,8 @@ import SwiftUI
     private(set) var style: NoNotchStyle
     private let registry: ModuleRegistry
     private let hover = HoverTracker()
+    /// A menu opened from this panel keeps its region inside after it closes (§4.5).
+    private var menuLinger = MenuLinger()
     private let focus: FocusManager
     private let keyboard: KeyboardRouter
     private let gestures: GestureRouter
@@ -173,11 +175,28 @@ import SwiftUI
                           satellite: satelliteInCanvas().map { HoverZones.screenRect($0, panelFrame: frame) },
                           wings: viewModel.courtesyGeometry.map { HoverZones.shapeRect($0, panelFrame: frame) },
                           screenFrame: screen.frame, band: scene.layout.band,
-                          expanded: scene.phase == .open || scene.phase == .peek)
+                          expanded: scene.phase == .open || scene.phase == .peek, menuRegion: menuLinger.region)
     }
 
     func pointerMoved(to point: CGPoint) {
-        for input in hover.update(point, zones: hoverZones) { viewModel.send(input) }
+        let zones = hoverZones
+        for input in hover.update(point, zones: zones) { viewModel.send(input) }
+        menuLinger.pointerMoved(to: point, zones: zones)
+    }
+
+    // MARK: Menus (§4.5)
+
+    /// A menu began tracking (the coordinator's `menu` hold follows): remember whether it opened from this panel.
+    func menuBegan(at point: CGPoint) {
+        menuLinger.began(at: point, zones: hoverZones)
+    }
+
+    /// The last menu stopped tracking with the pointer at `point`; called before the `menu` hold is released, so the
+    /// machine sees the pointer where it is now (the hover tracker sees no events while a menu tracks), with the
+    /// menu's region counted as inside when the menu came from this panel.
+    func menuEnded(at point: CGPoint) {
+        menuLinger.ended(at: point, zones: hoverZones)
+        pointerMoved(to: point)
     }
 
     /// A file drag moved (`contents` = what is dragged). Sends the machine its drag inputs on zone changes.
