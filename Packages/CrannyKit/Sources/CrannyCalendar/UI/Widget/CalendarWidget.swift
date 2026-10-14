@@ -105,6 +105,7 @@ private struct CalendarAgendaLayout: View {
                 }
             }
         }
+        .animation(theme.animation(.tab), value: offset)              // ‹ ›, the strip and ← → change the day alike
         .focusable(context.cells > 2)
         .focused($focused)
         .focusEffectDisabled()
@@ -139,7 +140,7 @@ private struct CalendarAgendaLayout: View {
     private func changeDay(_ step: Int) -> KeyPress.Result {
         let target = model.selectedOffset + step
         guard model.dayRange.contains(target) else { return .ignored }
-        withAnimation(theme.animation(.tab)) { model.selectDay(target) }
+        model.selectDay(target)
         return .handled
     }
 
