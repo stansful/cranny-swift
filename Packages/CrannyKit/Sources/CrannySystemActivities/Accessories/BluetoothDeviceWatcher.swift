@@ -4,7 +4,7 @@
 // IOBluetooth needs Bluetooth access (TCC). This watcher is created and started ONLY when
 // `SystemSettings.showsAllBluetoothDevices` is on and `PermissionsCenter.status(.bluetooth) == .granted`; the
 // prompt itself comes from `PermissionsCenter.request(.bluetooth)` behind the option's toggle. Battery levels
-// use the PRIVATE `batteryPercent*` selectors (§7.12), each guarded with `responds(to:)`.
+// use the PRIVATE `batteryPercent*` selectors (§7.12) through `Private/BluetoothBatterySelectors.swift`.
 //
 // Threading: IOBluetooth delivers its notifications on the run loop of the registering thread, the main
 // thread here; the @objc handlers are main-actor methods.
@@ -103,7 +103,7 @@ nonisolated struct BluetoothDeviceInfo: Equatable, Sendable, Identifiable {
         devices[address] = BluetoothDeviceInfo(
             id: address, name: device.name ?? "",
             kind: BluetoothDeviceInfo.kind(major: device.deviceClassMajor, minor: device.deviceClassMinor),
-            batteries: Self.batteries(of: device))
+            batteries: BluetoothBatterySelectors.batteries(of: device))
         if disconnectNotifications[address] == nil {
             disconnectNotifications[address] = device.register(forDisconnectNotification: self, selector: #selector(disconnected(_:device:)))
         }
@@ -115,17 +115,5 @@ nonisolated struct BluetoothDeviceInfo: Equatable, Sendable, Identifiable {
         disconnectNotifications[address] = nil
         devices[address] = nil
         onChange(Array(devices.values))
-    }
-
-    /// Battery levels through private selectors (0 = unknown), each guarded with `responds(to:)`.
-    private static func batteries(of device: IOBluetoothDevice) -> AccessoryBatteries {
-        func level(_ selector: String) -> BatteryLevel? {
-            guard device.responds(to: NSSelectorFromString(selector)),
-                  let percent = (device.value(forKey: selector) as? NSNumber)?.intValue, percent > 0 else { return nil }
-            return BatteryLevel(percent: percent)
-        }
-        return AccessoryBatteries(main: level("batteryPercentSingle") ?? level("batteryPercentCombined"),
-                                  left: level("batteryPercentLeft"), right: level("batteryPercentRight"),
-                                  chargingCase: level("batteryPercentCase"))
     }
 }

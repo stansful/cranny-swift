@@ -77,4 +77,23 @@ import Testing
         #expect(BluetoothDeviceInfo.kind(major: 0x05, minor: 0x02) == .gameController)
         #expect(BluetoothDeviceInfo.kind(major: 0x01, minor: 0x00) == .other)
     }
+
+    @Test @MainActor func privateBatterySelectorsAreProbedAndDegradeQuietly() {
+        // A stand-in answering the private selectors the way IOBluetoothDevice does (UInt8, 0 = unknown).
+        let earbuds = BluetoothBatterySelectors.batteries(of: SelectorStandIn())
+        #expect(earbuds == AccessoryBatteries(main: BatteryLevel(percent: 81), left: BatteryLevel(percent: 84),
+                                              right: BatteryLevel(percent: 81), chargingCase: nil))
+        // Without the private API: no levels, no crash (no undefined-key exception), one log line.
+        #expect(BluetoothBatterySelectors.batteries(of: NSObject()) == .unknown)
+        #expect(BluetoothBatterySelectors.hasReportedMissingSelectors)
+    }
+}
+
+/// Answers `batteryPercent*` like a connected pair of earbuds whose case is out of range.
+@objc private final class SelectorStandIn: NSObject {
+    @objc var batteryPercentSingle: UInt8 { 0 }
+    @objc var batteryPercentCombined: UInt8 { 81 }
+    @objc var batteryPercentLeft: UInt8 { 84 }
+    @objc var batteryPercentRight: UInt8 { 81 }
+    @objc var batteryPercentCase: UInt8 { 0 }
 }
