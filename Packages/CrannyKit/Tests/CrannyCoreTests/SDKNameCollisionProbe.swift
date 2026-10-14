@@ -53,6 +53,7 @@ private typealias ProbeCrannyMotion = CrannyMotion
 private typealias ProbeCrannyPalette = CrannyPalette
 private typealias ProbeCrannyServices = CrannyServices
 private typealias ProbeCrannyShadow = CrannyShadow
+private typealias ProbeCrannySymbol = CrannySymbol
 private typealias ProbeCrannySymbolModifier = CrannySymbolModifier
 private typealias ProbeCrannySymbolStyle = CrannySymbolStyle
 private typealias ProbeCrannyTextSize = CrannyTextSize

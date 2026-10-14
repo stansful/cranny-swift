@@ -2339,24 +2339,24 @@ Peek is 380–460 pt wide (425 on a 14″) and always has the keyline and `Eleva
 
 ### 14.1 SF Symbols
 
-Every symbol below was verified on this machine against `name_availability.plist` (minimum macOS shown) and `symbol_restrictions.strings`. Keep them in one `enum CrannySymbol` with a unit test asserting each name resolves on macOS 14.
+Every symbol below was verified on this machine against `name_availability.plist` (minimum macOS shown) and `symbol_restrictions.strings`. They are listed by role in `CrannySymbol` (`CrannyCore/DesignSystem/Symbols.swift`); a Core unit test checks that the list matches this table, that every name exists on macOS 14 and that none is restricted except the ⚑ product glyphs. Add a symbol to both before using it.
 
 | Role | Symbols (minimum macOS) |
 |---|---|
-| Header, pages | `square.grid.2x2.fill` · `tray.full.fill` · `note.text` (11) · `magnifyingglass` · `pin` / `pin.fill` · `gearshape.fill` (11) · `ellipsis` · `plus` · `xmark` · `chevron.down` |
+| Header, pages | `square.grid.2x2.fill` · `tray.full.fill` · `note.text` (11) · `magnifyingglass` · `pin` / `pin.fill` · `gearshape.fill` (11) · `ellipsis` · `plus` · `minus` (edit layout) · `xmark` · `chevron.down` · `checkmark` · `square.resize` (14, card size menu) |
 | Media | `play.fill` · `pause.fill` · `backward.fill` · `forward.fill` · `shuffle` · `repeat` · `airplayaudio` · `music.note` · `music.note.list` · `waveform` |
-| Calendar, meetings | `calendar` · `person.2.wave.2.fill` (12, Join) · `clock` · `mappin.and.ellipse` |
+| Calendar, meetings | `calendar` · `person.2.wave.2.fill` (12, Join) · `clock` · `mappin.and.ellipse` · `chevron.left` / `chevron.right` (day paging) |
 | Launcher | app icons via `NSWorkspace` · `app.dashed` (12, placeholder) · `square.2.layers.3d.fill` (14, Shortcuts pane) |
 | Mirror | `web.camera` (13) · `camera.fill` · `flip.horizontal` |
 | Notes, to-dos | `chevron.left.forwardslash.chevron.right` (12) · `arrow.up.left.and.arrow.down.right` / `arrow.down.right.and.arrow.up.left` (focus) · `checklist` (12) · `circle` · `checkmark.circle.fill` |
 | Timer | `timer` · `pause.fill` · `stop.fill` · `arrow.counterclockwise` |
-| AirDrop, Tray | `dot.radiowaves.up.forward` (12; there is no public `airdrop` symbol) · `tray.and.arrow.down.fill` · `doc.zipper` (11) · `photo.badge.arrow.down` (14, compress) · `arrow.triangle.2.circlepath` (convert) · `square.resize` (14, resize) · `link` · `doc.on.doc` · `square.and.arrow.up` · `folder` · `eye` · `trash` · `archivebox` · `wand.and.stars` · `arrow.uturn.backward` (undo) |
-| HUD, power | `speaker.wave.3.fill` (variable value) · `speaker.slash.fill` · `sun.max.fill` · `sun.min.fill` · `light.max` · `light.min` · `bolt.fill` · `battery.100percent.bolt` · `battery.25percent` · `battery.0percent` (14) · `exclamationmark` |
-| Devices | `airpodspro` (11) · `airpodsmax` (11.3) · `airpods` ⚑ · `airpods.gen3` ⚑ · `beats.headphones` ⚑ · `earbuds` (12) · `headphones` |
-| Settings, onboarding | `gearshape.fill` · `paintbrush.fill` · `keyboard` · `capsule.tophalf.filled` (12) · `speaker.wave.2.fill` · `hand.draw.fill` · `hand.raised.fill` · `info.circle.fill` · `hand.wave.fill` · `cursorarrow.motionlines` · `sparkles` · `accessibility` ⚑ (14) · `laptopcomputer` · `display` |
+| AirDrop, Tray | `dot.radiowaves.up.forward` (12; there is no public `airdrop` symbol) · `tray.and.arrow.down.fill` · `doc.zipper` (11) · `photo.badge.arrow.down` (14, compress) · `arrow.triangle.2.circlepath` (convert) · `square.resize` (14, resize) · `link` · `doc.on.doc` · `square.and.arrow.up` · `folder` · `eye` · `trash` · `archivebox` · `wand.and.stars` · `arrow.uturn.backward` (undo) · `arrow.up.forward.app` (11, open) · `checkmark` · `doc` · `doc.richtext` · `eye.slash` · `film` · `scissors` · `text.viewfinder` (12) · `xmark` · `exclamationmark` (pipeline steps and states) |
+| HUD, power | `speaker.wave.3.fill` (variable value) · `speaker.slash.fill` · `sun.max.fill` · `sun.min.fill` · `light.max` · `light.min` · `bolt.fill` · `battery.100percent.bolt` · `battery.25percent` · `battery.0percent` (14) · `exclamationmark` · `powerplug.fill` (12, plugged in, not charging) |
+| Devices | `airpodspro` (11) · `airpodsmax` (11.3) · `airpods` ⚑ · `airpods.gen3` ⚑ · `beats.headphones` ⚑ · `earbuds` (12) · `headphones` · `computermouse` (12) · `magicmouse` ⚑ (12) · `keyboard` · `rectangle.and.hand.point.up.left.filled` (12, trackpad) · `hifispeaker` · `gamecontroller` · `display` · `dot.radiowaves.left.and.right` (any other Bluetooth device) |
+| Settings, onboarding | `gearshape.fill` · `paintbrush.fill` · `keyboard` · `capsule.tophalf.filled` (12) · `speaker.wave.2.fill` · `hand.draw.fill` · `hand.raised.fill` · `info.circle.fill` · `hand.wave.fill` · `cursorarrow.motionlines` · `cursorarrow.click` (11) · `sparkles` · `accessibility` ⚑ (14) · `laptopcomputer` · `display` · `exclamationmark.triangle.fill` (a warning row) · `minus.circle.fill` (remove a list entry) |
 | Menu bar fallback | `rectangle.topthird.inset.filled` (12) |
 
-- ⚑ **Restricted:** these may only refer to that product or feature: AirPods, Beats headphones, Apple's Accessibility features. Use them only for exactly that.
+- ⚑ **Restricted:** these may only refer to that product or feature: AirPods, Beats headphones, a Magic Mouse, Apple's Accessibility features. Use them only for exactly that.
 - **Never use** `video`, `video.fill` or any `video.*` symbol (FaceTime only), `airplay.audio` (AirPlay only; use `airplayaudio`), `macbook*` (MacBook only; use `laptopcomputer`), `safari` or `message`.
 - **Rendering:**
   - Hierarchical, white. Semibold at 13 pt in the band; medium in the Nook; transport glyphs at 48 % of the button size.
