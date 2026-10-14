@@ -45,7 +45,7 @@ extension NotesModel {
         editorEditingChanged(false)
         focusPresentationChanged(false)
         if renamingID != nil { renamingID = nil }
-        if pendingDeletion != nil { cancelDelete() }
+        if pendingDeletion != nil { dismissDeleteConfirmation() }
     }
 
     /// The Nook opened (`NotchEvent.opened`): after a failed save, try again now (one attempt per opening).

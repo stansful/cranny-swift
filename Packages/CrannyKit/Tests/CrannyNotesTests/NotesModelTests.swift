@@ -61,6 +61,26 @@ import Testing
         #expect(services.settings[NotesSettings.lastNoteID] == a.uuidString)
     }
 
+    @Test func returnAndEscEndARenameInTheNoteButAClickElsewhereDoesNot() async {
+        let model = await loadedModel()
+        let id = model.newNote(focus: false)
+        model.beginRename()
+        model.commitRename("Plan", returnsFocus: true)                          // Return
+        #expect(model.entry(id)?.title == "Plan")
+        #expect(model.focusRequested)
+        model.consumeFocusRequest()
+        model.beginRename()
+        model.cancelRename()                                                    // Esc
+        #expect(model.renamingID == nil)
+        #expect(model.entry(id)?.title == "Plan")
+        #expect(model.focusRequested)
+        model.consumeFocusRequest()
+        model.beginRename()
+        model.commitRename("Plan B")                                            // the field lost focus
+        #expect(model.entry(id)?.title == "Plan B")
+        #expect(!model.focusRequested)                                          // the keyboard stays where it went
+    }
+
     @Test func renameTrimsAndRefusesEmptyTitles() async {
         let model = await loadedModel()
         let id = model.newNote()
@@ -150,6 +170,26 @@ import Testing
         let reloaded = try store.loadNow()
         #expect(reloaded.notes.map(\.id) == [c, a])
         #expect(reloaded.recovered == 0)
+    }
+
+    @Test func theConfirmationTakesTheKeyboardAndGivesItBackToANote() async {
+        let model = await loadedModel()
+        _ = model.newNote(text: "a", focus: false)
+        let b = model.newNote(text: "b", focus: false)
+        let before = notch.calls.count
+        model.requestDelete()
+        #expect(notch.calls.dropFirst(before) == ["key"])                       // Return and Esc reach the buttons
+        model.cancelDelete()                                                    // Cancel / Esc
+        #expect(model.pendingDeletion == nil && model.focusRequested)
+        model.consumeFocusRequest()
+        model.requestDelete()
+        model.confirmDelete()                                                   // Delete / Return
+        #expect(model.entry(b) == nil)
+        #expect(model.focusRequested)                                           // typing goes on in the neighbour
+        model.consumeFocusRequest()
+        model.requestDelete()
+        model.panelClosed()                                                     // closing is not "Cancel"
+        #expect(model.pendingDeletion == nil && !model.focusRequested)
     }
 
     @Test func deletingTheLastNoteLeavesTheEmptyState() async {

@@ -207,12 +207,21 @@ private let log = Log.logger(.notes)
         notch.requestKeyboardFocus()
     }
 
-    /// Ends a rename: an empty or unchanged title keeps the old one.
-    func commitRename(_ proposed: String) {
+    /// Ends a rename: an empty or unchanged title keeps the old one. `returnsFocus` (Return, not a click
+    /// elsewhere, which must not pull the keyboard back) puts the caret back in the note.
+    func commitRename(_ proposed: String, returnsFocus: Bool = false) {
         guard let id = renamingID else { return }
         renamingID = nil
+        if returnsFocus { requestFocus() }
         guard let title = NoteTitles.sanitized(proposed) else { return }
         update(id) { $0.title = title }
+    }
+
+    /// Esc in the rename field: the title stays and the caret goes back to the note.
+    func cancelRename() {
+        guard renamingID != nil else { return }
+        renamingID = nil
+        requestFocus()
     }
 
     func setMode(_ mode: NoteMode, for id: UUID) { update(id) { $0.mode = mode } }
@@ -235,11 +244,22 @@ private let log = Log.logger(.notes)
 
     // MARK: Deleting
 
+    /// Shows the inline confirmation and makes the panel key, so Return (Delete) and Esc (Cancel) reach it.
     func requestDelete() {
+        guard selectedID != nil else { return }
         renamingID = nil
         pendingDeletion = selectedID
+        notch.requestKeyboardFocus()
     }
-    func cancelDelete() { pendingDeletion = nil }
+
+    /// Cancel (or Esc) in the confirmation: the note stays and the caret goes back to it.
+    func cancelDelete() {
+        dismissDeleteConfirmation()
+        requestFocus()
+    }
+
+    /// Drops the confirmation without touching the keyboard (the widget went away).
+    func dismissDeleteConfirmation() { pendingDeletion = nil }
 
     /// Removes the note and selects its neighbour (the next one down, else the one above).
     func confirmDelete() {
@@ -255,6 +275,7 @@ private let log = Log.logger(.notes)
             selectedID = entries.isEmpty ? nil : entries[min(index, entries.count - 1)].id
             settings[NotesSettings.lastNoteID] = selectedID?.uuidString
         }
+        if selectedID != nil { requestFocus() }                                 // keep typing in the neighbour
         autosave.fireNow()                                                      // a delete is saved at once
     }
 

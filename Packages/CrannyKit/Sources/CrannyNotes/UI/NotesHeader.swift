@@ -90,7 +90,8 @@ struct HeaderButton: View {
     }
 }
 
-/// Inline rename in place of the title: commits on Return and when focus leaves.
+/// Inline rename in place of the title: Return commits and returns to the note, Esc cancels and returns to the
+/// note, a click elsewhere commits and leaves the keyboard where it went.
 private struct RenameField: View {
     @Environment(\.cranny) private var theme
     @FocusState private var isFocused: Bool
@@ -111,7 +112,8 @@ private struct RenameField: View {
             .frame(height: HitTarget.nook.height - Space.xs)
             .background(RoundedRectangle(cornerRadius: Radius.chip, style: .continuous).fill(theme.palette.well))
             .focused($isFocused)
-            .onSubmit { model.commitRename(draft) }
+            .onSubmit { model.commitRename(draft, returnsFocus: true) }
+            .onExitCommand { model.cancelRename() }
             .onChange(of: isFocused) { _, focused in
                 if !focused && model.renamingID != nil { model.commitRename(draft) }
             }

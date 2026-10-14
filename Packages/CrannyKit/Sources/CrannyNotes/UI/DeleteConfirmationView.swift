@@ -1,5 +1,6 @@
 // CrannyNotes/UI/DeleteConfirmationView.swift — "Delete ‹title›?" inside the card, in place of the editor (no sheet
-// over the notch): one line, why, Cancel and a `danger` Delete (DESIGN.md §2.1: danger = destructive).
+// over the notch): one line, why, Cancel (Esc) and a `danger` Delete (Return; DESIGN.md §2.1: danger = destructive).
+// Either way the caret goes back to a note afterwards.
 import CrannyCore
 import SwiftUI
 
@@ -23,10 +24,12 @@ struct DeleteConfirmationView: View {
             HStack(spacing: Space.s) {
                 Spacer(minLength: 0)
                 Button { model.cancelDelete() } label: { Text(NotesStrings.cancel) }
+                    .keyboardShortcut(.cancelAction)                            // Esc
                     .buttonStyle(CrannyChipButtonStyle())
                     .frame(minWidth: HitTarget.nook.width, minHeight: HitTarget.nook.height)
                     .contentShape(Rectangle())
                 Button { model.confirmDelete() } label: { Text(NotesStrings.delete) }
+                    .keyboardShortcut(.defaultAction)                           // Return: the user chose Delete… already
                     .buttonStyle(CrannyChipButtonStyle(tint: p.danger, prominent: true))
                     .frame(minWidth: HitTarget.nook.width, minHeight: HitTarget.nook.height)
                     .contentShape(Rectangle())
