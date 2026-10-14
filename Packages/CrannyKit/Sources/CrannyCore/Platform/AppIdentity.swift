@@ -2,9 +2,10 @@
 // The name and icon of an app given its bundle identifier, for every place that shows apps (Settings ▸ Excluded apps
 // and Permissions, Media's player rows and empty state, Quick Apps' lookups through `locate`). One naming rule
 // (`AppIdentity.name(of:)`): Finder's localized display name, or the bundle's file name where the bundle may not be
-// read (an app left in Downloads: `ProtectedLocations`) or names nothing, never the bundle identifier. Launch Services
-// and the bundle are read off the main actor (ARCHITECTURE.md §9.2), once per app until `refresh()`; views show
-// nothing (or their own fallback) until the answer lands, and hide an app that is not installed or say so.
+// read (an app left in Downloads: `ProtectedLocations`) or names nothing, never the bundle identifier. Launch Services,
+// the bundle and the icon are read off the main actor (ARCHITECTURE.md §9.2; Icon Services' first call takes about
+// 10 ms), once per app until `refresh()`, and the icon again only when the answer changed; views show nothing (or
+// their own fallback) until the answer lands, and hide an app that is not installed or say so.
 import AppKit
 import Foundation
 import Observation
@@ -102,12 +103,13 @@ public struct AppIdentity {
     @ObservationIgnored private var again: Set<String> = []
     /// `@concurrent`: the lookup runs off the main actor, and awaiting it returns to the main actor.
     @ObservationIgnored private let locate: @concurrent @Sendable (String) async -> AppIdentity.Location?
-    @ObservationIgnored private let iconForFile: @MainActor (URL) -> NSImage?
+    /// Called off the main actor, right after `locate`.
+    @ObservationIgnored private let iconForFile: @Sendable (URL) -> NSImage?
 
     /// `locate` answers for one bundle identifier (nil = not installed), off the main actor; `icon` gives the icon of
-    /// a bundle that is safe to read. Tests inject both; the app uses `shared`.
+    /// a bundle that is safe to read, also off the main actor. Tests inject both; the app uses `shared`.
     public init(locate: @escaping @concurrent @Sendable (String) async -> AppIdentity.Location? = { await AppIdentityResolver.locate($0) },
-                icon: @escaping @MainActor (URL) -> NSImage? = { NSWorkspace.shared.icon(forFile: $0.path) }) {
+                icon: @escaping @Sendable (URL) -> NSImage? = { NSWorkspace.shared.icon(forFile: $0.path) }) {
         self.locate = locate
         iconForFile = icon
     }
@@ -133,25 +135,46 @@ public struct AppIdentity {
             again.insert(bundleID)                      // a refresh during a lookup asks once more when it lands
             return
         }
-        let locate = self.locate
+        // One lookup per app runs at a time, so `found` cannot change before this one lands.
+        let previous = found[bundleID]
+        let locate = self.locate, iconForFile = self.iconForFile
         Task { [weak self] in
-            let location = await locate(bundleID)
+            let answer = await Self.answer(for: bundleID, previous: previous, locate: locate, icon: iconForFile)
             guard let self else { return }
-            self.land(bundleID, location)
+            self.land(bundleID, answer)
         }
     }
 
-    private func land(_ bundleID: String, _ location: AppIdentity.Location?) {
+    private func land(_ bundleID: String, _ answer: Answer) {
         running.remove(bundleID)
+        let location = answer.location
         if found[bundleID] != .some(location) {                     // nothing known yet, or a different answer
             found[bundleID] = .some(location)
             known[bundleID] = location.map {
-                AppIdentity(bundleID: bundleID, presence: .installed, name: $0.name, url: $0.url,
-                            icon: $0.isSafeToRead ? iconForFile($0.url) : nil)
+                AppIdentity(bundleID: bundleID, presence: .installed, name: $0.name, url: $0.url, icon: answer.icon)
             } ?? AppIdentity(bundleID: bundleID, presence: .notInstalled)
             revision += 1
         }
         if again.remove(bundleID) != nil { lookUp(bundleID) }
+    }
+
+    /// A lookup's answer, carried from the lookup to the main actor. `@unchecked Sendable`: the icon is made by the
+    /// lookup and handed over once; only the main actor uses it afterwards.
+    private nonisolated struct Answer: @unchecked Sendable {
+        let location: AppIdentity.Location?
+        let icon: NSImage?
+    }
+
+    /// `locate`, then, when the answer differs from `previous` (an identity is about to be made), the icon of a
+    /// bundle that is safe to read. Off the main actor.
+    @concurrent private nonisolated static func answer(for bundleID: String, previous: AppIdentity.Location??,
+                                                       locate: @concurrent @Sendable (String) async -> AppIdentity.Location?,
+                                                       icon: @Sendable (URL) -> NSImage?) async -> Answer {
+        let location = await locate(bundleID)
+        guard previous != .some(location), let location, location.isSafeToRead else {
+            return Answer(location: location, icon: nil)
+        }
+        return Answer(location: location, icon: icon(location.url))
     }
 
     // MARK: Lookups (off the main actor)

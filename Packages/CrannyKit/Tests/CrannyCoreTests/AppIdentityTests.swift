@@ -95,6 +95,34 @@ import Testing
     #expect(resolver.identity(of: "com.spotify.client").isNotInstalled && resolver.revision == revision + 2)
 }
 
+/// The icon is made off the main actor (Icon Services' first call is slow), once per answer: a refresh that finds the
+/// same app makes none, one that finds it moved makes a new one.
+@MainActor @Test func iconsAreMadeOffTheMainActorOncePerAnswer() async {
+    let moved = Locked(false)
+    let iconCalls = Locked<[Bool]>([])                                                // on the main thread, per call
+    let resolver = AppIdentityResolver(locate: { _ in
+        AppIdentity.Location(url: URL(fileURLWithPath: moved.value ? "/Applications/Utilities/Spotify.app" : "/Applications/Spotify.app"),
+                             name: "Spotify", isSafeToRead: true)
+    }, icon: { _ in
+        iconCalls.value += [Thread.isMainThread]
+        return NSImage(size: CGSize(width: 16, height: 16))
+    })
+    _ = resolver.identity(of: "com.spotify.client")
+    await waitUntil { !resolver.isLookingUp }
+    #expect(resolver.identity(of: "com.spotify.client").icon != nil)
+    #expect(iconCalls.value == [false])
+
+    resolver.refresh()                                                                // the same answer: no icon
+    await waitUntil { !resolver.isLookingUp }
+    #expect(iconCalls.value == [false])
+
+    moved.value = true
+    resolver.refresh()                                                                // a new answer: a new icon
+    await waitUntil { !resolver.isLookingUp }
+    #expect(iconCalls.value == [false, false])
+    #expect(resolver.identity(of: "com.spotify.client").url?.path == "/Applications/Utilities/Spotify.app")
+}
+
 /// The real resolver: Finder has a name and an icon, an unknown identifier is not installed.
 @MainActor @Test func theSharedLookupResolvesRealApps() async {
     let resolver = AppIdentityResolver()
