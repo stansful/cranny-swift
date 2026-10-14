@@ -40,6 +40,23 @@
         }
       }
     },
+    "%@ · %@" : {
+      "comment" : "Settings ▸ Layout & Widgets: a widget's description and the widths it allows, on one line",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
     "%@ · Room 4" : {
       "comment" : "Settings preview stage: subtitle of the sample meeting; the argument is a time range",
       "localizations" : {
@@ -47,6 +64,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ · Комната 4"
+          }
+        }
+      }
+    },
+    "%@, %@" : {
+      "comment" : "Settings: a VoiceOver label made of a name and its detail (\"Media, 4 cells\", \"Peeks, Studio Display\")",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@"
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@, %2$@"
           }
         }
       }
@@ -300,6 +334,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Благодарности"
+          }
+        }
+      }
+    },
+    "Actions for %@" : {
+      "comment" : "Settings ▸ Layout & Widgets: VoiceOver label of the page actions menu; the argument is the page name",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Действия для страницы «%@»"
           }
         }
       }
@@ -783,7 +828,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Нажмите, затем нажмите новые клавиши. Esc — отмена, Delete — выключить сочетание."
+            "value" : "Щёлкните, затем нажмите новые клавиши. Esc — отмена, Delete — выключить сочетание."
           }
         }
       }
@@ -931,6 +976,17 @@
         }
       }
     },
+    "Cranny needs at least one display." : {
+      "comment" : "Settings ▸ General ▸ Displays: tooltip of the last checked display, which cannot be cleared",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cranny нужен хотя бы один дисплей."
+          }
+        }
+      }
+    },
     "Cranny waits a moment before closing, and never closes while you type or drag." : {
       "comment" : "Settings ▸ General: footnote of Close when the pointer leaves",
       "localizations" : {
@@ -1074,13 +1130,13 @@
         }
       }
     },
-    "Drag to set which activity wins when two are of the same kind." : {
-      "comment" : "Settings ▸ Live Activities: footer of the priority list",
+    "Drag to set which activity wins when two are of the same kind, or use ⌥↑ and ⌥↓." : {
+      "comment" : "Settings ▸ Live Activities: footer of the priority list (⌥↑ ⌥↓ move the focused activity)",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Перетащите, чтобы задать, какая из двух активностей одного рода важнее."
+            "value" : "Перетащите, чтобы задать, какая из двух активностей одного рода важнее, или используйте ⌥↑ и ⌥↓."
           }
         }
       }
@@ -1569,13 +1625,13 @@
         }
       }
     },
-    "Home and up to three pages of your own. Right-click a page to rename or remove it." : {
-      "comment" : "Settings ▸ Layout & Widgets: footnote of Pages",
+    "Home and up to three pages of your own. Rename, move or remove a page from its menu (…)." : {
+      "comment" : "Settings ▸ Layout & Widgets: footnote of Pages; (…) is the page actions menu button",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Главная и до трёх ваших страниц. Щёлкните страницу правой кнопкой, чтобы переименовать или удалить её."
+            "value" : "Главная и до трёх ваших страниц. Переименовать, переместить или удалить страницу можно в её меню (…)."
           }
         }
       }
@@ -1686,6 +1742,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Обратное направление"
+          }
+        }
+      }
+    },
+    "Join" : {
+      "comment" : "Settings preview stage: the sample meeting's Join button in peek (glossary: Подключиться)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Подключиться"
           }
         }
       }
@@ -1999,7 +2066,7 @@
       }
     },
     "Move down" : {
-      "comment" : "Settings ▸ Live Activities: VoiceOver action that lowers an activity",
+      "comment" : "Settings ▸ Live Activities: context menu item and VoiceOver action that lowers an activity",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -2032,7 +2099,7 @@
       }
     },
     "Move up" : {
-      "comment" : "Settings ▸ Live Activities: VoiceOver action that raises an activity",
+      "comment" : "Settings ▸ Live Activities: context menu item and VoiceOver action that raises an activity",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -2137,6 +2204,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Виджетов пока нет."
+          }
+        }
+      }
+    },
+    "None of the chosen displays is connected, so Cranny uses %@." : {
+      "comment" : "Settings ▸ General ▸ Displays: footnote when no chosen display is connected; the argument is the display Cranny falls back to",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ни один из выбранных дисплеев не подключён, поэтому Cranny показывается на «%@»."
           }
         }
       }
@@ -2407,6 +2485,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Страница %lld"
+          }
+        }
+      }
+    },
+    "Page actions" : {
+      "comment" : "Settings ▸ Layout & Widgets: menu button with the selected page's actions",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Действия со страницей"
           }
         }
       }
@@ -4284,6 +4373,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "громкость"
+          }
+        }
+      }
+    },
+    "↩ rename · ⌥← ⌥→ move" : {
+      "comment" : "Settings ▸ Layout & Widgets: tooltip of the Home page with its keys (rename, move)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "↩ переименовать · ⌥← ⌥→ переместить"
+          }
+        }
+      }
+    },
+    "↩ rename · ⌥← ⌥→ move · ⌘⌫ remove" : {
+      "comment" : "Settings ▸ Layout & Widgets: tooltip of a user page with its keys (rename, move, remove)",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "↩ переименовать · ⌥← ⌥→ переместить · ⌘⌫ удалить"
           }
         }
       }
