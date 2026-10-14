@@ -33,6 +33,13 @@ extension NotesModel {
         }
     }
 
+    /// The widget in the Nook (never a stage) is shown live or not: while layout editing or demo redaction
+    /// replace the editor it holds nothing (the shell may drop focus mode meanwhile, and a non-live widget
+    /// would otherwise never see it); live, the "notes.focus" hold follows focus mode (`rows >= 3`).
+    func widgetPresentationChanged(isLive: Bool, isFocusPresented presented: Bool) {
+        if isLive { focusPresentationChanged(presented) } else { widgetDisappeared() }
+    }
+
     /// The widget left the screen (the panel closed, the page changed): no hold may outlive it.
     func widgetDisappeared() {
         editorEditingChanged(false)

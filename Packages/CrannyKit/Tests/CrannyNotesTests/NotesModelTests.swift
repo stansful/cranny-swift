@@ -324,6 +324,22 @@ import Testing
         #expect(notch.calls == ["hold(true,notes.editing)", "hold(false,notes.editing)"])
     }
 
+    /// Layout editing or demo redaction while focus mode is shown: the shell may drop focus mode meanwhile, so the
+    /// non-live widget releases its holds at once instead of waiting for an explicit close (review of WP5).
+    @Test func aWidgetThatStopsBeingLiveReleasesItsHolds() {
+        let model = makeModel()
+        model.widgetPresentationChanged(isLive: true, isFocusPresented: true)
+        model.editorEditingChanged(true)
+        #expect(model.isFocusPresented)
+        model.widgetPresentationChanged(isLive: false, isFocusPresented: true)  // ⌘E, or redaction turned on
+        #expect(!model.isFocusPresented && !model.isEditing)
+        #expect(notch.calls.filter { $0.hasPrefix("hold(true") }.count == notch.calls.filter { $0.hasPrefix("hold(false") }.count)
+        model.widgetPresentationChanged(isLive: false, isFocusPresented: false) // the shell left focus mode: nothing new
+        #expect(notch.calls.count == 4)
+        model.widgetPresentationChanged(isLive: true, isFocusPresented: false)
+        #expect(!model.isFocusPresented)
+    }
+
     @Test func focusModeHoldsWhilePresentedAndDisappearingReleasesEverything() {
         let model = makeModel()
         model.toggleFocusMode()

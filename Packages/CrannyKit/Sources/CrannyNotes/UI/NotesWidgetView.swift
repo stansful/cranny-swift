@@ -13,6 +13,8 @@ struct NotesWidgetView: View {
 
     /// A real, editable widget: not a stage, not layout editing, not redacted.
     private var isLive: Bool { !context.isPreview && !context.isEditingLayout && !context.redactsPersonalData }
+    /// The widget in the Nook, live or not. Only it drives the model's holds: a stage never touches them.
+    private var isInNook: Bool { !context.isPreview }
     /// ≥ 6 cells (and focus mode): the note list sidebar and line numbers (DESIGN.md §6.7).
     private var isWide: Bool { context.cells >= 6 }
     /// One cell at 6–7 cells; two from 8 cells and in focus mode, where one cell would cut every title short.
@@ -21,13 +23,19 @@ struct NotesWidgetView: View {
     var body: some View {
         content
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .onChange(of: context.rows >= 3, initial: true) { _, presented in
-                if isLive { model.focusPresentationChanged(presented) }
+            .onChange(of: Presentation(isLive: isLive, isFocusMode: context.rows >= 3), initial: true) { _, shown in
+                if isInNook { model.widgetPresentationChanged(isLive: shown.isLive, isFocusPresented: shown.isFocusMode) }
             }
-            .onChange(of: context.isFocused) { _, focused in
+            // `initial`: the Nook mounts the widget already focused when it opens with `focus: .notes` (⌃⌥N, ⌘K).
+            .onChange(of: context.isFocused, initial: true) { _, focused in
                 if focused && isLive { model.requestFocus() }                     // Tab / shell focus → type at once
             }
-            .onDisappear { if isLive { model.widgetDisappeared() } }
+            .onDisappear { if isInNook { model.widgetDisappeared() } }
+    }
+
+    private struct Presentation: Equatable {
+        var isLive: Bool
+        var isFocusMode: Bool
     }
 
     @ViewBuilder private var content: some View {
