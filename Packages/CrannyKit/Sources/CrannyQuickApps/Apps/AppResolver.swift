@@ -58,6 +58,8 @@ nonisolated struct WorkspaceAppResolver: AppResolving {
         return context.makeImage()
     }
 
-    /// Finder's localized name without ".app" (CrannyCore's `AppIdentity`, shared with Settings and Media).
-    private static func displayName(of url: URL) -> String { AppIdentity.displayName(of: url) }
+    /// Finder's name: CrannyCore's one naming rule (`AppIdentity.name(of:)`, shared with Settings and Media): the
+    /// localized display name, or the file name for a bundle in a protected folder (an app left in Downloads, which
+    /// is not read) or one that names nothing; never the bundle identifier.
+    private static func displayName(of url: URL) -> String { AppIdentity.name(of: url) }
 }

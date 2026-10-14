@@ -30,7 +30,8 @@ extension MediaProviderFactory {
                 return resolved.dylib.map { MediaRemoteBridgeProvider(host: .ruby, dylib: $0) }
             },
             MediaProviderFactory(kind: .appleScript, isEnabled: { settings[MediaSettings.allowAppleEvents] }) {
-                AppleScriptProvider { bundleID in permissions.status(.automation(bundleID: bundleID)) == .granted }
+                // A fresh answer, asked off the main actor (PermissionsCenter's cache is refreshed by it).
+                AppleScriptProvider { bundleID in await permissions.currentStatus(.automation(bundleID: bundleID)) == .granted }
             },
         ]
     }

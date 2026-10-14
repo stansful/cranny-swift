@@ -69,8 +69,7 @@ import SwiftUI
 nonisolated struct PreviewAppResolver: AppResolving {
     static func app(for bundleID: String) -> ResolvedApp? {
         guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else { return nil }
-        let name = FileManager.default.displayName(atPath: url.path)
-        return ResolvedApp(bundleID: bundleID, url: url, name: name.hasSuffix(".app") ? String(name.dropLast(4)) : name)
+        return ResolvedApp(bundleID: bundleID, url: url, name: AppIdentity.name(of: url))
     }
     func resolve(_ bundleID: String) async -> ResolvedApp? { Self.app(for: bundleID) }
     func app(at url: URL) async -> ResolvedApp? { await WorkspaceAppResolver().app(at: url) }

@@ -558,6 +558,17 @@
         }
       }
     },
+    "App not installed" : {
+      "comment" : "Settings ▸ General ▸ Excluded apps: row of an excluded app that is no longer installed",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приложение не установлено"
+          }
+        }
+      }
+    },
     "Appearance" : {
       "comment" : "Settings sidebar: pane name",
       "localizations" : {
@@ -2672,6 +2683,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Удалить страницу"
+          }
+        }
+      }
+    },
+    "Remove app" : {
+      "comment" : "Settings ▸ General ▸ Excluded apps: remove button (VoiceOver) of an app that is not installed or not looked up yet",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Удалить приложение"
           }
         }
       }

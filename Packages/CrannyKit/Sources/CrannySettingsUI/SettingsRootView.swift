@@ -91,7 +91,7 @@ public struct SettingsRootView: View {
     private func searchIndex(_ pages: [SettingsPage]) -> SettingsSearchIndex {
         let signature = pages.map(\.id.rawValue)
             + [registry.shortcuts.count, registry.widgets.count, registry.activities.count, registry.permissionUses.count,
-               AutomationApps.shared.revision].map(String.init)
+               AppIdentityResolver.shared.revision].map(String.init)
         return session.searchIndex.index(pages: pages, signature: signature) { ShellPanes.rows(registry: registry) }
     }
 

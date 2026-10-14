@@ -1,7 +1,8 @@
 // CrannyMedia/UI/PlayerApps.swift — names, icons and launching of player apps by bundle id (the artwork click
-// "Open in Music", the empty state's last source, Settings ▸ Media ▸ Ignore apps). Names, icons and locations come
-// from CrannyCore's `AppIdentityResolver`: looked up off the main actor once per app, observable (a view updates when
-// the lookup finishes) and never read from a protected folder. Launching happens only on a user's click and never
+// "Open in Music", the empty state's last source, Settings ▸ Media's Automation rows and Ignore apps). Names, icons and
+// locations come from CrannyCore's `AppIdentityResolver`: looked up off the main actor, observable (a view updates when
+// the lookup lands), Finder's name (the file name for a player in a protected folder: "Spotify", never "client" or the
+// bundle identifier) and never an icon read from a protected folder. Launching happens only on a user's click and never
 // starts playback.
 import AppKit
 import CrannyCore
@@ -13,25 +14,17 @@ private nonisolated let log = Log.logger(.media)
 @MainActor enum PlayerApps {
     private static var resolver: AppIdentityResolver { .shared }
 
-    /// Where the player is: nil while the lookup runs, when it is not installed or in a protected folder.
-    static func url(for bundleID: String) -> URL? { resolver.identity(of: bundleID).url }
+    /// What the lookup knows about the player (pending, installed with its name, or not installed).
+    static func identity(_ bundleID: String) -> AppIdentity { resolver.identity(of: bundleID) }
 
-    /// The app's display name; until it is known (or if it is not installed), `fallback` or the last component of
-    /// its bundle id.
-    static func name(for bundleID: String, fallback: String? = nil) -> String {
-        let identity = resolver.identity(of: bundleID)
-        if identity.isResolved { return identity.name }
-        return fallback ?? bundleID.split(separator: ".").last.map(String.init) ?? bundleID
+    /// The player's name: Finder's once the lookup found it, else `fallback` (the name the player gave its session);
+    /// nil while neither is known. Never derived from the bundle identifier.
+    static func name(for bundleID: String, fallback: String? = nil) -> String? {
+        identity(bundleID).name ?? fallback
     }
 
-    /// The app's icon, nil until known.
-    static func icon(for bundleID: String) -> NSImage? { resolver.identity(of: bundleID).icon }
-
-    /// The lookup finished and found no app (false while it runs).
-    static func isMissing(_ bundleID: String) -> Bool {
-        let identity = resolver.identity(of: bundleID)
-        return identity.isLookedUp && !identity.isResolved
-    }
+    /// The app's icon, nil until known (and for a player in a protected folder).
+    static func icon(for bundleID: String) -> NSImage? { identity(bundleID).icon }
 
     static func isRunning(_ bundleID: String) -> Bool {
         !NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).isEmpty

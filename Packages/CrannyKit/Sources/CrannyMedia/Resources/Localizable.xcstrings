@@ -78,6 +78,17 @@
         }
       }
     },
+    "App not installed" : {
+      "comment" : "Settings ▸ Media ▸ Ignore apps: row of an ignored app that is no longer installed",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Приложение не установлено"
+          }
+        }
+      }
+    },
     "Apple Events (Music, Spotify)" : {
       "comment" : "Settings ▸ Media: name of the media source in use",
       "localizations" : {
@@ -371,17 +382,6 @@
         }
       }
     },
-    "Not installed" : {
-      "comment" : "Settings ▸ Media: Automation row of a player that is not installed",
-      "localizations" : {
-        "ru" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Не установлено"
-          }
-        }
-      }
-    },
     "Not started" : {
       "comment" : "Settings ▸ Media: source status",
       "localizations" : {
@@ -494,6 +494,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Откройте приложение, чтобы разрешить"
+          }
+        }
+      }
+    },
+    "Open the player" : {
+      "comment" : "Media: tooltip and VoiceOver action on the artwork while the player's name is not known",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Открыть плеер"
           }
         }
       }

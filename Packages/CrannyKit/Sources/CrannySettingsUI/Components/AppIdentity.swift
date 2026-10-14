@@ -1,7 +1,7 @@
 // CrannySettingsUI/Components/AppIdentity.swift — the icon view of an app row (the Excluded apps list). Names and icons
-// come from CrannyCore's `AppIdentityResolver`: looked up off the main actor, once per app and session, and never for
-// an app in a protected folder (no Files & Folders prompt from Settings). Permissions' Automation rows name their app
-// with `AutomationApps`, which also knows when an app is not installed.
+// come from CrannyCore's `AppIdentityResolver` (also for Permissions' Automation rows): looked up off the main actor,
+// named by Finder (the file name for an app in a protected folder, never the bundle identifier), no icon read from a
+// protected folder (no Files & Folders prompt from Settings), and an explicit not-installed state.
 import AppKit
 import CrannyCore
 import Foundation
@@ -27,7 +27,7 @@ struct AppIconView: View {
     let finder = AppIdentityResolver.shared.identity(of: "com.apple.finder")
     HStack {
         AppIconView(icon: finder.icon)
-        Text(verbatim: finder.name)
+        Text(verbatim: finder.name ?? "")
     }
     .padding()
 }

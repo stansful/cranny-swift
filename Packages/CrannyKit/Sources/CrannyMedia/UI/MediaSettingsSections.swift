@@ -1,6 +1,7 @@
 // CrannyMedia/UI/MediaSettingsSections.swift — the larger rows of Settings ▸ Media: source status with
 // "Test Media Detection", the Live visualizer's permission row and why-sheet, and the Apple Events fallback with
 // its per-player Automation rows. Permission prompts happen only on a click here (ARCHITECTURE.md §3.12).
+import AppKit
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -80,11 +81,11 @@ struct MediaSourceSection: View {
         let milliseconds = Int((roundTrip.timeInterval * 1000).rounded())
         // What the helper sees, before Ignore apps / browser filters and untitled sessions are applied.
         if let np = service.nowPlaying {
-            let app = PlayerApps.name(for: np.bundleID ?? np.parentBundleID ?? "", fallback: np.appName)
-            testResult = MediaPaneStrings.testSeesPlayer(app, milliseconds)
+            let app = (np.bundleID ?? np.parentBundleID).flatMap { PlayerApps.name(for: $0, fallback: np.appName) } ?? np.appName
+            testResult = app.map { MediaPaneStrings.testSeesPlayer($0, milliseconds) } ?? MediaPaneStrings.testSeesUnnamedPlayer(milliseconds)
         } else if let pid = service.reportedPlayerPID, pid > 0 {
-            testResult = service.reportedPlayerBundleID.map { MediaPaneStrings.testSeesPlayer(PlayerApps.name(for: $0), milliseconds) }
-                ?? MediaPaneStrings.testSeesUnnamedPlayer(milliseconds)
+            testResult = service.reportedPlayerBundleID.flatMap { PlayerApps.name(for: $0) }
+                .map { MediaPaneStrings.testSeesPlayer($0, milliseconds) } ?? MediaPaneStrings.testSeesUnnamedPlayer(milliseconds)
         } else if AudioOutputMonitor.isOtherProcessRunningOutput() {
             testResult = MediaPaneStrings.testBlind(milliseconds)
         } else {
@@ -148,7 +149,9 @@ struct LiveVisualizerSheet: View {
     }
 }
 
-/// Apple Events fallback for Music and Spotify (off by default: it asks for Automation per app).
+/// Apple Events fallback for Music and Spotify (off by default: it asks for Automation per app). One row per player
+/// that is installed (`AppIdentityResolver`; looked up again when the section appears, so a player installed meanwhile
+/// shows), named by Finder. Statuses come from `PermissionsCenter`'s cache: no view body runs an Apple Events query.
 struct AppleEventsSection: View {
     let services: CrannyServices
 
@@ -160,40 +163,49 @@ struct AppleEventsSection: View {
             }
             if settings[MediaSettings.allowAppleEvents] {
                 ForEach(ScriptablePlayer.all, id: \.bundleID) { player in
-                    AutomationRow(bundleID: player.bundleID, permissions: services.permissions)
+                    let identity = PlayerApps.identity(player.bundleID)
+                    if let name = identity.name {
+                        AutomationRow(bundleID: player.bundleID, name: name, icon: identity.icon, permissions: services.permissions)
+                    }
                 }
             }
         } footer: {
             Text(verbatim: MediaPaneStrings.appleEventsFootnote).foregroundStyle(.secondary)
+        }
+        .onAppear {
+            AppIdentityResolver.shared.refresh()           // a player installed or removed meanwhile
+            services.permissions.refresh()                 // a grant changed in System Settings meanwhile
         }
     }
 }
 
 private struct AutomationRow: View {
     let bundleID: String
+    let name: String
+    let icon: NSImage?
     let permissions: PermissionsCenter
 
     var body: some View {
         let kind = PermissionKind.automation(bundleID: bundleID)
-        let status = permissions.status(kind)
         LabeledContent {
-            switch status {
-            case .granted:
+            switch permissions.knownStatus(kind) {
+            case nil:
+                ProgressView().controlSize(.small)          // the first answer is on its way (off the main actor)
+            case .granted?:
                 Text(verbatim: MediaPaneStrings.allowed).foregroundStyle(.secondary)
-            case .denied, .restricted:
+            case .denied?, .restricted?:
                 Button { permissions.openSystemSettings(kind) } label: { Text(verbatim: MediaPaneStrings.openPrivacySettings) }
-            case .notDetermined:
+            case .notDetermined?:
                 Button { Task { await permissions.request(kind) } } label: { Text(verbatim: MediaPaneStrings.allow) }
-            case .unknown:
-                Text(verbatim: PlayerApps.isMissing(bundleID) ? MediaPaneStrings.notInstalled : MediaPaneStrings.openToAllow)
-                    .foregroundStyle(.secondary)
+            case .unknown?:
+                Text(verbatim: MediaPaneStrings.openToAllow).foregroundStyle(.secondary)
             }
         } label: {
             HStack(spacing: Space.s) {
-                if let icon = PlayerApps.icon(for: bundleID) {
+                if let icon {
                     Image(nsImage: icon).resizable().frame(width: 16, height: 16).accessibilityHidden(true)
                 }
-                Text(verbatim: PlayerApps.name(for: bundleID))
+                Text(verbatim: name)
             }
         }
     }

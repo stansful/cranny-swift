@@ -63,7 +63,7 @@ struct MediaPlayingView: View {
 
     private func artwork(size: CGFloat) -> some View {
         let source = nowPlaying.bundleID ?? nowPlaying.parentBundleID
-        let appName = source.map { PlayerApps.name(for: $0, fallback: nowPlaying.appName) } ?? nowPlaying.appName
+        let appName = source.flatMap { PlayerApps.name(for: $0, fallback: nowPlaying.appName) } ?? nowPlaying.appName
         return Button { if let source { PlayerApps.open(source) } } label: {
             ArtworkView(image: service.artwork, identity: service.artworkKey, size: size,
                         radius: theme.grid.innerRadius, glows: settings[CoreSettings.albumGlow], accent: service.palette?.accent)
@@ -71,8 +71,8 @@ struct MediaPlayingView: View {
         }
         .buttonStyle(.plain)
         .disabled(source == nil)
-        .help(appName.map(MediaStrings.openIn) ?? "")
-        .accessibilityLabel(Text(verbatim: appName.map(MediaStrings.openIn) ?? MediaStrings.moduleName))
+        .help(source == nil ? "" : MediaStrings.openAction(appName))
+        .accessibilityLabel(Text(verbatim: source == nil ? MediaStrings.moduleName : MediaStrings.openAction(appName)))
         .offset(x: swipe)
         .crannyScrollZone(ScrollZoneID("media.track.artwork"), axis: .horizontal, onUpdate: trackSwipe)
     }

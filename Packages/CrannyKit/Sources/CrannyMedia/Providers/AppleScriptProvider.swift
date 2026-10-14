@@ -22,7 +22,7 @@ nonisolated final class AppleScriptProvider: MediaProvider, @unchecked Sendable 
 
     /// `isPermitted(bundleID)` = Automation granted for that player (asked from Settings ▸ Media). `runner` executes
     /// the scripts (the process-wide serial runner; tests pass a fake).
-    @MainActor init(isPermitted: @escaping @MainActor (String) -> Bool,
+    @MainActor init(isPermitted: @escaping @MainActor (String) async -> Bool,
                     runner: any AppleScriptRunning = SerialAppleScriptRunner.shared) {
         session = AppleScriptSession(isPermitted: isPermitted, runner: runner)
     }
@@ -63,17 +63,6 @@ nonisolated struct ScriptablePlayer: Sendable, Equatable {
     static let music = ScriptablePlayer(bundleID: "com.apple.Music", notification: "com.apple.Music.playerInfo", durationKey: "Total Time")
     static let spotify = ScriptablePlayer(bundleID: "com.spotify.client", notification: "com.spotify.client.PlaybackStateChanged", durationKey: "Duration")
     static let all = [music, spotify]
-
-    /// The players installed on this Mac, in `all` order (Settings ▸ Permissions and onboarding list Automation only
-    /// for these). `isInstalled` is a Launch Services lookup in the app.
-    static func installed(_ isInstalled: (String) -> Bool = ScriptablePlayer.isInstalled) -> [ScriptablePlayer] {
-        all.filter { isInstalled($0.bundleID) }
-    }
-
-    /// Launch Services knows an app with this bundle identifier (wherever it is; nothing in it is read).
-    static func isInstalled(_ bundleID: String) -> Bool {
-        NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) != nil
-    }
 
     /// Spotify's payload carries the position; Music's does not (it needs a `player position` script).
     func reportsPosition(_ info: [String: String]) -> Bool { info["Playback Position"].flatMap(Double.init) != nil }

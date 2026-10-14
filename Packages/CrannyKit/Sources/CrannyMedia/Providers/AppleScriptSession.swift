@@ -9,8 +9,8 @@
 // command that waited longer than the scripts' own 2-s timeout is not sent at all (it answers false, so the service
 // shows the player's state again).
 //
-// Automation: `isPermitted` is a synchronous TCC query on the main actor (`PermissionsCenter.status`, which never
-// prompts and does not keep Automation answers). A granted answer is used for `grantLifetime`, so a burst of
+// Automation: `isPermitted` asks macOS for a fresh answer off the main actor (`PermissionsCenter.currentStatus`, which
+// never prompts and updates the center's cache). A granted answer is used for `grantLifetime`, so a burst of
 // scripts (position + artwork, a command + its refresh) asks once instead of once per script. Any failed script
 // forgets it (a −1743 denial included), and a player that is not granted is asked again before each script, so a
 // grant from Settings ▸ Media counts at once. No script runs for a player last found not granted. A grant turned
@@ -37,7 +37,7 @@ private nonisolated let log = Log.logger(.media)
         case refresh
     }
 
-    private let isPermitted: @MainActor (String) -> Bool
+    private let isPermitted: @MainActor (String) async -> Bool
     private let runner: any AppleScriptRunning
     private let clock: any MediaClock
     /// False in tests: they feed payloads to `receive` and never hear the user's real players.
@@ -59,7 +59,7 @@ private nonisolated let log = Log.logger(.media)
     /// A session runs once: after `stop()` nothing starts, runs or reaches the service again.
     private var isStopped = false
 
-    init(isPermitted: @escaping @MainActor (String) -> Bool, runner: any AppleScriptRunning,
+    init(isPermitted: @escaping @MainActor (String) async -> Bool, runner: any AppleScriptRunning,
          clock: any MediaClock = SystemMediaClock(), observesPlayers: Bool = true) {
         self.isPermitted = isPermitted
         self.runner = runner
@@ -213,7 +213,7 @@ private nonisolated let log = Log.logger(.media)
     /// Runs `body` for a player whose Automation is granted, off the main actor. nil = not run, failed, or the
     /// session stopped meanwhile.
     private func run(_ body: String, in player: ScriptablePlayer) async -> ScriptValue? {
-        guard !isStopped, isAllowed(player) else { return nil }
+        guard !isStopped, await isAllowed(player), !isStopped else { return nil }
         let outcome = await runner.run(PlayerScript(bundleID: player.bundleID, body: body))
         guard !isStopped else { return nil }
         switch outcome {
@@ -234,13 +234,13 @@ private nonisolated let log = Log.logger(.media)
     }
 
     /// Automation is granted for `player`: a grant found less than `grantLifetime` ago, else `isPermitted` (a TCC
-    /// query on the main actor). A clock that went backwards does not stretch a grant.
-    private func isAllowed(_ player: ScriptablePlayer) -> Bool {
+    /// query off the main actor, awaited in queue order). A clock that went backwards does not stretch a grant.
+    private func isAllowed(_ player: ScriptablePlayer) async -> Bool {
         let id = player.bundleID
         if let since = grantedAt[id], (0..<Self.grantLifetime.timeInterval).contains(clock.now.timeIntervalSince(since)) {
             return true
         }
-        guard isPermitted(id) else { grantedAt[id] = nil; return false }
+        guard await isPermitted(id) else { grantedAt[id] = nil; return false }
         grantedAt[id] = clock.now
         return true
     }
