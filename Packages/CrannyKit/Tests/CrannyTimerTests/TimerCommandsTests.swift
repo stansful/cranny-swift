@@ -43,6 +43,38 @@ import Testing
         #expect(entries("pizza 12").isEmpty)                                     // the other words must match
     }
 
+    @Test func aUnitAfterASpaceBelongsToItsNumber() {
+        #expect(entries("90 s") == [.start(seconds: 90)])
+        #expect(entries("timer 90 s") == [.start(seconds: 90)])
+        #expect(entries("90 sec") == [.start(seconds: 90)])
+        #expect(entries("1 hour") == [.start(seconds: 3600)])
+        #expect(entries("2 h") == [.start(seconds: 7200)])
+        #expect(entries("start 1 h 30 m timer") == [.start(seconds: 5400)])
+        #expect(entries("25 мин") == [.start(seconds: 1500)])
+        #expect(entries("90 с") == [.start(seconds: 90)])
+        #expect(entries("pizza 90 s").isEmpty)
+    }
+
+    @Test func russianQueriesMatchRussianTitles() {
+        func russian(_ entry: TimerCommandEntry) -> String {
+            if case .start(let s) = entry { return "Запустить таймер на \(s) с" }
+            return "Остановить таймер"
+        }
+        let list = TimerCommandCatalog.entries(state: TimerState(), presets: presets, query: "таймер 90 с",
+                                               title: russian, keywords: ["Таймер", "Обратный отсчёт"])
+        #expect(list == [.start(seconds: 90)])
+        let minutes = TimerCommandCatalog.entries(state: TimerState(), presets: presets, query: "отсчёт 25 мин",
+                                                  title: russian, keywords: ["Таймер", "Обратный отсчёт"])
+        #expect(minutes == [.start(seconds: 1500)])
+    }
+
+    @Test func theLongestRunOfWordsIsTheDuration() {
+        #expect(TimerCommandCatalog.typedDuration(in: ["timer", "1", "h", "30", "m"]) == (5400, ["timer"]))
+        #expect(TimerCommandCatalog.typedDuration(in: ["90", "s", "timer"]) == (90, ["timer"]))
+        #expect(TimerCommandCatalog.typedDuration(in: ["timer"]) == (nil, ["timer"]))
+        #expect(TimerCommandCatalog.typedDuration(in: []) == (nil, []))
+    }
+
     @Test func wordsFilterByTitleAndKeywords() {
         let running = TimerState(phase: .running(endDate: t0), total: 300)
         #expect(entries("pause", running) == [.pause])

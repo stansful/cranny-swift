@@ -1,5 +1,5 @@
 // CrannyTimer/TimerCommands.swift — ⌘K (DESIGN.md §6.4): "Start N-minute timer" for every preset and for a
-// typed duration ("12", "timer 90s"), plus Pause/Resume, +1 min and Stop for the current timer. In-memory filtering
+// typed duration ("12", "timer 90 s"), plus Pause/Resume, +1 min and Stop for the current timer. In-memory filtering
 // only (queried on every keystroke).
 import CrannyCore
 import Foundation
@@ -22,23 +22,40 @@ nonisolated enum TimerCommandEntry: Hashable, Sendable {
 
 nonisolated enum TimerCommandCatalog {
     /// The commands for `query`, best first.
-    /// - A word that is a duration ("10", "90s", "1:30") offers exactly that timer; the other words must match its
-    ///   title or keywords ("timer 10", "start 10").
+    /// - A duration in the query ("10", "90s", "90 s", "1 h 30 m", "25 мин", "1:30") offers exactly that timer; the
+    ///   words around it must match its title or keywords ("timer 10", "таймер 90 с").
     /// - Otherwise every word must appear in a command's title or keywords; an empty query lists everything.
     static func entries(state: TimerState, presets: [Int], query: String,
                         title: (TimerCommandEntry) -> String, keywords: [String]) -> [TimerCommandEntry] {
         let words = query.split(whereSeparator: \.isWhitespace).map(String.init)
-        let durations = words.compactMap(DurationParser.seconds(from:))
-        let otherWords = words.filter { DurationParser.seconds(from: $0) == nil }
+        let (typed, otherWords) = typedDuration(in: words)
         func matches(_ entry: TimerCommandEntry) -> Bool {
             let haystack = ([title(entry)] + keywords).joined(separator: " ")
             return otherWords.allSatisfy { haystack.localizedCaseInsensitiveContains($0) }
         }
-        if let typed = durations.first {
+        if let typed {
             let entry = TimerCommandEntry.start(seconds: typed)
             return matches(entry) ? [entry] : []
         }
         return all(state: state, presets: presets).filter(matches)
+    }
+
+    /// Words in the longest duration ("1 h 30 m 15 s"); longer runs are not tried, so a long query stays cheap.
+    static let longestDurationRun = 6
+
+    /// The longest run of consecutive words that `DurationParser` reads as ONE duration (the earliest of equally long
+    /// runs), and the words around it. Parsing the run as a whole keeps a unit typed after a space ("90 s") with its
+    /// number, as the widget's own entry does, instead of reading "90" as minutes and "s" as a search word.
+    static func typedDuration(in words: [String]) -> (seconds: Int?, otherWords: [String]) {
+        for length in stride(from: min(words.count, longestDurationRun), through: 1, by: -1) {
+            for start in 0...(words.count - length) {
+                let end = start + length
+                if let seconds = DurationParser.seconds(from: words[start..<end].joined(separator: " ")) {
+                    return (seconds, Array(words[..<start] + words[end...]))
+                }
+            }
+        }
+        return (nil, words)
     }
 
     /// Everything that applies to `state`: the controls of the current timer first, then the presets.
