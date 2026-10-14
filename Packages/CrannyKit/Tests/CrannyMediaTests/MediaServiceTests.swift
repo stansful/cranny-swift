@@ -1,6 +1,6 @@
 // MediaService with scripted providers and a manual clock: restart backoff 0.5/2/8 s, failover after 3 failures in
 // 60 s, optimistic commands and their confirmation (refresh, then the player's state again), track-change debounce,
-// filters, the elected player before filters, artwork cache (ARCHITECTURE.md §6.5, §10.2).
+// filters, the elected player before filters, Automation denials, artwork cache (ARCHITECTURE.md §6.5, §10.2).
 import CoreGraphics
 import CrannyCore
 import Foundation
@@ -325,6 +325,19 @@ import Testing
         #expect(service.reportedPlayerPID == 42)                          // kept while restarting …
         await clock.advance(by: .milliseconds(500))
         #expect(service.reportedPlayerPID == nil)                         // … unknown again for the new helper
+    }
+
+    @Test func anAutomationDenialIsRecorded() async {
+        let clock = ManualClock(), script = ScriptedProvider(kind: .appleScript), services = CrannyServices.preview()
+        let service = Fixtures.service([script], clock: clock, services: services)
+        service.start()
+        await settle()
+        script.emit(.permissionDenied(bundleID: "com.apple.Music"))
+        await settle()
+        #expect(services.permissions.status(.automation(bundleID: "com.apple.Music")) == .denied)
+        #expect(service.lastError == .provider(.appleScript, .notPermitted))
+        #expect(service.status == .starting(.appleScript))                // a denial is not a failure: no restart
+        #expect(script.starts == 1)
     }
 
     @Test func differentArtworkForTheSameTrackReplacesIt() async throws {

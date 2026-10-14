@@ -1,5 +1,6 @@
 // The blocked-helper heuristic (R2 §5.4) with a manual clock and fed Core Audio state: only "no elected player
-// (pid 0) while another process plays sound for 10 s" is degraded; filtered and untitled sessions are not.
+// (pid 0) while another process plays sound for 10 s" is degraded; filtered and untitled sessions are not. And the
+// Apple Events fallback's notification payloads (Music, Spotify) → NowPlaying.
 import CrannyCore
 import Foundation
 import Testing
@@ -79,5 +80,55 @@ import Testing
         monitor.outputChanged(true)
         await clock.advance(by: .seconds(60))
         #expect(!monitor.isDegraded)
+    }
+}
+
+@Suite("Apple Events fallback payloads") struct ScriptablePlayerTests {
+    private let now = Date(timeIntervalSince1970: 1_800_000_000)
+
+    @Test func musicPayload() throws {
+        let info = ["Name": "Midnight Window", "Artist": "The Example Band", "Album": "Night Signals",
+                    "Total Time": "215000", "Player State": "Playing", "PersistentID": "6202394711290553447"]
+        let np = try #require(ScriptablePlayer.music.nowPlaying(info, now: now))
+        #expect(np.bundleID == "com.apple.Music")
+        #expect(np.title == "Midnight Window")
+        #expect(np.artist == "The Example Band")
+        #expect(np.album == "Night Signals")
+        #expect(np.duration == 215)                                       // milliseconds → seconds
+        #expect(np.isPlaying)
+        #expect(np.itemID == "6202394711290553447")
+        #expect(np.elapsed == 0)
+        #expect(!ScriptablePlayer.music.reportsPosition(info))            // Music needs a `player position` script
+    }
+
+    @Test func spotifyPayload() throws {
+        let info = ["Name": "Midnight Window", "Artist": "The Example Band", "Album": "Night Signals", "Duration": "215000",
+                    "Player State": "Paused", "Playback Position": "84.5", "Track ID": "spotify:track:42"]
+        let np = try #require(ScriptablePlayer.spotify.nowPlaying(info, now: now))
+        #expect(np.bundleID == "com.spotify.client")
+        #expect(np.duration == 215)
+        #expect(np.elapsed == 84.5)
+        #expect(!np.isPlaying)
+        #expect(np.itemID == "spotify:track:42")
+        #expect(np.timestamp == now)
+        #expect(ScriptablePlayer.spotify.reportsPosition(info))           // no script needed
+    }
+
+    @Test("Stopped or untitled is nothing playing", arguments: [
+        ["Player State": "Stopped", "Name": "Song"],
+        ["Player State": "Playing"],
+        ["Player State": "Playing", "Name": ""],
+        ["Name": "Song"],
+    ])
+    func stoppedOrUntitled(_ info: [String: String]) {
+        #expect(ScriptablePlayer.music.nowPlaying(info, now: now) == nil)
+    }
+
+    @Test func zeroOrMissingDurationIsUnknown() throws {
+        let zero = try #require(ScriptablePlayer.music.nowPlaying(["Name": "Radio", "Player State": "Playing", "Total Time": "0"], now: now))
+        #expect(zero.duration == nil)
+        let missing = try #require(ScriptablePlayer.spotify.nowPlaying(["Name": "Radio", "Player State": "Playing"], now: now))
+        #expect(missing.duration == nil)
+        #expect(missing.trackKey == "com.spotify.client|Radio||")
     }
 }

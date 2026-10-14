@@ -40,6 +40,7 @@ private nonisolated let log = Log.logger(.media)
     @ObservationIgnored let settings: SettingsStore
     @ObservationIgnored let clock: any MediaClock
     @ObservationIgnored let visualizer: VisualizerEngine
+    @ObservationIgnored private let permissions: PermissionsCenter
     /// The blocked-helper heuristic (set by the module; read by diagnostics).
     @ObservationIgnored weak var health: BridgeHealthMonitor?
     @ObservationIgnored private let factories: [MediaProviderFactory]
@@ -76,6 +77,7 @@ private nonisolated let log = Log.logger(.media)
         self.settings = settings
         self.clock = clock
         self.factories = providers
+        self.permissions = permissions
         visualizer = VisualizerEngine(settings: settings, environment: environment, permissions: permissions, clock: clock,
                                       allowsLive: allowsLiveVisualizer)
         visualizer.bind { [weak self] in self?.nowPlaying?.isPlaying ?? false }
@@ -237,6 +239,10 @@ private nonisolated let log = Log.logger(.media)
             ingest(np)
         case .artwork(let key, let data):
             receiveArtwork(key: key, data: data)
+        case .permissionDenied(let bundleID):
+            log.error("media: Automation denied for a player (\(kind.rawValue, privacy: .public))")
+            permissions.record(.denied, for: .automation(bundleID: bundleID))
+            lastError = .provider(kind, .notPermitted)
         case .unavailable(let failure):
             providerFailed(kind, failure)
         }

@@ -48,6 +48,8 @@ nonisolated enum ProviderEvent: Sendable, Equatable {
     case nowPlaying(NowPlaying?)
     /// Encoded artwork (JPEG/PNG/HEIC) for `trackKey` (`NowPlaying.trackKey`).
     case artwork(trackKey: String, data: Data)
+    /// The user denied Automation for this player (Apple Events error −1743). The provider keeps running.
+    case permissionDenied(bundleID: String)
     /// The provider stopped working; the stream finishes right after this event.
     case unavailable(ProviderFailure)
 }

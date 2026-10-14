@@ -4,7 +4,9 @@
 //
 // Rules: never launches a player (checks `runningApplications` first), never prompts by itself (scripts run
 // only for players whose Automation status is granted), 2-s Apple Event timeout, no network (Spotify's
-// artwork URL is not fetched: the update check is Cranny's only network access, §7.11).
+// artwork URL is not fetched: the update check is Cranny's only network access, §7.11). A denial (−1743) is
+// reported as `.permissionDenied`, and the service records it in `PermissionsCenter`. Scripts per notification:
+// the position only when the payload lacks it (Music), the artwork only when the track changes.
 // Threading: everything runs on the main actor (NSAppleScript is main-thread only); the provider façade
 // hops there.
 import AppKit
@@ -62,6 +64,9 @@ nonisolated struct ScriptablePlayer: Sendable, Equatable {
     static let spotify = ScriptablePlayer(bundleID: "com.spotify.client", notification: "com.spotify.client.PlaybackStateChanged", durationKey: "Duration")
     static let all = [music, spotify]
 
+    /// Spotify's payload carries the position; Music's does not (it needs a `player position` script).
+    func reportsPosition(_ info: [String: String]) -> Bool { info["Playback Position"].flatMap(Double.init) != nil }
+
     /// The Now Playing snapshot of a notification payload; nil = stopped or untitled.
     func nowPlaying(_ info: [String: String], now: Date) -> NowPlaying? {
         let state = info["Player State"] ?? "Stopped"
@@ -81,6 +86,10 @@ nonisolated struct ScriptablePlayer: Sendable, Equatable {
     private var current: ScriptablePlayer?
     /// The last snapshot sent, the base for `refresh()`.
     private var lastSnapshot: NowPlaying?
+    /// The track whose artwork was fetched last (Music re-posts `playerInfo` on play, pause and seek).
+    private var lastArtworkKey: String?
+    /// Players already reported as denied (one event each).
+    private var reportedDenied: Set<String> = []
     private var continuation: AsyncStream<ProviderEvent>.Continuation?
 
     init(isPermitted: @escaping @MainActor (String) -> Bool) { self.isPermitted = isPermitted }
@@ -149,17 +158,21 @@ nonisolated struct ScriptablePlayer: Sendable, Equatable {
             return
         }
         current = player
-        if let position = run("player position", in: player)?.doubleValue {
+        if !player.reportsPosition(info), let position = run("player position", in: player)?.doubleValue {
             np.elapsed = position
             np.timestamp = Date()
         }
         lastSnapshot = np
         continuation?.yield(.nowPlaying(np))
-        if player == .music, let art = run("get raw data of artwork 1 of current track", in: player),
+        guard player == .music, np.trackKey != lastArtworkKey else { return }
+        lastArtworkKey = np.trackKey                                     // once per track, even without artwork
+        if let art = run("get raw data of artwork 1 of current track", in: player),
            art.descriptorType != typeUnicodeText, art.descriptorType != typeUTF8Text, !art.data.isEmpty {
             continuation?.yield(.artwork(trackKey: np.trackKey, data: art.data))
         }
     }
+
+    static let notPermitted = -1743
 
     /// NSAppleScript with a 2-s timeout; only for a running player whose Automation is granted.
     private func run(_ body: String, in player: ScriptablePlayer) -> NSAppleEventDescriptor? {
@@ -169,8 +182,13 @@ nonisolated struct ScriptablePlayer: Sendable, Equatable {
         var error: NSDictionary?
         let result = NSAppleScript(source: source)?.executeAndReturnError(&error)
         if let error {
-            // −1743 (errAEEventNotPermitted): the user denied Automation; Settings ▸ Media shows it.
-            log.error("Apple Events to \(player.bundleID, privacy: .public) failed: \(error[NSAppleScript.errorNumber] as? Int ?? 0, privacy: .public)")
+            let number = error[NSAppleScript.errorNumber] as? Int ?? 0
+            log.error("Apple Events to \(player.bundleID, privacy: .public) failed: \(number, privacy: .public)")
+            // −1743 (errAEEventNotPermitted): the user turned Automation off for this player. The service records
+            // it (Settings ▸ Media and Permissions show it), and no further script runs for that player.
+            if number == Self.notPermitted, reportedDenied.insert(player.bundleID).inserted {
+                continuation?.yield(.permissionDenied(bundleID: player.bundleID))
+            }
             return nil
         }
         return result
