@@ -4,7 +4,8 @@
 // with the same keys, or an enabled macOS shortcut (best effort, `SystemShortcuts`). Bindings go through
 // `AppControl.setShortcut`, which stores them and re-registers at once; "Reset to Default" removes the override.
 // Recording uses a local key monitor of this window only: no Accessibility permission. At most one recorder listens at a
-// time (`ShortcutRecording`): starting one stops the others.
+// time (`ShortcutRecording`): starting one stops the others. While one listens, Cranny's global shortcuts pause
+// (`AppControl.setShortcutRecording`), so pressing a combination that is already bound records it instead of running it.
 import AppKit
 import CrannyCore
 import Foundation
@@ -22,7 +23,9 @@ struct ShortcutRow: View {
         let combo = KeyboardRows.effectiveCombo(shortcut, settings: settings)
         let isDefault = settings[CoreSettings.shortcuts][shortcut.id] == nil
         LabeledContent {
-            ShortcutRecorder(title: shortcut.title, combo: combo) { app.setShortcut(shortcut.id, $0) }
+            ShortcutRecorder(title: shortcut.title, combo: combo, listening: { app.setShortcutRecording($0) }) {
+                app.setShortcut(shortcut.id, $0)
+            }
         } label: {
             RowLabel(title: shortcut.title, footnote: warning(for: combo), isChanged: !isDefault)
         }
@@ -58,6 +61,8 @@ struct ShortcutRow: View {
 struct ShortcutRecorder: View {
     let title: String
     let combo: KeyCombo?
+    /// Recording started (true) or ended (false), however it ended: keys, a click elsewhere, the window closing.
+    var listening: (Bool) -> Void = { _ in }
     let record: (KeyCombo?) -> Void
     @State private var isRecording = false
     @State private var hint: String?
@@ -110,6 +115,7 @@ struct ShortcutRecorder: View {
         ShortcutRecording.shared.begin(recordingID) { stop() }
         hint = nil
         isRecording = true
+        listening(true)
         // A local monitor sees key presses sent to this app's windows only (no Accessibility permission).
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             MainActor.assumeIsolated { handle(event) } ? nil : event
@@ -142,6 +148,7 @@ struct ShortcutRecorder: View {
         if let monitor { NotificationCenter.default.removeObserver(monitor) }
         keyMonitor = nil
         monitor = nil
+        if isRecording { listening(false) }                                     // before `record` re-registers
         isRecording = false
         hint = nil
     }

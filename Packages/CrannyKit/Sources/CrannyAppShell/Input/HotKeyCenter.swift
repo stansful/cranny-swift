@@ -3,7 +3,9 @@
 // Intra-shell interface fixed by WP0 (§10.0): `apply(_:bindings:)`, `state(_:)`. It re-applies itself when
 // `CoreSettings.shortcuts` changes (Reset All, Undo, any writer); `AppControl.setShortcut` writes the key and
 // calls `reapply()` so it can return the resulting state at once. `states` is observed: Settings ▸ Keyboard
-// re-renders when a shortcut turns `.conflict` or `.off`. WP13.
+// re-renders when a shortcut turns `.conflict` or `.off`. While Settings records a shortcut (`setPaused`) every hot key
+// is unregistered, so its keys reach the recorder; the states stay as they were and everything re-registers after.
+// WP13.
 import AppKit
 import Carbon
 import CrannyCore
@@ -26,6 +28,8 @@ private let log = Log.logger(.input)
     /// What the last `apply` registered, so the settings observer skips a change `reapply()` already applied.
     @ObservationIgnored private var applied: (ids: [ShortcutID], bindings: [ShortcutID: KeyCombo?])?
     @ObservationIgnored private var token: ObservationToken?
+    /// A shortcut recorder listens: nothing is registered (`setPaused`).
+    @ObservationIgnored private(set) var isPaused = false
 
     /// Registers the registry's shortcuts now and again whenever the user's bindings change.
     func start(registry: ModuleRegistry) {
@@ -50,6 +54,8 @@ private let log = Log.logger(.input)
     @discardableResult
     func apply(_ shortcuts: [GlobalShortcut], bindings: [ShortcutID: KeyCombo?]) -> [ShortcutID: ShortcutState] {
         unregisterAll()
+        // Paused for recording: nothing is registered now; ending the pause re-applies the bindings of that moment.
+        guard !isPaused else { applied = nil; return states }
         applied = (shortcuts.map(\.id), bindings)
         var next: [ShortcutID: ShortcutState] = [:]
         defer { if states != next { states = next } }        // one observable change per apply
@@ -79,10 +85,20 @@ private let log = Log.logger(.input)
 
     func state(_ id: ShortcutID) -> ShortcutState { states[id] ?? .off }
 
+    /// Settings ▸ Keyboard records a shortcut: a registered Carbon hot key takes its keys before any window sees them,
+    /// so all of them are unregistered until recording ends, then registered again with the bindings of that moment.
+    /// The states keep their values meanwhile (the rows do not flash "Off").
+    func setPaused(_ paused: Bool) {
+        guard isPaused != paused else { return }
+        isPaused = paused
+        if paused { unregisterAll() } else { reapply() }
+    }
+
     func stop() {
         token?.cancel()
         unregisterAll()
         applied = nil
+        isPaused = false
         states = [:]
     }
 

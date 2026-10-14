@@ -90,6 +90,8 @@ import SwiftUI
     func showOnNotch(_ state: PreviewStageState) { overlay?.play(state, for: .seconds(5)) }
     func resetAllSettings() { settings?.resetAll() }
     func quit() { NSApp.terminate(nil) }
+    /// Settings ▸ Keyboard records a shortcut: the global hot keys pause, so pressing a bound one records it.
+    func setShortcutRecording(_ recording: Bool) { hotKeys?.setPaused(recording) }
 
     // MARK: Menu bar helpers (not part of the port)
 
