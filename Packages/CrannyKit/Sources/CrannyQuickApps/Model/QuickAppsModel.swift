@@ -3,7 +3,6 @@
 //
 // Energy: `init` does nothing. `start()` (registry.onLaunch) resolves the quick apps once and subscribes to app
 // launch/quit notifications; the Shortcuts list is read only on demand (ShortcutsCatalog). Nothing polls.
-import Accessibility
 import CrannyCore
 import Foundation
 import Observation
@@ -175,6 +174,9 @@ nonisolated private let log = Log.logger(.quickApps)
         String(localized: "Shortcut", bundle: .module, comment: "Quick Apps: a Shortcuts.app shortcut (⌘K result kind, Settings row subtitle, neutral tile name in Demo mode)")
     }
 
+    /// Runs the shortcut, or stops it while it runs. The only way a shortcut runs, and only a user's action calls it
+    /// (a click, ↩ or Space, ⌥1–⌥9, ⌘K, the tile and "+N" menus, VoiceOver): nothing runs a shortcut by itself, so
+    /// every result reported below is one the user asked for (DESIGN.md §16).
     func toggleRun(_ entry: ShortcutEntry) {
         if runs.isRunning(entry.id) {
             runs.cancel(entry.id)
@@ -206,9 +208,11 @@ nonisolated private let log = Log.logger(.quickApps)
         }
     }
 
-    /// A result nobody can see on a tile — the panel is closed, the tile is in "+N" or on a page that is not shown,
-    /// or the shortcut ran from ⌘K and has no tile — flashes in the notch and, at most once per 10 s, is announced
-    /// to VoiceOver (DESIGN.md §16). A tile on screen shows the result itself and in its accessibility value.
+    /// The result of a run the user started that nobody can see on a tile — the panel is closed, the tile is in "+N"
+    /// or on a page that is not shown, or the shortcut ran from ⌘K and has no tile — flashes in the notch and is
+    /// announced to VoiceOver through `services.announcer` as a `.result`, so it shares the app's one limit (one
+    /// alert or result per 10 s; dropped, not queued, when another module just spoke) (DESIGN.md §16). A tile on
+    /// screen shows the result itself and in its accessibility value; a run the user stopped reports nothing.
     private func reportInNotch(_ entry: ShortcutEntry, symbol: String, label: String, announcement: String) {
         guard !isOnScreenAsTile(.shortcut(entry.id)) else { return }
         notch.flash(symbol: symbol, label: label)
