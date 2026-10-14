@@ -14,6 +14,9 @@ private let log = Log.logger(.mirror)
 
     /// The reason passed to `NotchControl.setHoldOpen` while the system camera prompt is up (§4.5).
     static let permissionHold = "mirror.permission"
+    /// After "Open Settings", appearances re-read the camera permission for this long (the user may allow the
+    /// camera in System Settings and come back by hovering, which never activates the app).
+    static let settingsRecheckWindow: Duration = .seconds(600)
 
     private(set) var phase: MirrorPhase = .off
     /// What the preview draws; set when the camera reports `.started`, cleared on stop.
@@ -30,6 +33,8 @@ private let log = Log.logger(.mirror)
     /// Live widget views on screen (each has its own token: two panels or a re-created view never confuse it).
     @ObservationIgnored private var visibleViews: Set<UUID> = []
     @ObservationIgnored private var isHoldingOpen = false
+    /// When "Open Settings" last sent the user to System Settings (see `settingsRecheckWindow`).
+    @ObservationIgnored private var settingsOpenedAt: ContinuousClock.Instant?
     @ObservationIgnored private var observations: [ObservationToken] = []
     @ObservationIgnored private var notchObserver: UUID?
 
@@ -122,7 +127,7 @@ private let log = Log.logger(.mirror)
         guard MirrorVisibility.isLive(context) else { return viewDisappeared(id) }
         guard visibleViews.insert(id).inserted else { return }
         catalog.activate()
-        authorization.refresh(force: false)
+        recheckAccessAfterSettings()
         #if DEBUG
         if startsWhenVisibleForQA, phase == .off { Task { await tap() } }
         #endif
@@ -140,6 +145,8 @@ private let log = Log.logger(.mirror)
         switch phase {
         case .off, .problem:
             await catalog.ensureLoaded()
+            // A click is the moment to re-read the permission (never the panel opening, `settingsRecheckWindow`).
+            settingsOpenedAt = nil
             authorization.refresh(force: phase == .problem(.notAuthorized))
         case .requestingAccess, .starting, .running:
             break
@@ -158,6 +165,17 @@ private let log = Log.logger(.mirror)
     private func handle(_ event: CameraEvent) {
         if case .started = event { feed = controller.feed }
         dispatch(.camera(event))
+    }
+
+    /// Only after "Open Settings" (the user may have allowed the camera there): `PermissionsCenter.refresh`
+    /// re-queries every permission, which never belongs on the panel-open path otherwise.
+    private func recheckAccessAfterSettings() {
+        guard let opened = settingsOpenedAt else { return }
+        guard ContinuousClock.now - opened < Self.settingsRecheckWindow, authorization.status != .granted else {
+            settingsOpenedAt = nil
+            return
+        }
+        authorization.refresh(force: false)
     }
 
     private func dispatch(_ event: MirrorEvent) {
@@ -188,6 +206,7 @@ private let log = Log.logger(.mirror)
             isHoldingOpen = hold
             notch.setHoldOpen(hold, reason: Self.permissionHold)
         case .openSystemSettings:
+            settingsOpenedAt = .now
             authorization.openSystemSettings()
         }
     }

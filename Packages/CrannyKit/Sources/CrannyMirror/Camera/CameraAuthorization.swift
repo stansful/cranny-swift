@@ -7,6 +7,8 @@ import CrannyCore
     /// The current status. Reading it never prompts; it is observable, so views follow changes.
     var status: PermissionStatus { get }
     /// Re-reads the status from the system. `force` re-reads even a cached grant (after access was revoked).
+    /// The live implementation re-queries every permission (`PermissionsCenter.refresh`), so the model calls it
+    /// only on a click and, for a while, after "Open Settings" — never on every panel open.
     func refresh(force: Bool)
     /// Shows the system prompt where one exists and returns the answer.
     func request() async -> PermissionStatus

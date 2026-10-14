@@ -38,10 +38,13 @@ final class FakeDiscovery: CameraDiscovering {
     }
 }
 
-/// Camera permission whose prompt stays up until the test answers it.
+/// Camera permission whose prompt stays up until the test answers it. `status` is the cached value (like
+/// `PermissionsCenter`); `systemStatus` is what System Settings says now, read by the next `refresh`.
 @Observable final class FakeAuthorization: CameraAuthorizing {
     var status: PermissionStatus
+    var systemStatus: PermissionStatus?
     private(set) var requests = 0
+    private(set) var refreshes = 0
     private(set) var forcedRefreshes = 0
     private(set) var settingsOpened = 0
     @ObservationIgnored private var pending: CheckedContinuation<PermissionStatus, Never>?
@@ -50,7 +53,11 @@ final class FakeDiscovery: CameraDiscovering {
 
     var isPromptShowing: Bool { pending != nil }
 
-    func refresh(force: Bool) { if force { forcedRefreshes += 1 } }
+    func refresh(force: Bool) {
+        refreshes += 1
+        if force { forcedRefreshes += 1 }
+        if let systemStatus { status = systemStatus }
+    }
 
     func request() async -> PermissionStatus {
         requests += 1

@@ -202,6 +202,43 @@ import Testing
         #expect(h.holds.count == 2)                   // every true got exactly one false
     }
 
+    @Test func openingThePanelNeverReReadsEveryPermission() async {
+        // `PermissionsCenter.refresh` re-queries every permission (Automation included) on the main actor: not on
+        // the panel-open path. The usual state before the first click is "not determined".
+        let h = MirrorHarness(.notDetermined)
+        let id = await h.show()
+        h.model.viewDisappeared(id)
+        await h.show()
+        await h.show()
+        #expect(h.authorization.refreshes == 0)
+        await h.model.tap()                           // a click re-reads it (the prompt follows)
+        #expect(h.authorization.refreshes == 1)
+        #expect(await eventually { h.authorization.isPromptShowing })
+        h.authorization.answer(.denied)
+    }
+
+    @Test func afterOpenSettingsTheNextOpenReadsTheNewAnswer() async {
+        let h = MirrorHarness(.denied)
+        let first = await h.show()
+        #expect(h.model.presentation(isLive: true).action == .openSettings)
+        await h.model.tap()                           // "Open Settings"
+        #expect(h.authorization.settingsOpened == 1)
+        let refreshes = h.authorization.refreshes
+
+        // The user allows the camera in System Settings and comes back by hovering (the app never activates).
+        h.authorization.systemStatus = .granted
+        h.model.viewDisappeared(first)
+        let second = await h.show()
+        #expect(h.authorization.refreshes == refreshes + 1)
+        #expect(h.model.presentation(isLive: true).action == .turnOn)
+        #expect(h.controller.starts.isEmpty)          // still waits for a click
+
+        // Granted: later openings do not re-read it any more.
+        h.model.viewDisappeared(second)
+        await h.show()
+        #expect(h.authorization.refreshes == refreshes + 1)
+    }
+
     @Test func revokedAccessIsReReadOnTheNextClick() async {
         let h = MirrorHarness()
         await h.run()
