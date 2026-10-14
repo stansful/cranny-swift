@@ -195,7 +195,12 @@ import Foundation
             if timer == .dwell {
                 if let environment = self.refreshEnvironment() { self.setEnvironment(environment) }
                 let dwell = max(ProcessInfo.processInfo.systemUptime - since, delay)
-                self.send(.dwellElapsed(shouldOpen: self.shouldOpen(dwell: dwell)))
+                if self.shouldOpen(dwell: dwell) {
+                    self.send(.dwellElapsed(shouldOpen: true))
+                } else {
+                    // Only the speed said no: still travelling, so look again instead of giving up until re-entry.
+                    self.send(self.isOnlyTooFast() ? .dwellRetry : .dwellElapsed(shouldOpen: false))
+                }
             } else {
                 self.send(.timerElapsed(timer))
             }
@@ -209,6 +214,13 @@ import Foundation
             mouseButtonDown: NSEvent.pressedMouseButtons != 0,
             optionHeld: settings[CoreSettings.holdOptionToPass] && NSEvent.modifierFlags.contains(.option),
             isFileDrag: false, fullScreenSpace: state.environment.restrictsToAlerts)
+    }
+
+    /// The pass-through speed is the one reason not to open (no button down, no ⌥ held).
+    private func isOnlyTooFast() -> Bool {
+        let settings = registry.services.settings
+        let optionHeld = settings[CoreSettings.holdOptionToPass] && NSEvent.modifierFlags.contains(.option)
+        return pointerSpeed() > HoverIntent.passThroughSpeed && NSEvent.pressedMouseButtons == 0 && !optionHeld
     }
 
     // MARK: Lookups

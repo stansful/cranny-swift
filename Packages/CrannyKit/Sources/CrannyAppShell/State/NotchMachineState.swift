@@ -175,6 +175,9 @@ nonisolated enum NotchInput: Equatable {
     case pointerLeft
     /// The dwell scheduled on entry elapsed; `shouldOpen` = `HoverIntent.shouldOpen(…)` at that moment.
     case dwellElapsed(shouldOpen: Bool)
+    /// The dwell elapsed while the pointer was still moving faster than the pass-through speed: dwell again (a
+    /// pointer that arrives fast and then rests on the notch opens; one that passes through leaves first).
+    case dwellRetry
     case timerElapsed(NotchTimer)
     case click
     /// Open Cranny hot key (⌃⌥N): toggles.

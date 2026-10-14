@@ -65,6 +65,10 @@ private nonisolated struct NotchReduction {
         case .pointerEntered: pointerEntered()
         case .pointerLeft: pointerLeft()
         case .dwellElapsed(let shouldOpen): dwellElapsed(shouldOpen: shouldOpen)
+        case .dwellRetry:
+            s.timers.remove(.dwell)
+            guard s.isClosed, case .dwelling = s.hover, !s.blocksInput else { break }
+            schedule(.dwell, dwell(config.hasPrimaryActivity ? HoverIntent.peekDwell : config.hoverDelay))
         case .timerElapsed(let timer): timerElapsed(timer)
         case .click:
             guard !s.blocksInput, !s.isOpen else { break }
@@ -195,6 +199,8 @@ private nonisolated struct NotchReduction {
         case .open:
             s.surface = .closed
             fx += [.relinquishKey, .emit(.closed)]
+            // An explicit close ends the pin: the next hover-open must not come back pinned.
+            if s.pinned { s.pinned = false; fx.append(.emit(.pinned(false))) }
         }
         for timer in [NotchTimer.dwell, .grace, .peekEnd, .catchEnd] { cancel(timer) }
         // A pointer still over the shape must leave and come back before it opens again.

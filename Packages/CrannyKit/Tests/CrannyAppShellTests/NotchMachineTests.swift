@@ -62,6 +62,11 @@ private func phase(_ s: NotchMachineState, _ c: NotchMachineConfig = idle) -> No
     #expect(left.hover == .outside && fx.last == .cancel(.dwell) && phase(left) == .idle)
     let (late, _) = run([.dwellElapsed(shouldOpen: true)], from: left)       // a dwell that was cancelled
     #expect(late.isClosed)
+    // Still moving fast when the dwell elapsed: look again; it opens once the pointer rests on the notch.
+    let (travelling, fx2) = run([.pointerEntered, .dwellRetry])
+    #expect(fx2 == [.schedule(.dwell, after: HoverIntent.defaultDelay.seconds), .schedule(.dwell, after: HoverIntent.defaultDelay.seconds)])
+    #expect(run([.dwellElapsed(shouldOpen: true)], from: travelling).0.isOpen)
+    #expect(run([.dwellRetry], from: left).1.isEmpty)                          // gone: nothing to retry
 }
 
 @Test func compactDwellsForAQuickPeekAndFullScreenDwellsLonger() {
@@ -190,6 +195,8 @@ private func phase(_ s: NotchMachineState, _ c: NotchMachineConfig = idle) -> No
 @Test func pinTogglesEmitAndPaletteOpeningIsAnnounced() {
     let (pinned, fx) = run([.setPinned(true), .setPinned(true)], from: opened())
     #expect(pinned.pinned && fx == [.emit(.pinned(true))])                    // no event for a no-op
+    let (closed, closeFx) = run([.escape], from: pinned)                        // closing ends the pin
+    #expect(closed.isClosed && !closed.pinned && closeFx.contains(.emit(.pinned(false))))
     let (palette, fx2) = run([.setMode(.palette)], from: opened())
     #expect(palette.openState?.mode == .palette && fx2 == [.emit(.paletteOpened)])
 }
