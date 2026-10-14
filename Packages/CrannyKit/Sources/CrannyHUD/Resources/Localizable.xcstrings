@@ -2,12 +2,23 @@
   "sourceLanguage" : "en",
   "strings" : {
     "%@ can also take the volume and brightness keys. If Cranny's HUD doesn't appear, turn off the HUD in that app." : {
-      "comment" : "Settings ▸ HUD: warning; argument is a list of app names such as MonitorControl",
+      "comment" : "Settings ▸ HUD: warning while ONE known app with its own HUD runs; argument is its name, such as MonitorControl",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ тоже может перехватывать клавиши громкости и яркости. Если индикатор Cranny не появляется, выключите индикатор в этом приложении."
+          }
+        }
+      }
+    },
+    "%@ can also take the volume and brightness keys. If Cranny's HUD doesn't appear, turn off the HUD in these apps." : {
+      "comment" : "Settings ▸ HUD: warning while SEVERAL known apps with their own HUD run; argument is a list of names, such as “MonitorControl and SoundSource”",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ тоже могут перехватывать клавиши громкости и яркости. Если индикатор Cranny не появляется, выключите индикатор в этих приложениях."
           }
         }
       }
@@ -51,7 +62,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Всегда виден, если включено «Различать без цвета»."
+            "value" : "Всегда виден, если включено «Дифференцировать без цвета»."
           }
         }
       }
