@@ -36,7 +36,9 @@ struct NookView: View {
         .frame(width: shape.bodyWidth, height: shape.height, alignment: .top)
         .padding(.top, shape.topInset)
         .foregroundStyle(theme.palette.label)
-        .background { NookHiddenShortcuts(perform: perform) }
+        // After the content in the view tree, so the panel's key equivalents are the fallback: a widget that binds
+        // one itself (Notes' delete confirmation: Cancel on Esc) takes it first (NookHiddenShortcuts).
+        .overlay { NookHiddenShortcuts(perform: perform) }
         .lifecycleReport("nook")
         .onAppear {
             AccessibilityNotification.LayoutChanged().post()                // VoiceOver lands in the opened panel

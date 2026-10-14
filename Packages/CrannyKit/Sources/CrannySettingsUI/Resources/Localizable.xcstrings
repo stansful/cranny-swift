@@ -1994,7 +1994,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ниже"
+            "value" : "Переместить ниже"
           }
         }
       }
@@ -2005,7 +2005,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Влево"
+            "value" : "Переместить влево"
           }
         }
       }
@@ -2016,7 +2016,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Вправо"
+            "value" : "Переместить вправо"
           }
         }
       }
@@ -2027,7 +2027,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Выше"
+            "value" : "Переместить выше"
           }
         }
       }
@@ -2049,7 +2049,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Уже"
+            "value" : "Уменьшить ширину"
           }
         }
       }
@@ -3618,7 +3618,7 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Шире"
+            "value" : "Увеличить ширину"
           }
         }
       }

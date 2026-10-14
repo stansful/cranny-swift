@@ -37,5 +37,7 @@ extension View {
     func notchGlyph(_ glyph: NotchGlyph) -> some View { font(glyph.font) }
 }
 
-/// The delight curves of DESIGN.md §5.5–§5.6 are Core's (`CrannyMotion.Delight`).
+/// The delight curves of DESIGN.md §5.5–§5.6 are Core's (`CrannyMotion.Delight`). NotchUI plays only the gulp
+/// itself, the one delight that is its own shape motion; CrannyEffects times the others. The gulp plays only when the
+/// owner allows a delight (never under Instant) and not under Reduce Motion.
 typealias DelightMotion = CrannyMotion.Delight

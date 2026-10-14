@@ -138,3 +138,40 @@ private let editing = LayoutEditing(pages: [home, focus], pageID: .nook, maxColu
         #expect(commands.allowedSizes(.calendar) == [2, 3, 4, 5])                 // 3 drawn + 2 left, max 5
     }
 }
+
+/// The panel's layout editor and Settings ▸ Layout & Widgets show on one screen, so their Russian copy says the
+/// same things the same way (DESIGN.md §17); the width actions are verb phrases, because a bare «Уже» reads and is
+/// spoken as уже́, "already".
+@Suite("Layout editor copy in Russian (DESIGN.md §17)") struct LayoutEditorCopyTests {
+    private let russian = Locale(identifier: "ru")
+
+    private func catalog() throws -> Bundle {
+        let path = try #require(Bundle.module.path(forResource: "ru", ofType: "lproj"))
+        return try #require(Bundle(path: path))
+    }
+
+    @Test func actionsAreVerbPhrases() throws {
+        let ru = try catalog()
+        func text(_ key: String) -> String { ru.localizedString(forKey: key, value: nil, table: "Localizable") }
+        #expect(text("Narrower") == "Уменьшить ширину")
+        #expect(text("Wider") == "Увеличить ширину")
+        #expect(text("Move left") == "Переместить влево")
+        #expect(text("Move right") == "Переместить вправо")
+    }
+
+    @Test func cellCountsUseTheWordsOfTheSettingsEditor() throws {
+        let ru = try catalog()
+        let left = ru.localizedString(forKey: "%lld cells left", value: nil, table: "Localizable")
+        #expect(String(format: left, locale: russian, 1) == "Свободна 1 ячейка")
+        #expect(String(format: left, locale: russian, 3) == "Свободно 3 ячейки")
+        #expect(String(format: left, locale: russian, 5) == "Свободно 5 ячеек")
+        let over = ru.localizedString(forKey: "%@ — %lld cells over; move a widget to another page", value: nil,
+                                      table: "Localizable")
+        #expect(String(format: over, locale: russian, "Погода", 1)
+                == "Погода — не помещается 1 ячейка; перенесите виджет на другую страницу")
+        #expect(String(format: over, locale: russian, "Погода", 2)
+                == "Погода — не помещаются 2 ячейки; перенесите виджет на другую страницу")
+        #expect(String(format: over, locale: russian, "Погода", 5)
+                == "Погода — не помещаются 5 ячеек; перенесите виджет на другую страницу")
+    }
+}

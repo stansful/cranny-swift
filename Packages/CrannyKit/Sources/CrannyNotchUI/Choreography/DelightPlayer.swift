@@ -1,20 +1,21 @@
 // CrannyNotchUI/Choreography/DelightPlayer.swift — plays `NotchSceneModel.delight` once per `delightSerial`
 // (DESIGN.md §5.5, ARCHITECTURE.md §4.6 step 7). The owner applies the caps (one at a time, not paused, not in
-// full screen, not under Calm/Instant); this file decides what is drawn, for how long, and the Reduce Motion
-// variant. Each moment lives ≤ 1 s and is then removed: no clock runs outside a moment.
+// full screen, not under Calm/Instant); this file decides which moment is drawn and for how long. CrannyEffects
+// draws them (`EmberBurst`, `ChargeSweep`, `FirstLight`, `songChangeRipple`, `LiquidNeck`), with their Reduce
+// Motion variants; the gulp is NotchUI's own shape motion. Each moment lives ≤ 1 s and is then removed: no clock
+// runs outside a moment.
 import CrannyCore
 import Foundation
 import SwiftUI
 
 /// The moment playing on this canvas, if any. Pure value: the subviews that draw a moment read it from the
 /// environment (`\.notchDelight`) — the ember below the shape, the rim sweep, the light layer's ripple and
-/// first light, the shape's gulp.
+/// first light, the shape's gulp — and start their view once per `serial`.
 nonisolated struct DelightPlayback: Equatable, Sendable {
     var moment: DelightMoment
     var serial: Int
-    var startedAt: Date
 
-    /// Lifetime of each moment (DESIGN.md §5.5–§5.6).
+    /// Lifetime of each moment (DESIGN.md §5.5–§5.6; CrannyEffects' durations, checked by the tests).
     static func lifetime(of moment: DelightMoment) -> Double {
         switch moment {
         case .emberBurst: 0.9
@@ -33,22 +34,13 @@ nonisolated struct DelightPlayback: Equatable, Sendable {
         moment != nil && serial > lastPlayed
     }
 
-    /// Frame interval of a moment drawn with a clock (ember burst, charge sweep): the effect budget's rate, 30 fps
-    /// on AC and 20 on battery (DESIGN.md §5.6 rule 6); nil (paused) while the panel is covered, the screen is
-    /// locked, the displays sleep or a full-screen app is in front. Low Power Mode does not pause them: a moment
-    /// lasts ≤ 1 s and Low Power is exactly when its SwiftUI design is drawn (DESIGN.md §5.5 "Engines"). Pure.
-    static func frameInterval(_ budget: EffectBudget) -> Double? {
-        var moment = budget
-        moment.isOpen = true
-        moment.lowPower = false
-        moment.reduceMotion = false
-        return moment.minimumInterval
+    /// Whether a moment drawn with a clock (ember burst, charge sweep) is drawn at all: not while the panel is
+    /// covered, the screen is locked, the displays sleep or a full-screen app is in front, so no clock runs for a
+    /// moment nobody sees. Neither Low Power (the moment then draws its SwiftUI design, DESIGN.md §5.5 "Engines")
+    /// nor a closed Nook stops one. Pure.
+    static func isSeen(_ budget: EffectBudget) -> Bool {
+        budget.onScreen && !budget.fullScreenFront
     }
-
-    /// Seconds since the start, clamped to the lifetime.
-    func elapsed(at date: Date) -> Double { min(max(date.timeIntervalSince(startedAt), 0), lifetime) }
-    /// 0…1 through the lifetime.
-    func progress(at date: Date) -> Double { elapsed(at: date) / lifetime }
 }
 
 extension EnvironmentValues {
@@ -71,7 +63,7 @@ struct DelightPlayer: ViewModifier {
                 guard DelightPlayback.shouldPlay(moment: moment, serial: newSerial, lastPlayed: lastPlayed ?? newSerial - 1),
                       let moment else { return }
                 lastPlayed = newSerial
-                playback = DelightPlayback(moment: moment, serial: newSerial, startedAt: Date())
+                playback = DelightPlayback(moment: moment, serial: newSerial)
             }
             .task(id: playback?.serial) {
                 guard let current = playback else { return }

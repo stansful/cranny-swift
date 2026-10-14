@@ -109,6 +109,34 @@ struct ModifiedCounter<M: ViewModifier>: View {
     func peekRow() -> some View { InstanceCounter(probe: probe) }
 }
 
+/// What the keys reached, in order.
+@MainActor final class KeyLog {
+    var hits: [String] = []
+}
+
+/// A widget showing an inline confirmation like Notes' delete: Cancel on Esc (`.cancelAction`) and Delete on
+/// Return (`.defaultAction`), inside the open panel's hosting view.
+@MainActor final class ConfirmingWidget: NookWidget {
+    let id: WidgetID
+    let title = "Confirm"
+    let symbol = "note.text"
+    let summary = ""
+    let sizes = WidgetSizes(minimum: 4, preferred: 5, maximum: 6)
+    let log: KeyLog
+    init(_ id: WidgetID, log: KeyLog) { self.id = id; self.log = log }
+    func makeBody(context: WidgetContext) -> some View {
+        VStack {
+            Text(verbatim: "Delete?")
+            HStack {
+                Button { self.log.hits.append("card.cancel") } label: { Text(verbatim: "Cancel") }
+                    .keyboardShortcut(.cancelAction)
+                Button { self.log.hits.append("card.delete") } label: { Text(verbatim: "Delete") }
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+    }
+}
+
 /// A widget whose body reports every new instance.
 @MainActor final class ProbeWidget: NookWidget {
     let id: WidgetID
