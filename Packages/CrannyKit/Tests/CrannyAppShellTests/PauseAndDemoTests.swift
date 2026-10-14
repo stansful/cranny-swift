@@ -42,13 +42,18 @@ private func date(_ calendar: Calendar, _ day: Int, _ hour: Int, _ minute: Int =
 
 @Test func pauseStatusLinesAreLocalizedSentences() {
     let calendar = berlinCalendar()
-    let now = date(calendar, 14, 14, 42)
-    let later = PauseMenu.caption(.untilLaterToday(date(calendar, 14, 15, 42)))
-    #expect(later.contains(date(calendar, 14, 15, 42).formatted(date: .omitted, time: .shortened)))
+    let laterToday = date(calendar, 14, 15, 42)
+    let later = PauseMenu.caption(.untilLaterToday(laterToday))
+    #expect(later.contains(laterToday.formatted(date: .omitted, time: .shortened)))
+    // A one-hour pause started at 23:30 ends on the next day: the line names the weekday and the time.
+    let nextDay = date(calendar, 15, 0, 30)
+    let other = PauseMenu.caption(.untilDate(nextDay))
+    #expect(other.contains(nextDay.formatted(.dateTime.weekday(.abbreviated))))
+    #expect(other.contains(nextDay.formatted(date: .omitted, time: .shortened)))
+    #expect(other != PauseMenu.caption(.untilLaterToday(nextDay)))
     #expect(!PauseMenu.caption(.untilTomorrow).isEmpty && !PauseMenu.caption(.untilResumed).isEmpty)
     #expect(PauseMenu.caption(.untilTomorrow) != PauseMenu.caption(.untilResumed))
     #expect(PauseMenu.caption(.notPaused).isEmpty)
-    _ = now
 }
 
 @Test func pauseAndResumeWriteTheOnlyKey() {

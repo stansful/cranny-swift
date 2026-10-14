@@ -13,7 +13,7 @@
       }
     },
     "About Cranny" : {
-      "comment" : "Menu bar: opens the About panel",
+      "comment" : "Menu bar: opens Settings ▸ About",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -266,12 +266,23 @@
       }
     },
     "Live Activities paused until %@" : {
-      "comment" : "Menu bar: status line of a pause; the argument is a time, e.g. 15:42",
+      "comment" : "Menu bar: status line of a pause that ends later today; the argument is a time, e.g. 15:42",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
             "value" : "Активности приостановлены до %@"
+          }
+        }
+      }
+    },
+    "Live Activities paused until %@ at %@" : {
+      "comment" : "Menu bar: status line of a pause that ends on another day; the arguments are a weekday and a time, e.g. Thu and 00:30",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Активности приостановлены до %1$@, %2$@"
           }
         }
       }
@@ -310,7 +321,7 @@
       }
     },
     "Pause Live Activities for 1 hour" : {
-      "comment" : "⌘K: command",
+      "comment" : "⌘K: command that pauses Live Activities for one hour",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -442,7 +453,7 @@
       }
     },
     "Turn off demo mode" : {
-      "comment" : "⌘K: command",
+      "comment" : "⌘K: command that turns Demo mode off",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -453,7 +464,7 @@
       }
     },
     "Turn on demo mode" : {
-      "comment" : "⌘K: command",
+      "comment" : "⌘K: command that turns Demo mode on",
       "localizations" : {
         "ru" : {
           "stringUnit" : {

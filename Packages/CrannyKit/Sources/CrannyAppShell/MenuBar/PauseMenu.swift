@@ -42,17 +42,22 @@ struct PauseMenu: View {
         case .notPaused:
             ""
         case .untilLaterToday(let until):
-            String(localized: "Live Activities paused until \(until.formatted(date: .omitted, time: .shortened))", bundle: .module,
-                   comment: "Menu bar: status line of a pause; the argument is a time, e.g. 15:42")
+            String(localized: "Live Activities paused until \(time(until))", bundle: .module,
+                   comment: "Menu bar: status line of a pause that ends later today; the argument is a time, e.g. 15:42")
         case .untilTomorrow:
             String(localized: "Live Activities paused until tomorrow", bundle: .module, comment: "Menu bar: status line of a pause that ends at midnight")
         case .untilDate(let until):
-            String(localized: "Live Activities paused until \(until.formatted(.dateTime.weekday(.abbreviated).hour().minute()))",
-                   bundle: .module, comment: "Menu bar: status line of a pause; the argument is a time, e.g. 15:42")
+            String(localized: "Live Activities paused until \(weekday(until)) at \(time(until))", bundle: .module,
+                   comment: "Menu bar: status line of a pause that ends on another day; the arguments are a weekday and a time, e.g. Thu and 00:30")
         case .untilResumed:
             String(localized: "Live Activities paused", bundle: .module, comment: "Menu bar: status line of a pause without an end")
         }
     }
+
+    /// "15:42" or "3:42 PM", as the user's locale writes times.
+    private static func time(_ date: Date) -> String { date.formatted(date: .omitted, time: .shortened) }
+    /// "Thu", "чт".
+    private static func weekday(_ date: Date) -> String { date.formatted(.dateTime.weekday(.abbreviated)) }
 }
 
 #Preview("Pause · not paused and paused") {

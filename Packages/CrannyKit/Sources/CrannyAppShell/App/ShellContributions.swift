@@ -69,13 +69,14 @@ import Foundation
                 kind: kind, symbol: "play.fill", keywords: Self.keywords(.pause)) { pause.resume() })
         } else {
             result.append(PaletteCommand(
-                id: "shell.pause", title: String(localized: "Pause Live Activities for 1 hour", bundle: .module, comment: "⌘K: command"),
+                id: "shell.pause", title: String(localized: "Pause Live Activities for 1 hour", bundle: .module,
+                                                   comment: "⌘K: command that pauses Live Activities for one hour"),
                 kind: kind, symbol: "pause.fill", keywords: Self.keywords(.pause)) { pause.pause(.oneHour) })
         }
         result.append(PaletteCommand(
             id: "shell.demo",
-            title: demo.isOn ? String(localized: "Turn off demo mode", bundle: .module, comment: "⌘K: command")
-                             : String(localized: "Turn on demo mode", bundle: .module, comment: "⌘K: command"),
+            title: demo.isOn ? String(localized: "Turn off demo mode", bundle: .module, comment: "⌘K: command that turns Demo mode off")
+                             : String(localized: "Turn on demo mode", bundle: .module, comment: "⌘K: command that turns Demo mode on"),
             kind: kind, symbol: "sparkles", keywords: Self.keywords(.demo)) { demo.toggle() })
         let pinned = overlay?.isPinned ?? false
         result.append(PaletteCommand(

@@ -46,7 +46,7 @@ struct MenuBarContent: View {
             Text("Show Tutorial", bundle: .module, comment: "Menu bar: replays the interactive tutorial in the notch")
         }
         Divider()
-        Button { appControl.showAbout() } label: { Text("About Cranny", bundle: .module, comment: "Menu bar: opens the About panel") }
+        Button { appControl.showAbout() } label: { Text("About Cranny", bundle: .module, comment: "Menu bar: opens Settings ▸ About") }
         Button { appControl.quit() } label: { Text("Quit Cranny", bundle: .module, comment: "Menu bar: quits the app") }
             .keyboardShortcut("q")
     }
