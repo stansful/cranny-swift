@@ -111,6 +111,7 @@ private typealias ProbeNotchPhase = NotchPhase
 private typealias ProbeNotchShape = NotchShape
 private typealias ProbeNotchZones = NotchZones
 private typealias ProbeNowPlaying = NowPlaying
+private typealias ProbeNowPlayingDiagnostics = any NowPlayingDiagnostics
 private typealias ProbeNowPlayingSource = any NowPlayingSource
 private typealias ProbeObservationToken = ObservationToken
 private typealias ProbeOpenMode = OpenMode
