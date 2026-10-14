@@ -13,8 +13,8 @@ concurrency:
 jobs:
   build:
     # Xcode-27 image (arm64, macOS 27, Xcode 27.0 default; public preview since 2026-07-16).
-    # Fallback while it is in preview: `macos-26` (Xcode 26.x default) also satisfies the
-    # project's minimum (Xcode 26 / Swift 6.2), see docs.
+    # The `build-macos-26` job below is the fallback while it is in preview and covers the
+    # project's minimum toolchain (Xcode 26 / Swift 6.2), ARCHITECTURE.md §8.9.
     runs-on: xcode-27
     timeout-minutes: 30
     steps:
@@ -66,4 +66,60 @@ jobs:
         if: failure()
         with:
           name: logs-${{ github.sha }}
+          path: build/logs/
+
+  build-macos-26:
+    # Fallback and minimum-toolchain job (ARCHITECTURE.md §8.9): the `macos-26` image with its default
+    # Xcode 26.x (Swift 6.2). Same steps as `build` except strings-check, whose tooling needs Xcode 27's
+    # SwiftPM (`--build-system swiftbuild`, §8.5). It has not run on GitHub yet: until its first green run
+    # is recorded in §8.9 it reports without failing the workflow; then remove `continue-on-error`.
+    runs-on: macos-26
+    timeout-minutes: 30
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Toolchain
+        run: |
+          xcode-select -p
+          xcodebuild -version
+          swift --version
+
+      - name: Metal Toolchain (CrannyEffects compiles Metal shaders)
+        run: |
+          xcodebuild -showComponent MetalToolchain | grep -q 'Status: installed' || xcodebuild -downloadComponent MetalToolchain
+          xcodebuild -showComponent MetalToolchain
+          xcrun metal -v
+
+      - name: Every CrannyKit module builds on its own (zero warnings) + unit tests
+        run: JOBS=3 TEST=1 scripts/check-modules.sh
+
+      - name: SDK name-collision probe is up to date
+        run: CHECK=1 scripts/name-probe.sh
+
+      - name: Release build (universal arm64 + x86_64, ad-hoc signed)
+        env:
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: scripts/build.sh
+
+      - name: Launch smoke test (--diagnostics, no UI)
+        run: scripts/smoke.sh
+
+      - name: Package zip + dmg
+        run: scripts/dist.sh
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Cranny-macos-26-${{ github.sha }}
+          path: |
+            dist/*.zip
+            dist/*.dmg
+            dist/*.sha256
+          if-no-files-found: error
+          retention-days: 14
+
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: logs-macos-26-${{ github.sha }}
           path: build/logs/
