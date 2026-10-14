@@ -21,14 +21,6 @@ nonisolated enum EffectTiming {
     static func momentInterval(_ budget: EffectBudget) -> Double {
         budget.onBattery ? 1.0 / 20 : 1.0 / 30
     }
-
-    /// The next frame deadline: one interval after the previous one, or one interval from now when frames were
-    /// missed (sleep, a busy main thread), so a paced loop never fires a burst of catch-up frames.
-    static func nextDeadline(after previous: ContinuousClock.Instant, now: ContinuousClock.Instant,
-                             interval: Double) -> ContinuousClock.Instant {
-        let next = previous.advanced(by: .seconds(interval))
-        return next > now ? next : now.advanced(by: .seconds(interval))
-    }
 }
 
 /// The song-change ripple (DESIGN.md §4.3, §5.6 `songRipple`): a 0.6-s radial wave from the camera, plus the

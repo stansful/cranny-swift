@@ -25,10 +25,10 @@ import Testing
 @Test func pacingNeverCatchesUp() {
     let clock = ContinuousClock()
     let start = clock.now
-    let next = EffectTiming.nextDeadline(after: start, now: start, interval: 0.5)
+    let next = FramePacing.nextDeadline(after: start, now: start, interval: 0.5)
     #expect(next == start.advanced(by: .seconds(0.5)))
     let late = start.advanced(by: .seconds(3))                         // three seconds of missed frames
-    #expect(EffectTiming.nextDeadline(after: start, now: late, interval: 0.5) == late.advanced(by: .seconds(0.5)))
+    #expect(FramePacing.nextDeadline(after: start, now: late, interval: 0.5) == late.advanced(by: .seconds(0.5)))
 }
 
 /// Song change is "Colour only" under Calm and Reduce Motion (DESIGN.md §5.5), and Instant has no motion at all.

@@ -224,7 +224,7 @@ final class AmbientMetalNSView: NSView {
             let clock = ContinuousClock()
             var deadline = clock.now
             while !Task.isCancelled {
-                deadline = EffectTiming.nextDeadline(after: deadline, now: clock.now, interval: interval)
+                deadline = FramePacing.nextDeadline(after: deadline, now: clock.now, interval: interval)
                 do {
                     try await Task.sleep(until: deadline, tolerance: .seconds(interval / 8), clock: clock)
                 } catch {
