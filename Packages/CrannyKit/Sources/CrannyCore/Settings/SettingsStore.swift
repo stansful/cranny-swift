@@ -38,7 +38,8 @@ public nonisolated struct SettingKey<Value: Codable & Sendable & Equatable>: Sen
 @MainActor public final class SettingsStore {
     /// Prefix of every stored key ("cranny.timer.presets").
     public static let keyPrefix = "cranny."
-    private let defaults: UserDefaults
+    /// The store's `UserDefaults` (internal: the one-time upgrades in SettingsUpgrades.swift read it directly).
+    let defaults: UserDefaults
     private var boxes: [String: AnyObject] = [:]
     private var reloadHandlers: [String: @MainActor () -> Void] = [:]
     private let encoder = JSONEncoder()
@@ -91,7 +92,8 @@ public nonisolated struct SettingKey<Value: Codable & Sendable & Equatable>: Sen
     }
     /// Replaces every Cranny key with `snapshot` and updates the live values (Undo of "Reset All").
     public func restore(_ snapshot: Snapshot) {
-        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(Self.keyPrefix) {
+        for key in defaults.dictionaryRepresentation().keys
+        where key.hasPrefix(Self.keyPrefix) && key != Self.revisionKey {      // the revision is not a setting
             defaults.removeObject(forKey: key)
         }
         for (key, data) in snapshot.values { defaults.set(data, forKey: key) }
@@ -99,8 +101,8 @@ public nonisolated struct SettingKey<Value: Codable & Sendable & Equatable>: Sen
     }
 
     private func reset(prefix: String) {
-        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(prefix) {
-            defaults.removeObject(forKey: key)
+        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(prefix) && key != Self.revisionKey {
+            defaults.removeObject(forKey: key)               // the revision stays: a reset install is not an old one
         }
         for (id, handler) in reloadHandlers where (Self.keyPrefix + id).hasPrefix(prefix) { handler() }
     }

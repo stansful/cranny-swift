@@ -46,7 +46,9 @@ private func keyEvent(_ characters: String, keyCode: UInt16, in window: NSWindow
     defer { panel.close() }
     panel.contentView = NSView(frame: panel.frame)
     let router = KeyboardRouter(panel: panel, viewModel: f.viewModel, registry: f.registry)
-    #expect(f.settings[CoreSettings.typeToCapture] == "notes")                // the default target
+    #expect(f.settings[CoreSettings.typeToCapture] == nil)                    // off on a fresh install (ruling E2)
+    #expect(router.captureTarget() == nil)
+    f.settings[CoreSettings.typeToCapture] = "notes"                          // chosen (or kept by an earlier install)
 
     f.viewModel.send(.hotKey)                                                   // the default Listener Home: no Notes
     #expect(router.captureTarget() == nil)

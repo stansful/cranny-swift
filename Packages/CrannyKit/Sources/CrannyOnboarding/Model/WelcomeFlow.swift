@@ -1,7 +1,8 @@
 // CrannyOnboarding/Model/WelcomeFlow.swift — the Welcome window's state and rules (DESIGN.md §12.1): the
 // current step, real detection on the notch through `NotchControl.addEventObserver`, the choices each step
 // writes (open mode, hover delay, Home layout — instantly, ARCHITECTURE.md D14), permission rows, the practice
-// notch, and how the window ends. Views read it; only it writes settings. Testable with `CrannyServices.preview()`.
+// notch, and how the window ends. Views read it; only it writes settings (a preset also sets Type to capture, ruling
+// E2). Testable with `CrannyServices.preview()`.
 import AppKit
 import CrannyCore
 import Foundation
@@ -290,9 +291,13 @@ private let log = Log.logger(.onboarding)
     /// The preset Home matches now; nil for a layout of one's own (kept unless a preset is picked).
     var selectedPreset: NookPreset? { PresetLayout.matching(services.settings[CoreSettings.pages]) }
 
+    /// Rewrites Home with the preset and sets Type to capture to follow it (`PresetLayout.captureTarget`).
     func pick(_ preset: NookPreset) {
-        let pages = services.settings[CoreSettings.pages]
-        services.settings[CoreSettings.pages] = PresetLayout.applying(preset, to: pages)
+        let settings = services.settings
+        let pages = PresetLayout.applying(preset, to: settings[CoreSettings.pages])
+        settings[CoreSettings.pages] = pages
+        settings[CoreSettings.typeToCapture] = PresetLayout.captureTarget(
+            home: preset.items, pages: pages, current: settings[CoreSettings.typeToCapture], targets: registry.captureTargets)
         stage.refreshLayout()
     }
 

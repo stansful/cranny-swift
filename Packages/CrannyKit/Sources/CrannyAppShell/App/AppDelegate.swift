@@ -2,7 +2,8 @@
 // Builds the ports and the registry (CompositionRoot), registers the shell's own contributions, then owns and
 // starts four components with final initializers: OverlayCoordinator, SettingsWindowController,
 // WelcomeWindowController and ShellAppServices. `--diagnostics` exits before any window exists, and
-// before any module launched, so no terminate hook runs then either (`LaunchGate`).
+// before any module launched, so no terminate hook runs then either (`LaunchGate`), and before the one-time settings
+// upgrade, so it writes no preference.
 import AppKit
 import CrannyCore
 import Foundation
@@ -33,6 +34,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
             Task { await Diagnostics.write(to: out, registry: registry); NSApp.terminate(nil) }
             return
         }
+        registry.services.settings.upgradeStoredSettings()   // once per install and revision; never in --diagnostics
         environment.start(settings: registry.services.settings)
 
         let overlay = OverlayCoordinator(registry: registry, environment: environment)

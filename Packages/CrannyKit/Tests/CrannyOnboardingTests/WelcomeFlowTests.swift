@@ -214,6 +214,20 @@ import Testing
         flow.stop()
     }
 
+    @Test func pickingAPresetSetsTypeToCapture() {
+        let (flow, registry, _, _) = makeFlow(step: .preset)
+        registry.add(captureTarget: CaptureTarget(id: "notes", title: "Notes", symbol: "note.text", widget: .notes) { _ in .notes })
+        registry.add(captureTarget: CaptureTarget(id: "todos", title: "To-dos", symbol: "checklist", widget: .todos) { _ in .todos })
+        let settings = registry.services.settings
+        flow.start(reduceMotion: true)
+        #expect(settings[CoreSettings.typeToCapture] == nil)                 // a fresh install: Off (ruling E2)
+        flow.pick(.maker)
+        #expect(settings[CoreSettings.typeToCapture] == "notes")
+        flow.pick(.meetings)
+        #expect(settings[CoreSettings.typeToCapture] == nil)                 // Notes is on no page any more
+        flow.stop()
+    }
+
     // MARK: Step 5 · permissions
 
     @Test func permissionRowsFollowTheLayoutAndAskOnlyOnAllow() async throws {
