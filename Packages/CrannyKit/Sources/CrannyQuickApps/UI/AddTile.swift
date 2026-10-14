@@ -33,7 +33,7 @@ struct AddTile: View {
         }
         .buttonStyle(TileButtonStyle(metrics: metrics))
         .focusable(false)                       // the grid makes the tile itself focusable (arrows)
-        .background(MenuAnchorView(anchor: anchor))
+        .menuAnchor(anchor)
         .help(title)
         .accessibilityLabel(Text(verbatim: title))
         .onHover { inside in if inside { model.prepareShortcutList() } }

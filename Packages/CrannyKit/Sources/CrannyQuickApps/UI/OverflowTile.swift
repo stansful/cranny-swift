@@ -46,7 +46,7 @@ struct OverflowTile: View {
         .buttonStyle(TileButtonStyle(metrics: metrics))
         .focusable(false)                       // the grid makes the tile itself focusable (arrows)
         .disabled(!interactive)
-        .background(MenuAnchorView(anchor: anchor))
+        .menuAnchor(anchor, enabled: interactive)
         .help(helpText(more: more, state: state))
         .accessibilityLabel(Text(verbatim: more))
         .accessibilityValue(Text(verbatim: accessibilityValue(state)))

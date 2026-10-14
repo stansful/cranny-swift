@@ -46,6 +46,29 @@ struct MenuEntry {
     init() {}
 }
 
+extension EnvironmentValues {
+    /// Whether tiles attach their AppKit menu anchor. Off where the launcher is rendered to an image: `ImageRenderer`
+    /// cannot draw AppKit views and would draw its placeholder over the tile (the snapshot tests).
+    @Entry var quickAppsMenuAnchors = true
+}
+
+extension View {
+    /// Puts `anchor` behind this tile (see `MenuAnchorView`) when `enabled` — only where its menu can open.
+    func menuAnchor(_ anchor: MenuAnchor, enabled: Bool = true) -> some View {
+        modifier(MenuAnchorModifier(anchor: anchor, enabled: enabled))
+    }
+}
+
+private struct MenuAnchorModifier: ViewModifier {
+    @Environment(\.quickAppsMenuAnchors) private var attaches
+    let anchor: MenuAnchor
+    let enabled: Bool
+
+    func body(content: Content) -> some View {
+        content.background { if enabled && attaches { MenuAnchorView(anchor: anchor) } }
+    }
+}
+
 /// Marks the tile's frame for AppKit. Draws nothing and never takes a click, so the tile behaves as before.
 struct MenuAnchorView: NSViewRepresentable {
     let anchor: MenuAnchor
@@ -162,9 +185,9 @@ private final class MenuActionTarget: NSObject {
     let anchor = MenuAnchor()
     Button { PopUpMenu.show([MenuEntry("Finder") {}, .separator, MenuEntry(disabled: "Loading…")], anchor: anchor) } label: {
         Text(verbatim: "+")
-            .frame(width: 56, height: 56)
+            .padding(Space.xl)
     }
-    .background(MenuAnchorView(anchor: anchor))
+    .menuAnchor(anchor)
     .padding(Space.xl)
     .background(.black)
     .crannyThemeRoot(CrannyTheme())

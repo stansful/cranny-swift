@@ -48,10 +48,15 @@ struct LauncherSnapshot {
             ("11-flat", QuickAppsPreview.model(), 3, flat, NotchContext()),
             ("12-roomy-6cells", QuickAppsPreview.model(apps: many), 6, roomy, NotchContext()),
             ("13-one-cell-editing-empty", QuickAppsPreview.model(apps: [], shortcuts: [], editing: true), 1, CrannyTheme(), NotchContext()),
+            // Shortcuts in "+N" still show their run state there (the default 2-cell launcher with shortcuts added).
+            ("14-overflow-running", QuickAppsPreview.model(states: states), 2, CrannyTheme(), NotchContext()),
+            ("15-overflow-failed", QuickAppsPreview.model(states: [QuickAppsPreview.sampleShortcuts[2].id: .failed(.shortcutFailed)]),
+             2, CrannyTheme(), NotchContext()),
         ]
         for (name, model, cells, theme, context) in variants {
             await warmIcons(model, theme: theme)
             let view = QuickAppsPreview.card(model: model, cells: cells, theme: theme, context: context)
+                .environment(\.quickAppsMenuAnchors, false)       // AppKit anchors render as placeholders here
             let renderer = ImageRenderer(content: view)
             renderer.scale = 2
             let image = try #require(renderer.cgImage)
