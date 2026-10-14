@@ -54,36 +54,6 @@
     "%lld cells" : {
       "comment" : "Settings ▸ Layout & Widgets: a widget's width in grid cells (plural)",
       "localizations" : {
-        "ru" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld ячейка"
-                }
-              },
-              "few" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld ячейки"
-                }
-              },
-              "many" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld ячеек"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "%lld ячейки"
-                }
-              }
-            }
-          }
-        },
         "en" : {
           "variations" : {
             "plural" : {
@@ -101,42 +71,42 @@
               }
             }
           }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ячейки"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ячеек"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ячейка"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld ячейки"
+                }
+              }
+            }
+          }
         }
       }
     },
     "%lld cells left" : {
       "comment" : "Settings ▸ Layout & Widgets: free cells on the page (plural)",
       "localizations" : {
-        "ru" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Свободна %lld ячейка"
-                }
-              },
-              "few" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Свободно %lld ячейки"
-                }
-              },
-              "many" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Свободно %lld ячеек"
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Свободно %lld ячейки"
-                }
-              }
-            }
-          }
-        },
         "en" : {
           "variations" : {
             "plural" : {
@@ -154,42 +124,42 @@
               }
             }
           }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Свободно %lld ячейки"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Свободно %lld ячеек"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Свободна %lld ячейка"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Свободно %lld ячейки"
+                }
+              }
+            }
+          }
         }
       }
     },
     "%lld cells over; move a widget to another page." : {
       "comment" : "Settings ▸ Layout & Widgets: a change would not fit; the argument is the number of extra cells (plural)",
       "localizations" : {
-        "ru" : {
-          "variations" : {
-            "plural" : {
-              "one" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Не помещается %lld ячейка — перенесите виджет на другую страницу."
-                }
-              },
-              "few" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Не помещаются %lld ячейки — перенесите виджет на другую страницу."
-                }
-              },
-              "many" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Не помещаются %lld ячеек — перенесите виджет на другую страницу."
-                }
-              },
-              "other" : {
-                "stringUnit" : {
-                  "state" : "translated",
-                  "value" : "Не помещаются %lld ячейки — перенесите виджет на другую страницу."
-                }
-              }
-            }
-          }
-        },
         "en" : {
           "variations" : {
             "plural" : {
@@ -203,6 +173,36 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld cells over; move a widget to another page."
+                }
+              }
+            }
+          }
+        },
+        "ru" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Не помещаются %lld ячейки — перенесите виджет на другую страницу."
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Не помещаются %lld ячеек — перенесите виджет на другую страницу."
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Не помещается %lld ячейка — перенесите виджет на другую страницу."
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "Не помещаются %lld ячейки — перенесите виджет на другую страницу."
                 }
               }
             }
@@ -3518,7 +3518,7 @@
       }
     },
     "Updates" : {
-      "comment" : "Settings ▸ General: section header",
+      "comment" : "Settings: section header (General, About)",
       "localizations" : {
         "ru" : {
           "stringUnit" : {

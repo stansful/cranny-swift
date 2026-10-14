@@ -19,7 +19,7 @@ struct PreviewStage: View {
             StageControlBar(controller: controller)
             Divider()
         }
-        .background(WindowVisibilityReader { isWindowVisible = $0 })
+        .background(WindowVisibilityReader { isWindowVisible = $0 || SettingsQAOptions.keepsStageLive })
         .onAppear { controller.start() }
         .onDisappear { controller.stop() }
         .onChange(of: isWindowVisible) { _, visible in

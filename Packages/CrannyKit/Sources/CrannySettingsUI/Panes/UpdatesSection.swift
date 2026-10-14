@@ -60,7 +60,7 @@ struct UpdatesSection: View {
             ToggleRow(info: GeneralRows.prereleases, settings: settings, key: CoreSettings.includesPrereleases)
             UpdateStatusRow(app: app, lastCheck: settings[CoreSettings.lastUpdateCheck])
         } header: {
-            Text("Updates", bundle: .module, comment: "Settings ▸ General: section header")
+            Text("Updates", bundle: .module, comment: "Settings: section header (General, About)")
         }
     }
 }

@@ -11,9 +11,10 @@ struct StageControlBar: View {
 
     var body: some View {
         ViewThatFits(in: .horizontal) {
-            row(statePicker: .segmented, chipsInline: true)
-            row(statePicker: .segmented, chipsInline: false)
-            row(statePicker: .menu, chipsInline: false)
+            row(statePicker: .segmented, chipsInline: true, compactButton: false)
+            row(statePicker: .segmented, chipsInline: false, compactButton: false)
+            row(statePicker: .segmented, chipsInline: false, compactButton: true)
+            row(statePicker: .menu, chipsInline: false, compactButton: false)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
@@ -21,7 +22,7 @@ struct StageControlBar: View {
 
     private enum PickerKind { case segmented, menu }
 
-    private func row(statePicker kind: PickerKind, chipsInline: Bool) -> some View {
+    private func row(statePicker kind: PickerKind, chipsInline: Bool, compactButton: Bool) -> some View {
         HStack(spacing: 12) {
             statePicker(kind)
             Spacer(minLength: 8)
@@ -33,7 +34,12 @@ struct StageControlBar: View {
             Button {
                 controller.showOnNotch()
             } label: {
-                Text("Show on Notch", bundle: .module, comment: "Settings preview stage: plays the preview on the real notch for 5 s")
+                if compactButton {
+                    Image(systemName: "play.fill")
+                        .accessibilityLabel(Text("Show on Notch", bundle: .module, comment: "Settings preview stage: plays the preview on the real notch for 5 s"))
+                } else {
+                    Text("Show on Notch", bundle: .module, comment: "Settings preview stage: plays the preview on the real notch for 5 s")
+                }
             }
             .controlSize(.small)
             .help(Text("Plays this preview on your notch for 5 seconds.", bundle: .module,

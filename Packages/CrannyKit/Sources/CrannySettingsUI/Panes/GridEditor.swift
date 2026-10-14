@@ -121,7 +121,7 @@ private struct EditorCard: View {
             return true
         } isTargeted: { isTargeted = $0 }
         .contextMenu { menu }
-        .focusable()
+        .focusable(interactions: .activate)       // in the key loop with keyboard navigation only, no ring by default
         .focused($focused)
         .focusEffectDisabled()
         .onKeyPress(keys: [.leftArrow, .rightArrow]) { press in

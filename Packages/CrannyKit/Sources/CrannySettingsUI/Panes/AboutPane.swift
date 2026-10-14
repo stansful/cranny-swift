@@ -64,6 +64,8 @@ struct AboutPane: View {
                         Text("Source code", bundle: .module, comment: "Settings ▸ About: row label")
                     }
                 }
+            } header: {
+                Text("Updates", bundle: .module, comment: "Settings: section header (General, About)")
             }
             Section {
                 LabeledContent {
