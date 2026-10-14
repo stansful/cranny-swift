@@ -77,6 +77,42 @@ import Testing
         #expect(changes == 10)
         #expect(triggers.last == triggers[triggers.count - 2])
     }
+
+    /// Pulses a viewer sees across renders: the trigger changed and the new render scales up.
+    private func visiblePulses(_ renders: [(state: TimerState, now: Date)]) -> Int {
+        var count = 0
+        var previous: Int?
+        for render in renders {
+            let seconds = render.state.displayedSeconds(at: render.now)
+            let pulsing = render.state.isInPulseWindow(at: render.now)
+            let trigger = TimerDigits.pulseTrigger(seconds: seconds, pulsing: pulsing)
+            if let previous, previous != trigger, TimerDigits.pulseScale(up: true, pulsing: pulsing, animates: true) > 1 {
+                count += 1
+            }
+            previous = trigger
+        }
+        return count
+    }
+
+    @Test func leavingThePulseWindowEarlyPlaysNoExtraPulse() {
+        var running = TimerState()
+        running.start(duration: 60, now: t0)
+        let shows7 = t0.addingTimeInterval(53.5)                                // 6.5 s left
+        var paused = running
+        paused.pause(now: shows7)
+        var longer = paused
+        longer.adjust(by: 60, now: shows7)
+        let pauseThenAdd = [(running, t0.addingTimeInterval(52.5)), (running, shows7),   // "0:08" → "0:07": a pulse
+                            (paused, shows7), (paused, shows7.addingTimeInterval(5)),    // paused in the window
+                            (longer, shows7.addingTimeInterval(5))]                      // +1 min while paused
+        #expect(visiblePulses(pauseThenAdd.map { (state: $0.0, now: $0.1) }) == 1)
+
+        var added = running
+        added.addTime(60, now: shows7)                                          // +1 min while pulsing
+        #expect(visiblePulses([(running, shows7), (added, shows7)].map { (state: $0.0, now: $0.1) }) == 0)
+        #expect(TimerDigits.pulseScale(up: true, pulsing: true, animates: false) == 1)   // Calm, Instant, Reduce Motion
+        #expect(TimerDigits.pulseScale(up: false, pulsing: true, animates: true) == 1)
+    }
 }
 
 @Suite struct ScrollDetentsTests {

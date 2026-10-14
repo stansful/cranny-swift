@@ -29,7 +29,7 @@ struct TimerDigits: View {
                 .contentTransition(theme.reduceMotion ? .opacity : .numericText(countsDown: true))
                 .animation(rolls ? theme.animation(.contentSwap) : nil, value: state)          // jumps only, never ticks
                 .phaseAnimator([false, true], trigger: Self.pulseTrigger(seconds: seconds, pulsing: pulsing)) { content, up in
-                    content.scaleEffect(up && pulses ? TimerMetrics.pulseScale : 1)
+                    content.scaleEffect(Self.pulseScale(up: up, pulsing: pulsing, animates: pulses))
                 } animation: { up in
                     // Short on purpose: every frame of it re-renders the panel (≈ 0.2 s per second, 10 times).
                     theme.animation(up ? .hover : .contentOut)
@@ -46,10 +46,17 @@ struct TimerDigits: View {
     }
 
     /// Changes once per second inside the pulse window and never outside it — including the step to "0:00", which
-    /// keeps the last value so the end does not add an eleventh pulse.
+    /// keeps the last value so the end does not add an eleventh pulse. It also changes when a run LEAVES the window
+    /// early (pause, "+1 min", a scroll jump); `pulseScale` makes that change play nothing.
     static func pulseTrigger(seconds: Int, pulsing: Bool) -> Int {
         if pulsing { return seconds }
         return seconds > Int(TimerLimits.pulseWindow) ? -1 : 1
+    }
+
+    /// The digits' scale in one phase of a pulse: up only while the run is in its last 10 s NOW, so a trigger change
+    /// caused by leaving the window is invisible, and a pulse in flight settles back when the timer is paused.
+    static func pulseScale(up: Bool, pulsing: Bool, animates: Bool) -> CGFloat {
+        up && pulsing && animates ? TimerMetrics.pulseScale : 1
     }
 }
 
