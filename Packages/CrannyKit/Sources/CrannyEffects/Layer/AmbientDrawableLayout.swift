@@ -10,7 +10,8 @@
 //  * A resize does not reallocate on every frame. A new `drawableSize` drops the layer's drawables, and the open and
 //    close morph change the size on every display frame (≈ 50 new IOSurfaces per morph, 0.3–0.6 ms of main thread
 //    each). While the view resizes, the drawable only grows, in 64-pixel steps; a scissor keeps the shader to the band
-//    (`region`), the view clips the rest, and the next frame that is not a resize frame returns to the exact size.
+//    (`region`, plus the pixel Core Animation's filter reads at its edge: `AmbientRenderer.filterMargin`), the view
+//    clips the rest, and the next frame that is not a resize frame returns to the exact size.
 import CoreGraphics
 
 nonisolated struct AmbientDrawableLayout: Equatable, Sendable {

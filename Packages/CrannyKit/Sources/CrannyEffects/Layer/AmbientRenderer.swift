@@ -13,7 +13,8 @@
 //
 // Per frame: the effect's pipeline, `AmbientUniforms` in `buffer(0)` and, for aurora and motes, the frame's table
 // (`AmbientFrameTables`) in `buffer(1)`. A drawable of exactly the lit band is neither loaded nor cleared (the triangle
-// overwrites every pixel); a larger one left by a resize is cleared and the shader is scissored to the band.
+// overwrites every pixel); a larger one left by a resize is cleared and the shader is scissored to the band (plus the
+// one pixel Core Animation's filter reads at its edge).
 import CoreGraphics
 import CrannyCore
 import Foundation
@@ -28,6 +29,8 @@ private nonisolated let log = Log.logger(.effects)
     /// 8-bit sRGB-encoded storage, like the SwiftUI layers the stitchable shaders draw into; the dither is
     /// sized for it (±0.5 LSB).
     nonisolated static let pixelFormat = MTLPixelFormat.bgra8Unorm
+    /// Pixels drawn past the region of a larger drawable, for Core Animation's filter at the light's edge (`encode`).
+    nonisolated static let filterMargin = 1
 
     let device: any MTLDevice
     private let queue: any MTLCommandQueue
@@ -152,10 +155,12 @@ private nonisolated let log = Log.logger(.effects)
 
     /// Builds the renderer of the main display's GPU on a utility thread and keeps it, so the first open finds it
     /// ready. Only where it may be kept between opens (a GPU that cannot be a discrete one held awake: every Mac but
-    /// those with several discrete GPUs); a no-op once a renderer exists. A failure is left to `renderer(forDisplay:)`,
+    /// those with several discrete GPUs); a no-op once a renderer exists, and while the light cannot use the layer
+    /// (`-CrannyDisableEffectLayer`, or the layer path already off). A failure is left to `renderer(forDisplay:)`,
     /// which tries again and turns the layer path off.
     static func prewarm() async {
-        guard kept == nil, inUse.values.allSatisfy({ $0.renderer == nil }) else { return }
+        guard ShaderEffects.allowsLayer, AmbientLayerSupport.shared.isUsable, kept == nil,
+              inUse.values.allSatisfy({ $0.renderer == nil }) else { return }
         let parts = await Task.detached(priority: .utility) { () -> Parts? in
             guard ShaderEffects.isAvailable, let device = AmbientGPU.device(forDisplay: nil),
                   !AmbientGPU.mayPinDiscreteGPU(AmbientGPU.Candidate(device), deviceCount: AmbientGPU.deviceCount)
@@ -178,10 +183,10 @@ private nonisolated let log = Log.logger(.effects)
     // MARK: - Drawing
 
     /// Draws one frame into the layer's next drawable and presents it. `region` (nil: the whole drawable) is the part
-    /// of a larger drawable the light fills (`AmbientDrawableLayout.region`); the rest is cleared. `synchronized`
-    /// presents it inside the current Core Animation transaction (a resize: the new frame appears together with the new
-    /// bounds, never stretched); otherwise it is presented as soon as the GPU is done. Returns false when nothing was
-    /// drawn.
+    /// of a larger drawable the light fills (`AmbientDrawableLayout.region`, plus `filterMargin`); the rest is cleared.
+    /// `synchronized` presents it inside the current Core Animation transaction (a resize: the new frame appears
+    /// together with the new bounds, never stretched); otherwise it is presented as soon as the GPU is done. Returns
+    /// false when nothing was drawn.
     @discardableResult
     func draw(_ effect: AmbientEffect, uniforms: AmbientUniforms, in layer: CAMetalLayer, region: CGSize? = nil,
               synchronized: Bool = false) -> Bool {
@@ -202,15 +207,16 @@ private nonisolated let log = Log.logger(.effects)
     }
 
     /// Renders one frame offscreen and returns its BGRA bytes (premultiplied, row 0 = top). Tests compare it
-    /// with the stitchable path; nothing in the app calls it.
-    func image(_ effect: AmbientEffect, uniforms: AmbientUniforms, width: Int, height: Int) -> [UInt8]? {
+    /// with the stitchable path; nothing in the app calls it. `region`: as in `draw` (a drawable left larger by a resize).
+    func image(_ effect: AmbientEffect, uniforms: AmbientUniforms, width: Int, height: Int,
+               region: CGSize? = nil) -> [UInt8]? {
         guard width > 0, height > 0, pipelines[effect] != nil else { return nil }
         let descriptor = MTLTextureDescriptor.texture2DDescriptor(pixelFormat: Self.pixelFormat, width: width,
                                                                   height: height, mipmapped: false)
         descriptor.usage = [.renderTarget]
         descriptor.storageMode = .managed
         guard let texture = device.makeTexture(descriptor: descriptor), let buffer = queue.makeCommandBuffer(),
-              encode(effect, uniforms: uniforms, target: texture, region: nil, clears: true, into: buffer),
+              encode(effect, uniforms: uniforms, target: texture, region: region, clears: true, into: buffer),
               let blit = buffer.makeBlitCommandEncoder() else { return nil }
         blit.synchronize(resource: texture)
         blit.endEncoding()
@@ -242,6 +248,9 @@ private nonisolated let log = Log.logger(.effects)
     /// One full-screen triangle of `effect` into `target`. Without a `region` the triangle overwrites every pixel and
     /// blending is off, so the target is neither loaded nor cleared first (`.dontCare`) unless `clears` asks for it (the
     /// offscreen images). With a `region` a scissor keeps the shader to it and the rest is cleared, so it stays clear.
+    /// The scissor reaches one pixel past the region (`filterMargin`): where Core Animation scales the drawable (the
+    /// aurora and halo at 1 pixel per point, a view between device pixels during a morph) its filter reads that pixel
+    /// at the light's bottom and right edges, which must hold the field, as at the edge of an exact drawable, not clear.
     private func encode(_ effect: AmbientEffect, uniforms: AmbientUniforms, target: any MTLTexture, region: CGSize?,
                         clears: Bool, into buffer: any MTLCommandBuffer) -> Bool {
         guard let pipeline = pipelines[effect] else { return false }
@@ -253,8 +262,10 @@ private nonisolated let log = Log.logger(.effects)
         guard let encoder = buffer.makeRenderCommandEncoder(descriptor: pass) else { return false }
         encoder.setRenderPipelineState(pipeline)
         if let region {
-            encoder.setScissorRect(MTLScissorRect(x: 0, y: 0, width: min(max(Int(region.width), 1), target.width),
-                                                  height: min(max(Int(region.height), 1), target.height)))
+            let margin = Self.filterMargin
+            encoder.setScissorRect(MTLScissorRect(x: 0, y: 0,
+                                                  width: min(max(Int(region.width), 1) + margin, target.width),
+                                                  height: min(max(Int(region.height), 1) + margin, target.height)))
         }
         var values = uniforms
         encoder.setFragmentBytes(&values, length: MemoryLayout<AmbientUniforms>.stride, index: 0)

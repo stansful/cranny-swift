@@ -92,6 +92,34 @@ func bandDrawableMatchesTheWholeLayer(_ effect: AmbientEffect) throws {
     #expect(full.contains { $0 != 0 }, "\(effect): nothing drawn")
 }
 
+/// A drawable left larger by a resize holds the band and one pixel past it (Core Animation's filter reads that pixel
+/// at the light's bottom and right edges) exactly as an exact drawable would, and nothing beyond.
+@Test(.enabled(if: shadersRun)) func slackDrawableFillsTheBandAndTheFilterMargin() throws {
+    let renderer = try #require(AmbientRenderer.renderer(forDisplay: nil))
+    let size = CGSize(width: 100, height: 60)
+    let uniforms = AmbientUniforms(state: layerState(.halo, level: .vivid), size: size, scale: 1, time: 3,
+                                   date: Date(timeIntervalSinceReferenceDate: 5000))   // the halo lights every pixel
+    let margin = AmbientRenderer.filterMargin
+    let (w, h) = (100 + margin, 60 + margin), (slackW, slackH) = (128, 64)
+    let exact = try #require(renderer.image(.halo, uniforms: uniforms, width: w, height: h))
+    let slack = try #require(renderer.image(.halo, uniforms: uniforms, width: slackW, height: slackH, region: size))
+    #expect(exact[((h - 1) * w + w - 1) * 4 + 3] != 0, "the margin's corner pixel is lit")
+    var mismatches = 0, litOutside = 0
+    for row in 0..<slackH {
+        for column in 0..<slackW {
+            let alpha = slack[(row * slackW + column) * 4 + 3]
+            if row < h, column < w {
+                let i = (row * w + column) * 4, j = (row * slackW + column) * 4
+                if exact[i..<i + 4] != slack[j..<j + 4] { mismatches += 1 }
+            } else if alpha != 0 {
+                litOutside += 1
+            }
+        }
+    }
+    #expect(mismatches == 0, "\(mismatches) pixels of the band and its margin differ from an exact drawable")
+    #expect(litOutside == 0, "\(litOutside) pixels beyond the margin are lit")
+}
+
 // MARK: - Per-frame tables (AmbientFrameTables.swift)
 
 @Test func frameTablesRoundStopsLikeTheShader() {
