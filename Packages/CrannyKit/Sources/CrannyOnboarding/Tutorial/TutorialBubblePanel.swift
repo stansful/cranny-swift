@@ -3,7 +3,9 @@
 // `NotchControl.shapeFrameOnScreen()`. Clicking "Skip tour" never activates Cranny; a coach mark without a
 // button is click-through. The panel fades in and out, and when the shape opens or closes it fades out, moves
 // and fades back in under the new shape (instantly under Reduce Motion). It is never moved with an animated
-// frame: AppKit's window-frame animation stalls while the displays sleep and would leave it behind.
+// frame: AppKit's window-frame animation stalls while the displays sleep and would leave it behind. Its owners
+// show it only under a real shape (`TipSurroundings`) and hide it otherwise. While VoiceOver runs, a new or
+// changed tour bubble posts a layout change pointing at itself, so "Skip tour" can be reached.
 import AppKit
 import CrannyCore
 import SwiftUI
@@ -19,44 +21,72 @@ import SwiftUI
     private var hosting: TipHostingView?
     /// Orders the panel out once its fade has finished (one sleep, cancelled by the next `show`).
     private var orderOut: Task<Void, Never>?
-    /// A move under a new shape: fade out, jump, fade in (one sleep, superseded by the next `show`).
+    /// A move under a new shape: fade out, jump, fade in (one sleep, superseded by a `show` elsewhere).
     private var move: Task<Void, Never>?
+    /// Where the move in flight goes (a repeated `show` for the same place lets it finish).
+    private var moveTarget: CGRect?
 
     init() {}
 
-    func show(_ content: TipContent, under anchor: CGRect?) {
+    func show(_ content: TipContent, under anchor: CGRect, theme: CrannyTheme) {
         let (panel, hosting) = ensurePanel()
         let isNew = !panel.isVisible || orderOut != nil
+        let isNewContent = isNew || model.content != content
         orderOut?.cancel()
         orderOut = nil
-        model.content = content
+        if model.content != content { model.content = content }
+        if model.theme != theme { model.theme = theme }
         panel.ignoresMouseEvents = !content.isInteractive
         hosting.layoutSubtreeIfNeeded()
         let size = hosting.intrinsicContentSize               // the bubble's own size (see TipBubble's frame)
-        let frame = Self.frame(size: size, under: anchor ?? Self.fallbackAnchor())
-        move?.cancel()
-        move = nil
+        let frame = Self.frame(size: size, under: anchor)
         if isNew {
+            cancelMove()
             panel.setFrame(frame, display: false)
             panel.alphaValue = 0
             panel.orderFrontRegardless()                         // never activates the app
             animate { panel.animator().alphaValue = 1 }
-        } else if abs(panel.frame.maxY - frame.maxY) > 1 || abs(panel.frame.midX - frame.midX) > 1 {
-            let duration = animate { panel.animator().alphaValue = 0 }
-            move = Task { [weak self, weak panel] in
-                try? await Task.sleep(for: .seconds(duration))
-                guard !Task.isCancelled, let panel else { return }
-                panel.setFrame(frame, display: true)
-                self?.animate { panel.animator().alphaValue = 1 }
-            }
-        } else if panel.frame != frame {
-            panel.setFrame(frame, display: true)                 // same place, new content size
+        } else if let moveTarget, Self.isSamePlace(moveTarget, frame) {
+            self.moveTarget = frame                              // on its way; take the latest size
+        } else if !Self.isSamePlace(panel.frame, frame) {
+            startMove(panel, to: frame)
+        } else {
+            let wasMoving = moveTarget != nil
+            cancelMove()
+            if panel.frame != frame { panel.setFrame(frame, display: true) }     // same place, new content size
+            if wasMoving { animate { panel.animator().alphaValue = 1 } }        // back where it was: fade in again
+        }
+        if isNewContent, content.isInteractive { offerToVoiceOver(panel, hosting) }
+    }
+
+    /// Fades out, jumps under the new shape and fades back in.
+    private func startMove(_ panel: TutorialBubblePanel, to frame: CGRect) {
+        move?.cancel()
+        moveTarget = frame
+        let duration = animate { panel.animator().alphaValue = 0 }
+        move = Task { [weak self, weak panel] in
+            try? await Task.sleep(for: .seconds(duration))
+            guard !Task.isCancelled, let self, let panel else { return }
+            panel.setFrame(self.moveTarget ?? frame, display: true)
+            self.animate { panel.animator().alphaValue = 1 }
+            self.move = nil
+            self.moveTarget = nil
         }
     }
 
-    func hide() {
+    private func cancelMove() {
         move?.cancel()
         move = nil
+        moveTarget = nil
+    }
+
+    /// The caret's tip lands within a point of where it already points.
+    private static func isSamePlace(_ a: CGRect, _ b: CGRect) -> Bool {
+        abs(a.maxY - b.maxY) <= 1 && abs(a.midX - b.midX) <= 1
+    }
+
+    func hide() {
+        cancelMove()
         guard let panel, panel.isVisible, orderOut == nil else { return }
         let duration = animate { panel.animator().alphaValue = 0 }
         orderOut = Task { [weak self] in
@@ -83,12 +113,6 @@ import SwiftUI
         return frame
     }
 
-    /// Without a notch frame: just under the main display's menu bar.
-    private static func fallbackAnchor() -> CGRect {
-        guard let screen = NSScreen.main ?? NSScreen.screens.first else { return .zero }
-        return CGRect(x: screen.frame.midX - 1, y: screen.visibleFrame.maxY, width: 2, height: 0)
-    }
-
     // MARK: Private
 
     private func ensurePanel() -> (TutorialBubblePanel, TipHostingView) {
@@ -102,9 +126,18 @@ import SwiftUI
         return (panel, hosting)
     }
 
-    /// Runs `changes` animated (AppKit window animation; instant under Reduce Motion) and returns its length.
+    /// The tour bubble is in another app's world (Cranny is not active), so VoiceOver does not find it on its own:
+    /// a layout change naming the bubble lets VoiceOver users reach "Skip tour". Best effort, only while VoiceOver runs.
+    private func offerToVoiceOver(_ panel: NSPanel, _ hosting: NSView) {
+        guard NSWorkspace.shared.isVoiceOverEnabled else { return }
+        NSAccessibility.post(element: panel, notification: .layoutChanged, userInfo: [.uiElements: [hosting]])
+    }
+
+    /// Runs `changes` animated (AppKit window animation; instant under Reduce Motion and the Instant motion
+    /// personality) and returns its length.
     @discardableResult private func animate(_ changes: () -> Void) -> Double {
-        let duration = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion ? 0 : CrannyMotion.Kind.contentSwapDuration
+        let still = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion || model.theme.motion == .instant
+        let duration = still ? 0 : CrannyMotion.Kind.contentSwapDuration
         NSAnimationContext.beginGrouping()
         NSAnimationContext.current.duration = duration
         changes()

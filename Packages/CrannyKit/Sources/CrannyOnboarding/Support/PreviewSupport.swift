@@ -32,15 +32,17 @@ import SwiftUI
 @MainActor final class RecordingTipPresenter: TipPresenter {
     var onAction: (@MainActor () -> Void)?
     private(set) var shown: [TipContent] = []
-    private(set) var anchors: [CGRect?] = []
+    private(set) var anchors: [CGRect] = []
+    private(set) var themes: [CrannyTheme] = []
     private(set) var hideCount = 0
     private(set) var isVisible = false
 
     init() {}
 
-    func show(_ content: TipContent, under anchor: CGRect?) {
+    func show(_ content: TipContent, under anchor: CGRect, theme: CrannyTheme) {
         shown.append(content)
         anchors.append(anchor)
+        themes.append(theme)
         isVisible = true
     }
     func hide() {

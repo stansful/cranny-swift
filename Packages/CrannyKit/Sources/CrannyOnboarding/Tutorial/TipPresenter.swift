@@ -2,6 +2,7 @@
 // real notch, and the seam that keeps windows out of tests: the app uses `TipPanelPresenter` (an NSPanel),
 // tests use a recording stand-in.
 import CoreGraphics
+import CrannyCore
 import Foundation
 
 /// The content of one bubble (DESIGN.md §12.2): one sentence, an optional key cap, "2 of 5" and a button.
@@ -45,7 +46,8 @@ nonisolated struct TipContent: Equatable, Sendable {
     /// Called when the bubble's button is pressed.
     var onAction: (@MainActor () -> Void)? { get set }
     /// Shows (or updates and moves) the bubble under `anchor`, the shape in AppKit screen coordinates
-    /// (`NotchControl.shapeFrameOnScreen()`); nil = under the menu bar of the main display.
-    func show(_ content: TipContent, under anchor: CGRect?)
+    /// (`TipSurroundings.anchor`), drawn with the notch's resolved `theme`. Owners hide the bubble instead of
+    /// showing it without an anchor.
+    func show(_ content: TipContent, under anchor: CGRect, theme: CrannyTheme)
     func hide()
 }

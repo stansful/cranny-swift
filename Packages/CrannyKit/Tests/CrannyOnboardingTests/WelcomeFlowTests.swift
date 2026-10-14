@@ -23,12 +23,12 @@ import Testing
     @Test func theRealNotchSaysHiOnStepOne() {
         let (flow, registry, _, _) = makeFlow()
         flow.start(reduceMotion: true)
-        #expect(registry.previewNotch?.calls == ["flash(hand.wave.fill)"])
+        #expect(registry.testNotch?.calls == ["flash(hand.wave.fill)"])
         #expect(flow.stage.presentation == .greeting)
         #expect(flow.stage.phase == .compact)                    // Reduce Motion: the "Hi" frame holds still
         #expect(flow.stage.primary == StageGreeting.activityID)
         flow.greetAgain()
-        #expect(registry.previewNotch?.calls.count == 2)
+        #expect(registry.testNotch?.calls.count == 2)
         flow.stop()
     }
 
@@ -67,7 +67,7 @@ import Testing
     @Test func continueEnablesAfterARealOpening() async throws {
         let (flow, registry, coach, _) = makeFlow(step: .openIt)
         flow.start(reduceMotion: true)
-        let notch = try #require(registry.previewNotch)
+        let notch = try #require(registry.testNotch)
         #expect(coach.isVisible)                                 // "Rest the pointer here, or press ⌃⌥N"
         #expect(coach.shown.last?.keys == "⌃⌥N")
         #expect(coach.shown.last?.isInteractive == false)        // click-through
@@ -93,7 +93,7 @@ import Testing
     @Test func eventsOutsideStepTwoAreIgnored() throws {
         let (flow, registry, _, _) = makeFlow(step: .preset)
         flow.start(reduceMotion: true)
-        try #require(registry.previewNotch).emit(.opened(.hover))
+        try #require(registry.testNotch).emit(.opened(.hover))
         #expect(flow.detected.isEmpty)
         flow.stop()
     }
@@ -103,8 +103,43 @@ import Testing
         flow.start(reduceMotion: true)
         flow.stop()
         #expect(!coach.isVisible)
-        try #require(registry.previewNotch).emit(.opened(.hover))
+        try #require(registry.testNotch).emit(.opened(.hover))
         #expect(flow.detected.isEmpty)
+    }
+
+    @Test func theCoachMarkGoesWithTheWindowAndTheNotch() async throws {
+        let (flow, registry, coach, _) = makeFlow(step: .openIt)
+        flow.start(reduceMotion: true)
+        let environment = try #require(registry.previewEnvironment)
+        let notch = try #require(registry.testNotch)
+        #expect(coach.isVisible)
+        #expect(coach.anchors.last == TestNotch.closed)
+
+        flow.setWindowVisible(false)                             // behind other windows, on another Space
+        #expect(!coach.isVisible)
+        flow.setWindowVisible(true)
+        #expect(coach.isVisible)
+
+        environment.isScreenLocked = true
+        await settle { !coach.isVisible }
+        #expect(!coach.isVisible)
+        environment.isScreenLocked = false
+        await settle { coach.isVisible }
+        #expect(coach.isVisible)
+
+        notch.frame = nil                                        // the notch is hidden: nothing to point at
+        await settle { !coach.isVisible }
+        #expect(!coach.isVisible)
+        notch.frame = TestNotch.closed
+        await settle { coach.isVisible }
+
+        flow.goForward()                                         // Skip: the coach mark leaves with step 2
+        #expect(!coach.isVisible)
+        environment.isScreenLocked = true
+        environment.isScreenLocked = false
+        await settle()
+        #expect(!coach.isVisible)                                // and nothing brings it back
+        flow.stop()
     }
 
     @Test func aHiddenWindowHoldsTheStageStill() {
@@ -226,7 +261,7 @@ import Testing
         flow.finish(.done)
         #expect(outcomes.values == [.done])
         #expect(registry.services.settings[CoreSettings.onboardingCompletedVersion] == "9.9.9")
-        #expect(registry.previewNotch?.calls.contains("open(nook,-,programmatic)") == true)
+        #expect(registry.testNotch?.calls.contains("open(nook,-,programmatic)") == true)
         #expect(registry.previewApp?.loginItem == .enabled)
     }
 
@@ -236,7 +271,7 @@ import Testing
         flow.finish(.tour)
         #expect(outcomes.values == [.tour])
         #expect(registry.previewApp?.loginItem == .disabled)
-        #expect(registry.previewNotch?.calls.contains("open(nook,-,programmatic)") == false)
+        #expect(registry.testNotch?.calls.contains("open(nook,-,programmatic)") == false)
     }
 
     @Test func skippingRecordsCompletionButChangesNothingElse() {

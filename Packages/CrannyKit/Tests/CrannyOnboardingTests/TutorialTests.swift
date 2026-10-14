@@ -126,7 +126,7 @@ import Testing
         #expect(first.isInteractive)                          // "Skip tour" is always there
         #expect(first.progress != nil)
 
-        let notch = try #require(registry.previewNotch)
+        let notch = try #require(registry.testNotch)
         notch.emit(.closed)
         notch.emit(.filesCaught(count: 1))                    // not this step's event
         #expect(presenter.shown.allSatisfy { $0.mark != .done })
@@ -143,7 +143,7 @@ import Testing
         let presenter = RecordingTipPresenter()
         let tutorial = TutorialController(registry: registry, presenter: presenter, celebration: .milliseconds(1),
                                           farewell: .milliseconds(20))
-        let notch = try #require(registry.previewNotch)
+        let notch = try #require(registry.testNotch)
         tutorial.start()                                      // nothing plays: four steps
         let events: [[NotchEvent]] = [[.opened(.click)], [.filesCaught(count: 3)], [.commandHintsShown], [.pinned(true), .closed]]
         for batch in events {
@@ -168,7 +168,7 @@ import Testing
         #expect(!tutorial.isRunning)
         #expect(!presenter.isVisible)
         let shown = presenter.shown.count
-        registry.previewNotch?.emit(.opened(.hover))
+        registry.testNotch?.emit(.opened(.hover))
         await settle()
         #expect(presenter.shown.count == shown)
         #expect(!registry.services.settings[CoreSettings.tutorialCompleted])
@@ -181,49 +181,175 @@ import Testing
         let tutorial = TutorialController(registry: registry, presenter: presenter)
         tutorial.start()
         #expect(presenter.shown.last?.keys == nil)
+        #expect(presenter.shown.last?.text == OpenPrompt.rest(orPress: false).tutorialText)
         tutorial.stop()
     }
-}
 
-/// A notch whose shape frame the test moves, as the shell's does when the panel opens.
-@MainActor private final class MovingNotch: NotchControl {
-    var frame: CGRect? = CGRect(x: 1000, y: 1431, width: 64, height: 5)
-    private var observers: [UUID: @MainActor (NotchEvent) -> Void] = [:]
-    func open(page: PageID?, focus: WidgetID?, reason: OpenReason) {}
-    func close() {}
-    func togglePinned() {}
-    func setHoldOpen(_ hold: Bool, reason: String) {}
-    func setFocusMode(_ widget: WidgetID?) {}
-    func requestPeek(_ activity: ActivityID) {}
-    func requestKeyboardFocus() {}
-    func setCalibrationOverlay(_ visible: Bool) {}
-    func shapeFrameOnScreen() -> CGRect? { frame }
-    func presentAirDrop(_ urls: [URL]) async -> Bool { false }
-    func presentSharePicker(_ urls: [URL]) {}
-    func flash(symbol: String, label: String) {}
-    func addEventObserver(_ handler: @escaping @MainActor (NotchEvent) -> Void) -> UUID {
-        let id = UUID(); observers[id] = handler; return id
+    @Test func theFirstStepFollowsTheWayInChosenInTheWelcome() async {
+        let registry = makeRegistry()
+        let settings = registry.services.settings
+        settings[CoreSettings.openMode] = .click
+        let presenter = RecordingTipPresenter()
+        let tutorial = TutorialController(registry: registry, presenter: presenter)
+        tutorial.start()
+        #expect(presenter.shown.last?.text == OpenPrompt.click(orPress: true).tutorialText)
+        #expect(presenter.shown.last?.text != OpenPrompt.rest(orPress: true).tutorialText)   // never "rest the pointer"
+        #expect(presenter.shown.last?.keys == "⌃⌥N")
+
+        settings[CoreSettings.openMode] = .shortcutOnly                                   // changed while waiting
+        await settle { presenter.shown.last?.text == OpenPrompt.press.tutorialText }
+        #expect(presenter.shown.last?.text == OpenPrompt.press.tutorialText)
+        #expect(presenter.shown.last?.mark == .symbol("keyboard"))
+
+        settings[CoreSettings.shortcuts] = [.openNook: nil]                               // nothing to press: click
+        await settle { presenter.shown.last?.text == OpenPrompt.noShortcut.tutorialText }
+        #expect(presenter.shown.last?.text == OpenPrompt.click(orPress: false).tutorialText)
+        #expect(presenter.shown.last?.keys == nil)
+        tutorial.stop()
     }
-    func removeEventObserver(_ id: UUID) { observers[id] = nil }
-    func emit(_ event: NotchEvent) { for observer in observers.values { observer(event) } }
+
+    @Test func theBubbleHidesWithTheNotchAndComesBackWhereItWas() async throws {
+        let registry = makeRegistry()
+        let environment = try #require(registry.previewEnvironment)
+        let notch = try #require(registry.testNotch)
+        let presenter = RecordingTipPresenter()
+        let tutorial = TutorialController(registry: registry, presenter: presenter, celebration: .milliseconds(1))
+        tutorial.startForVisualQA(atStep: 2)                   // "Drag any file onto the notch"
+        #expect(presenter.isVisible)
+
+        environment.isFullScreenInFront = true                 // the notch hides over full screen…
+        await settle { !presenter.isVisible }
+        #expect(!presenter.isVisible)
+        #expect(tutorial.isRunning)                            // …the tour waits
+        registry.services.settings[CoreSettings.fullScreenPolicy] = .showAll
+        await settle { presenter.isVisible }                   // …unless the notch shows everything there
+        #expect(presenter.isVisible)
+        environment.isFullScreenInFront = false
+        registry.services.settings[CoreSettings.fullScreenPolicy] = .alertsAndHUD
+
+        for hide in [{ environment.isScreenLocked = true }, { environment.areDisplaysAsleep = true },
+                     { environment.areLiveActivitiesPaused = true }, { notch.frame = nil },
+                     { notch.frame = .zero }] as [@MainActor () -> Void] {
+            hide()
+            await settle { !presenter.isVisible }
+            #expect(!presenter.isVisible)
+            environment.isScreenLocked = false
+            environment.areDisplaysAsleep = false
+            environment.areLiveActivitiesPaused = false
+            notch.frame = TestNotch.closed
+            await settle { presenter.isVisible }
+            #expect(presenter.isVisible)
+            #expect(presenter.shown.last?.mark == .symbol("tray.and.arrow.down.fill"))   // still the same step
+            #expect(presenter.anchors.last == TestNotch.closed)
+        }
+
+        notch.frame = nil                                      // a step done while hidden: no ✓ is drawn anywhere
+        await settle { !presenter.isVisible }
+        let shown = presenter.shown.count
+        notch.emit(.filesCaught(count: 1))
+        #expect(presenter.shown.count == shown)
+        tutorial.stop()
+    }
+
+    @Test func theBubbleFollowsTheShapeWithoutAnEvent() async throws {
+        let registry = makeRegistry()
+        let notch = try #require(registry.testNotch)
+        let presenter = RecordingTipPresenter()
+        let tutorial = TutorialController(registry: registry, presenter: presenter)
+        tutorial.start()
+        let peek = CGRect(x: 600, y: 900, width: 312, height: 82)
+        notch.frame = peek                                     // a peek appeared: no `NotchEvent` for that
+        await settle { presenter.anchors.last == peek }
+        #expect(presenter.anchors.last == peek)
+        tutorial.stop()
+    }
+
+    @Test func theBubbleUsesTheNotchsTheme() async {
+        let registry = makeRegistry()
+        let settings = registry.services.settings
+        settings[CoreSettings.motion] = .calm
+        settings[CoreSettings.textSize] = .large
+        let presenter = RecordingTipPresenter()
+        let tutorial = TutorialController(registry: registry, presenter: presenter)
+        tutorial.start()
+        #expect(presenter.themes.last?.motion == .calm)
+        #expect(presenter.themes.last?.textSize == .large)
+        settings[CoreSettings.motion] = .instant
+        await settle { presenter.themes.last?.motion == .instant }
+        #expect(presenter.themes.last?.motion == .instant)
+        tutorial.stop()
+    }
+
+    @Test func aStepThatWaitsTooLongEndsTheTour() async {
+        let registry = makeRegistry()
+        let presenter = RecordingTipPresenter()
+        let tutorial = TutorialController(registry: registry, presenter: presenter, idleLimit: .milliseconds(60))
+        tutorial.start()
+        await settle { !tutorial.isRunning }
+        #expect(!tutorial.isRunning)
+        #expect(!presenter.isVisible)
+        #expect(!registry.services.settings[CoreSettings.tutorialCompleted])
+
+        let progressing = TutorialController(registry: registry, presenter: presenter, celebration: .milliseconds(1),
+                                             idleLimit: .milliseconds(600))
+        progressing.start()
+        try? await Task.sleep(for: .milliseconds(400))
+        registry.testNotch?.emit(.opened(.hover))              // progress restarts the wait
+        try? await Task.sleep(for: .milliseconds(400))
+        #expect(progressing.isRunning)
+        progressing.stop()
+    }
+
+    @Test func skipTourIsInThePaletteWhileTheTourRuns() throws {
+        let registry = makeRegistry()
+        let presenter = RecordingTipPresenter()
+        let tutorial = TutorialController(registry: registry, presenter: presenter)
+        let skip = TutorialController.skipTitle
+        func commands(_ query: String) -> [PaletteCommand] {
+            registry.commandProviders.flatMap { $0.commands(matching: query) }
+        }
+        #expect(commands("").isEmpty)                          // nothing while no tour runs
+        tutorial.start()
+        #expect(commands("").map(\.id) == ["onboarding.tutorial.skip"])
+        #expect(commands(skip).map(\.title) == [skip])
+        #expect(commands("zzz").isEmpty)
+        let command = try #require(commands("").first)
+        command.perform()
+        #expect(!tutorial.isRunning)
+        #expect(!presenter.isVisible)
+        #expect(commands("").isEmpty)
+    }
 }
 
-@MainActor @Test func theBubbleFollowsTheShapeWhenThePanelOpens() async {
-    let notch = MovingNotch()
-    let defaults = UserDefaults(suiteName: "cranny.test.\(UUID().uuidString)") ?? .standard
-    let services = CrannyServices(settings: SettingsStore(defaults: defaults), permissions: PermissionsCenter(),
-                                  haptics: Haptics(isEnabled: { false }), paths: .temporary(), notch: notch,
-                                  environment: PreviewSystemEnvironment(), app: PreviewAppControl())
+@MainActor @Test func theBubbleFollowsTheShapeWhenThePanelOpens() async throws {
+    let registry = makeRegistry()
+    let notch = try #require(registry.testNotch)
     let presenter = RecordingTipPresenter()
-    let tutorial = TutorialController(registry: ModuleRegistry(services: services), presenter: presenter)
+    let tutorial = TutorialController(registry: registry, presenter: presenter)
     tutorial.startForVisualQA(atStep: 4)                 // waiting for "pin, then Esc"
-    #expect(presenter.anchors.last == notch.frame)
+    #expect(presenter.anchors.last == TestNotch.closed)
     let open = CGRect(x: 800, y: 1264, width: 848, height: 170)
     notch.emit(.opened(.programmatic))
     notch.frame = open                                    // the shell writes the shape after emitting the event
     await settle { presenter.anchors.last == open }
     #expect(presenter.anchors.last == open)
     tutorial.stop()
+}
+
+@Suite struct TipConditionsTests {
+    private let shape = CGRect(x: 663, y: 950, width: 185, height: 32)
+
+    @Test func theTipShowsOnlyUnderAShownNotch() {
+        #expect(TipConditions(shape: shape).anchor == shape)
+        #expect(TipConditions(shape: nil).anchor == nil)
+        #expect(TipConditions(shape: .zero).anchor == nil)                   // hidden phase: zero geometry
+        #expect(TipConditions(shape: CGRect(x: 700, y: 982, width: 0, height: 0)).anchor == nil)
+        #expect(TipConditions(shape: shape, isScreenLocked: true).anchor == nil)
+        #expect(TipConditions(shape: shape, areDisplaysAsleep: true).anchor == nil)
+        #expect(TipConditions(shape: shape, areLiveActivitiesPaused: true).anchor == nil)
+        #expect(TipConditions(shape: shape, isFullScreenInFront: true).anchor == nil)
+        #expect(TipConditions(shape: shape, isFullScreenInFront: true, showsOverFullScreen: true).anchor == shape)
+    }
 }
 
 @Suite struct TipMarkTests {
@@ -253,24 +379,4 @@ import Testing
         #expect(Set(all.map(\.coachText)).count == all.count)
         #expect(OpenPrompt.noShortcut.tutorialText == OpenPrompt.click(orPress: false).tutorialText)   // a click always opens
     }
-}
-
-@MainActor @Test func theToursFirstStepFollowsTheWayInChosenInTheWelcome() {
-    func firstTip(_ mode: OpenMode, shortcut: Bool = true) -> TipContent? {
-        let registry = makeRegistry()
-        registry.services.settings[CoreSettings.openMode] = mode
-        if !shortcut { registry.services.settings[CoreSettings.shortcuts] = [.openNook: nil] }
-        let presenter = RecordingTipPresenter()
-        let tutorial = TutorialController(registry: registry, presenter: presenter)
-        tutorial.start()
-        defer { tutorial.stop() }
-        return presenter.shown.last
-    }
-    #expect(firstTip(.hover)?.text == OpenPrompt.rest(orPress: true).tutorialText)
-    #expect(firstTip(.click)?.text == OpenPrompt.click(orPress: true).tutorialText)      // never "rest the pointer"
-    #expect(firstTip(.click)?.keys == "⌃⌥N")
-    #expect(firstTip(.shortcutOnly)?.text == OpenPrompt.press.tutorialText)
-    #expect(firstTip(.shortcutOnly)?.mark == .symbol("keyboard"))
-    #expect(firstTip(.shortcutOnly, shortcut: false)?.text == OpenPrompt.click(orPress: false).tutorialText)
-    #expect(firstTip(.shortcutOnly, shortcut: false)?.keys == nil)
 }

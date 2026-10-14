@@ -1,7 +1,8 @@
 // CrannyOnboarding/Tutorial/TipBubbleView.swift — the tip under the real notch (DESIGN.md §12.2): a dark
 // `.regularMaterial` bubble whose caret points at the shape, one sentence, a `KeyCap` where relevant, "2 of 5"
 // in `micro` and an always-visible "Skip tour". Opaque under Reduce Transparency; ✓ bounces once when a step
-// is really done (not under Reduce Motion). It belongs to the notch family, so it is always dark.
+// is really done (not under Reduce Motion). It belongs to the notch family, so it is always dark, and it is drawn
+// with the notch's resolved theme (accent, text size, motion personality).
 import CrannyCore
 import Observation
 import SwiftUI
@@ -9,8 +10,13 @@ import SwiftUI
 /// What the hosting panel shows; updating it re-renders the bubble in place.
 @MainActor @Observable final class TipModel {
     var content: TipContent
+    /// The notch's theme (`TipSurroundings.theme`); the system's accessibility flags are merged in by the root.
+    var theme: CrannyTheme
     @ObservationIgnored var onAction: @MainActor () -> Void = {}
-    init(content: TipContent) { self.content = content }
+    init(content: TipContent, theme: CrannyTheme = CrannyTheme()) {
+        self.content = content
+        self.theme = theme
+    }
 }
 
 struct TipBubbleView: View {
@@ -19,7 +25,7 @@ struct TipBubbleView: View {
     var body: some View {
         TipBubble(content: model.content, onAction: { model.onAction() })
             .padding(TipBubble.shadowMargin)
-            .crannyThemeRoot(CrannyTheme())
+            .crannyThemeRoot(model.theme)
     }
 }
 

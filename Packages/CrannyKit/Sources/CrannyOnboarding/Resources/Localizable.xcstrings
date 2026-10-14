@@ -943,7 +943,7 @@
       }
     },
     "Skip tour" : {
-      "comment" : "Tutorial: always-visible button that ends the tour",
+      "comment" : "Tutorial: always-visible button that ends the tour; also its ⌘K command while it runs",
       "localizations" : {
         "ru" : {
           "stringUnit" : {
@@ -1032,6 +1032,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Вот и весь тур. Повторить его можно в любой момент из строки меню."
+          }
+        }
+      }
+    },
+    "The tour ended. Replay it any time from the menu bar." : {
+      "comment" : "Tutorial: VoiceOver announcement when a step waited for minutes and the tour ended by itself",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Тур закончился. Повторить его можно в любой момент из строки меню."
           }
         }
       }
@@ -1186,6 +1197,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ваша раскладка останется, если не выбрать другую. Изменить её можно в любой момент: Настройки ▸ Раскладка и виджеты."
+          }
+        }
+      }
+    },
+    "tutorial, tour, stop, end, skip" : {
+      "comment" : "⌘K: search words for Skip tour while the tutorial runs, comma-separated",
+      "localizations" : {
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "обучение, тур, стоп, остановить, закончить, пропустить"
           }
         }
       }

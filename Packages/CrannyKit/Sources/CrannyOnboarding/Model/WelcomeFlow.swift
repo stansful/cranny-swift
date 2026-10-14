@@ -32,7 +32,7 @@ private let log = Log.logger(.onboarding)
 
     @ObservationIgnored let registry: ModuleRegistry
     @ObservationIgnored private let permissions: any PermissionGateway
-    @ObservationIgnored private let coach: any TipPresenter
+    @ObservationIgnored private let coach: TipRenderer
     @ObservationIgnored private let version: String
     @ObservationIgnored private let onFinish: @MainActor (WelcomeOutcome) -> Void
     @ObservationIgnored private var practice = GesturePractice(allowsTrackSwipe: false)
@@ -40,11 +40,13 @@ private let log = Log.logger(.onboarding)
     /// Step 5: back from System Settings, statuses may have changed (event-driven, no polling).
     @ObservationIgnored private var activationObserver: (any NSObjectProtocol)?
     @ObservationIgnored private var reduceMotion = false
+    /// Step 2: the coach mark follows the shape, the notch's visibility and the theme (observed, no polling).
+    @ObservationIgnored private var coachWatch: ObservationToken?
     /// Rows whose Allow was pressed (an undecidable answer then reads "asks later", not "Allow" again).
     private var requested: Set<PermissionGroup> = []
     /// The notch is open (mirrored on the stage, hides the coach mark).
     private var isNotchOpen = false
-    /// The Welcome window is on screen and not occluded: the stage runs only then.
+    /// The Welcome window is on screen and not occluded: the stage runs and the coach mark shows only then.
     private(set) var isWindowVisible = true
 
     init(registry: ModuleRegistry, permissions: any PermissionGateway, coach: any TipPresenter, stage: StageScene,
@@ -52,7 +54,7 @@ private let log = Log.logger(.onboarding)
          onFinish: @escaping @MainActor (WelcomeOutcome) -> Void) {
         self.registry = registry
         self.permissions = permissions
-        self.coach = coach
+        self.coach = TipRenderer(presenter: coach)
         self.stage = stage
         self.version = version
         self.onFinish = onFinish
@@ -80,14 +82,17 @@ private let log = Log.logger(.onboarding)
         if let observer { services.notch.removeEventObserver(observer) }
         observer = nil
         stopWatchingActivation()
+        stopWatchingCoach()
         coach.hide()
         stage.stop()
     }
 
-    /// The window became visible or hidden (occluded, minimised, on another Space): the stage holds still.
+    /// The window became visible or hidden (occluded, minimised, on another Space): the stage holds still and
+    /// the coach mark under the real notch goes with the window.
     func setWindowVisible(_ visible: Bool) {
         isWindowVisible = visible
         stage.setVisibleOnScreen(visible)
+        updateCoach()
     }
 
     // MARK: Navigation
@@ -157,7 +162,7 @@ private let log = Log.logger(.onboarding)
         case .openIt:
             stage.show(.idle, reduceMotion: reduceMotion)
             isNotchOpen = false
-            showCoach()
+            watchCoach()
         case .gestures:
             let playing = isPlaying
             practisesTrackSwipe = playing
@@ -177,7 +182,10 @@ private let log = Log.logger(.onboarding)
     }
 
     private func leave(_ step: WelcomeStep) {
-        if step == .openIt { coach.hide() }
+        if step == .openIt {
+            stopWatchingCoach()
+            coach.hide()
+        }
         if step == .permissions { stopWatchingActivation() }
     }
 
@@ -200,7 +208,7 @@ private let log = Log.logger(.onboarding)
 
     func choose(_ method: OpenMethod) {
         services.settings[CoreSettings.openMode] = method.mode
-        showCoach()
+        updateCoach()
     }
 
     func setHoverDelay(_ delay: HoverIntent.Delay) {
@@ -216,9 +224,34 @@ private let log = Log.logger(.onboarding)
         return TipContent(text: prompt.coachText, keys: prompt.endsWithKeyCap ? shortcut : nil)
     }
 
-    private func showCoach() {
-        guard step == .openIt, !isNotchOpen, !isFinished else { return }
-        coach.show(coachContent(), under: services.notch.shapeFrameOnScreen())
+    private func watchCoach() {
+        stopWatchingCoach()
+        coachWatch = observe({ [weak self] in self?.coachPresentation() }) { [weak self] _ in self?.updateCoach() }
+        updateCoach()
+    }
+
+    private func stopWatchingCoach() {
+        coachWatch?.cancel()
+        coachWatch = nil
+    }
+
+    /// Under the real notch while step 2 waits and the window can be seen; nothing otherwise (observed).
+    private func coachPresentation() -> TipPresentation {
+        let waits = step == .openIt && !isNotchOpen && !isFinished && (isWindowVisible || Self.showsCoachAnyway)
+        return TipPresentation(content: waits ? coachContent() : nil, surroundings: TipSurroundings(services: services))
+    }
+
+    private func updateCoach() {
+        coach.render(coachPresentation())
+    }
+
+    /// Visual QA draws the coach mark whatever the window's visibility (screenshots of a locked screen).
+    private static var showsCoachAnyway: Bool {
+        #if DEBUG
+        return OnboardingVisualQA.showsTipsAnyway
+        #else
+        return false
+        #endif
     }
 
     // MARK: Step 3 · Gestures
@@ -338,7 +371,7 @@ private let log = Log.logger(.onboarding)
             isNotchOpen = false
             stage.setOpen(false)
             // The shell writes the closed shape after emitting the event: place the coach mark on the next turn.
-            Task { [weak self] in self?.showCoach() }
+            Task { [weak self] in self?.updateCoach() }
         default:
             break
         }
