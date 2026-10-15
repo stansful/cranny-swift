@@ -1,6 +1,7 @@
 // CrannyEffects/ChargeSweep.swift — Charger connected (DESIGN.md §5.1, §5.5, §5.6 `chargeSweep`): a green head with a
 // fading tail runs once along the lower outline (the progress-rim path) in 0.8 s. Shader: ChargeSweep.metal on a
-// 1.5-pt core over a 4-pt soft under-stroke. Fallback: a `trim` of the same path. Reduce Motion: the rim at once.
+// 1.5-pt core over a 4-pt soft under-stroke. Fallback: a `trim` of the same path. Reduce Motion and Appearance ▸
+// Quality ▸ Efficient: the rim at once.
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -22,6 +23,9 @@ public struct ChargeSweep: View {
     /// Called once when the sweep is over.
     public var onFinished: (() -> Void)?
 
+    /// Appearance ▸ Quality: Efficient plays the still variant (no Metal, no Canvas, DESIGN.md §5.7).
+    @Environment(\.cranny.ambientDetail) private var detail
+
     /// A sweep along `outline` in `palette.glow1` (default `.charging`).
     public init(outline: Path, palette: AmbientPalette = .charging, level: AmbienceLevel, budget: EffectBudget,
                 onFinished: (() -> Void)? = nil) {
@@ -33,7 +37,7 @@ public struct ChargeSweep: View {
         let cap = Glow.ambientAlphaCap(max(level, .subtle))
         let glow = palette.glow1
         Group {
-            switch MomentPath.resolve(budget: budget, shadersAvailable: ShaderEffects.isAvailable) {
+            switch MomentPath.resolve(budget: budget, detail: detail, shadersAvailable: ShaderEffects.isAvailable) {
             case .reduced:
                 ReducedMoment(duration: Self.duration, onFinished: onFinished) {
                     RimStrokes(outline: outline, color: glow.color(1))

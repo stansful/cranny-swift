@@ -53,11 +53,12 @@ private func budget(isOpen: Bool = true, onScreen: Bool = true, lowPower: Bool =
 }
 
 @Test func qaSwitchOnlyForcesOnScreen() {
-    let paused = budget(onScreen: false)
+    let paused = budget(onScreen: false, fullScreen: true)
     let adjusted = EffectsQA.adjusted(paused)
     #expect(adjusted.isOpen == paused.isOpen && adjusted.reduceMotion == paused.reduceMotion
-            && adjusted.fullScreenFront == paused.fullScreenFront && adjusted.onBattery == paused.onBattery)
+            && adjusted.onBattery == paused.onBattery)
     #expect(adjusted.onScreen == (EffectsQA.keepsRunning || paused.onScreen))
+    #expect(adjusted.fullScreenFront == (!EffectsQA.keepsRunning && paused.fullScreenFront))
     let lowPower = budget(lowPower: true)
     #expect(EffectsQA.adjusted(lowPower).lowPower == !EffectsQA.keepsRunning)
 }

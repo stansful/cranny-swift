@@ -1,9 +1,12 @@
 // CrannyEffects/Ambient/AmbientFieldView.swift — draws one ambient effect (aurora, motes, tide, halo) on the path
-// `AmbientPath.resolve` picks: the dedicated Metal layer, the SwiftUI stitchable shader, the SwiftUI fallback or
-// the static Low Power halo (DESIGN.md §5.3, §5.6). The public fields and `AmbientLayer` are thin wrappers.
+// `AmbientPath.resolve` picks: the dedicated Metal layer, the SwiftUI stitchable shader, the SwiftUI fallback, the
+// static Low Power halo (DESIGN.md §5.3, §5.6) or, with Appearance ▸ Quality ▸ Efficient (the theme's
+// `ambientDetail`) on a live view, the Core Animation light (§5.7). The public fields and `AmbientLayer` are thin
+// wrappers.
 //
 // Inputs from around the view: First light's reveal and the song-change ripple (EffectEnvironment.swift). The
-// Metal layer receives them as uniforms; the SwiftUI paths apply them as masks and a distortion.
+// Metal layer receives them as uniforms; the SwiftUI paths apply them as masks and a distortion; the Core Animation
+// light lifts once for the ripple and leaves the reveal to First light's still variant (MomentPath).
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -25,6 +28,9 @@ struct AmbientFieldView: View, Animatable {
     @Environment(\.ambientReveal) private var reveal
     @Environment(\.ambientRippleStart) private var rippleStart
     @Environment(\.effectRendering) private var rendering
+    @Environment(\.cranny.ambientDetail) private var detail
+    @Environment(\.cranny.motion) private var motion
+    @Environment(\.cranny.reduceMotion) private var themeReducesMotion
 
     nonisolated var animatableData: AnimatablePair<AmbientPalette.Vector, AnimatablePair<Double, Double>> {
         get { .init(palette.vector, .init(energy, fill)) }
@@ -33,12 +39,20 @@ struct AmbientFieldView: View, Animatable {
 
     var body: some View {
         let budget = EffectsQA.adjusted(budget)
-        let layerAllowed = rendering == .automatic && ShaderEffects.allowsLayer && AmbientLayerSupport.shared.isUsable
-        let path = AmbientPath.resolve(budget: budget, shadersAvailable: ShaderEffects.isAvailable,
+        // Snapshots (`.inline`) keep the SwiftUI paths whatever the setting. Efficient never asks about the Metal
+        // library or layer: asking loads the library on a GPU device.
+        let detail: AmbientDetail = rendering == .automatic ? detail : .detailed
+        let efficient = detail == .efficient
+        let layerAllowed = !efficient && rendering == .automatic && ShaderEffects.allowsLayer
+            && AmbientLayerSupport.shared.isUsable
+        let shadersAvailable = !efficient && ShaderEffects.isAvailable
+        let path = AmbientPath.resolve(budget: budget, detail: detail, shadersAvailable: shadersAvailable,
                                        layerAllowed: layerAllowed)
         Group {
             if path == .layer {
                 AmbientMetalLayer(state: layerState(budget), energySource: energySource)
+            } else if path == .coreAnimation {
+                AmbientCALayer(state: coreAnimationState(budget))
             } else if path == .staticHalo {
                 HaloFallback(glow: palette.glow1, level: level, placement: halo)
                     .modifier(AmbientMasks(fill: fill, reveal: reveal, reduceMotion: budget.reduceMotion))
@@ -55,6 +69,13 @@ struct AmbientFieldView: View, Animatable {
         AmbientLayerState(effect: effect, glows: palette.glows, energy: energy, level: level, fill: fill,
                           reveal: reveal, rippleStart: rippleStart, halo: halo,
                           interval: budget.minimumInterval, restingTime: restingTime)
+    }
+
+    /// The Core Animation light's inputs. Live energy is not used: following it would cost the app work per frame.
+    private func coreAnimationState(_ budget: EffectBudget) -> AmbientCAState {
+        AmbientCAState(effect: effect, glows: palette.glows, level: level, fill: fill, interval: budget.minimumInterval,
+                       rests: budget.reduceMotion, restingTime: restingTime, halo: halo, rippleStart: rippleStart,
+                       crossFade: AmbientCAFade.motion(.colorShift, personality: motion, reduceMotion: themeReducesMotion))
     }
 
     /// The SwiftUI paths, timed by `EffectClock` at the budget's interval (paused: the last frame stays).

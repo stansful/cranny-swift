@@ -1,7 +1,7 @@
 // CrannyEffects/FirstLight.swift — the first open per session (DESIGN.md §5.5, §5.6 "First light"): the ambient light
 // fills outward from the camera over 1.0 s, with a soft crest of glow1 riding out from it. The reveal reaches the
 // light through the environment, so it works on every ambient path (the Metal layer gets it as a uniform, the
-// SwiftUI paths as a radial mask). Reduce Motion: a static fade.
+// SwiftUI paths as a radial mask). Reduce Motion and Appearance ▸ Quality ▸ Efficient: a static fade.
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -23,6 +23,8 @@ public struct FirstLight<Content: View>: View {
     private let content: Content
 
     @State private var size: CGSize = .zero
+    /// Appearance ▸ Quality: Efficient plays the still variant (no Metal, no Canvas, DESIGN.md §5.7).
+    @Environment(\.cranny.ambientDetail) private var detail
 
     /// Reveals `content` (the ambient light) outward from the top centre.
     public init(palette: AmbientPalette, level: AmbienceLevel, budget: EffectBudget, onFinished: (() -> Void)? = nil,
@@ -33,7 +35,7 @@ public struct FirstLight<Content: View>: View {
 
     public var body: some View {
         Group {
-            switch MomentPath.resolve(budget: budget, shadersAvailable: ShaderEffects.isAvailable) {
+            switch MomentPath.resolve(budget: budget, detail: detail, shadersAvailable: ShaderEffects.isAvailable) {
             case .reduced:
                 ReducedReveal(duration: Self.duration, onFinished: onFinished) { content }
             case .shader, .fallback:

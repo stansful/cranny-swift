@@ -1,0 +1,287 @@
+// Appearance ▸ Quality ▸ Efficient (DESIGN.md §5.7): the Core Animation light. Which path draws what; the layers it
+// builds; its clock (paused with the budget, resting under Reduce Motion, resuming where it stopped); palette and level
+// changes under the alpha cap; the band; and that Efficient never builds a renderer or asks Metal for a device.
+import AppKit
+import CrannyCore
+import Foundation
+import QuartzCore
+import SwiftUI
+import Testing
+@testable import CrannyEffects
+
+private func budget(lowPower: Bool = false, reduceMotion: Bool = false, isOpen: Bool = true,
+                    onBattery: Bool = false) -> EffectBudget {
+    EffectBudget(isOpen: isOpen, onScreen: true, lowPower: lowPower, fullScreenFront: false, reduceMotion: reduceMotion,
+                 onBattery: onBattery)
+}
+
+// MARK: - Paths
+
+@Test func efficientDrawsTheCoreAnimationLightWithoutAskingForMetal() {
+    var asked = false
+    func available() -> Bool { asked = true; return true }
+    #expect(AmbientPath.resolve(budget: budget(), detail: .efficient, shadersAvailable: available(),
+                                layerAllowed: available()) == .coreAnimation)
+    #expect(AmbientPath.resolve(budget: budget(reduceMotion: true), detail: .efficient, shadersAvailable: available(),
+                                layerAllowed: available()) == .coreAnimation, "Reduce Motion rests the same layers")
+    #expect(!asked, "Efficient never asks about the Metal library or layer")
+    #expect(AmbientPath.resolve(budget: budget(lowPower: true), detail: .efficient, shadersAvailable: available(),
+                                layerAllowed: available()) == .staticHalo, "Low Power keeps the static halo")
+    #expect(!asked)
+    // Detailed is what it was.
+    #expect(AmbientPath.resolve(budget: budget(), detail: .detailed, shadersAvailable: true, layerAllowed: true) == .layer)
+    #expect(AmbientPath.resolve(budget: budget(), shadersAvailable: true, layerAllowed: false) == .shader)
+    #expect(AmbientPath.resolve(budget: budget(reduceMotion: true), shadersAvailable: true, layerAllowed: true) == .fallback)
+    #expect(AmbientPath.coreAnimation.isShader == false)
+}
+
+@Test func efficientMomentsPlayTheirStillVariants() {
+    var asked = false
+    func available() -> Bool { asked = true; return true }
+    for b in [budget(), budget(lowPower: true), budget(isOpen: false), budget(onBattery: true)] {
+        #expect(MomentPath.resolve(budget: b, detail: .efficient, shadersAvailable: available()) == .reduced)
+    }
+    #expect(!asked, "a still moment never asks about the Metal library")
+    #expect(MomentPath.resolve(budget: budget(), detail: .detailed, shadersAvailable: true) == .shader)
+    #expect(MomentPath.resolve(budget: budget(lowPower: true), shadersAvailable: true) == .fallback)
+}
+
+@Test func crossFadeFollowsTheColourShiftToken() {
+    #expect(AmbientCAFade.motion(.colorShift, personality: .standard, reduceMotion: false)
+            == AmbientCAFade(duration: 0.8, curve: .easeInEaseOut))
+    #expect(AmbientCAFade.motion(.colorShift, personality: .calm, reduceMotion: true)
+            == AmbientCAFade(duration: 0.3, curve: .easeInEaseOut))
+    #expect(AmbientCAFade.motion(.colorShift, personality: .instant, reduceMotion: false) == nil)
+    #expect(AmbientCAFade.motion(.ambientIn, personality: .standard, reduceMotion: false)
+            == AmbientCAFade(duration: 0.5, curve: .easeOut))
+}
+
+@Test func clockMathRunsStopsAndResumes() {
+    let running = AmbientCAClock.timing(time: 12, running: true, parentNow: 100)
+    #expect(AmbientCAClock.time(of: running, parentNow: 100) == 12)
+    #expect(abs(AmbientCAClock.time(of: running, parentNow: 102.5) - 14.5) < 1e-9)
+    let stopped = AmbientCAClock.timing(time: 14.5, running: false, parentNow: 200)
+    #expect(stopped.speed == 0)
+    #expect(AmbientCAClock.time(of: stopped, parentNow: 900) == 14.5, "a stopped clock shows its time forever")
+    let resumed = AmbientCAClock.timing(time: 14.5, running: true, parentNow: 900)
+    #expect(abs(AmbientCAClock.time(of: resumed, parentNow: 901) - 15.5) < 1e-9, "and continues from it")
+    #expect(AmbientCAClock.frameRate(interval: 1.0 / 30) == 30)
+    #expect(AmbientCAClock.frameRate(interval: 1.0 / 20) == 20)
+}
+
+// MARK: - The view
+
+@MainActor @Suite("Core Animation light") struct CoreAnimationLightTests {
+    @Test(arguments: [AmbientEffect.aurora, .motes, .tide, .halo])
+    func buildsItsLayersAndAnimations(_ effect: AmbientEffect) throws {
+        let view = caView(effect, rests: false)
+        let built = try #require(view.effect)
+        #expect(built.group.superlayer === view.lightLayer)
+        #expect(built.content.superlayer?.speed == view.clockSpeed)
+        let expected: Int = switch effect {
+        case .aurora: AuroraCA.curtains.count
+        case .motes: 2 * MotesCA.motes.count            // a rising track and a dot per mote
+        case .tide: TideMath.lineCount
+        case .halo: 0
+        }
+        #expect(built.animatedLayers.count == expected)
+        #expect(view.installedFrameRate == 30)
+        for layer in built.animatedLayers {
+            for key in layer.animationKeys() ?? [] {
+                let animation = try #require(layer.animation(forKey: key))
+                #expect(animation.repeatCount == .infinity, "\(key) loops")
+                #expect(animation.beginTime == AmbientCAClock.epoch)
+                #expect(animation.preferredFrameRateRange.maximum == 30, "\(key) asks for the budget's rate")
+            }
+        }
+        #expect(abs(Double(built.group.opacity) - Glow.ambientAlphaCap(.subtle)) < 1e-6)
+        #expect(built.group.allowsGroupOpacity)
+    }
+
+    /// The budget pauses the light by stopping its clock (closed, occluded, full screen); it resumes where it stopped.
+    /// Battery re-installs the animations at 20 fps. Reduce Motion rests it on the resting frame.
+    @Test func clockPausesRestsAndResumes() async throws {
+        let view = caView(.aurora, time: 7.3, rests: false)
+        #expect(view.isClockRunning && view.clockSpeed == 1)
+        try await Task.sleep(for: .milliseconds(120))
+        var state = try #require(view.state)
+        state.interval = nil                                                // paused budget
+        view.state = state
+        #expect(!view.isClockRunning && view.clockSpeed == 0)
+        let stopped = view.lightTime
+        #expect(stopped > 7.3 + 0.05, "time ran while the light ran (\(stopped))")
+        try await Task.sleep(for: .milliseconds(120))
+        #expect(view.lightTime == stopped, "a paused light stands still")
+        state.interval = 1.0 / 30
+        view.state = state
+        #expect(view.isClockRunning && view.clockSpeed == 1)
+        #expect(abs(view.lightTime - stopped) < 0.05, "it resumes where it stopped")
+        state.interval = 1.0 / 20                                           // on battery
+        view.state = state
+        #expect(view.installedFrameRate == 20)
+        let rate = try #require(view.effect?.animatedLayers.first?.animation(forKey: "drift"))
+        #expect(rate.preferredFrameRateRange.maximum == 20)
+        state.rests = true                                                  // Reduce Motion / Instant
+        view.state = state
+        #expect(view.clockSpeed == 0 && abs(view.lightTime - 7.3) < 1e-6)
+        state.rests = false
+        view.state = state
+        #expect(view.clockSpeed == 1 && abs(view.lightTime - 7.3) < 0.05)
+    }
+
+    /// The fill rises under a mask and fades under Reduce Motion; settled, no mask is left (no offscreen pass).
+    @Test func fillMasksOnlyWhileRising() throws {
+        let view = caView(.motes, fill: 0.5, rests: false)
+        #expect(view.isFillMasked && view.fillOpacity == 1)
+        var state = try #require(view.state)
+        state.fill = 1
+        view.state = state
+        #expect(!view.isFillMasked && view.fillOpacity == 1)
+        state.fill = 0
+        view.state = state
+        #expect(!view.isFillMasked && view.fillOpacity == 0)
+        state.rests = true
+        state.fill = 0.4
+        view.state = state
+        #expect(!view.isFillMasked && abs(view.fillOpacity - 0.4) < 1e-6)
+    }
+
+    /// Palette and level changes recolour the layers and cross-fade them; the cap is the group's opacity.
+    @Test func paletteAndLevelChangesCrossFadeUnderTheCap() throws {
+        let fade = AmbientCAFade(duration: 0.8, curve: .easeInEaseOut)
+        let view = AmbientCANSView()
+        view.frame = CGRect(x: 0, y: 0, width: 640, height: 240)
+        view.state = caState(.tide, palette: .afterglow, level: .subtle, crossFade: fade)
+        let group = try #require(view.effect?.group)
+        #expect(view.lightLayer.animation(forKey: kCATransition) == nil, "the first look does not fade in")
+        view.state = caState(.tide, palette: .timer, level: .vivid, crossFade: fade)
+        let transition = try #require(view.lightLayer.animation(forKey: kCATransition) as? CATransition)
+        #expect(transition.type == .fade && transition.duration == 0.8)
+        #expect(abs(Double(group.opacity) - Glow.ambientAlphaCap(.vivid)) < 1e-6)
+        #expect(view.effect?.group === group, "a new look keeps the layers")
+        let strokes = (group.sublayers ?? []).flatMap(allLayers).compactMap { $0 as? CAShapeLayer }
+        #expect(!strokes.isEmpty)
+        let sRGB = try #require(CGColorSpace(name: CGColorSpace.sRGB))
+        for stroke in strokes {
+            let color = try #require(stroke.strokeColor?.converted(to: sRGB, intent: .defaultIntent, options: nil))
+            let c = try #require(color.components)
+            #expect(c[3] <= 1)
+            #expect(c[0] <= Glow.maxBrightness + 1e-6 && c[1] <= Glow.maxBrightness + 1e-6)
+        }
+        // Instant: no cross-fade.
+        let instant = AmbientCANSView()
+        instant.frame = view.frame
+        instant.state = caState(.aurora, crossFade: nil)
+        instant.state = caState(.aurora, palette: .charging, crossFade: nil)
+        #expect(instant.lightLayer.animation(forKey: kCATransition) == nil)
+        // A new effect builds new layers.
+        view.state = caState(.motes, palette: .timer, level: .vivid, crossFade: fade)
+        #expect(view.effect?.group !== group && group.superlayer == nil)
+    }
+
+    /// Rendered as the window server would: light where it belongs, the band clear, alpha within the cap.
+    @Test(.enabled(if: shadersRun), arguments: [AmbientEffect.aurora, .motes, .tide],
+          [AmbienceLevel.subtle, .vivid])
+    func rendersUnderTheCapWithTheBandClear(_ effect: AmbientEffect, _ level: AmbienceLevel) throws {
+        let cap = Glow.ambientAlphaCap(level)
+        for time in [0.0, 7.3, 23.9] {
+            let raster = try rasterizeCA(caView(effect, palette: .afterglow, level: level, time: time))
+            #expect(raster.peakAlpha > 0.1 * cap, "\(effect) draws light at t = \(time)")
+            #expect(raster.peakAlpha <= cap + 2.0 / 255, "\(effect) \(level): peak \(raster.peakAlpha) over the cap")
+            #expect(raster.peakAlpha(topRows: 0.40) <= 1.0 / 255, "\(effect): the band stays black")
+            #expect(raster.meanAlpha(rows: 0.75, 1) > raster.meanAlpha(rows: 0.40, 0.55), "\(effect) rises from the bottom")
+        }
+    }
+
+    /// Development snapshots: each effect at Subtle and Vivid on both paths (`CRANNY_SNAPSHOT_DIR`).
+    @Test(.enabled(if: shadersRun && SnapshotOutput.directory("Effects") != nil))
+    func writesComparisonSnapshots() throws {
+        let dir = try #require(SnapshotOutput.directory("Effects"))
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let size = CGSize(width: 640, height: 240)
+        for effect in [AmbientEffect.aurora, .motes, .tide] {
+            for level in [AmbienceLevel.subtle, .vivid] {
+                let ca = try rasterizeCA(caView(effect, palette: .afterglow, level: level, size: size), scale: 2)
+                try writePNG(ca, to: dir.appendingPathComponent("\(effect)-\(level)-efficient.png"))
+                let metal = try rasterizeLayer(layerState(effect, palette: .afterglow, level: level), size: size,
+                                               scale: 2, time: 7.3)
+                try writePNG(metal, to: dir.appendingPathComponent("\(effect)-\(level)-detailed.png"))
+            }
+        }
+    }
+}
+
+private func allLayers(_ layer: CALayer) -> [CALayer] {
+    [layer] + (layer.sublayers ?? []).flatMap(allLayers)
+}
+
+// MARK: - No Metal in Efficient
+
+/// Hosts the light and every moment with `detail` in a window (never shown) and lets SwiftUI run for a moment. Returns
+/// what the hierarchy holds and whether the effects asked Metal for a device or built a renderer. Run in a child
+/// process (exit tests), where nothing else has touched Metal.
+@MainActor private func hostEverything(detail: AmbientDetail) -> (coreAnimation: Bool, metal: Bool, queries: Int, renderers: Int) {
+    var theme = CrannyTheme()
+    theme.ambientDetail = detail
+    var outline = Path()
+    outline.move(to: CGPoint(x: 10, y: 4))
+    outline.addLine(to: CGPoint(x: 290, y: 30))
+    let root = VStack(spacing: 0) {
+        FirstLight(palette: .afterglow, level: .vivid, budget: runningBudget) {
+            AmbientLayer(palette: .afterglow, level: .vivid, effect: .aurora, energy: 0, budget: runningBudget)
+        }
+        .songChangeRipple(1)
+        .frame(width: 640, height: 200)
+        MotesField(palette: .timer, level: .subtle, energy: 0, budget: runningBudget).frame(width: 640, height: 120)
+        TideField(palette: .charging, level: .vivid, energy: 0, budget: runningBudget).frame(width: 640, height: 120)
+        HaloField(palette: .afterglow, level: .subtle, budget: runningBudget).frame(width: 640, height: 120)
+        EmberBurst(level: .vivid, budget: runningBudget)
+        ChargeSweep(outline: outline, level: .vivid, budget: runningBudget).frame(width: 300, height: 40)
+        LiquidNeck(progress: 0.5, budget: runningBudget) {
+            HStack(spacing: 6) { Capsule().fill(.black).frame(width: 100, height: 30); Circle().fill(.black).frame(width: 30) }
+        }
+        .frame(width: 200, height: 40)
+    }
+    .crannyThemeRoot(theme)
+    let host = NSHostingView(rootView: root)
+    let window = NSWindow(contentRect: NSRect(x: -30_000, y: -30_000, width: 640, height: 900), styleMask: .borderless,
+                          backing: .buffered, defer: false)
+    window.isReleasedWhenClosed = false
+    window.contentView = host
+    for _ in 0..<5 {
+        host.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.25))       // First light and the moments play meanwhile
+    }
+    func find(_ view: NSView, _ kind: AnyClass) -> Bool {
+        view.isKind(of: kind) || view.subviews.contains { find($0, kind) }
+    }
+    let result = (find(host, AmbientCANSView.self), find(host, AmbientMetalNSView.self), AmbientGPU.deviceQueries,
+                  AmbientRenderer.registeredCount)
+    window.contentView = nil
+    window.close()
+    return result
+}
+
+/// Efficient draws the light with Core Animation and never builds an `AmbientRenderer` or asks Metal for a device,
+/// whatever plays (First light, the song-change swell, the ember burst, the charge sweep, the liquid neck).
+@Test func efficientNeverBuildsARendererOrAsksForAMetalDevice() async {
+    await #expect(processExitsWith: .success) {
+        let result = await MainActor.run { hostEverything(detail: .efficient) }
+        guard result.coreAnimation, !result.metal, result.queries == 0, result.renderers == 0 else {
+            FileHandle.standardError.write(Data("Efficient touched Metal: \(result)\n".utf8))
+            exit(1)
+        }
+    }
+}
+
+/// The same probe on Detailed (unchanged): the Metal layer, its renderer and the device queries are all there, so the
+/// probe above would see them.
+@Test(.enabled(if: shadersRun)) func detailedStillDrawsWithMetal() async {
+    await #expect(processExitsWith: .success) {
+        let result = await MainActor.run { hostEverything(detail: .detailed) }
+        guard !result.coreAnimation, result.metal, result.queries > 0, result.renderers > 0 else {
+            FileHandle.standardError.write(Data("Detailed did not draw with Metal: \(result)\n".utf8))
+            exit(1)
+        }
+    }
+}
