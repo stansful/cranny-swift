@@ -1,5 +1,7 @@
 // CrannyNotes/Editor/Syntax/CodeTokenizer.swift — one table-driven scanner for every C-like and scripting language
-// (`LanguageSpec`). A single left-to-right pass; tokens come out sorted and never overlap.
+// (`LanguageSpec`). A single left-to-right pass; tokens come out sorted and never overlap. A block comment or a
+// multi-line string is consumed in one step, so every line start the loop reaches carries no state (`LexLevel.none`):
+// a pass resumes at any of them by starting there. Every look past the token being read stays on its line.
 import Foundation
 
 nonisolated struct CodeTokenizer {
@@ -21,7 +23,13 @@ nonisolated struct CodeTokenizer {
         var atLineStart = true
         while i < end {
             let c = source[i]
-            if SourceText.isNewline(c) { atLineStart = true; i += 1; continue }
+            if SourceText.isNewline(c) {
+                atLineStart = true
+                i += 1
+                sink.checkpoint(source, at: i, before: end, .none)
+                if sink.isStopped { return }
+                continue
+            }
             if SourceText.isWhitespace(c) { i += 1; continue }
             let lineStart = atLineStart
             atLineStart = false

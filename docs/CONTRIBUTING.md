@@ -246,7 +246,7 @@ on: **`CRANNY_SNAPSHOT_DIR=<dir>`**. Each test target writes into its own folder
 
 Package test processes resolve English for `String(localized:)`; the suites that render Russian say so above.
 
-**Benchmarks:** `CRANNY_NOTES_BENCH=<file>` runs the Notes keystroke benchmark (release configuration; see the file).
+**Benchmarks:** `CRANNY_NOTES_BENCH=<file>` runs the Notes keystroke benchmark and `CRANNY_SYNTAX_BENCH=<file>` the share of it that code mode's colouring takes (release configuration with `-Xswiftc -DDEBUG`, since other targets' tests use Debug-only hooks; see the files). `CRANNY_LEXING_ROUNDS=<n>` runs the incremental-lexing equivalence test (`IncrementalLexingTests`) with n seeds per document instead of one; worth a run in Release after changing a tokenizer.
 
 `CRANNY_MEDIA_BRIDGE=<dylib>` also tells a Debug build of the app which media bridge to load (Release ignores it).
 

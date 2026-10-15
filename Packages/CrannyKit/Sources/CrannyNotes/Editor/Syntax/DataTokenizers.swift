@@ -1,5 +1,7 @@
 // CrannyNotes/Editor/Syntax/DataTokenizers.swift — JSON (keys as type, values as string/number/keyword,
-// JSONC comments) and YAML (keys, scalars, comments, anchors, block scalars, document markers).
+// JSONC comments) and YAML (keys, scalars, comments, anchors, block scalars, document markers). JSON carries
+// nothing into a line; its key test looks past line ends for the `:` and reports how far (`TokenSink.read`). YAML
+// is line by line and carries the block scalar it is in (`LexLevel.blockScalar`).
 import Foundation
 
 nonisolated struct JSONTokenizer {
@@ -14,6 +16,7 @@ nonisolated struct JSONTokenizer {
                 let close = min(CodeTokenizer.scan(s, rule: Self.quoted, from: i + 1, end: end), end)
                 var after = close
                 while after < end && SourceText.isWhitespace(s[after]) { after += 1 }
+                sink.read(upTo: after, end: end, in: s)                          // may be lines further on
                 sink.add(s[after] == 0x3A ? .type : .string, i..<close)          // "key": vs "value"
                 i = close
             } else if SourceText.isDigit(c) || (c == 0x2D && SourceText.isDigit(s[i + 1])) {
@@ -35,6 +38,10 @@ nonisolated struct JSONTokenizer {
                 i = close
             } else {
                 i += 1
+                if SourceText.isNewline(c) {
+                    sink.checkpoint(s, at: i, before: end, .none)
+                    if sink.isStopped { return }
+                }
             }
         }
     }
@@ -45,11 +52,15 @@ nonisolated struct YAMLTokenizer {
     private static let rules = [LanguageSpec.Delimited(open: "\"", close: "\""),
                                 LanguageSpec.Delimited(open: "'", close: "'", escapes: false)]
 
-    func tokenize(_ s: SourceText, in range: Range<Int>, into sink: inout TokenSink) {
+    /// `state`: where a resumed pass starts (`range.lowerBound` is then a line start inside that block scalar or not).
+    func tokenize(_ s: SourceText, in range: Range<Int>, resuming state: LexState? = nil, into sink: inout TokenSink) {
         let end = min(range.upperBound, s.count)
         var lineStart = range.lowerBound
         var blockScalarIndent: Int?                                              // inside `key: |` text
+        if case .blockScalar(let indent)? = state?.level { blockScalarIndent = indent }
         while lineStart < end {
+            sink.checkpoint(s, at: lineStart, before: end, blockScalarIndent.map { .blockScalar(indent: $0) } ?? .none)
+            if sink.isStopped { return }
             let lineEnd = min(s.lineEnd(from: lineStart), end)
             let next = lineEnd >= end ? end : lineEnd + (s[lineEnd] == 0x0D && s[lineEnd + 1] == 0x0A ? 2 : 1)
             let indentEnd = s.skipSpaces(from: lineStart, until: lineEnd)

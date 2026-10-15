@@ -1,6 +1,8 @@
 // CrannyNotes/Editor/Syntax/StyleSheetTokenizer.swift — CSS (and the common subset of SCSS/Less): selectors
 // (function colour), properties (type), at-rules and `!important` (keyword), numbers with units and hex
-// colours (number), `url(…)`/`rgb(…)` (function), strings and comments.
+// colours (number), `url(…)`/`rgb(…)` (function), strings and comments. A line start carries the brace depth and
+// whether a value is being read (`LexLevel.styleSheet`); the nested-rule test looks up to 256 units ahead, across
+// lines, and reports how far (`TokenSink.read`).
 import Foundation
 
 nonisolated struct StyleSheetTokenizer {
@@ -13,12 +15,16 @@ nonisolated struct StyleSheetTokenizer {
 
     private static let quoted = [LanguageSpec.Delimited(open: "\"", close: "\""), LanguageSpec.Delimited(open: "'", close: "'")]
 
-    func tokenize(_ s: SourceText, in range: Range<Int>, into sink: inout TokenSink) {
+    /// `state`: where a resumed pass starts (`range.lowerBound` is then a line start with that depth and value flag).
+    func tokenize(_ s: SourceText, in range: Range<Int>, resuming state: LexState? = nil, into sink: inout TokenSink) {
         var i = range.lowerBound
         let end = min(range.upperBound, s.count)
         var depth = 0
         var inValue = false                                                      // after `prop:` until `;` or `}`
+        if case .styleSheet(let savedDepth, let savedInValue)? = state?.level { depth = savedDepth; inValue = savedInValue }
         while i < end {
+            sink.checkpoint(s, at: i, before: end, .styleSheet(depth: depth, inValue: inValue))
+            if sink.isStopped { return }
             let c = s[i]
             if s.matches("/*", at: i) {
                 let close = s.find("*/", from: i + 2, until: end).map { $0 + 2 } ?? end
@@ -42,7 +48,7 @@ nonisolated struct StyleSheetTokenizer {
             } else if c == ASCII.bang && s.matches("!important", at: i, caseInsensitive: true) {
                 sink.add(.keyword, i..<(i + 10))
                 i += 10
-            } else if depth == 0 || !inValue && opensBlock(s, at: i, end: end) {
+            } else if depth == 0 || !inValue && opensBlock(s, at: i, end: end, sink: &sink) {
                 i = selector(s, at: i, end: end, into: &sink)                    // nested rule (SCSS, @media)
             } else {
                 i = declaration(s, at: i, end: end, inValue: &inValue, into: &sink)
@@ -70,16 +76,17 @@ nonisolated struct StyleSheetTokenizer {
 
     /// Inside a block, a nested selector (`p:hover {`, `.a {`) reaches `{` before any `;` or `}`; a declaration
     /// (`color: red;`) does not. Looks a short way ahead only.
-    private func opensBlock(_ s: SourceText, at i: Int, end: Int) -> Bool {
+    private func opensBlock(_ s: SourceText, at i: Int, end: Int, sink: inout TokenSink) -> Bool {
         var j = i
         let limit = min(end, i + 256)
         while j < limit {
             switch s[j] {
-            case ASCII.openBrace: return true
-            case ASCII.semicolon, ASCII.closeBrace: return false
+            case ASCII.openBrace: sink.read(upTo: j, end: end, in: s); return true
+            case ASCII.semicolon, ASCII.closeBrace: sink.read(upTo: j, end: end, in: s); return false
             default: j += 1
             }
         }
+        sink.read(upTo: j, end: end, in: s)
         return false
     }
 

@@ -1,6 +1,8 @@
 // CrannyNotes/Editor/Syntax/MarkdownTokenizer.swift — Markdown for code mode (DESIGN.md §7.5): headings, quotes,
 // lists, rules, fences (with their own language), inline code, links, emphasis. Punctuation is a dimmed
-// `.marker` so the prose stays the brightest thing on the card. Line-based; a fence is the only multi-line state.
+// `.marker` so the prose stays the brightest thing on the card. Line-based; a fence is the only multi-line state:
+// its closing line is found first, then the body goes to the fenced language's tokenizer. A line start in a body
+// carries the fence (`LexLevel.fence`) and that tokenizer's state; a resumed pass looks for the closing line from there.
 // Linear per line: an opener whose closer was already searched for and not found does not search again
 // (`InlineScan`), so a pasted log line full of `[`, `*` or `_` costs one pass, not one per opener.
 import Foundation
@@ -21,37 +23,62 @@ nonisolated struct MarkdownTokenizer {
         var character: UInt16
         var length: Int
         var language: CodeLanguage?
-        var bodyStart: Int
     }
 
-    func tokenize(_ s: SourceText, in range: Range<Int>, into sink: inout TokenSink) {
+    /// `state`: where a resumed pass starts (`range.lowerBound` is then a line start outside fences or in a body).
+    func tokenize(_ s: SourceText, in range: Range<Int>, resuming state: LexState? = nil, into sink: inout TokenSink) {
         let end = min(range.upperBound, s.count)
         var lineStart = range.lowerBound
-        var fence: Fence?
+        if let state, case .fence(let character, let length, let language) = state.level {
+            let fence = Fence(character: character, length: length, language: language)
+            lineStart = fenced(fence, s, from: lineStart, end: end, resuming: state.nested, into: &sink)
+            if sink.isStopped { return }
+        }
         while lineStart < end {
+            sink.checkpoint(s, at: lineStart, before: end, .none)
+            if sink.isStopped { return }
             let lineEnd = min(s.lineEnd(from: lineStart), end)
-            let next = lineEnd >= end ? end : lineEnd + (s[lineEnd] == ASCII.cr && s[lineEnd + 1] == ASCII.lf ? 2 : 1)
+            let next = Self.nextLine(after: lineEnd, s, end: end)
             let indent = s.skipSpaces(from: lineStart, until: lineEnd)
-            let shallow = indent - lineStart <= 3
-            if let open = fence {
-                if shallow && closesFence(open, s, at: indent, lineEnd: lineEnd) {
-                    fenceBody(open, s, open.bodyStart..<lineStart, into: &sink)
-                    sink.add(.marker, indent..<lineEnd)
-                    fence = nil
-                }
-            } else if shallow, let opened = openFence(s, at: indent, lineEnd: lineEnd, next: next, into: &sink) {
-                fence = opened
+            if indent - lineStart <= 3, let opened = openFence(s, at: indent, lineEnd: lineEnd, into: &sink) {
+                lineStart = fenced(opened, s, from: next, end: end, resuming: nil, into: &sink)
+                if sink.isStopped { return }
             } else {
                 block(s, indent..<lineEnd, into: &sink)
+                lineStart = next
             }
-            lineStart = next
         }
-        if let open = fence { fenceBody(open, s, open.bodyStart..<end, into: &sink) }   // unclosed fence: to the end
+    }
+
+    /// The start of the line after the one ending at `lineEnd` (a CR LF is one line end).
+    private static func nextLine(after lineEnd: Int, _ s: SourceText, end: Int) -> Int {
+        lineEnd >= end ? end : lineEnd + (s[lineEnd] == ASCII.cr && s[lineEnd + 1] == ASCII.lf ? 2 : 1)
     }
 
     // MARK: Fences
 
-    private func openFence(_ s: SourceText, at i: Int, lineEnd: Int, next: Int, into sink: inout TokenSink) -> Fence? {
+    /// A fence's body from `start` (its first line, or a line start inside it where the fenced tokenizer was in
+    /// `state`) up to its closing line, then that line: returns the line after it, or `end` for a fence left open
+    /// (its body runs to the end).
+    private func fenced(_ fence: Fence, _ s: SourceText, from start: Int, end: Int, resuming state: LexState?,
+                        into sink: inout TokenSink) -> Int {
+        var lineStart = start
+        while lineStart < end {
+            let lineEnd = min(s.lineEnd(from: lineStart), end)
+            let indent = s.skipSpaces(from: lineStart, until: lineEnd)
+            if indent - lineStart <= 3 && closesFence(fence, s, at: indent, lineEnd: lineEnd) {
+                fenceBody(fence, s, start..<lineStart, resuming: state, into: &sink)
+                if sink.isStopped { return end }
+                sink.add(.marker, indent..<lineEnd)
+                return Self.nextLine(after: lineEnd, s, end: end)
+            }
+            lineStart = Self.nextLine(after: lineEnd, s, end: end)
+        }
+        fenceBody(fence, s, start..<end, resuming: state, into: &sink)
+        return end
+    }
+
+    private func openFence(_ s: SourceText, at i: Int, lineEnd: Int, into sink: inout TokenSink) -> Fence? {
         let c = s[i]
         guard c == ASCII.backtick || c == ASCII.tilde else { return nil }
         var j = i
@@ -64,7 +91,7 @@ nonisolated struct MarkdownTokenizer {
         sink.add(.marker, i..<j)
         sink.add(.keyword, infoStart..<infoEnd)
         sink.add(.marker, infoEnd..<lineEnd)
-        return Fence(character: c, length: j - i, language: CodeLanguage(alias: s.string(infoStart..<infoEnd)), bodyStart: next)
+        return Fence(character: c, length: j - i, language: CodeLanguage(alias: s.string(infoStart..<infoEnd)))
     }
 
     private func closesFence(_ fence: Fence, _ s: SourceText, at i: Int, lineEnd: Int) -> Bool {
@@ -73,10 +100,13 @@ nonisolated struct MarkdownTokenizer {
         return j - i >= fence.length && s.skipSpaces(from: j, until: lineEnd) == lineEnd
     }
 
-    private func fenceBody(_ fence: Fence, _ s: SourceText, _ body: Range<Int>, into sink: inout TokenSink) {
+    private func fenceBody(_ fence: Fence, _ s: SourceText, _ body: Range<Int>, resuming state: LexState?,
+                           into sink: inout TokenSink) {
         guard !body.isEmpty else { return }
         if fence.language == .markdown && depth > 0 { return }
-        SyntaxHighlighter.tokenize(s, in: body, language: fence.language, depth: depth + 1, into: &sink)
+        sink.enter(.fence(character: fence.character, length: fence.length, language: fence.language))
+        SyntaxHighlighter.tokenize(s, in: body, language: fence.language, depth: depth + 1, resuming: state, into: &sink)
+        sink.leave()
     }
 
     // MARK: Block-level prefixes

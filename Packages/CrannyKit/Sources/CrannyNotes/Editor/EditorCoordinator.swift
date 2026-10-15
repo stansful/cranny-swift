@@ -1,7 +1,8 @@
 // CrannyNotes/Editor/EditorCoordinator.swift — owns the editor's AppKit side: builds the scroll view and the TextKit 2
 // text view, loads the selected note into the storage, keeps one undo history per note, reports text and focus to
 // the model and drives the syntax styler (code mode), the typing effect and line numbers. Per keystroke it does
-// O(edit) work only: no language detection (the model's entry carries it) and no full-text scans.
+// O(edit) work only: no language detection (the model's entry carries it), no full-text scans, and code mode
+// re-tokenizes only the lines the keystroke can have changed (a paste, drop, undo or redo tokenizes the note whole).
 import AppKit
 import CrannyCore
 import Foundation
@@ -247,6 +248,9 @@ struct EditorConfiguration: Equatable {
         model.setText(textStorage.string, for: configuration.noteID)           // never compared with the old text
         if scrollView?.rulersVisible == true { ruler?.textDidChange(edit) }
         typingEffect.textChanged(edited: editedRange, delta: delta)
-        styler.textChanged(edit)
+        // A paste, drop, undo or redo is coloured by a whole pass; typing only re-tokenizes the lines it touched.
+        let undo = undoManagers[configuration.noteID]
+        let replaced = textView?.isReadingPasteboard == true || undo?.isUndoing == true || undo?.isRedoing == true
+        styler.textChanged(edit, wholePass: replaced)
     }
 }

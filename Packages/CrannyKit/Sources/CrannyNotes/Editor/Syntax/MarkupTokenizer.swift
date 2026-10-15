@@ -1,6 +1,8 @@
 // CrannyNotes/Editor/Syntax/MarkupTokenizer.swift — HTML and XML: tags (keyword), attribute names (type),
 // attribute values (string), comments, `<!DOCTYPE>`/`<?xml?>` (keyword), entities (number). The bodies of
-// `<script>` and `<style>` are handed to the JavaScript and CSS tokenizers.
+// `<script>` and `<style>` are handed to the JavaScript and CSS tokenizers. A tag or comment is consumed in one
+// step, so a line start between them carries nothing; inside a body it carries the body's kind
+// (`LexLevel.embedded`) and that tokenizer's state, and a resumed pass looks for the closing tag from there.
 import Foundation
 
 nonisolated struct MarkupTokenizer {
@@ -12,10 +14,17 @@ nonisolated struct MarkupTokenizer {
         static let ampersand: UInt16 = 0x26, semicolon: UInt16 = 0x3B, hash: UInt16 = 0x23
     }
 
-    func tokenize(_ s: SourceText, in range: Range<Int>, into sink: inout TokenSink) {
+    /// `state`: where a resumed pass starts (`range.lowerBound` is then a line start between tags or in a body).
+    func tokenize(_ s: SourceText, in range: Range<Int>, resuming state: LexState? = nil, into sink: inout TokenSink) {
         var i = range.lowerBound
         let end = min(range.upperBound, s.count)
+        if let state, case .embedded(let script) = state.level {
+            i = body(script: script, s, from: i, end: end, resuming: state.nested, into: &sink)
+            if sink.isStopped { return }
+        }
         while i < end {
+            sink.checkpoint(s, at: i, before: end, .none)
+            if sink.isStopped { return }
             if s.matches("<!--", at: i) {
                 i = delimited(.comment, s, from: i, open: 4, close: "-->", end: end, into: &sink)
             } else if s.matches("<![CDATA[", at: i) {
@@ -26,6 +35,7 @@ nonisolated struct MarkupTokenizer {
                 i = delimited(.keyword, s, from: i, open: 2, close: ">", end: end, into: &sink)
             } else if s[i] == ASCII.less && (isNameStart(s[i + 1]) || (s[i + 1] == ASCII.slash && isNameStart(s[i + 2]))) {
                 i = tag(s, at: i, end: end, into: &sink)
+                if sink.isStopped { return }
             } else if s[i] == ASCII.ampersand, let close = entityEnd(s, at: i, end: end) {
                 sink.add(.number, i..<close)
                 i = close
@@ -69,14 +79,36 @@ nonisolated struct MarkupTokenizer {
             j = max(nameEnd, j + 1)
         }
         if !closing && !selfClosing && (name == "script" || name == "style") {
-            let bodyEnd = findClosingTag(name, s, from: j, end: end)
-            let language: CodeLanguage = name == "script" ? .javascript : .css
-            if depth < 2 {
-                SyntaxHighlighter.tokenize(s, in: j..<bodyEnd, language: language, depth: depth + 1, into: &sink)
+            guard depth < 2 else {
+                let bodyEnd = findClosingTag(name, s, from: j, end: end)
+                readClosingTag(name, at: bodyEnd, s, end: end, into: &sink)
+                return bodyEnd
             }
-            return bodyEnd
+            return body(script: name == "script", s, from: j, end: end, resuming: nil, into: &sink)
         }
         return j
+    }
+
+    /// A `<script>` or `<style>` body from `start` (just after its tag, or a line start inside it where its tokenizer
+    /// was in `state`) to its closing tag: returns where that tag starts.
+    private func body(script: Bool, _ s: SourceText, from start: Int, end: Int, resuming state: LexState?,
+                      into sink: inout TokenSink) -> Int {
+        let name = script ? "script" : "style"
+        let bodyEnd = findClosingTag(name, s, from: start, end: end)
+        sink.enter(.embedded(script: script))
+        SyntaxHighlighter.tokenize(s, in: start..<bodyEnd, language: script ? .javascript : .css, depth: depth + 1,
+                                   resuming: state, into: &sink)
+        sink.leave()
+        readClosingTag(name, at: bodyEnd, s, end: end, into: &sink)
+        return bodyEnd
+    }
+
+    /// The body ends at `bodyEnd` because `</name` starts there. When that is a line start, its state depends on the
+    /// tag's characters after it, so the look counts in its reach. Reported after the body's tokens: the line starts
+    /// inside the body depend only on the text before them (a tag never spans a line end) and keep their reach.
+    private func readClosingTag(_ name: String, at bodyEnd: Int, _ s: SourceText, end: Int, into sink: inout TokenSink) {
+        guard bodyEnd < end else { return }
+        sink.read(upTo: bodyEnd + 1 + name.utf16.count, end: end, in: s)
     }
 
     private func attributeValue(_ s: SourceText, at j: Int, end: Int, into sink: inout TokenSink) -> Int {

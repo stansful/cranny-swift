@@ -1,7 +1,8 @@
 // Opt-in timing of the editor's keystroke path (DESIGN.md §4.7 "no hitches at 120 Hz"): one typed character
 // through the real `EditorCoordinator` in notes of growing size, in every mode. Run in Release with
-//   CRANNY_NOTES_BENCH=/path/to/report.txt swift test -c release -Xswiftc -enable-testing \
+//   CRANNY_NOTES_BENCH=/path/to/report.txt swift test -c release -Xswiftc -enable-testing -Xswiftc -DDEBUG \
 //     --scratch-path .build-release --filter KeystrokeBenchmark
+// (`-DDEBUG`: other targets' tests use Debug-only QA hooks; nothing on the timed path depends on it.)
 // Writes medians (ms) to the report; asserts nothing (timings depend on the machine). Temporary paths only.
 import AppKit
 import CrannyCore

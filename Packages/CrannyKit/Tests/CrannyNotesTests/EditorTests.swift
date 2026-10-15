@@ -63,6 +63,34 @@ import Testing
         #expect(comment?.alphaComponent ?? 1 < 0.9)                             // comments are tertiary
     }
 
+    /// Typing re-tokenizes the lines around it; a paste, undo, redo or a large edit tokenizes the note whole. Every
+    /// one of them ends in the colours of a full pass.
+    @Test func pastesUndoAndRedoTokenizeTheWholeNote() throws {
+        model.adoptLoadedNotes([Note(title: "a.swift", text: "let x = 1\n/* a */ let y = \"s\"\n", mode: .code)])
+        let entry = try #require(model.selectedEntry)
+        let (coordinator, textView) = try editor(showing: entry)
+        let styler = coordinator.styler
+        func matchesAFullPass() -> Bool { styler.tokens == SyntaxHighlighter.tokens(in: textView.string, language: .swift) }
+        textView.setSelectedRange(NSRange(location: 9, length: 0))
+        textView.insertText(" /* open", replacementRange: textView.selectedRange())
+        #expect(styler.wholePasses == 0 && matchesAFullPass())
+        textView.undoManager?.undo()
+        #expect(styler.wholePasses == 1 && matchesAFullPass())
+        textView.undoManager?.redo()
+        #expect(styler.wholePasses == 2 && matchesAFullPass())
+        let pasteboard = NSPasteboard(name: NSPasteboard.Name("cranny.tests.\(UUID().uuidString)"))
+        defer { pasteboard.releaseGlobally() }
+        pasteboard.clearContents()
+        pasteboard.setString(" */ let z = 3", forType: .string)
+        textView.setSelectedRange(NSRange(location: 0, length: 0))
+        #expect(textView.readSelection(from: pasteboard))
+        #expect(textView.string.hasPrefix(" */ let z = 3"))
+        #expect(styler.wholePasses == 3 && matchesAFullPass())
+        textView.insertText(String(repeating: "x", count: SyntaxStyler.wholePassEdit + 1), replacementRange: textView.selectedRange())
+        #expect(styler.wholePasses == 4 && matchesAFullPass())
+        model.autosave.cancel()
+    }
+
     /// Typing in an Automatic code note never runs detection; the model's coalesced result restyles it once.
     @Test func automaticNotesAreColouredByTheModelsDetection() throws {
         model.adoptLoadedNotes([Note(title: "Untitled", text: "", mode: .code)])
@@ -76,6 +104,7 @@ import Testing
         #expect(detected.detectedLanguage == .swift)
         coordinator.update(configuration(detected))                             // what SwiftUI does next
         #expect(coordinator.styler.language == .swift)
+        #expect(coordinator.styler.tokens == SyntaxHighlighter.tokens(in: textView.string, language: .swift))  // whole pass
         let storage = try #require(textView.textStorage)
         let keyword = (storage.attribute(.foregroundColor, at: 15, effectiveRange: nil) as? NSColor)?.usingColorSpace(.sRGB)
         #expect(abs((keyword?.redComponent ?? 0) - SyntaxPalette.keyword.r) < 0.01)   // "let" on line 2

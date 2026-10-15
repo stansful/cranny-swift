@@ -1,6 +1,7 @@
 // CrannyNotes/Editor/NotesTextView.swift — the TextKit 2 `NSTextView` of the Notes editor (DESIGN.md §7.5).
-// It reports focus (for the "notes.editing" hold), typed characters (typing effect) and Notes shortcuts, does
-// code-mode niceties (auto-indent, soft tabs) and leaves file drags to the shell (the Tray takes them).
+// It reports focus (for the "notes.editing" hold), typed characters (typing effect), pastes (syntax styler) and
+// Notes shortcuts, does code-mode niceties (auto-indent, soft tabs) and leaves file drags to the shell (the Tray
+// takes them).
 // Never touch `layoutManager` here: it would switch the view to TextKit 1.
 import AppKit
 
@@ -15,6 +16,8 @@ final class NotesTextView: NSTextView {
     var onWindowChange: (() -> Void)?
     /// Code mode: Return keeps the line's indentation, Tab inserts four spaces.
     var isCodeMode = false
+    /// A paste or drop is inserting text from a pasteboard (code mode then colours the whole note again).
+    private(set) var isReadingPasteboard = false
 
     /// Key-status observers of the current window; removed when the view leaves it (the panel closes).
     private var windowObservers: [any NSObjectProtocol] = []
@@ -115,6 +118,13 @@ final class NotesTextView: NSTextView {
     override func insertTab(_ sender: Any?) {
         guard isCodeMode else { return super.insertTab(sender) }
         insertText("    ", replacementRange: selectedRange())
+    }
+
+    /// Paste, Paste and Match Style and drops all read the pasteboard here.
+    override func readSelection(from pboard: NSPasteboard, type: NSPasteboard.PasteboardType) -> Bool {
+        isReadingPasteboard = true
+        defer { isReadingPasteboard = false }
+        return super.readSelection(from: pboard, type: type)
     }
 
     // MARK: Drags

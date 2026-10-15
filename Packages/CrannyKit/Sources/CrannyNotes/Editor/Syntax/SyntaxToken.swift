@@ -1,5 +1,6 @@
-// CrannyNotes/Editor/Syntax/SyntaxToken.swift — the output of the code-mode tokenizers (DESIGN.md §7.5) and the
-// UTF-16 source buffer they scan. Pure values: no AppKit, no main actor, unit-tested per language.
+// CrannyNotes/Editor/Syntax/SyntaxToken.swift — the output of the code-mode tokenizers (DESIGN.md §7.5), the
+// UTF-16 source buffer they scan and the sink they write tokens and resume points (`LexCheckpoint`) into. Pure
+// values: no AppKit, no main actor, unit-tested per language.
 import Foundation
 
 /// What a run of characters is, for colouring. The colours come from `SyntaxPalette` (DESIGN.md §2.1):
@@ -31,17 +32,26 @@ nonisolated struct SyntaxToken: Equatable, Sendable, CustomStringConvertible {
 /// The text being tokenized, as UTF-16 code units (the unit `NSString`/`NSTextStorage` ranges count in).
 /// Identifiers outside ASCII (Cyrillic names, emoji) count as identifier characters so they never split words.
 nonisolated struct SourceText: Sendable {
-    let units: [UInt16]
+    private(set) var units: [UInt16]
     var count: Int { units.count }
 
     init(_ string: String) { units = Array(string.utf16) }
 
     /// One `getCharacters` copy: much faster than walking a `String` bridged from the text storage.
     init(_ string: NSString) {
-        let count = string.length
-        units = [UInt16](unsafeUninitializedCapacity: count) { buffer, initialized in
-            if let base = buffer.baseAddress { string.getCharacters(base, range: NSRange(location: 0, length: count)) }
-            initialized = count
+        units = Self.units(of: string, in: NSRange(location: 0, length: string.length))
+    }
+
+    /// Replaces `range` with the units of `string` in `replacement` (the text after an edit, read only where it
+    /// changed: no copy of the whole note per keystroke).
+    mutating func replace(_ range: Range<Int>, with string: NSString, in replacement: NSRange) {
+        units.replaceSubrange(range, with: Self.units(of: string, in: replacement))
+    }
+
+    private static func units(of string: NSString, in range: NSRange) -> [UInt16] {
+        [UInt16](unsafeUninitializedCapacity: range.length) { buffer, initialized in
+            if let base = buffer.baseAddress { string.getCharacters(base, range: range) }
+            initialized = range.length
         }
     }
 
@@ -117,14 +127,97 @@ nonisolated struct SourceText: Sendable {
 
 // MARK: - Token collection
 
-/// Accumulates tokens in order, dropping empty runs. Every tokenizer writes into one of these.
+/// Accumulates tokens in order, dropping empty runs. Every tokenizer writes into one of these and, when the sink
+/// records, reports each line start its loop reaches with nothing open (`checkpoint`), so `SyntaxCache` can resume
+/// there. A resumed pass compares each new checkpoint past the edit with the old pass's at the same shifted place
+/// and stops all tokenizers at the first equal one (`isStopped`): from there the old tokens are the new ones.
 nonisolated struct TokenSink {
     private(set) var tokens: [SyntaxToken] = []
+    /// The line starts passed with nothing open (empty unless the sink records).
+    private(set) var checkpoints: [LexCheckpoint] = []
+    /// Set at the first checkpoint equal to the old pass's: every tokenizer returns without another token.
+    private(set) var isStopped = false
+    /// The index in the old checkpoints of the one this pass met.
+    private(set) var met: Int?
+    /// The furthest position a decision so far looked at ahead of the scan (`read(upTo:)`).
+    private(set) var horizon = 0
+
+    private let records: Bool
+    /// The levels of the tokenizers around the one running (a fence's, a `<script>`'s); `overflow` counts levels
+    /// past `LexState.capacity`, inside which nothing is recorded.
+    private var context = LexState()
+    private var overflow = 0
+    /// Where a resumed pass started: its own line start is not recorded again.
+    private var resumedAt = 0
+    /// A resumed pass: the old pass's checkpoints from `next` on, the edit's change in length, and the first new
+    /// position whose text the edit left alone.
+    private var old: [LexCheckpoint] = []
+    private var next = 0
+    private var delta = 0
+    private var meetsFrom = Int.max
+
+    /// Tokens only.
+    init() { records = false }
+
+    /// Tokens and checkpoints of a pass from the start of the text.
+    init(recording: Bool) { records = recording }
+
+    /// A pass resumed at `checkpoint` (nil: from the start) after an edit that changed the length by `delta` and
+    /// left the text from `unchangedFrom` on as it was: it stops at a checkpoint equal to one of `old` from `index`.
+    init(resuming checkpoint: LexCheckpoint?, old: [LexCheckpoint], from index: Int, delta: Int, unchangedFrom: Int) {
+        records = true
+        resumedAt = checkpoint?.position ?? 0
+        horizon = checkpoint.map { $0.position + $0.reach } ?? 0
+        self.old = old
+        next = index
+        self.delta = delta
+        meetsFrom = unchangedFrom
+    }
 
     mutating func add(_ kind: SyntaxKind, _ range: Range<Int>) {
         guard !range.isEmpty else { return }
         tokens.append(SyntaxToken(kind, range))
     }
 
-    mutating func append(contentsOf other: [SyntaxToken]) { tokens.append(contentsOf: other) }
+    /// A decision looked as far as `position`, ahead of where the scan is (it moves the reach of later checkpoints).
+    /// It counts as reading to the end of that line: the rest of the line decides whether the tokenizer's range ends
+    /// at or before `position` (a fence's closing line, a `</style>`), which would have cut the look short. A look
+    /// that got to the range's `end` likewise counts as reading the line `end` is on.
+    mutating func read(upTo position: Int, end: Int, in s: SourceText) {
+        let reached = s.lineEnd(from: min(position, end))
+        if reached > horizon { horizon = reached }
+    }
+
+    /// A tokenizer for a nested body (a fence's, a `<script>`'s) starts inside `level`.
+    mutating func enter(_ level: LexLevel) {
+        if overflow == 0, let state = context.appending(level) { context = state } else { overflow += 1 }
+    }
+
+    /// The nested body's tokenizer returned.
+    mutating func leave() {
+        if overflow > 0 { overflow -= 1 } else { context = context.droppingLast() }
+    }
+
+    /// The running tokenizer's loop is at `position` with nothing open and `level` carried into it. Recorded when it
+    /// is a line start (a CR's LF is no line start) inside the tokenizer's range (`end` excluded).
+    @inline(__always)
+    mutating func checkpoint(_ s: SourceText, at position: Int, before end: Int, _ level: LexLevel) {
+        guard records, position < end, position > resumedAt else { return }
+        let previous = s[position - 1]
+        guard SourceText.isNewline(previous), !(previous == 0x0D && s[position] == 0x0A) else { return }
+        record(position, level)
+    }
+
+    private mutating func record(_ position: Int, _ level: LexLevel) {
+        guard overflow == 0, let state = context.appending(level) else { return }
+        let point = LexCheckpoint(position: position, state: state, reach: max(horizon - position, 0))
+        checkpoints.append(point)
+        guard position >= meetsFrom else { return }
+        let target = position - delta
+        while next < old.count && old[next].position < target { next += 1 }
+        if next < old.count && old[next].position == target && old[next].state == state && old[next].reach == point.reach {
+            met = next
+            isStopped = true
+        }
+    }
 }

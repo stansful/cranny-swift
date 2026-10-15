@@ -45,12 +45,14 @@ private func randomEdit(of text: NSString, pieces: [String], using generator: in
 /// Calls the styler from `didProcessEditing`, as `EditorCoordinator` does.
 @MainActor private final class StorageDelegate: NSObject, NSTextStorageDelegate {
     let styler: SyntaxStyler
+    /// The next edits are a paste, undo or redo (the coordinator's `wholePass`).
+    var wholePass = false
     init(_ styler: SyntaxStyler) { self.styler = styler }
 
     func textStorage(_ textStorage: NSTextStorage, didProcessEditing editedMask: NSTextStorageEditActions,
                      range editedRange: NSRange, changeInLength delta: Int) {
         guard editedMask.contains(.editedCharacters) else { return }
-        styler.textChanged(TextEdit(range: editedRange, delta: delta))
+        styler.textChanged(TextEdit(range: editedRange, delta: delta), wholePass: wholePass)
     }
 }
 
@@ -106,6 +108,43 @@ private func randomEdit(of text: NSString, pieces: [String], using generator: in
             #expect(styler.tokens == SyntaxHighlighter.tokens(in: storage.string, language: language))
             withExtendedLifetime(delegate) {}
         }
+    }
+
+    /// Typing (re-tokenized around the edit), pastes, undos and large edits (a whole pass) and language changes
+    /// mid-way, interleaved at random with the work after them: the storage ends in the colours of a full pass in the
+    /// last language — synchronously and in the background.
+    @Test(arguments: [Int.max, 0])
+    func wholePassesAndLanguageChangesEndInTheColoursOfAFullPass(_ synchronousLimit: Int) async throws {
+        let pieces = ["a", "\n", "\"", "/*", "*/", "`", "```", "```swift\n", "```html\n", "<script>", "#", "{", "}",
+                      String(repeating: "let x = 1 // long\n", count: 70)]                      // over `wholePassEdit`
+        let languages: [CodeLanguage?] = [.markdown, .swift, .html, .css, .yaml, nil, .markdown]
+        var generator = SeededGenerator(seed: 0x3A55)
+        let styler = SyntaxStyler(synchronousLimit: synchronousLimit, tokensPerSlice: 7, pause: .zero)
+        let storage = NSTextStorage(string: languageSamples[0].1 + languageSamples[1].1)
+        let delegate = StorageDelegate(styler)
+        storage.delegate = delegate
+        styler.attach(to: storage)
+        var language = languages[0]
+        styler.restyleAll(code: true, language: language, attributes: attributes)
+        var text = storage.string as NSString
+        for step in 0..<120 {
+            if step % 17 == 16 {
+                language = languages[Int.random(in: 0..<languages.count, using: &generator)]
+                styler.restyleAll(code: true, language: language, attributes: attributes)
+            }
+            let edit = randomEdit(of: text, pieces: pieces, using: &generator)
+            delegate.wholePass = Int.random(in: 0..<4, using: &generator) == 0
+            storage.replaceCharacters(in: edit.replaced, with: edit.inserted)
+            delegate.wholePass = false
+            text = edit.text
+            for _ in 0..<Int.random(in: 0...3, using: &generator) { await Task.yield() }
+        }
+        try await settle(styler)
+        let difference = firstDifference(storage, expectedStorage(storage.string, language))
+        #expect(difference == nil, "first difference at \(difference ?? -1)")
+        #expect(styler.tokens == SyntaxHighlighter.tokens(in: storage.string, language: language))
+        if synchronousLimit == .max { #expect(styler.wholePasses > 10) }       // pastes and long edits took the full pass
+        withExtendedLifetime(delegate) {}
     }
 
     @Test func aLongNoteIsTokenizedOffTheKeystroke() async throws {
