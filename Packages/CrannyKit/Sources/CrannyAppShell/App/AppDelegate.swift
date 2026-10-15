@@ -66,11 +66,16 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// The light's Metal pipelines and the moments' shaders, compiled at utility priority once the launch has settled.
-    /// Skipped while Appearance ▸ Ambience is Off: then the first open that shows light builds them itself, as before.
+    /// Skipped while the light could not use them (Ambience Off; Low Power or a hot Mac, which draw the static halo;
+    /// Reduce Motion or Motion ▸ Instant, which draw the SwiftUI fallback); the first open that needs them later builds
+    /// them itself, as before.
     private func prepareEffects(settings: SettingsStore) {
-        guard settings[CoreSettings.ambience] != .off else { return }
         Task(priority: .utility) {
             try? await Task.sleep(for: Self.effectsPreparationDelay, tolerance: .seconds(1))
+            let info = ProcessInfo.processInfo
+            guard settings[CoreSettings.ambience] != .off, settings[CoreSettings.motion] != .instant,
+                  !info.isLowPowerModeEnabled, info.thermalState.rawValue < ProcessInfo.ThermalState.serious.rawValue,
+                  !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { return }
             await EffectsPreparation.prepare()
         }
     }
