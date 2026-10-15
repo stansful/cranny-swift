@@ -117,7 +117,8 @@ private struct DeviceLevel: View {
 
 private struct DevicePeekRow: View {
     @Environment(\.cranny) private var theme
-    @Environment(\.notchContext) private var context
+    /// Only this field of the context: the row is not re-evaluated when the phase or the page changes.
+    @Environment(\.notchContext.redactsPersonalData) private var redactsPersonalData
     let accessory: Accessory?
 
     var body: some View {
@@ -156,7 +157,7 @@ private struct DevicePeekRow: View {
 
     /// Demo mode with redaction hides the device's own name, which often contains its owner's.
     private func displayName(_ accessory: Accessory) -> String {
-        guard context.redactsPersonalData else { return accessory.name }
+        guard redactsPersonalData else { return accessory.name }
         return DeviceSymbols.product(vendorID: accessory.vendorID, productID: accessory.productID)?.model
             ?? SystemCopy.genericName(accessory.kind)
     }

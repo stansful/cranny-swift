@@ -86,8 +86,8 @@ extension WidgetCard: Equatable {
 }
 
 /// The widget's content (`makeBody`), built again only for another widget or another context (with `.equatable()`).
-/// The card is re-evaluated for its theme, its chrome and every focus move, the widget only when what it is told
-/// changes: a focus move rebuilds the widget that gains focus and the one that loses it, no other.
+/// The card is re-evaluated for its theme and on every focus move, the widget only when what it is told changes: a
+/// focus move rebuilds the widget that gains focus and the one that loses it, no other.
 private struct WidgetContent: View, Equatable {
     let widget: AnyNookWidget
     let context: WidgetContext

@@ -8,8 +8,9 @@
 // presentation and shape it starts from) is kept in a box that writes invalidate nothing (`MotionMemory`), so a
 // change of presentation evaluates the canvas once, not a second time just to remember it. What changes with a key
 // press (focus, hold-⌘ hints, keyboard navigation) and the panel's visibility enter the environment through a
-// modifier of their own (`InteractionEnvironment`), and the canvas reads only whether music plays, not the snapshot:
-// a key press or a new playback position re-evaluates the views that show it, never the canvas.
+// modifier of their own (`InteractionEnvironment`), and the canvas reads whether music plays (and, while it does,
+// the album palette), not the snapshot: a key press or a new playback position re-evaluates the views that show it,
+// never the canvas.
 import CrannyCore
 import CrannyEffects
 import Foundation
@@ -60,8 +61,9 @@ public struct NotchCanvasView: View {
 }
 
 /// The owner's focus, hold-⌘ hints, keyboard navigation and visibility, each in its own environment entry. Read in
-/// this modifier, not in the canvas's body: a change re-evaluates the modifier and the views that read that entry
-/// (focus rings, key caps, a card whose widget gains or loses focus), not the canvas or the views around them.
+/// this modifier, not in the canvas's body: a key press re-evaluates the modifier and the views that read that entry
+/// (focus rings, key caps, the cards on a focus move, which build only the two widgets it moves between), not the
+/// canvas or the views around them. The canvas reads `isVisibleOnScreen` itself, for its effect budget.
 private struct InteractionEnvironment: ViewModifier {
     let model: NotchSceneModel
 
