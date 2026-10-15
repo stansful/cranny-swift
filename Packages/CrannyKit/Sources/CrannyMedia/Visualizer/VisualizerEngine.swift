@@ -45,7 +45,8 @@ nonisolated struct LiveFrame: Equatable, Sendable {
     var isRunning: Bool { get }
     /// Starts the tap (prompting the first time) off the main thread, then the analysis loop at `interval` seconds
     /// per frame. `onStart` tells (on the main actor) whether the tap started; after a failure the source is
-    /// stopped. Not called for a start that `stop` overtook.
+    /// stopped. A start that `stop` overtook still reports a failure (unless a newer start is on its way), never a
+    /// success.
     func start(interval: Double, onStart: @escaping @MainActor (Result<Void, SystemAudioTapError>) -> Void)
     /// Changes the running loop's frame interval from its next frame on (at once when shorter). The tap keeps running.
     func retune(interval: Double)
@@ -255,6 +256,7 @@ nonisolated struct LiveFrame: Equatable, Sendable {
             liveStatus = .waiting
             lastAudio = clock.now
         case .failure(let error):
+            guard mode == .live else { return }                       // the user has left Live since: nothing to show
             lastFailedStart = clock.now
             switch error {
             case .permissionDenied:

@@ -229,6 +229,8 @@ import Testing
     var failure: SystemAudioTapError?
     var defersStart = false
     private var pendingStart: (@MainActor (Result<Void, SystemAudioTapError>) -> Void)?
+    /// A `stop` came before the pending start's answer: like the real source, it then reports only a failure.
+    private var overtaken = false
     let onFrame: @MainActor (LiveFrame) -> Void
 
     init(onFrame: @escaping @MainActor (LiveFrame) -> Void) { self.onFrame = onFrame }
@@ -237,17 +239,20 @@ import Testing
         isRunning = true                                                  // starting
         self.interval = interval
         pendingStart = onStart
+        overtaken = false
         if !defersStart { answerStart() }
     }
     /// The tap queue's answer to the pending start.
     func answerStart() {
         guard let onStart = pendingStart else { return }
         pendingStart = nil
+        let wasOvertaken = overtaken
+        overtaken = false
         if let failure {
             failedStarts += 1
             isRunning = false
             onStart(.failure(failure))
-        } else {
+        } else if !wasOvertaken {
             starts += 1
             onStart(.success(()))
         }
@@ -255,7 +260,7 @@ import Testing
     func retune(interval: Double) { self.interval = interval }
     func stop() {
         if isRunning { stops += 1 }
-        pendingStart = nil                                                // overtaken: never answered
+        overtaken = pendingStart != nil                                   // its answer: a failure still reports
         isRunning = false
     }
 }
@@ -270,6 +275,7 @@ import Testing
     private final class Sources {
         var made: [FakeLiveSource] = []
         var failure: SystemAudioTapError?
+        var defersStart = false
     }
 
     private final class Player {
@@ -285,6 +291,7 @@ import Testing
                                       permissions: services.permissions, clock: clock, allowsLive: allowsLive) { onFrame in
             let source = FakeLiveSource(onFrame: onFrame)
             source.failure = sources.failure
+            source.defersStart = sources.defersStart
             sources.made.append(source)
             return source
         }
@@ -446,6 +453,25 @@ import Testing
         #expect(e.liveStatus == .denied)
         #expect(sources.made.count == 1)
         withExtendedLifetime(sink) {}
+    }
+
+    /// The why-sheet's start can be overtaken by the re-evaluation that stops the tap (no visualizer on screen): its
+    /// denial must still show, as it did when the tap started synchronously.
+    @Test func aDenialStillShowsWhenAStopOvertookTheStart() async throws {
+        let clock = ManualClock()
+        let (e, _, sources) = engine(.live, clock: clock)
+        sources.failure = .permissionDenied
+        sources.defersStart = true
+        e.bind(isPlaying: { true })
+        e.requestLiveAccess()
+        let live = try #require(sources.made.first)
+        #expect(live.isRunning)
+        await settle()
+        await clock.advance(by: .milliseconds(1500))                      // the re-check: nothing on screen, stop
+        await settle()
+        #expect(!live.isRunning)
+        live.answerStart()                                                // the queue's late answer
+        #expect(e.liveStatus == .denied)
     }
 
     @Test func aFailedStartIsRetriedAfterThirtySecondsOrWhenAsked() async throws {

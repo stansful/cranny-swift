@@ -24,10 +24,8 @@ private nonisolated let log = Log.logger(.media)
     private var loop: Task<Void, Never>?
     /// A start the tap queue has not answered yet.
     private var isStarting = false
-    /// Counts starts and stops: the queue's answer to a start that was stopped meanwhile is ignored.
+    /// Counts starts and stops: the queue's answer to a start that was stopped meanwhile starts no loop.
     private var generation = 0
-    /// Told when the tap queue reports whether the tap started (after a failure the source is stopped).
-    private var onStart: (@MainActor (Result<Void, SystemAudioTapError>) -> Void)?
     /// Seconds per frame; read by the loop before every frame.
     private(set) var interval: Double = 1.0 / 30
     private let onFrame: @MainActor (LiveFrame) -> Void
@@ -42,18 +40,18 @@ private nonisolated let log = Log.logger(.media)
     }
 
     /// Starts the tap (prompting the first time) on the tap queue, then the analysis loop at `interval` seconds per
-    /// frame. Whether the tap started is reported to `onStart` on the main actor (not for a start that `stop`
-    /// overtook). Already running: retunes.
+    /// frame. Whether the tap started is reported to `onStart` on the main actor: always for a failure (also when
+    /// `stop` overtook the start, unless a newer start is on its way), for a success only if no `stop` came first.
+    /// Already running: retunes.
     func start(interval: Double, onStart: @escaping @MainActor (Result<Void, SystemAudioTapError>) -> Void) {
         guard !isRunning else { retune(interval: interval); return }
         self.interval = Self.clamped(interval)
-        self.onStart = onStart
         isStarting = true
         generation += 1
         let generation = generation
         tapQueue.async { [tap] in
             let result = Result<Void, SystemAudioTapError> { () throws(SystemAudioTapError) in try tap.start() }
-            Task { @MainActor in self.tapStarted(result, generation: generation) }
+            Task { @MainActor in self.tapStarted(result, generation: generation, report: onStart) }
         }
     }
 
@@ -74,7 +72,6 @@ private nonisolated let log = Log.logger(.media)
         guard isRunning else { return }                         // nothing to tear down: no hop to the tap queue
         generation += 1
         isStarting = false
-        onStart = nil
         loop?.cancel()
         loop = nil
         follower = EnergyFollower()
@@ -85,16 +82,21 @@ private nonisolated let log = Log.logger(.media)
     }
 
     /// The tap queue's answer to start number `generation`.
-    private func tapStarted(_ result: Result<Void, SystemAudioTapError>, generation: Int) {
-        guard generation == self.generation, isStarting else { return }   // stopped meanwhile: `stop` queued the teardown
+    private func tapStarted(_ result: Result<Void, SystemAudioTapError>, generation: Int,
+                            report: @MainActor (Result<Void, SystemAudioTapError>) -> Void) {
+        guard generation == self.generation, isStarting else {
+            // Stopped meanwhile: `stop` queued the teardown. A failure is still reported (the status, the retry
+            // back-off and the permission record), as the start reported it before any stop when it ran on the main
+            // thread; not when a newer start is on its way, whose own answer reports.
+            if case .failure = result, !isRunning { report(result) }
+            return
+        }
         isStarting = false
         if case .success = result {
             log.info("live visualizer: tap running")
             loop = makeLoop()
         }
-        let report = onStart
-        onStart = nil
-        report?(result)
+        report(result)
     }
 
     private func makeLoop() -> Task<Void, Never> {
