@@ -139,10 +139,10 @@ private let pdfDrag = DragDetector.Contents(hasFiles: true, types: [.pdf])
     #expect(!OverlayCoordinator.pointerCanPause(displays: 0, panels: [NotchEnvironment]()))
 }
 
-/// Pausing needs a started monitor; pause and resume each act once.
+/// Pausing needs a started monitor; pause and resume each act once (NSEvent monitors; the tap: PointerTapTests).
 @Test func thePointerMonitorPausesAndResumesOnce() {
     _ = NSApplication.shared
-    let monitor = PointerMonitor()
+    let monitor = PointerMonitor(tapSystem: nil)
     var presses = 0
     monitor.pause { presses += 1 }
     #expect(!monitor.isPaused)                                                  // never started: nothing to pause

@@ -2,6 +2,13 @@
 // (ARCHITECTURE.md §5.5). Each pointer event finds the pointer's display, feeds the drag detector (which reads the
 // drag pasteboard only while the pointer is within some panel's drag zone) and each panel's hover.
 //
+// With the pointer tap, only the events that can change something reach this file (`pointerGate()`): every up and
+// every change between moving and dragging, a display change, and events within some panel's hover or exit zone, band,
+// menu region or (dragging) drag zone; everything while a panel has the pointer inside, in its band or in a menu's
+// region, while a file drag is in progress, while a display change waits for its rebuild, and until the gate is
+// published again after any of this changed (`PointerMonitor.gateChanged`: the panels' zones and hover, the displays,
+// the pointer's display, a file drag starting or ending).
+//
 // While the pointer can change nothing, its events pause: one display, and it shows no panel or its panel is
 // hard-hidden (lock, display sleep, In full-screen apps ▸ Hide with a full-screen or excluded app in front), so there
 // are no hover or drag zones and the pointer's display cannot change. The pause starts after a plain move was handled
@@ -23,8 +30,9 @@ extension OverlayCoordinator {
         // while the drag waits for its inspection (once per mouse-down).
         let nearPanel = kind == .dragged && drags.awaitsInspection
             && controllers.values.contains { $0.hoverZones?.dragZone.contains(point) == true }
-        if let change = drags.update(kind, nearPanel: nearPanel), change == nil {
-            for controller in controllers.values { controller.dragEnded() }
+        if let change = drags.update(kind, nearPanel: nearPanel) {
+            pointer.gateChanged()                                              // a file drag started or ended
+            if change == nil { for controller in controllers.values { controller.dragEnded() } }
         }
         for controller in controllers.values {
             controller.pointerMoved(to: point)
@@ -41,6 +49,7 @@ extension OverlayCoordinator {
     /// lets go now. The dropping panel keeps its zones until the drop router has delivered the payload.
     func dropFinished(on source: NotchPanelController?) {
         drags.reset()
+        pointer.gateChanged()
         for controller in controllers.values {
             if controller === source { controller.dropFinished() } else { controller.dragEnded() }
         }
@@ -56,10 +65,26 @@ extension OverlayCoordinator {
         }
         guard let found, found.key != pointerDisplay else { return }
         pointerDisplay = found.key
+        pointer.gateChanged()
         environment.setPointerDisplay(found.id)
         // Now, not on the next observation hop: sliding along the menu bar onto the other display's notch must
         // find its panel already shown (`.pointer` selection) and its alerts already moved.
         if !controllers.isEmpty { applyDisplayFacts() }
+    }
+
+    // MARK: Pointer tap
+
+    /// What the pointer tap needs to keep the events that change nothing off the main actor (`PointerGate`). Built only
+    /// after a change (`PointerMonitor.gateChanged`), from each panel's cached zones.
+    func pointerGate() -> PointerGate {
+        var gate = PointerGate(screens: screens.map(\.frame), primaryTop: primaryTop,
+                               forwardAll: drags.current != nil || displayChanges.isPending)
+        gate.pointerScreen = pointerDisplay.flatMap { key in screens.firstIndex { $0.key == key } }
+        for controller in controllers.values {
+            let hover = controller.hover
+            gate.addPanel(zones: hover.hoverZones, inside: hover.isInside, band: hover.band, lingers: hover.linger.region != nil)
+        }
+        return gate
     }
 
     // MARK: Pausing

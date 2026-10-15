@@ -4,7 +4,8 @@
 // swipes, keys, drops, key focus) and keeps theme, layout and light in step with the settings by observation.
 // What every pointer event or every appearance would rebuild is kept until its inputs change: the hover zones
 // (`PanelZonesCache`) and the display's measurements (`DisplayMeasure`); the middle label is measured again only
-// when its text or the notch unit changes, and not at all on a notched display.
+// when its text or the notch unit changes, and not at all on a notched display. Whenever the zones are dropped or the
+// panel's hover changes, `onHoverChanged` tells the coordinator, whose pointer tap gate reads both.
 import AppKit
 import CrannyCore
 import CrannyNotchUI
@@ -44,6 +45,8 @@ import SwiftUI
     var onEvent: (NotchEvent) -> Void = { _ in }
     /// A drop finished on this panel (the coordinator resets its drag detector).
     var onDropFinished: () -> Void = {}
+    /// The hover zones were dropped or the pointer's place in them changed (the coordinator's pointer gate reads both).
+    var onHoverChanged: () -> Void = {}
 
     init(screen: NSScreen, key: DisplayKey, style: NoNotchStyle, registry: ModuleRegistry) {
         self.screen = screen; self.key = key; self.style = style; self.registry = registry
@@ -91,6 +94,7 @@ import SwiftUI
         focus.onHold = { [weak self] reason, on in self?.viewModel.send(.hold(reason, on)) }
         hover.zones = { [weak self] in self?.panelZones }
         hover.send = { [weak self] input in self?.viewModel.send(input) }
+        hover.changed = { [weak self] in self?.onHoverChanged() }
         drops.onDropFinished = { [weak self] in self?.onDropFinished() }
         focus.start()
         keyboard.start()
@@ -138,7 +142,7 @@ import SwiftUI
         // event, so the state is watched, not events).
         viewModel.didSync = { [weak self] in
             guard let self else { return }
-            self.zonesCache.invalidate()                                          // state, lineup or scene changed
+            self.dropZones()                                                      // state, lineup or scene changed
             let zone = self.dropZoneInCanvas()
             if self.chrome.dropZone != zone { self.chrome.dropZone = zone }
             self.hover.surfaceChanged()
@@ -150,7 +154,7 @@ import SwiftUI
     /// or layout waits until the surface is closed (`PanelFramePlan`).
     func update(screen: NSScreen, style: NoNotchStyle) {
         self.screen = screen; self.style = style
-        zonesCache.invalidate()
+        dropZones()
         display = DisplayMeasure(screen)
         apply(Self.appearance(screen: screen, display: display, style: style, registry: registry, primary: scene.primary))
         if !panel.isVisible { panel.orderFrontRegardless() }
@@ -205,6 +209,12 @@ import SwiftUI
         let zones = buildZones(panelFrame: frame, screenFrame: screenFrame)
         zonesCache.store(zones, panelFrame: frame, screenFrame: screenFrame)
         return zones
+    }
+
+    /// Something the zones derive from changed: built again on the next read.
+    private func dropZones() {
+        zonesCache.invalidate()
+        onHoverChanged()
     }
 
     private func buildZones(panelFrame frame: CGRect, screenFrame: CGRect) -> HoverZones? {
@@ -336,7 +346,7 @@ import SwiftUI
             Self.panelFrame(canvas: $0, screen: screen)
         }
         if panel.frame != plan.frame { panel.setFrame(plan.frame, display: true) }
-        zonesCache.invalidate()
+        dropZones()
         layoutIsPending = plan.layout == .pending
         guard plan.layout == .apply else { return }
         pendingTask?.cancel()

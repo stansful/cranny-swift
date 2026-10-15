@@ -225,6 +225,9 @@ nonisolated struct MenuTracking: Equatable, Sendable {
     var zones: @MainActor () -> HoverZones? = { nil }
     /// Feeds the panel's machine.
     var send: @MainActor (NotchInput) -> Void = { _ in }
+    /// Inside, the band position or whether a menu's region lasts changed (the pointer tap's gate reads them,
+    /// `PointerGate.addPanel`).
+    var changed: @MainActor () -> Void = {}
     /// Where the pointer is now, read when a menu's region is checked after the grace; nil when it cannot be read.
     var pointer: @MainActor () -> CGPoint? = { PanelHover.readPointer() }
     /// Runs the work once after the delay (one sleep, no polling). Tests run it by hand.
@@ -248,6 +251,23 @@ nonisolated struct MenuTracking: Equatable, Sendable {
     }
 
     var isInside: Bool { tracker.isInside }
+    var band: BandPosition { tracker.band }
+
+    /// What `changed` reports a change of.
+    private struct GateFacts: Equatable {
+        var inside: Bool
+        var band: BandPosition
+        var lingers: Bool
+    }
+
+    private var gateFacts: GateFacts { GateFacts(inside: tracker.isInside, band: tracker.band, lingers: linger.region != nil) }
+
+    /// Runs `body`, then `changed` if it changed what the gate reads.
+    private func reportingChanges(_ body: () -> Void) {
+        let before = gateFacts
+        body()
+        if gateFacts != before { changed() }
+    }
 
     /// The panel's surface changed (`NotchPanelController` calls this after every sync of its machine): a panel that no
     /// longer shows open or peeks, or is hidden, loses a menu's region at once (ruling E3), so opening it again before
@@ -255,13 +275,19 @@ nonisolated struct MenuTracking: Equatable, Sendable {
     /// region, so the machine learns at once where it is now (read again, else the last position seen).
     func surfaceChanged() {
         guard linger.fromPanel || linger.region != nil, zones()?.expanded != true else { return }
-        let hadRegion = linger.region != nil
-        linger.panelClosed()
-        if hadRegion, let point = pointer() ?? lastPoint { moved(to: point) }
+        reportingChanges {
+            let hadRegion = linger.region != nil
+            linger.panelClosed()
+            if hadRegion, let point = pointer() ?? lastPoint { track(to: point) }
+        }
     }
 
     /// A pointer move (and the re-read after a menu): enter/leave and band inputs on change.
     func moved(to point: CGPoint) {
+        reportingChanges { track(to: point) }
+    }
+
+    private func track(to point: CGPoint) {
         lastPoint = point
         let zones = hoverZones
         for input in tracker.update(point, zones: zones) { send(input) }
@@ -278,17 +304,19 @@ nonisolated struct MenuTracking: Equatable, Sendable {
 
     /// The first menu began tracking: remember whether it opened from this panel.
     func menuBegan(at point: CGPoint) {
-        linger.began(at: point, zones: hoverZones)
+        reportingChanges { linger.began(at: point, zones: hoverZones) }
     }
 
     /// The last menu stopped tracking with the pointer at `point`. The machine learns where the pointer is now (the
     /// tracker sees no events while a menu tracks), with the menu's region inside when it came from this panel. The
     /// region lasts while the pointer stays in it; it is checked once, after the close grace.
     func menuEnded(at point: CGPoint, reach: CGSize) {
-        if let serial = linger.ended(at: point, zones: hoverZones, reach: reach) {
-            after(HoverIntent.closeGrace) { [weak self] in self?.check(serial) }
+        reportingChanges {
+            if let serial = linger.ended(at: point, zones: hoverZones, reach: reach) {
+                after(HoverIntent.closeGrace) { [weak self] in self?.check(serial) }
+            }
+            track(to: point)
         }
-        moved(to: point)
     }
 
     /// The safety check `closeGrace` after the menu closed (ruling E3). A pointer that can be read decides as a move
@@ -297,10 +325,12 @@ nonisolated struct MenuTracking: Equatable, Sendable {
     /// (outside the exit zone: the usual grace).
     private func check(_ serial: Int) {
         guard linger.isCurrent(serial) else { return }
-        if let point = pointer() {
-            moved(to: point)
-        } else if linger.expire(serial), let lastPoint {
-            moved(to: lastPoint)
+        reportingChanges {
+            if let point = pointer() {
+                track(to: point)
+            } else if linger.expire(serial), let lastPoint {
+                track(to: lastPoint)
+            }
         }
     }
 

@@ -117,17 +117,22 @@ nonisolated enum DisplayCatalog {
 
 /// Display hot-plug, resolution and arrangement changes (§4.9): `didChangeScreenParametersNotification` plus
 /// `CGDisplayRegisterReconfigurationCallback`, debounced 250 ms (both fire several times per change), and
-/// re-validation on wake and Space changes.
+/// re-validation on wake and Space changes. `pending` hears each change at once (the pointer tap forwards every event
+/// until the rebuild, `isPending`).
 @MainActor final class DisplayChangeObserver {
     private var observers: [(NotificationCenter, any NSObjectProtocol)] = []
     private let debouncer = Debouncer(delay: .milliseconds(250))
     private var onChange: () -> Void = {}
+    private var onPending: () -> Void = {}
     private var registered = false
+    /// A change waits for its debounced `onChange`.
+    private(set) var isPending = false
     /// Target of the C reconfiguration callback (which cannot capture context).
     private static weak var current: DisplayChangeObserver?
 
-    func start(_ onChange: @escaping () -> Void) {
+    func start(pending: @escaping () -> Void = {}, _ onChange: @escaping () -> Void) {
         self.onChange = onChange
+        onPending = pending
         Self.current = self
         listen(.default, NSApplication.didChangeScreenParametersNotification)
         let workspace = NSWorkspace.shared.notificationCenter
@@ -141,6 +146,7 @@ nonisolated enum DisplayCatalog {
         for (center, token) in observers { center.removeObserver(token) }
         observers.removeAll()
         debouncer.cancel()
+        isPending = false
         if registered { CGDisplayRemoveReconfigurationCallback(Self.callback, nil) }
         registered = false
     }
@@ -160,6 +166,12 @@ nonisolated enum DisplayCatalog {
     }
 
     private func changed() {
-        debouncer.schedule { [weak self] in self?.onChange() }
+        isPending = true
+        onPending()
+        debouncer.schedule { [weak self] in
+            guard let self else { return }
+            self.isPending = false
+            self.onChange()
+        }
     }
 }

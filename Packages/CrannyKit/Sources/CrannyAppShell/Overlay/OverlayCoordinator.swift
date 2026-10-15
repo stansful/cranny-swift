@@ -30,6 +30,8 @@ private let log = Log.logger(.overlay)
     @ObservationIgnored var controllers: [DisplayKey: NotchPanelController] = [:]
     /// Every connected display (with or without a panel), for the allocation-free pointer lookup.
     @ObservationIgnored var screens: [(key: DisplayKey, id: CGDirectDisplayID, frame: CGRect)] = []
+    /// The top of the primary display (`NSScreen.screens[0]`), where the pointer tap's CG coordinates flip.
+    @ObservationIgnored var primaryTop: CGFloat = 0
     @ObservationIgnored let pointer = PointerMonitor()
     @ObservationIgnored let drags = DragDetector()
     @ObservationIgnored let displayChanges = DisplayChangeObserver()
@@ -64,7 +66,8 @@ private let log = Log.logger(.overlay)
     /// Builds the panels and starts observing. Call once, after every contribution is registered.
     func start() {
         rebuildPanels()
-        displayChanges.start { [weak self] in self?.rebuildPanels() }
+        // A display change waits 250 ms for its rebuild; the pointer tap forwards every event meanwhile.
+        displayChanges.start(pending: { [weak self] in self?.pointer.gateChanged() }) { [weak self] in self?.rebuildPanels() }
         let settings = registry.services.settings
         tokens.append(observe({ Self.displayPolicy(settings) }) { [weak self] _ in self?.rebuildPanels() })
         startArbitration()
@@ -79,7 +82,9 @@ private let log = Log.logger(.overlay)
                 MainActor.assumeIsolated { self?.menuTracking(began: began, size: menu?.size ?? .zero) }
             }
         }
-        pointer.start { [weak self] point, kind in self?.pointerEvent(point, kind: kind) }
+        pointer.start(gate: { [weak self] in self?.pointerGate() ?? PointerGate() }) { [weak self] point, kind in
+            self?.pointerEvent(point, kind: kind)
+        }
         hotKeys.start(registry: registry)
     }
 
@@ -138,6 +143,7 @@ private let log = Log.logger(.overlay)
     func rebuildPanels() {
         let all = DisplayCatalog.descriptors()
         screens = all.map { ($0.descriptor.key, $0.descriptor.displayID, $0.screen.frame) }
+        primaryTop = NSScreen.screens.first?.frame.maxY ?? 0
         let wanted = Self.panelScreens(settings: registry.services.settings, descriptors: all)
         let keys = Set(wanted.map(\.key))
         for key in controllers.keys where !keys.contains(key) { retirePanel(key) }
@@ -151,6 +157,7 @@ private let log = Log.logger(.overlay)
         updatePointerDisplay(NSEvent.mouseLocation)
         environment.refreshFullScreen()
         applyDisplayFacts()
+        pointer.gateChanged()                                                  // displays, panels, a rebuild done
         log.info("panels on \(self.controllers.count, privacy: .public) of \(self.screens.count, privacy: .public) display(s)")
     }
 
@@ -162,6 +169,7 @@ private let log = Log.logger(.overlay)
         controller.viewModel.send(.close)
         controllers[key] = nil
         controller.close()
+        pointer.gateChanged()
         if !controllers.values.contains(where: { $0.viewModel.state.pinned }) { isPinned = false }
     }
 
@@ -186,6 +194,7 @@ private let log = Log.logger(.overlay)
             self.didEmit(event, from: controller)
         }
         controller.onDropFinished = { [weak self, weak controller] in self?.dropFinished(on: controller) }
+        controller.onHoverChanged = { [weak self] in self?.pointer.gateChanged() }
         if isCalibrating { controller.setCalibrating(true) }
         return controller
     }
