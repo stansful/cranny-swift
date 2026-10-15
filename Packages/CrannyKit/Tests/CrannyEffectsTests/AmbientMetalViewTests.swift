@@ -176,6 +176,44 @@ private func shaderSeconds(from start: Double, to end: Double) -> Double {
     #expect(!view.metalLayer.presentsWithTransaction)
 }
 
+/// The main thread changes everything a frame depends on while the render thread draws as fast as it may (240 fps):
+/// sizes, effects, inputs, energy sources, the window, occlusion, the rate, then a stop in the middle of it. Every
+/// frame still draws one consistent snapshot (Thread Sanitizer runs of this test find no race), and the render thread
+/// goes on drawing whenever nothing changes the layer.
+@Test(.enabled(if: shadersRun)) func renderThreadSurvivesMainThreadChurn() async throws {
+    let level = AudioEnergyLevel()
+    var state = layerState(.aurora)
+    state.interval = 1.0 / 240
+    let (view, window) = try await runningView(state, energy: AmbientEnergySource(level))
+    defer { window.close() }
+    let effects: [AmbientEffect] = [.motes, .tide, .halo, .aurora]
+    for step in 0..<48 {
+        level.set(Double(step % 10) / 10)
+        switch step % 8 {
+        case 0: view.setFrameSize(NSSize(width: 400 + Double(step), height: 120 + Double(step % 5)))
+        case 1: state.effect = effects[step / 8 % effects.count]; view.state = state
+        case 2: state.fill = Double(step % 7) / 6; view.state = state
+        case 3: view.energySource = step % 16 == 3 ? AmbientEnergySource { 0.2 } : AmbientEnergySource(level)
+        case 4: window.contentView = nil; window.contentView = view
+        case 5:
+            view.treatsWindowAsVisible.toggle()
+            NotificationCenter.default.post(name: NSWindow.didChangeOcclusionStateNotification, object: window)
+        case 6: state.interval = step % 16 == 6 ? 1.0 / 120 : 1.0 / 240; view.state = state
+        default: view.treatsWindowAsVisible = true
+            NotificationCenter.default.post(name: NSWindow.didChangeOcclusionStateNotification, object: window)
+        }
+        try await Task.sleep(for: .milliseconds(6))
+    }
+    view.energySource = AmbientEnergySource(level)
+    let offMain = view.framesDrawnOffMain
+    try await eventually { view.framesDrawnOffMain > offMain + 2 }
+    #expect(view.framesDrawnOffMain > offMain + 2, "the render thread draws again once the layer is left alone")
+    view.stop()                                                         // while it draws
+    let frames = view.framesDrawn
+    try await Task.sleep(for: .milliseconds(50))
+    #expect(view.framesDrawn == frames)
+}
+
 /// The render thread holds its loop only until `stop()`: then it removes its timer, ends and lets the loop go.
 @Test func stoppedLoopEndsItsThread() async throws {
     weak var weakLoop: AmbientFrameLoop?

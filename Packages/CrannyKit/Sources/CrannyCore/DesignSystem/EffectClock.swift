@@ -57,7 +57,7 @@ public struct EffectClock<Content: View>: View {
     }
 }
 
-/// Frame deadlines for paced loops (`EffectClock`, the Metal light layer's own loop).
+/// Frame deadlines for paced loops (`EffectClock`).
 public nonisolated enum FramePacing {
     /// The next frame: one interval after the previous one, or one interval from now when frames were missed
     /// (sleep, a busy main thread), so a paced loop never fires a burst of catch-up frames.
