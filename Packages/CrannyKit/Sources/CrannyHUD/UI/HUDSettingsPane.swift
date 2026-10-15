@@ -112,7 +112,7 @@ struct HUDSettingsPane: View {
         .toggleStyle(.switch)
         .controlSize(.small)
         .onAppear {
-            permissions.refresh()
+            permissions.refreshInBackground(.accessibility)    // the row follows the status by observation
             competingApps = CompetingHUDApps.running(in: NSWorkspace.shared.runningApplications.map(\.bundleIdentifier))
         }
     }

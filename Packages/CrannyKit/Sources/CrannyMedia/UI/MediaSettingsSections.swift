@@ -174,7 +174,7 @@ struct AppleEventsSection: View {
         }
         .onAppear {
             AppIdentityResolver.shared.refresh()           // a player installed or removed meanwhile
-            services.permissions.refresh()                 // a grant changed in System Settings meanwhile
+            services.permissions.refreshInBackground()     // a grant changed in System Settings meanwhile
         }
     }
 }
