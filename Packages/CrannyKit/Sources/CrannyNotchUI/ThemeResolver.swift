@@ -27,6 +27,7 @@ public enum ThemeResolver {
         t.motion = settings[CoreSettings.motion]
         t.ambience = settings[CoreSettings.ambience]
         t.effect = settings[CoreSettings.effect]
+        t.ambientDetail = ambientDetail(settings: settings)
         t.translucentBackground = settings[CoreSettings.translucentBackground]
         t.panelPaddingTune = CGFloat(settings[CoreSettings.panelPaddingTune])
         t.glassIsland = isFloatingDisplay && settings[CoreSettings.glassIsland]
@@ -36,6 +37,21 @@ public enum ThemeResolver {
                                           systemAccent: systemAccent, palette: t.palette.spec, increaseContrast: false)
         return t
     }
+
+    /// Appearance ▸ Ambient light ▸ Quality: the Metal light (Detailed, the default) or the Core Animation light
+    /// (Efficient). A Debug build launched with `-CrannyQAAmbientDetail efficient` (or `detailed`) uses that instead of
+    /// the setting, for capture and energy runs (docs/CONTRIBUTING.md ▸ Effects); Release builds always read the setting.
+    public static func ambientDetail(settings: SettingsStore) -> AmbientDetail {
+        #if DEBUG
+        if let raw = UserDefaults.standard.string(forKey: qaAmbientDetailKey), let detail = AmbientDetail(rawValue: raw) {
+            return detail
+        }
+        #endif
+        return settings[CoreSettings.ambientDetail]
+    }
+
+    /// The Debug QA switch of `ambientDetail(settings:)`.
+    static let qaAmbientDetailKey = "CrannyQAAmbientDetail"
 
     /// Per-display layout. `metrics` come from `NotchMetrics.measure(screen)` (or `.reference` on a stage).
     public static func layout(metrics: NotchMetrics, displayModel: String?, style: NoNotchStyle,

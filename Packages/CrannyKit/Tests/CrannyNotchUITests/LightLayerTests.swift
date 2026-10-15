@@ -1,6 +1,7 @@
 // The light behind the open panel draws what Settings ▸ Appearance asks for: CoreSettings.effect and .ambience go
 // through ThemeResolver into the theme, and NookLightLayer hands them to CrannyEffects' AmbientLayer. Measured on
 // rendered pixels (snapshots draw the light in SwiftUI on its resting frame, so the pixels are deterministic).
+import AppKit
 import CoreGraphics
 import CrannyCore
 import Foundation
@@ -12,11 +13,13 @@ import Testing
     private let size = CGSize(width: 656, height: 170)
 
     /// The open panel's light for these settings, as luminance samples (12 × 8 grid over the lower 60 %).
-    private func light(effect: AmbientEffect, ambience: AmbienceLevel = .vivid) throws -> [Double] {
+    private func light(effect: AmbientEffect, ambience: AmbienceLevel = .vivid,
+                       detail: AmbientDetail = .detailed) throws -> [Double] {
         let (model, registry) = previewScene(.open)
         let settings = registry.services.settings
         settings[CoreSettings.effect] = effect
         settings[CoreSettings.ambience] = ambience
+        settings[CoreSettings.ambientDetail] = detail
         model.theme = ThemeResolver.theme(settings: settings, albumAccent: nil, notchUnit: model.layout.metrics.unit,
                                           isFloatingDisplay: false)
         #expect(model.theme.effect == effect)
@@ -55,5 +58,40 @@ import Testing
         #expect(difference(motes, tide) > 0.005, "motes and tide draw the same light")
         // The same settings draw the same pixels (the resting frame).
         #expect(difference(aurora, try light(effect: .aurora)) < 0.001)
+    }
+
+    /// Appearance ▸ Quality is Detailed by default and reaches the theme through ThemeResolver.
+    @Test func theQualitySettingReachesTheTheme() {
+        let settings = CrannyServices.preview().settings
+        #expect(CoreSettings.ambientDetail.defaultValue == .detailed)
+        #expect(ThemeResolver.theme(settings: settings, albumAccent: nil, notchUnit: 1, isFloatingDisplay: false)
+            .ambientDetail == .detailed)
+        settings[CoreSettings.ambientDetail] = .efficient
+        #expect(ThemeResolver.theme(settings: settings, albumAccent: nil, notchUnit: 1, isFloatingDisplay: false)
+            .ambientDetail == .efficient)
+        #expect(ThemeResolver.ambientDetail(settings: settings) == .efficient)
+    }
+
+    /// Efficient draws the live panel's light with Core Animation (DESIGN.md §5.7); snapshots keep the SwiftUI path,
+    /// so their pixels are the same for both settings. Detailed keeps the Metal layer.
+    @Test func efficientLightsTheLivePanelWithCoreAnimation() throws {
+        #expect(difference(try light(effect: .tide, detail: .efficient), try light(effect: .tide, detail: .detailed)) < 0.001)
+        for detail in AmbientDetail.allCases {
+            let (model, registry) = previewScene(.open)
+            registry.services.settings[CoreSettings.ambientDetail] = detail
+            model.theme = ThemeResolver.theme(settings: registry.services.settings, albumAccent: nil,
+                                              notchUnit: model.layout.metrics.unit, isFloatingDisplay: false)
+            let hosted = Hosted(NookLightLayer(model: model, registry: registry)
+                .frame(width: size.width, height: size.height)
+                .crannyThemeRoot(model.theme), size: size)
+            defer { hosted.tearDown() }
+            let views = Set(Self.classNames(hosted.host))
+            #expect(views.contains("AmbientCANSView") == (detail == .efficient), "\(detail): \(views.sorted())")
+            if detail == .efficient { #expect(!views.contains("AmbientMetalNSView")) }
+        }
+    }
+
+    private static func classNames(_ view: NSView) -> [String] {
+        [String(describing: type(of: view))] + view.subviews.flatMap(classNames)
     }
 }
