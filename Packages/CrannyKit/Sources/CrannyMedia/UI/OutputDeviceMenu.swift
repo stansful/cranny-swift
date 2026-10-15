@@ -2,7 +2,8 @@
 // `airplayaudio`, tertiary, 12): lists the Mac's outputs with a check on the current one. The list is read when
 // the widget appears and when the pointer enters the icon, so it is current when the menu opens (an NSMenu tracking
 // session also holds the panel open, ARCHITECTURE.md §4.5). The reads (Core Audio IPC, ≈ 3 per device) run off the
-// main actor, one at a time: a request during a read reads once more after it.
+// main actor, one at a time: a request during a read reads once more after it. A read that began before the person
+// picked an output keeps the pick as the current one (the read may predate the switch).
 import AppKit
 import CoreAudio
 import CrannyCore
@@ -16,12 +17,14 @@ struct OutputDeviceMenu: View {
     @State private var isReading = false
     /// … and another was asked for meanwhile (the list may have changed since that read began).
     @State private var readsAgain = false
+    /// Outputs picked in the menu: a read that began before the latest pick does not replace it as the current one.
+    @State private var picks = 0
 
     var body: some View {
         Menu {
             ForEach(devices) { device in
                 Toggle(isOn: Binding(get: { device.id == current },
-                                     set: { if $0 { OutputDevices.setDefaultOutput(device.id); current = device.id } })) {
+                                     set: { if $0 { pick(device.id) } })) {
                     Text(verbatim: device.name)
                 }
             }
@@ -42,15 +45,22 @@ struct OutputDeviceMenu: View {
         .onHover { if $0 { reload() } }
     }
 
+    private func pick(_ id: AudioObjectID) {
+        OutputDevices.setDefaultOutput(id)
+        current = id
+        picks += 1
+    }
+
     private func reload() {
         guard !isReading else { readsAgain = true; return }
         isReading = true
         Task {
             repeat {
                 readsAgain = false
+                let picksBefore = picks
                 let read = await OutputDevices.read()
                 if devices != read.devices { devices = read.devices }
-                if current != read.current { current = read.current }
+                if picks == picksBefore, current != read.current { current = read.current }
             } while readsAgain
             isReading = false
         }

@@ -58,6 +58,8 @@ static NSString *gLastState;         // the last state line sent: identical snap
 static NSString *gLastTimeline;      // ... that state without its position anchor (elapsed, timestamp)
 static double gLastElapsed, gLastTimestamp;  // ... and the anchor
 static BOOL gLastAnchored;           // ... which had a timestamp (comparable by position)
+static BOOL gAfterCommand;           // a command or seek was delivered: the next state goes out even if it only
+                                     // re-anchors, because it confirms or undoes what Cranny showed at once
 static NSString *gLastArtKey;        // artwork is re-sent only when this changes
 
 // One line: the JSON and its newline under stdout's lock, so lines stay atomic for the reader (`hello` is written
@@ -159,7 +161,8 @@ static NSString *sortedJSON(NSDictionary *obj, NSData **data) {
     return json ? [[NSString alloc] initWithData:json encoding:NSUTF8StringEncoding] : nil;
 }
 
-// Sends the state `s` unless it is the last one again, or only re-anchors it (see `kSamePosition`).
+// Sends the state `s` unless it is the last one again, or only re-anchors it (see `kSamePosition`; not right after a
+// command, `gAfterCommand`).
 static void sendState(NSDictionary *s) {
     NSData *json = nil;
     NSString *str = sortedJSON(s, &json);
@@ -169,10 +172,11 @@ static void sendState(NSDictionary *s) {
     NSString *timelineKey = sortedJSON(timeline, NULL);
     double elapsed, timestamp;
     BOOL anchored = anchorOf(s, &elapsed, &timestamp);
-    if (anchored && gLastAnchored && timelineKey && [timelineKey isEqualToString:gLastTimeline]) {
+    if (!gAfterCommand && anchored && gLastAnchored && timelineKey && [timelineKey isEqualToString:gLastTimeline]) {
         double now = NSDate.date.timeIntervalSince1970;
         if (fabs(positionAt(s, elapsed, timestamp, now) - positionAt(s, gLastElapsed, gLastTimestamp, now)) < kSamePosition) return;
     }
+    gAfterCommand = NO;
     gLastState = str;
     gLastTimeline = timelineKey;
     gLastElapsed = elapsed;
@@ -291,13 +295,17 @@ static void handleLine(NSString *line) {
     if ([verb isEqualToString:@"cmd"] && p.count >= 2) {
         int c = p[1].intValue;
         if (c < 0 || c > 13) { emit(@{ @"t": @"error", @"msg": @"bad command id" }); return; }
-        guarded(arg2, ^{ emit(@{ @"t": @"ack", @"cmd": @(c), @"ok": MR.send((uint32_t)c, nil) ? @YES : @NO }); });
+        guarded(arg2, ^{
+            Boolean ok = MR.send((uint32_t)c, nil);
+            if (ok) gAfterCommand = YES;
+            emit(@{ @"t": @"ack", @"cmd": @(c), @"ok": ok ? @YES : @NO });
+        });
         return;
     }
     if ([verb isEqualToString:@"seek"] && p.count >= 2 && MR.seek) {
         double sec = p[1].doubleValue;
         if (!(sec >= 0) || !isfinite(sec)) { emit(@{ @"t": @"error", @"msg": @"bad position" }); return; }
-        guarded(arg2, ^{ MR.seek(sec); emit(@{ @"t": @"ack", @"seek": @(sec), @"ok": @YES }); });
+        guarded(arg2, ^{ MR.seek(sec); gAfterCommand = YES; emit(@{ @"t": @"ack", @"seek": @(sec), @"ok": @YES }); });
         return;
     }
     if (([verb isEqualToString:@"shuffle"] || [verb isEqualToString:@"repeat"]) && p.count >= 2) {
