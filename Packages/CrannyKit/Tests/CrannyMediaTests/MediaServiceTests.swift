@@ -416,6 +416,44 @@ import Testing
         #expect(service.artworkKey == "a")
     }
 
+    @Test func tracksWithTheSamePictureShareOneDecodedImage() async throws {
+        let clock = ManualClock(), perl = ScriptedProvider(kind: .perl)
+        let service = Fixtures.service([perl], clock: clock)
+        service.start()
+        await settle()
+        let cover = Fixtures.png(red: 0.9, green: 0.1, blue: 0.1)
+        perl.emit(.nowPlaying(Fixtures.track("A", itemID: "a")))
+        perl.emit(.artwork(trackKey: "a", data: cover))
+        #expect(await eventually { service.artwork != nil })
+        let image = try #require(service.artwork)
+        let palette = service.palette
+
+        perl.emit(.nowPlaying(Fixtures.track("B", itemID: "b")))         // the album's next track, the same cover
+        perl.emit(.artwork(trackKey: "b", data: cover))
+        #expect(await eventually { service.artworkKey == "b" })
+        #expect(service.artwork === image)                                // shared, not decoded a second time
+        #expect(service.palette == palette)
+
+        perl.emit(.nowPlaying(Fixtures.track("C", itemID: "c")))          // another picture is decoded
+        perl.emit(.artwork(trackKey: "c", data: Fixtures.png(red: 0.1, green: 0.2, blue: 0.9)))
+        #expect(await eventually { service.artworkKey == "c" })
+        #expect(service.artwork !== image)
+    }
+
+    @Test func theCacheFindsAPictureByItsBytesAndForgetsItWithItsLastTrack() throws {
+        let red = Fixtures.png(red: 0.9, green: 0.1, blue: 0.1), blue = Fixtures.png(red: 0.1, green: 0.2, blue: 0.9)
+        let decoded = try #require(ArtworkDecoder.decodeNow(red))
+        var cache = ArtworkCache(capacity: 2)
+        cache.insert(decoded, fingerprint: ArtworkFingerprint(red), for: "a")
+        #expect(cache.artwork(matching: ArtworkFingerprint(red))?.image === decoded.image)
+        #expect(cache.artwork(matching: ArtworkFingerprint(blue)) == nil)
+        #expect(cache.keys == ["a"])                                      // a lookup by picture marks nothing as used
+        cache.insert(decoded, fingerprint: nil, for: "sample")            // the sample has no fingerprint
+        cache.insert(decoded, fingerprint: ArtworkFingerprint(blue), for: "b")
+        #expect(cache.keys == ["sample", "b"])                            // "a" was the least recently used
+        #expect(cache.artwork(matching: ArtworkFingerprint(red)) == nil)
+    }
+
     @Test func aLateDecodeNeverReplacesANewerPicture() async throws {
         let clock = ManualClock(), perl = ScriptedProvider(kind: .perl)
         let service = Fixtures.service([perl], clock: clock)

@@ -50,7 +50,8 @@ nonisolated struct ArtworkFingerprint: Hashable, Sendable {
     @concurrent static func of(_ data: Data) async -> ArtworkFingerprint { ArtworkFingerprint(data) }
 }
 
-/// Least-recently-used artwork by track key (16 entries, ARCHITECTURE.md §6.5). Pure value.
+/// Least-recently-used artwork by track key (16 entries, ARCHITECTURE.md §6.5). Pure value. Tracks of one picture (an
+/// album's tracks usually carry identical bytes) can share one decoded image: `artwork(matching:)` finds it.
 nonisolated struct ArtworkCache: Sendable {
     struct Entry: Sendable {
         let artwork: DecodedArtwork
@@ -78,6 +79,12 @@ nonisolated struct ArtworkCache: Sendable {
         return hit
     }
 
+    /// The decoded artwork of any entry made from the picture with `fingerprint`, without marking it as used; nil when
+    /// none is cached.
+    func artwork(matching fingerprint: ArtworkFingerprint) -> DecodedArtwork? {
+        entries.values.first { $0.fingerprint == fingerprint }?.artwork
+    }
+
     /// Adds or replaces the artwork of `key`.
     mutating func insert(_ artwork: DecodedArtwork, fingerprint: ArtworkFingerprint?, for key: String) {
         entries[key] = Entry(artwork: artwork, fingerprint: fingerprint)
@@ -93,7 +100,8 @@ nonisolated struct ArtworkCache: Sendable {
 
 /// The service's artwork pipeline: fingerprint and decode off the main actor at utility priority (background work on
 /// efficiency cores: the 600-ms artwork grace covers it), cache, and drop a decode that a newer picture for the same
-/// track overtook.
+/// track overtook. A picture already cached for another track (the next track of an album) is not decoded again: both
+/// tracks share its image, so an album keeps one 1-MB decode in the cache instead of one per track.
 @MainActor final class ArtworkStore {
     private var cache = ArtworkCache()
     private var requests = 0
@@ -117,6 +125,12 @@ nonisolated struct ArtworkCache: Sendable {
             if let cached = self.cache.entry(for: key), cached.fingerprint == fingerprint {
                 self.latest[key] = nil
                 deliver(cached.artwork)
+                return
+            }
+            if let shared = self.cache.artwork(matching: fingerprint) {
+                self.latest[key] = nil
+                self.cache.insert(shared, fingerprint: fingerprint, for: key)
+                deliver(shared)
                 return
             }
             let decoded = await ArtworkDecoder.decode(data)
