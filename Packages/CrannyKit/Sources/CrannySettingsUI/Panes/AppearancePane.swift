@@ -1,6 +1,7 @@
 // CrannySettingsUI/Panes/AppearancePane.swift — Settings ▸ Appearance (DESIGN.md §11.1): accent, text size, motion,
-// the light layer (DESIGN.md §5.1), surfaces (translucency, glass island, buttons, widgets, density, padding), Notch fit
-// and the style on displays without a notch. The stage above shows the open Nook, so every change is visible.
+// the light layer (DESIGN.md §5.1: level, effect, quality), surfaces (translucency, glass island, buttons, widgets,
+// density, padding), Notch fit and the style on displays without a notch. The stage above shows the open Nook, so
+// every change is visible.
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -45,6 +46,12 @@ struct AppearancePane: View {
                     Choice(value: .tide, label: String(localized: "Tide", bundle: .module, comment: "Settings ▸ Appearance ▸ Effect: option (wave lines)")),
                 ], footnote: String(localized: "In Low Power Mode the light becomes a still glow.", bundle: .module,
                                     comment: "Settings ▸ Appearance: footnote of Effect"))
+                    .disabled(ambience == .off)
+                ChoiceRow(AppearanceRows.ambientDetail, settings: settings, key: CoreSettings.ambientDetail, choices: [
+                    Choice(value: .detailed, label: String(localized: "Detailed", bundle: .module, comment: "Settings ▸ Appearance ▸ Quality: option (the default, the full light)")),
+                    Choice(value: .efficient, label: String(localized: "Efficient", bundle: .module, comment: "Settings ▸ Appearance ▸ Quality: option (a simpler light that uses much less memory)")),
+                ], footnote: String(localized: "Efficient draws a simpler light that uses much less memory.", bundle: .module,
+                                    comment: "Settings ▸ Appearance: footnote of Quality (the ambient light)"))
                     .disabled(ambience == .off)
                 ToggleRow(info: AppearanceRows.albumGlow, settings: settings, key: CoreSettings.albumGlow,
                           footnote: String(localized: "A soft halo in the album’s color behind the artwork.", bundle: .module,

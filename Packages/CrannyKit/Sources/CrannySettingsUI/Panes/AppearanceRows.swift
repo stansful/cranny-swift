@@ -34,6 +34,12 @@ enum AppearanceRows {
                         title: String(localized: "Effect", bundle: .module, comment: "Settings ▸ Appearance: picker Aurora / Motes / Tide"),
                         keywords: [String(localized: "aurora", bundle: .module, comment: "Settings search: keyword for the light effect")])
     }
+    static var ambientDetail: SettingsRowInfo {
+        SettingsRowInfo(.appearance, "ambientDetail",
+                        title: String(localized: "Quality", bundle: .module, comment: "Settings ▸ Appearance: picker Detailed / Efficient (how the ambient light is drawn)"),
+                        keywords: [String(localized: "memory", bundle: .module, comment: "Settings search: keyword for the light's Quality (Efficient uses less memory)"),
+                                   String(localized: "performance", bundle: .module, comment: "Settings search: keyword for the light's Quality")])
+    }
     static var albumGlow: SettingsRowInfo {
         SettingsRowInfo(.appearance, "albumGlow",
                         title: String(localized: "Album glow", bundle: .module, comment: "Settings ▸ Appearance: toggle"))
@@ -103,7 +109,7 @@ enum AppearanceRows {
     }
 
     static func rows(includingGlassIsland: Bool) -> [SettingsRowInfo] {
-        [accent, textSize, motion, typingEffect, ambience, effect, albumGlow, underglow, progressRim, translucent]
+        [accent, textSize, motion, typingEffect, ambience, effect, ambientDetail, albumGlow, underglow, progressRim, translucent]
             + (includingGlassIsland ? [glassIsland] : [])
             + [buttons, widgets, density, panelPadding, notchFitWidth, notchFitRadius, noNotchStyle, handle]
     }
