@@ -2743,6 +2743,7 @@ All private symbols are resolved at runtime with `dlopen`/`dlsym` or `responds(t
 | IOKit `IOPSCopyPowerSourcesByType(4)` | CrannySystemActivities | CoreAudio + HID sources only |
 | IOBluetooth `batteryPercent*` selectors (opt-in path) | CrannySystemActivities | connection without battery |
 | `CGSSessionScreenIsLocked` session key, `com.apple.screenIsLocked` notifications | CrannyAppShell | sleep/session notifications |
+| CoreGraphics `CGFontCacheGetLocalCache`, `CGFontCacheGetMaxSize`, `CGFontCacheSetMaxSize` (`GlyphCacheLimit`) | CrannyAppShell | CoreGraphics' default glyph cache limit |
 
 ### 7.13 Permission matrix
 

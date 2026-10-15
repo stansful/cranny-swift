@@ -6,6 +6,7 @@
 // upgrade, so it writes no preference. `ShellDefaults` picks where settings live (a Debug QA run's own suite).
 // Energy: a few seconds after launch, while the app is idle, the Metal effects are prepared off the main thread
 // (`EffectsPreparation`), so the first open of the panel compiles nothing during its animation.
+// Memory: before anything draws, CoreGraphics' glyph cache gets a smaller limit (`GlyphCacheLimit`).
 import AppKit
 import CrannyCore
 import CrannyEffects
@@ -31,6 +32,7 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Builds the registry, then starts the overlay, windows and app services (or writes `--diagnostics` and quits).
     public func applicationDidFinishLaunching(_ notification: Notification) {
+        GlyphCacheLimit.apply()                            // before any window draws text
         let defaults = ShellDefaults.forLaunch()           // the user's preferences, or a Debug QA run's own suite
         let registry = CompositionRoot.makeRegistry(notch: notchControl, environment: environment, app: appControl,
                                                     defaults: defaults.defaults)

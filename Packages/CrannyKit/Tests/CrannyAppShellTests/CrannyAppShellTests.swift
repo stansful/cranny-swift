@@ -73,6 +73,20 @@ import Testing
     #expect(MenuBarIcon.image.size == CGSize(width: 18, height: 14))
 }
 
+// MARK: - Memory
+
+@Test func theGlyphCacheLimitIsLoweredUnlessTheSwitchKeepsTheDefault() {
+    guard let before = GlyphCacheLimit.currentLimit else { return }       // no CGFontCache calls: the default stays
+    let keep = InMemoryDefaults()
+    keep.set(true, forKey: "CrannyDisableGlyphCacheLimit")
+    GlyphCacheLimit.apply(defaults: keep)
+    #expect(GlyphCacheLimit.currentLimit == before)
+    GlyphCacheLimit.apply(defaults: InMemoryDefaults())
+    #expect(GlyphCacheLimit.currentLimit == min(before, GlyphCacheLimit.maxSize))
+    GlyphCacheLimit.apply(defaults: InMemoryDefaults())                  // never raised again
+    #expect(GlyphCacheLimit.currentLimit == min(before, GlyphCacheLimit.maxSize))
+}
+
 #if DEBUG
 @Test func qaArgumentsParse() {
     let o = QAHooks.Options(arguments: ["Cranny", "--qa-state", "open", "--qa-page", "tray", "--qa-exit-after", "8"])

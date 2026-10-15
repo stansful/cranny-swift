@@ -70,7 +70,7 @@ self-signed "Cranny Dev" code-signing certificate (Keychain Access ▸ Certifica
 
 Debug builds accept launch arguments that force a state without any input, so you can capture every
 presentation from a script. No hook posts input or asks for a permission, and they are
-compiled out of Release builds (`#if DEBUG`) except the two effect switches marked "also Release". Arguments
+compiled out of Release builds (`#if DEBUG`) except the three switches marked "also Release". Arguments
 that start with `--qa-` are read from the command line (parsed by CrannyCore's `LaunchArguments`); `-Cranny…`
 switches are `UserDefaults` arguments (`-Key value`). Each owner documents its hooks at the top of the file named in
 its heading. Run the app for QA with an isolated home (`CFFIXED_USER_HOME=<temp dir>`), so a run keeps its files
@@ -131,7 +131,7 @@ scripts/run.sh -- "${QA[@]}" -AppleLanguages "(ar)" -AppleTextDirection YES --qa
   host a panel (`panelScreens`). `make smoke` runs it, with `--qa-defaults-suite app.cranny.Cranny.smoke` (a Debug
   build then reads that suite instead of your settings; a Release build ignores the switch).
 
-### Shell (`CrannyAppShell/App/QAHooks.swift`, `MenuBar/MenuBarQA.swift`)
+### Shell (`CrannyAppShell/App/QAHooks.swift`, `MenuBar/MenuBarQA.swift`, `Private/GlyphCacheLimit.swift`)
 
 | Argument | Effect |
 |---|---|
@@ -142,6 +142,7 @@ scripts/run.sh -- "${QA[@]}" -AppleLanguages "(ar)" -AppleTextDirection YES --qa
 | `--qa-close-after <seconds>` | Closes the panel that many seconds after launch and holds it closed, as `--qa-state closed` does: with `--qa-state open`, measures what an open panel leaves behind (`footprint <pid>`). |
 | `--qa-reopen-after <seconds>` | With `--qa-close-after`: opens the `--qa-page` page again that many seconds after each close and closes it after the `--qa-close-after` interval, so the panel cycles until the run ends (memory that grows per open). |
 | `--qa-exit-after <seconds>` | Quits after that many seconds. |
+| `-CrannyDisableGlyphCacheLimit YES` | Keeps CoreGraphics' default glyph cache limit instead of the smaller one `Private/GlyphCacheLimit.swift` sets (also Release: memory A/B runs). |
 | `--qa-settings <pane id>[#<row>]` | Also opens Settings at that pane (`general`, `appearance`, `keyboard`, `nook`, `activities`, `hud`, `gestures`, `media`, `calendar`, `shortcuts`, `tray`, `permissions`, `about`); `general#hoverDelay` also scrolls to and highlights a row. |
 | `--qa-capture <dir>` [`--qa-capture-after <s>`] | Writes a PNG of each visible window (the panel, Settings) after that many seconds (default 3). |
 | `--qa-snapshot <file.png>` | 3 s after launch, renders the primary panel's canvas offscreen (final state, on mid-grey) to that PNG (CrannyNotchUI). |
