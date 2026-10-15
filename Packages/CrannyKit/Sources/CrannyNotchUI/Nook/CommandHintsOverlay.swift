@@ -1,5 +1,5 @@
 // CrannyNotchUI/Nook/CommandHintsOverlay.swift — hold ⌘ for hints (DESIGN.md §6.5): while
-// `NotchContext.showsCommandHints` is on (the shell sets it after ⌘ is held 0.5 s), every tab and header
+// `notchShowsCommandHints` is on (the shell sets it after ⌘ is held 0.5 s), every tab and header
 // action shows its shortcut as a `KeyCap` in place of its glyph; on release the glyph comes back. VoiceOver
 // gets the same shortcuts as accessibility hints instead (key caps are hidden from it).
 import CrannyCore
@@ -8,12 +8,12 @@ import SwiftUI
 /// Shows `content`, or the key cap of `shortcut` while hints are visible.
 struct HintSwap<Content: View>: View {
     @Environment(\.cranny) private var theme
-    @Environment(\.notchContext) private var context
+    @Environment(\.notchShowsCommandHints) private var showsCommandHints
     let shortcut: NookShortcut?
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        let showsHint = context.showsCommandHints && shortcut != nil
+        let showsHint = showsCommandHints && shortcut != nil
         ZStack {
             content().opacity(showsHint ? 0 : 1)
             if showsHint, let shortcut {
@@ -41,9 +41,7 @@ struct ShortcutHint: ViewModifier {
 }
 
 #Preview("Hints · on") {
-    var context = NotchContext()
-    context.showsCommandHints = true
-    return HStack(spacing: Space.m) {
+    HStack(spacing: Space.m) {
         HintSwap(shortcut: NookKeyMap.palette) { Image(systemName: "magnifyingglass") }
         HintSwap(shortcut: NookKeyMap.pin) { Image(systemName: "pin") }
         HintSwap(shortcut: NookKeyMap.page(0)) { Image(systemName: "square.grid.2x2.fill") }
@@ -51,6 +49,6 @@ struct ShortcutHint: ViewModifier {
     .foregroundStyle(.white)
     .padding()
     .background(.black)
-    .environment(\.notchContext, context)
+    .environment(\.notchShowsCommandHints, true)
     .crannyThemeRoot(CrannyTheme())
 }

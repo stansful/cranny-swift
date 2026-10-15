@@ -1,8 +1,11 @@
 // The Now Playing activity: activity rules of DESIGN.md §9.2 (P2/P3, hidden after N s paused, auto-unhide,
 // revision = new tracks, swipes → previous/next with Invert), the shared track-swipe rule of the widget, read-only
-// sources, with scripted providers and a manual clock.
+// sources, with scripted providers and a manual clock. Its priority depends on whether music plays, not on the
+// snapshot, so a seek does not re-evaluate the canvas or the open header that read it.
 import CrannyCore
 import Foundation
+import Observation
+import os
 import Testing
 @testable import CrannyMedia
 
@@ -40,6 +43,37 @@ import Testing
         await settle()
         #expect(activity.priority == .passive)
         #expect(activity.accessibilityValue == MediaStrings.paused)
+    }
+
+    /// A seek or new metadata invalidates nothing that reads the priority (raw Observation: any write would count);
+    /// playback starting or stopping does, also through an optimistic command.
+    @Test func priorityIsInvalidatedOnlyWhenPlaybackStartsOrStops() async {
+        let (service, perl, clock, activity) = await running()
+        perl.emit(.nowPlaying(Fixtures.track("A", elapsed: 10, timestamp: clock.now)))
+        await settle()
+        #expect(service.isPlaying && activity.priority == .ongoing)
+        let invalidations = OSAllocatedUnfairLock(initialState: 0)
+        func track() {
+            withObservationTracking { _ = activity.priority } onChange: { invalidations.withLock { $0 += 1 } }
+        }
+        track()
+
+        perl.emit(.nowPlaying(Fixtures.track("A", elapsed: 60, timestamp: clock.now)))                      // a seek
+        await settle()
+        perl.emit(.nowPlaying(Fixtures.track("A", artist: "Other", elapsed: 60, timestamp: clock.now)))     // metadata
+        await settle()
+        #expect(service.nowPlaying?.elapsed == 60 && service.nowPlaying?.artist == "Other")
+        #expect(invalidations.withLock { $0 } == 0)
+
+        perl.emit(.nowPlaying(Fixtures.track("A", artist: "Other", playing: false, elapsed: 60, timestamp: clock.now)))
+        await settle()
+        #expect(invalidations.withLock { $0 } == 1)
+        #expect(!service.isPlaying && activity.priority == .passive)
+
+        track()
+        #expect(await service.send(.play))                                       // optimistic: before the provider
+        #expect(invalidations.withLock { $0 } == 2)
+        #expect(service.isPlaying && activity.priority == .ongoing)
     }
 
     @Test func hidesAfterThePausedTimeoutAndComesBackOnResume() async {

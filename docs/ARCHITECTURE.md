@@ -1126,11 +1126,13 @@ public nonisolated struct PermissionUse: Hashable, Sendable {
 
 ### 3.8 Notch context and environment
 
-`CrannyNotchUI` sets these at the canvas root (and the Settings/onboarding stages set `isPreview`). Feature views read `@Environment(\.notchContext)` (phase, page, focused widget, hints, redaction) and use `.notchMatched(MatchedID.mediaArtwork)` for elements that travel between compact, peek and widget (DESIGN.md §4.3). Zones are found through `@Environment(\.notchZones)`.
+`CrannyNotchUI` sets these at the canvas root (and the Settings/onboarding stages set `isPreview`). Feature views read `@Environment(\.notchContext)` (phase, page, redaction; one field with a key path, `@Environment(\.notchContext.isPreview)`, so the view ignores the others), and the facts that change with a key press or occlusion from entries of their own: `notchFocusedWidget`, `notchShowsCommandHints`, `notchKeyboardNavigation` and `notchIsOnScreen` (§9.2 "Energy pass"). They use `.notchMatched(MatchedID.mediaArtwork)` for elements that travel between compact, peek and widget (DESIGN.md §4.3). Zones are found through `@Environment(\.notchZones)`.
 
 ```swift
 // CrannyCore/Contracts/NotchContext.swift
-// Read-only facts about the notch a view is rendered in. Set by CrannyNotchUI at the canvas root.
+// Read-only facts about the notch a view is rendered in. Set by CrannyNotchUI at the canvas root. What changes with
+// a key press (keyboard focus, hold-⌘ hints, keyboard navigation) and the panel's visibility are environment entries
+// of their own, beside `NotchContext`: a view is re-evaluated only when a fact it reads changes.
 import SwiftUI
 
 /// The visible presentation (DESIGN.md §3.3, ARCHITECTURE.md §4).
@@ -1148,7 +1150,10 @@ public nonisolated enum OpenReason: String, Sendable, Codable {
     case hover, click, keyboard, swipe, drag, activity, programmatic, tutorial
 }
 
-/// The facts a notch view may depend on, in the environment (`@Environment(\.notchContext)`).
+/// The facts a notch view may depend on that change with the presentation (open, close, page, display), in the
+/// environment (`@Environment(\.notchContext)`, or one field: `@Environment(\.notchContext.isPreview)`). Keyboard
+/// focus, hold-⌘ hints and keyboard navigation change with every key press, so they are entries of their own
+/// (`notchFocusedWidget`, `notchShowsCommandHints`, `notchKeyboardNavigation`).
 public nonisolated struct NotchContext: Equatable, Sendable {
     /// The visible presentation.
     public var phase: NotchPhase = .idle
@@ -1160,16 +1165,10 @@ public nonisolated struct NotchContext: Equatable, Sendable {
     public var openReason: OpenReason?
     /// The page shown while open.
     public var page: PageID?
-    /// The widget that has keyboard focus or is in a focus mode.
-    public var focusedWidget: WidgetID?
     /// Settings preview stage, onboarding stage or `#Preview`: no side effects.
     public var isPreview = false
     /// Demo mode with "Redact calendar titles".
     public var redactsPersonalData = false
-    /// Hold-⌘ hints are visible: show `KeyCap`s next to commands.
-    public var showsCommandHints = false
-    /// The last interaction was the keyboard: draw `crannyFocusRing`s.
-    public var keyboardNavigation = false
     /// Closed, reference layout, no display.
     public init() {}
 }
@@ -1181,7 +1180,16 @@ public nonisolated enum NotchCoordinateSpace {
 }
 
 public extension EnvironmentValues {
+    /// The notch's facts that change with its presentation (`NotchContext`).
     @Entry var notchContext = NotchContext()
+    /// The widget that has keyboard focus or is in a focus mode.
+    @Entry var notchFocusedWidget: WidgetID? = nil
+    /// Hold-⌘ hints are visible: show `KeyCap`s next to commands.
+    @Entry var notchShowsCommandHints = false
+    /// The last interaction was the keyboard: draw `crannyFocusRing`s.
+    @Entry var notchKeyboardNavigation = false
+    /// The notch is on screen and not occluded: effects pause while it is not (`EffectBudget`, ARCHITECTURE.md §9.2).
+    @Entry var notchIsOnScreen = true
     /// Namespace for matched geometry between compact, peek and widget presentations (`MatchedID`).
     @Entry var notchNamespace: Namespace.ID? = nil
     /// Drop / scroll zones of the canvas this view is in. nil on stages that do not take input.
@@ -1464,6 +1472,9 @@ public nonisolated enum MediaCommand: Sendable, Equatable {
 @MainActor public protocol NowPlayingSource: AnyObject, Observable {
     /// The current track, nil when nothing plays or was paused long enough ago.
     var nowPlaying: NowPlaying? { get }
+    /// `nowPlaying?.isPlaying == true`. A source that keeps it as its own value, written only when playback starts or
+    /// stops, spares the views that need only this (the keyline, an activity's priority) every other snapshot.
+    var isPlaying: Bool { get }
     /// The current artwork, nil until loaded or when there is none.
     var artwork: CGImage? { get }
     /// `AmbientPalette.extract(from:)` of the artwork (cached per track); nil = no artwork yet.
@@ -1474,6 +1485,11 @@ public nonisolated enum MediaCommand: Sendable, Equatable {
     var audioEnergy: Double { get }
     /// Sends a command to the player; true when the player accepted it.
     @discardableResult func send(_ command: MediaCommand) async -> Bool
+}
+
+public extension NowPlayingSource {
+    /// Read from `nowPlaying`, so it depends on the whole snapshot (CrannyMedia keeps its own value).
+    var isPlaying: Bool { nowPlaying?.isPlaying == true }
 }
 
 /// Optional health facts of the `NowPlayingSource` for `--diagnostics` (ARCHITECTURE.md §6.5: the media source in
@@ -2156,7 +2172,7 @@ Transient P0/P1 activities therefore take the wings and hand them back automatic
 - The panel becomes key only when a text view is clicked (`becomesKeyOnlyIfNeeded`), when opened by the hot key, via `requestKeyboardFocus()`, or via `NotchSelectionFocus.requestSelectionFocus()` (Core addition; a Tray tile click). Key status for typing is the `typing` hold (§4.5); key status for a selection is not, so the panel still closes on leave and the close hands key status back. It becomes a typing hold once a text view or field editor becomes first responder or `requestKeyboardFocus()` is called (`KeyHold` in the shell; DESIGN.md §3.6). Programmatic `makeKey()` on the non-activating panel without activating the app is expected to work like a clicked text field; the opt-in `keyboardFocusIsTakenAndHandedBack` test checks it, but needs an unlocked session and has not run yet [UNVERIFIED].
 - On every close the shell calls `orderOut` + `orderFrontRegardless` if the panel is key, which returns key status to the previous app's window [VERIFIED R1].
 - Never use `NSApp.isActive` to decide who is frontmost (true while our panel is key); use `NSWorkspace.frontmostApplication` [VERIFIED R1].
-- In-Nook keys (DESIGN.md §16 keyboard map) are handled in NotchUI while the panel is key: `NookHiddenShortcuts` binds the whole `NookKeyMap` plus Esc as key equivalents in an `.overlay`, so a widget's own binding for the same key (Notes' delete confirmation: Return/Esc) wins and the panel's chain is the fallback (C-NOTCHUI-2). **Esc order:** an input-method composition keeps it; a text field or text view being edited gets it first (to-do title, Notes rename; `KeyboardRouter` lets field editors see Esc); then a widget's own Esc; then NotchUI's chain (palette → grid, edit → grid, focus → grid, else close); unhandled Esc (`NotchPanel.cancelOperation`) falls back to the shell's close. Hold-⌘ hints: a local `flagsChanged` monitor (0.5 s) sets `NotchContext.showsCommandHints`. Type-to-capture: when opened by keyboard and nothing is focused, the first printable `keyDown` goes to `CaptureTarget.capture(_:)` of `CoreSettings.typeToCapture`, then focus moves to the returned widget. A target names its widget (`CaptureTarget.widget`); while that widget is on no page the key stays with the panel, so no hidden note or to-do is created (C-SHELL-1). Notes' ⌘K commands and its New note shortcut are guarded the same way (the shortcut opens Settings ▸ Layout & Widgets instead). Settings ▸ Keyboard warns while the target's widget is on no page and leads to Layout & Widgets: to a page with room for the widget, or to Pages when a page has to be added first (§10.15). Since ruling E2 the target is nil (Off) on a fresh install and onboarding's presets set it (`PresetLayout.captureTarget`: Notes for a Home with Notes), so a fresh install shows no warning; an install from before keeps Notes (§3.11, settings revision 1).
+- In-Nook keys (DESIGN.md §16 keyboard map) are handled in NotchUI while the panel is key: `NookHiddenShortcuts` binds the whole `NookKeyMap` plus Esc as key equivalents in an `.overlay`, so a widget's own binding for the same key (Notes' delete confirmation: Return/Esc) wins and the panel's chain is the fallback (C-NOTCHUI-2). **Esc order:** an input-method composition keeps it; a text field or text view being edited gets it first (to-do title, Notes rename; `KeyboardRouter` lets field editors see Esc); then a widget's own Esc; then NotchUI's chain (palette → grid, edit → grid, focus → grid, else close); unhandled Esc (`NotchPanel.cancelOperation`) falls back to the shell's close. Hold-⌘ hints: a local `flagsChanged` monitor (0.5 s) sets `NotchSceneModel.showsCommandHints` (views read `\.notchShowsCommandHints`). Type-to-capture: when opened by keyboard and nothing is focused, the first printable `keyDown` goes to `CaptureTarget.capture(_:)` of `CoreSettings.typeToCapture`, then focus moves to the returned widget. A target names its widget (`CaptureTarget.widget`); while that widget is on no page the key stays with the panel, so no hidden note or to-do is created (C-SHELL-1). Notes' ⌘K commands and its New note shortcut are guarded the same way (the shortcut opens Settings ▸ Layout & Widgets instead). Settings ▸ Keyboard warns while the target's widget is on no page and leads to Layout & Widgets: to a page with room for the widget, or to Pages when a page has to be added first (§10.15). Since ruling E2 the target is nil (Off) on a fresh install and onboarding's presets set it (`PresetLayout.captureTarget`: Notes for a Home with Notes), so a fresh install shows no warning; an install from before keeps Notes (§3.11, settings revision 1).
 - Global shortcuts: Carbon `RegisterEventHotKey` on `GetApplicationEventTarget()` — no Accessibility needed; compiled and registered ⌃⌥N on macOS 27 in Swift 6 mode [VERIFIED, Appendix C; key delivery inside the running app is still UNVERIFIED: no real key press was allowed in phases B and C, §10.20]. Registration failure = conflict → `ShortcutState.conflict` shown in Settings ▸ Keyboard. While a shortcut recorder records, `AppControl.setShortcutRecording(true)` makes `HotKeyCenter.setPaused` unregister every Carbon hot key (keeping their states), so the recorder can capture a combination Cranny itself uses (C-SHELL-14).
 
 ### 4.11 The HUD while the Nook is open
@@ -2167,12 +2183,13 @@ Since phase D an activity with a message for the open header (`OpenHeaderActivit
 
 ### 4.12 Render contract: `NotchSceneModel` (CrannyNotchUI) [VERIFIED compile]
 
-The shell (one per display), the Settings preview stage and the onboarding stage each own a `NotchSceneModel` and render it with `NotchCanvasView(model:registry:actions:)`. Only the owner writes it. WP12 implemented the views behind this API; WP13–WP15 coded against it. Both listings below are the repo files after phase D. Since WP0 the model gained additive inputs: `middleLabelWidth` (the floating-island middle label; the shell writes `MiddleLabelMetrics.width(of:layout:)`, closing WP0's open issue 3), `isVisibleOnScreen` (cleared while the panel is occluded, so effects pause; the stages set it from their window's visibility), and in phase D `OpenState.gestureVelocity` (the commit velocity of a swipe-down open, init default 0; NotchUI starts the open spring with it) and `headerActivity` (an activity of the lineup with a message for the open header, picked by the owner; stages leave it nil). The message comes from the public protocol `OpenHeaderActivity: LiveActivity` (`headerMessage: String?`, in `Nook/HeaderMessageOverlay.swift`); the header shows a HUD that leads, else the message of the primary or of `headerActivity` (§4.11). The `delight` caps follow ruling R2: not under Instant; reduced variants under Calm and Reduce Motion.
+The shell (one per display), the Settings preview stage and the onboarding stage each own a `NotchSceneModel` and render it with `NotchCanvasView(model:registry:actions:)`. Only the owner writes it. WP12 implemented the views behind this API; WP13–WP15 coded against it. Both listings below are the repo files after the energy pass. Since WP0 the model gained additive inputs: `middleLabelWidth` (the floating-island middle label; the shell writes `MiddleLabelMetrics.width(of:layout:)`, closing WP0's open issue 3), `isVisibleOnScreen` (cleared while the panel is occluded, so effects pause; the stages set it from their window's visibility), and in phase D `OpenState.gestureVelocity` (the commit velocity of a swipe-down open, init default 0; NotchUI starts the open spring with it) and `headerActivity` (an activity of the lineup with a message for the open header, picked by the owner; stages leave it nil). The message comes from the public protocol `OpenHeaderActivity: LiveActivity` (`headerMessage: String?`, in `Nook/HeaderMessageOverlay.swift`); the header shows a HUD that leads, else the message of the primary or of `headerActivity` (§4.11). The energy pass moved keyboard focus, hold-⌘ hints and keyboard navigation out of `context` into `focusedWidget`, `showsCommandHints` and `keyboardNavigation`; the canvas puts them and `isVisibleOnScreen` into environment entries of their own (§3.8), so a key press re-evaluates only the views that show it. The `delight` caps follow ruling R2: not under Instant; reduced variants under Calm and Reduce Motion.
 
 ```swift
 // CrannyNotchUI/NotchScene.swift — the render model of one notch (one per display panel, one per stage).
 // The contract of ARCHITECTURE.md §4.12. Additive since the foundation: `middleLabelWidth` (open issue 3),
-// `isVisibleOnScreen`, `OpenState.gestureVelocity` and `headerActivity` (with `OpenHeaderActivity`).
+// `isVisibleOnScreen`, `OpenState.gestureVelocity` and `headerActivity` (with `OpenHeaderActivity`). Keyboard focus,
+// hold-⌘ hints and keyboard navigation moved out of `context` into properties of their own (energy pass).
 import CrannyCore
 import CrannyEffects
 import Foundation
@@ -2253,6 +2270,13 @@ public nonisolated struct OpenState: Equatable, Sendable {
     public var gestureTranslation: CGSize = .zero
     /// Facts for feature views (`@Environment(\.notchContext)`); the canvas keeps `phase` and `layout` in step.
     public var context = NotchContext()
+    /// The widget that has keyboard focus or is in a focus mode (`@Environment(\.notchFocusedWidget)`). The owner
+    /// mirrors `NotchUIActions.focusWidget` and `OpenState.focus` into it.
+    public var focusedWidget: WidgetID?
+    /// Hold-⌘ hints are visible (`@Environment(\.notchShowsCommandHints)`).
+    public var showsCommandHints = false
+    /// The last interaction was the keyboard: focus rings show (`@Environment(\.notchKeyboardNavigation)`).
+    public var keyboardNavigation = false
     /// Drop and scroll zones of this canvas (the shell routes AppKit events to them).
     public let zones: NotchZones
 
@@ -2284,7 +2308,8 @@ public nonisolated struct OpenState: Equatable, Sendable {
     /// changes. Ignored on notched displays, where the camera housing is the middle (DESIGN.md §3.5).
     public var middleLabelWidth: CGFloat = 0
     /// The panel is on screen and not occluded (`NSWindow.occlusionState`). The owner clears it while the panel
-    /// is covered, so the light layer and other effects pause (DESIGN.md §4.7). Stages leave it on.
+    /// is covered, so the light layer and other effects pause (DESIGN.md §4.7; widgets read
+    /// `@Environment(\.notchIsOnScreen)`). Stages leave it on.
     public var isVisibleOnScreen = true
 }
 
@@ -2308,7 +2333,7 @@ public struct NotchUIActions {
     public var commitLayout: @MainActor ([NookPage]) -> Void = { _ in }
     /// ⌘K / ⌘E / Esc chain / focus mode: NotchUI asks, the owner writes `open.mode`.
     public var setMode: @MainActor (NookMode) -> Void = { _ in }
-    /// Keyboard focus moved to a widget (nil = none); the owner mirrors it into `context.focusedWidget`.
+    /// Keyboard focus moved to a widget (nil = none); the owner mirrors it into `focusedWidget`.
     public var focusWidget: @MainActor (WidgetID?) -> Void = { _ in }
     /// VoiceOver "Dismiss" action and swipe-up on the satellite.
     public var dismissActivity: @MainActor (ActivityID) -> Void = { _ in }
@@ -2922,6 +2947,7 @@ Each target declares `resources: [.process("Resources")]` and must keep that fol
   - *Media.* The Live tap runs only while a visualizer that uses levels is visible, starts and stops on its own serial queue, retries a failed start after 30 s and runs as a 4-Hz probe while silent; the bridge and `MediaService` drop states that only re-anchor the position; the helper loads AppKit only when needed; artwork work and Apple Events run at utility QoS.
   - *System.* The HUD's event tap is off while no HUD can be shown, and its level listeners run only while a volume HUD shows; the power observers always follow AC ↔ battery switches (`IOPSCreateLimitedPowerNotification`) and the percent only while it matters; the battery and accessory models run only while their Live Activities are on.
   - *Everything else.* Background saves, reloads, pipelines (with `ditto`) and permission preflights run at utility QoS or off the main actor; the Tray row is lazy (a tile scrolled into view on a cold cache shows its type icon until Quick Look answers) and progress ticks re-render only the rings; the timer ring wakes with the digits; the typing effect is capped at 30 fps; regexes, encoders and settings keys are built once.
+  - *SwiftUI invalidation* (second pass). `NotchContext` holds only facts that change with the presentation. Keyboard focus, hold-⌘ hints, keyboard navigation and occlusion are environment entries of their own (`notchFocusedWidget`, `notchShowsCommandHints`, `notchKeyboardNavigation`, `notchIsOnScreen`, §3.8), set by a modifier at the canvas root: a key press re-evaluates the views that read it (focus rings, key caps, the cards on a focus move), not the canvas or the header. Read one context field with a key path (`@Environment(\.notchContext.isPreview)`), never the whole struct for one field. A card builds its widget again only when the widget's `WidgetContext` changes, so a focus move rebuilds the two widgets it moves between. The canvas and the open header read `NowPlayingSource.isPlaying`, which CrannyMedia writes only when playback starts or stops, instead of the snapshot: a seek or new metadata re-evaluates only the views that show the track. Running shortcut rings pause while the panel is occluded.
   - *Measured* (M4 Max, macOS 27.0.1, 240-Hz display, screen locked, A/B against `main` with alternating runs): closed and idle 0 wakeups/s and ≈ 0.08 % CPU before and after (Debug); Release under 120 synthetic pointer moves per second with the screen locked 1.8–1.9 % CPU before, 0.00 % after. GPU per frame at the largest open size, whole layer (best of six runs): motes 126 → 42 µs, aurora 68 → 57 µs, tide 26 → 27 µs, halo 11 → 11 µs; in the app the layer then draws only the lit band (≈ 60 % of the rows for aurora and motes, ≈ 30 % for tide). Open with effects forced on, CPU is unchanged within noise (2.2–2.3 %, Debug). The unlocked pointer path and the Live visualizer were not measured.
 
 ### 9.3 Errors and logging

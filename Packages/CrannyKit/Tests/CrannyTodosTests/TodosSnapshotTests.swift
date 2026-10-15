@@ -77,9 +77,7 @@ struct TodosSnapshotTests {
         drafting.beginNew(after: nil)
         try await write(card(drafting, cells: 3), "12-new-draft")
         try await write(card(fixture(), cells: 3, isFocused: true), "13-keyboard-focus")
-        var hints = NotchContext()
-        hints.showsCommandHints = true
-        try await write(card(fixture(), cells: 3, isFocused: true).environment(\.notchContext, hints), "14-command-hints")
+        try await write(card(fixture(), cells: 3, isFocused: true).environment(\.notchShowsCommandHints, true), "14-command-hints")
         let firstDraft = TodosModel.testing([])
         firstDraft.beginNew(after: nil)                          // the first to-do: no "All done" in the header
         try await write(card(firstDraft, cells: 3), "15-first-draft")

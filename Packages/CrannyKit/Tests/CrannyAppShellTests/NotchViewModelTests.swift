@@ -72,7 +72,7 @@ private struct Fixture {
                                       NookPage(id: "page.focus", symbol: "note.text", items: [.init(.timer, cells: 2)])]
     f.viewModel.actions.activityTapped("probe.one")
     #expect(f.scene.open == OpenState(page: "page.focus", focus: .timer, reason: .click))
-    #expect(f.scene.context.focusedWidget == .timer && f.scene.context.page == "page.focus")
+    #expect(f.scene.focusedWidget == .timer && f.scene.context.page == "page.focus")
     f.viewModel.send(.close)
     f.viewModel.setLineup(Lineup(primary: "probe.one"))
     f.viewModel.send(.click)                                                    // a click on the compact wings
@@ -119,12 +119,12 @@ private struct Fixture {
     var events: [NotchEvent] = []
     f.viewModel.onEvent = { events.append($0) }
     f.viewModel.send(.hotKey)
-    #expect(f.scene.context.keyboardNavigation)                                 // opened by keyboard: focus rings on
+    #expect(f.scene.keyboardNavigation)                                         // opened by keyboard: focus rings on
     f.viewModel.setCommandHints(true)
     f.viewModel.setCommandHints(true)
-    #expect(f.scene.context.showsCommandHints && events.filter { $0 == .commandHintsShown }.count == 1)
+    #expect(f.scene.showsCommandHints && events.filter { $0 == .commandHintsShown }.count == 1)
     f.viewModel.send(.close)
-    #expect(!f.scene.context.showsCommandHints)
+    #expect(!f.scene.showsCommandHints)
     f.viewModel.playDelight(.gulp)
     f.viewModel.playDelight(.gulp)
     #expect(f.scene.delight == .gulp && f.scene.delightSerial == 2)
@@ -233,12 +233,12 @@ func quickPeekOnHoverWorksForEveryHoverDelay(_ delay: HoverIntent.Delay) async t
     let home = f.scene.open?.page
     #expect(home != "page.notes")
     f.viewModel.focus("notes.editor")
-    #expect(f.scene.open?.page == "page.notes" && f.scene.context.focusedWidget == "notes.editor")
+    #expect(f.scene.open?.page == "page.notes" && f.scene.focusedWidget == "notes.editor")
     f.viewModel.focus(nil)
     f.viewModel.focus("notes.editor")                                           // already on its page: stays
     #expect(f.scene.open?.page == "page.notes")
     f.viewModel.focus("widget.nowhere")                                         // on no page: focus moves, page stays
-    #expect(f.scene.open?.page == "page.notes" && f.scene.context.focusedWidget == "widget.nowhere")
+    #expect(f.scene.open?.page == "page.notes" && f.scene.focusedWidget == "widget.nowhere")
 }
 
 /// The satellite is in the scene exactly while it shows (§4.7): it stays when the compact timeout collapses the

@@ -13,7 +13,7 @@ struct MediaProgress: View {
     enum Style { case stacked, inline, hairline }
 
     @Environment(\.cranny) private var theme
-    @Environment(\.notchContext) private var notch
+    @Environment(\.notchKeyboardNavigation) private var keyboardNavigation
     @FocusState private var focused: Bool
     @State private var preview: Double?          // fraction while dragging or scrolling
     @State private var scrollSeek = ScrollSeek()
@@ -97,7 +97,7 @@ struct MediaProgress: View {
         .focusable()
         .focused($focused)
         .focusEffectDisabled()
-        .crannyFocusRing(focused && notch.keyboardNavigation, radius: Radius.chip)
+        .crannyFocusRing(focused && keyboardNavigation, radius: Radius.chip)
         // `onKeyPress(.leftArrow)` would also take ⌘←; with ⌘ / ⌥ / ⌃ held the press goes on to the widget
         // (⌘← / ⌘→ previous / next). Arrow keys carry the function / numeric-pad flags, so those are allowed.
         .onKeyPress(keys: [.leftArrow, .rightArrow]) { press in

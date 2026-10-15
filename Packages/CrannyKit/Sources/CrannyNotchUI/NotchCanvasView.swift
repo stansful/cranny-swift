@@ -6,7 +6,10 @@
 // cross-fade at their final sizes instead of travelling. Only the scene's owner writes the model; taps, keys
 // and VoiceOver actions go back through `NotchUIActions`. What the next change needs to know about this one (the
 // presentation and shape it starts from) is kept in a box that writes invalidate nothing (`MotionMemory`), so a
-// change of presentation evaluates the canvas once, not a second time just to remember it.
+// change of presentation evaluates the canvas once, not a second time just to remember it. What changes with a key
+// press (focus, hold-⌘ hints, keyboard navigation) and the panel's visibility enter the environment through a
+// modifier of their own (`InteractionEnvironment`), and the canvas reads only whether music plays, not the snapshot:
+// a key press or a new playback position re-evaluates the views that show it, never the canvas.
 import CrannyCore
 import CrannyEffects
 import Foundation
@@ -34,6 +37,7 @@ public struct NotchCanvasView: View {
             .delightPlayer(moment: model.delight, serial: model.delightSerial)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .coordinateSpace(.named(NotchCoordinateSpace.name))
+            .modifier(InteractionEnvironment(model: model))
             .environment(\.notchContext, context)
             .environment(\.notchNamespace, namespace)
             .environment(\.notchZones, model.zones)
@@ -51,8 +55,22 @@ public struct NotchCanvasView: View {
         var c = model.context
         c.phase = model.phase
         c.layout = model.layout
-        if NotchUIQAHooks.showsHints { c.showsCommandHints = true }       // DEBUG-only visual QA
         return c
+    }
+}
+
+/// The owner's focus, hold-⌘ hints, keyboard navigation and visibility, each in its own environment entry. Read in
+/// this modifier, not in the canvas's body: a change re-evaluates the modifier and the views that read that entry
+/// (focus rings, key caps, a card whose widget gains or loses focus), not the canvas or the views around them.
+private struct InteractionEnvironment: ViewModifier {
+    let model: NotchSceneModel
+
+    func body(content: Content) -> some View {
+        content
+            .environment(\.notchFocusedWidget, model.focusedWidget)
+            .environment(\.notchShowsCommandHints, model.showsCommandHints || NotchUIQAHooks.showsHints)   // DEBUG-only QA
+            .environment(\.notchKeyboardNavigation, model.keyboardNavigation)
+            .environment(\.notchIsOnScreen, model.isVisibleOnScreen)
     }
 }
 
@@ -194,9 +212,10 @@ private struct CanvasBody: View {
         model.primary.flatMap { model.activity($0, in: registry) }?.priority == .hud
     }
 
-    /// While music plays, the keyline takes the album accent (DESIGN.md §5.1).
+    /// While music plays, the keyline takes the album accent (DESIGN.md §5.1). Reads `isPlaying`, not the snapshot,
+    /// so a new playback position does not re-evaluate the canvas.
     private var keylineTint: Color? {
-        guard let source = registry.services.nowPlaying, source.nowPlaying?.isPlaying == true,
+        guard let source = registry.services.nowPlaying, source.isPlaying,
               let accent = source.palette?.accent else { return nil }
         return accent.legible(on: theme.palette.spec.cardOverBlack, ratio: theme.accentContrast).color
     }

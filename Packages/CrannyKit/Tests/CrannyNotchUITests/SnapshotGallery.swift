@@ -58,7 +58,7 @@ struct SnapshotGallery {
         for (name, scene) in extras { try write(scene.0, scene.1, name: name, in: dir) }
 
         let (hints, registry) = previewScene(.open)
-        hints.context.showsCommandHints = true
+        hints.showsCommandHints = true
         try write(hints, registry, name: "open-hints", in: dir)
         let (flat, flatRegistry) = previewScene(.open)
         flat.theme.widgetStyle = .flat

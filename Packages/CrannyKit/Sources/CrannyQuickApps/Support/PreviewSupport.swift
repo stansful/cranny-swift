@@ -53,7 +53,7 @@ import SwiftUI
     }
 
     static func card(model: QuickAppsModel, cells: Int, theme: CrannyTheme = CrannyTheme(),
-                     context: NotchContext = NotchContext()) -> some View {
+                     showsCommandHints: Bool = false) -> some View {
         let grid = theme.grid
         let inset = grid.density.cardPadding
         let content = CGSize(width: grid.width(cells: cells) - 2 * inset, height: grid.height - 2 * inset)
@@ -61,7 +61,7 @@ import SwiftUI
             .crannyCard(cells: cells)
             .padding(Space.xl)
             .background(Color.black)
-            .environment(\.notchContext, context)
+            .environment(\.notchShowsCommandHints, showsCommandHints)
             .crannyThemeRoot(theme)
     }
 }

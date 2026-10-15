@@ -9,7 +9,7 @@ import SwiftUI
 
 struct CommandPaletteView: View {
     @Environment(\.cranny) private var theme
-    @Environment(\.notchContext) private var context
+    @Environment(\.notchContext.isPreview) private var isPreview
     @FocusState private var fieldFocused: Bool
     @State private var query = ""
     @State private var selection = PaletteSelection()
@@ -50,7 +50,7 @@ struct CommandPaletteView: View {
         .onAppear {
             // Typing goes to the panel: make it key first (without activating the app), then focus the field on the
             // next turn of the run loop, once the window can hold a first responder.
-            if !context.isPreview { registry.services.notch.requestKeyboardFocus() }
+            if !isPreview { registry.services.notch.requestKeyboardFocus() }
             Task { @MainActor in fieldFocused = true }
         }
     }

@@ -9,7 +9,7 @@ import SwiftUI
 
 struct TimerFace: View {
     @Environment(\.cranny) private var theme
-    @Environment(\.notchContext) private var notchContext
+    @Environment(\.notchKeyboardNavigation) private var keyboardNavigation
     let model: TimerModel
     let context: WidgetContext
     let playHaptic: @MainActor (HapticPattern) -> Void
@@ -36,7 +36,7 @@ struct TimerFace: View {
                 } else {
                     TimerDial(model: model, diameter: max(side - TimerMetrics.ringInset, 0), entry: entry,
                               showsControls: hovered || focused,
-                              showsFocusRing: focused && (notchContext.keyboardNavigation || context.isFocused))
+                              showsFocusRing: focused && (keyboardNavigation || context.isFocused))
                         .transition(.crannyContent(reduceMotion: theme.reduceMotion, anchor: .center))
                 }
             }

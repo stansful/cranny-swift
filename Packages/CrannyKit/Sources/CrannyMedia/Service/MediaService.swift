@@ -4,6 +4,7 @@
 // state confirms them (else it asks once and shows the player's last state again). Event-driven: nothing polls;
 // every delay is one sleep on the injected `MediaClock`. A state that only re-anchors the snapshot on screen to the
 // same position leaves `nowPlaying` alone (`NowPlaying.hasSameTimeline`): no observer is invalidated for it.
+// `isPlaying` changes only when playback starts or stops, so views that need only that ignore every other snapshot.
 import CoreGraphics
 import CrannyCore
 import Foundation
@@ -14,7 +15,14 @@ private nonisolated let log = Log.logger(.media)
 
 @MainActor @Observable final class MediaService: NowPlayingSource {
     // MARK: NowPlayingSource
-    private(set) var nowPlaying: NowPlaying?
+    private(set) var nowPlaying: NowPlaying? {
+        didSet {
+            let playing = nowPlaying?.isPlaying == true
+            if isPlaying != playing { isPlaying = playing }
+        }
+    }
+    /// `nowPlaying?.isPlaying == true`, written only when it flips (`NowPlayingSource.isPlaying`).
+    private(set) var isPlaying = false
     private(set) var artwork: CGImage?
     private(set) var palette: AmbientPalette?
     /// Track key of `artwork` (the previous track's art stays up to `artworkGrace` after a change): views use

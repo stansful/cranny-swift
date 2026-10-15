@@ -6,8 +6,8 @@ import SwiftUI
 
 struct LauncherTileView: View {
     @Environment(\.cranny) private var theme
-    /// Only this field of the context: tiles are not re-evaluated when the phase, page or focus changes.
-    @Environment(\.notchContext.showsCommandHints) private var showsCommandHints
+    /// Only the hints: tiles are not re-evaluated when the phase, page or focus changes.
+    @Environment(\.notchShowsCommandHints) private var showsCommandHints
     let tile: LauncherTile
     /// Position among the visible tiles (⌥ number, VoiceOver moves).
     let index: Int

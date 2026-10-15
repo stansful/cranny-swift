@@ -24,8 +24,6 @@ struct LauncherSnapshot {
     @Test func renderStates() async throws {
         let directory = try #require(snapshotDirectory)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        var hints = NotchContext()
-        hints.showsCommandHints = true
         var xl = CrannyTheme()
         xl.textSize = .extraLarge
         var contrast = CrannyTheme()
@@ -35,28 +33,28 @@ struct LauncherSnapshot {
         var roomy = CrannyTheme()
         roomy.density = .roomy
 
-        let variants: [(String, QuickAppsModel, Int, CrannyTheme, NotchContext)] = [
-            ("1-default-2cells", QuickAppsPreview.model(), 2, CrannyTheme(), NotchContext()),
-            ("2-one-cell", QuickAppsPreview.model(), 1, CrannyTheme(), NotchContext()),
-            ("3-four-cells-labels", QuickAppsPreview.model(showsLabels: true), 4, CrannyTheme(), NotchContext()),
-            ("4-three-cells-editing", QuickAppsPreview.model(editing: true), 3, CrannyTheme(), NotchContext()),
-            ("5-overflow", QuickAppsPreview.model(apps: many), 2, CrannyTheme(), NotchContext()),
-            ("6-shortcut-states", QuickAppsPreview.model(apps: ["com.apple.Safari"], states: states), 2, CrannyTheme(), NotchContext()),
-            ("7-empty", QuickAppsPreview.model(apps: [], shortcuts: []), 2, CrannyTheme(), NotchContext()),
-            ("8-hints", QuickAppsPreview.model(apps: many), 3, CrannyTheme(), hints),
-            ("9-xl-text", QuickAppsPreview.model(), 3, xl, NotchContext()),
-            ("10-increase-contrast", QuickAppsPreview.model(), 3, contrast, NotchContext()),
-            ("11-flat", QuickAppsPreview.model(), 3, flat, NotchContext()),
-            ("12-roomy-6cells", QuickAppsPreview.model(apps: many), 6, roomy, NotchContext()),
-            ("13-one-cell-editing-empty", QuickAppsPreview.model(apps: [], shortcuts: [], editing: true), 1, CrannyTheme(), NotchContext()),
+        let variants: [(String, QuickAppsModel, Int, CrannyTheme, Bool)] = [
+            ("1-default-2cells", QuickAppsPreview.model(), 2, CrannyTheme(), false),
+            ("2-one-cell", QuickAppsPreview.model(), 1, CrannyTheme(), false),
+            ("3-four-cells-labels", QuickAppsPreview.model(showsLabels: true), 4, CrannyTheme(), false),
+            ("4-three-cells-editing", QuickAppsPreview.model(editing: true), 3, CrannyTheme(), false),
+            ("5-overflow", QuickAppsPreview.model(apps: many), 2, CrannyTheme(), false),
+            ("6-shortcut-states", QuickAppsPreview.model(apps: ["com.apple.Safari"], states: states), 2, CrannyTheme(), false),
+            ("7-empty", QuickAppsPreview.model(apps: [], shortcuts: []), 2, CrannyTheme(), false),
+            ("8-hints", QuickAppsPreview.model(apps: many), 3, CrannyTheme(), true),
+            ("9-xl-text", QuickAppsPreview.model(), 3, xl, false),
+            ("10-increase-contrast", QuickAppsPreview.model(), 3, contrast, false),
+            ("11-flat", QuickAppsPreview.model(), 3, flat, false),
+            ("12-roomy-6cells", QuickAppsPreview.model(apps: many), 6, roomy, false),
+            ("13-one-cell-editing-empty", QuickAppsPreview.model(apps: [], shortcuts: [], editing: true), 1, CrannyTheme(), false),
             // Shortcuts in "+N" still show their run state there (the default 2-cell launcher with shortcuts added).
-            ("14-overflow-running", QuickAppsPreview.model(states: states), 2, CrannyTheme(), NotchContext()),
+            ("14-overflow-running", QuickAppsPreview.model(states: states), 2, CrannyTheme(), false),
             ("15-overflow-failed", QuickAppsPreview.model(states: [QuickAppsPreview.sampleShortcuts[2].id: .failed(.shortcutFailed)]),
-             2, CrannyTheme(), NotchContext()),
+             2, CrannyTheme(), false),
         ]
-        for (name, model, cells, theme, context) in variants {
+        for (name, model, cells, theme, showsCommandHints) in variants {
             await warmIcons(model, theme: theme)
-            let view = QuickAppsPreview.card(model: model, cells: cells, theme: theme, context: context)
+            let view = QuickAppsPreview.card(model: model, cells: cells, theme: theme, showsCommandHints: showsCommandHints)
                 .environment(\.quickAppsMenuAnchors, false)       // AppKit anchors render as placeholders here
             let renderer = ImageRenderer(content: view)
             renderer.scale = 2

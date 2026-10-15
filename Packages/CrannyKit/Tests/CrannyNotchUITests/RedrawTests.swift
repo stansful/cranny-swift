@@ -1,7 +1,9 @@
 // What the notch UI does NOT redo (ARCHITECTURE.md §9.2): the merged notch outline is shared by every instance of
 // a frame, the progress rim ticks no faster than its line moves a pixel, the open panel's entrance ends without
-// re-evaluating anything, a card is rebuilt only when what it draws changed, and band text measures keep what
-// depends only on the style. Each saving must leave the output exactly as it was.
+// re-evaluating anything, a card is rebuilt only when what it draws changed, band text measures keep what depends
+// only on the style, and a key press (focus, hold-⌘ hints, keyboard navigation) or a new playback position
+// re-evaluates only the views that show it. Each saving must leave the output exactly as it was.
+import CoreGraphics
 import Foundation
 import os
 import SwiftUI
@@ -215,6 +217,255 @@ extension HostedTests {
             #expect(counter.builds[.calendar, default: 0] > before[.calendar, default: 0], "the focused card was not redrawn")
             #expect(counter.builds[.media] == before[.media], "an unchanged card was rebuilt")
             #expect(counter.builds[.quickApps] == before[.quickApps], "an unchanged card was rebuilt")
+        }
+    }
+}
+
+// MARK: - Hosted: what a key press or a media snapshot re-evaluates
+
+/// A Now Playing source like CrannyMedia's: `isPlaying` is its own value, written only when playback starts or stops.
+/// Counts the canvas's evaluations: while music plays, its keyline reads `palette` once per evaluation.
+@MainActor @Observable final class CountingNowPlaying: NowPlayingSource {
+    var nowPlaying: NowPlaying? {
+        didSet {
+            let playing = nowPlaying?.isPlaying == true
+            if isPlaying != playing { isPlaying = playing }
+        }
+    }
+    private(set) var isPlaying = false
+    var artwork: CGImage?
+    var trackChangeCount = 0
+    var audioEnergy: Double { 0 }
+    @ObservationIgnored private(set) var paletteReads = 0
+    var palette: AmbientPalette? {
+        paletteReads += 1
+        return .afterglow
+    }
+    func send(_ command: MediaCommand) async -> Bool { false }
+}
+
+/// The primary activity, ranked like Now Playing (ongoing while music plays). Counts how often its priority is read:
+/// once per evaluation of the canvas and once per evaluation of the open header.
+@MainActor @Observable final class TrackActivity: LiveActivity {
+    let id: ActivityID = .nowPlaying
+    let isActive = true
+    let slot: SlotWidth = .short
+    let revision = 0
+    @ObservationIgnored let source: CountingNowPlaying
+    @ObservationIgnored private(set) var priorityReads = 0
+    init(source: CountingNowPlaying) { self.source = source }
+    var priority: ActivityPriority {
+        priorityReads += 1
+        return source.isPlaying ? .ongoing : .passive
+    }
+    var accessibilityLabel: String { "Track" }
+    var accessibilityValue: String? { nil }
+    func compactLeading() -> some View { EmptyView() }
+    func compactTrailing() -> some View { EmptyView() }
+    func minimal() -> some View { EmptyView() }
+    func peekRow() -> some View { EmptyView() }
+}
+
+/// A widget that shows the playback position, like the Media widget. Its builds count under its ID, the evaluations
+/// of the line that shows the track under `TrackWidget.line`.
+@MainActor final class TrackWidget: NookWidget {
+    static let line: WidgetID = "track.line"
+    let id: WidgetID
+    let title = "Track"
+    let symbol = "music.note"
+    let summary = ""
+    let sizes = WidgetSizes(minimum: 1, preferred: 3, maximum: 6)
+    let source: CountingNowPlaying
+    let counter: BuildCounter
+    init(_ id: WidgetID, source: CountingNowPlaying, counter: BuildCounter) {
+        self.id = id; self.source = source; self.counter = counter
+    }
+    func makeBody(context: WidgetContext) -> some View {
+        counter.record(id)
+        return TrackLine(source: source, counter: counter)
+    }
+}
+
+struct TrackLine: View {
+    let source: CountingNowPlaying
+    let counter: BuildCounter
+    var body: some View {
+        counter.record(TrackWidget.line)
+        return Text(verbatim: "\(source.nowPlaying?.elapsed ?? 0)")
+    }
+}
+
+/// The interaction entries as the probe's content last saw them.
+nonisolated struct InteractionFacts: Equatable {
+    var focusedWidget: WidgetID?
+    var showsCommandHints = false
+    var keyboardNavigation = false
+    var isOnScreen = true
+}
+
+/// A widget whose content reads the interaction entries, as focus rings and key caps do. Its builds count under its ID.
+@MainActor final class InteractionProbeWidget: NookWidget {
+    let id: WidgetID
+    let title = "Probe"
+    let symbol = "timer"
+    let summary = ""
+    let sizes = WidgetSizes(minimum: 1, preferred: 3, maximum: 6)
+    let counter: BuildCounter
+    let seen: InteractionLog
+    init(_ id: WidgetID, counter: BuildCounter, seen: InteractionLog) { self.id = id; self.counter = counter; self.seen = seen }
+    func makeBody(context: WidgetContext) -> some View {
+        counter.record(id)
+        return InteractionProbe(seen: seen)
+    }
+}
+
+@MainActor final class InteractionLog {
+    var last = InteractionFacts()
+}
+
+struct InteractionProbe: View {
+    @Environment(\.notchFocusedWidget) private var focusedWidget
+    @Environment(\.notchShowsCommandHints) private var showsCommandHints
+    @Environment(\.notchKeyboardNavigation) private var keyboardNavigation
+    @Environment(\.notchIsOnScreen) private var isOnScreen
+    let seen: InteractionLog
+    var body: some View {
+        seen.last = InteractionFacts(focusedWidget: focusedWidget, showsCommandHints: showsCommandHints,
+                                     keyboardNavigation: keyboardNavigation, isOnScreen: isOnScreen)
+        return Color.clear
+    }
+}
+
+extension HostedTests {
+    @MainActor @Suite("Interaction and media redraws (hosted, off-screen)") struct InteractionRedrawTests {
+        /// The open Home page: a counting widget, a widget that shows the track and a probe that reads the interaction
+        /// entries; music plays and Now Playing is the primary activity.
+        private struct Scene {
+            let model: NotchSceneModel
+            let registry: ModuleRegistry
+            let counter = BuildCounter()
+            let seen = InteractionLog()
+            let source = CountingNowPlaying()
+            let activity: TrackActivity
+
+            init() {
+                let (model, registry) = previewScene(.open)
+                self.model = model
+                self.registry = registry
+                activity = TrackActivity(source: source)
+                source.nowPlaying = Scene.track(elapsed: 10)
+                registry.services.nowPlaying = source
+                registry.add(widget: CountingWidget(.media, counter: counter))
+                registry.add(widget: TrackWidget(.calendar, source: source, counter: counter))
+                registry.add(widget: InteractionProbeWidget(.quickApps, counter: counter, seen: seen))
+                model.openColumns = NookPreset.listener.items.reduce(0) { $0 + $1.cells }
+                model.sampleActivities[activity.id] = activity
+                model.primary = activity.id
+            }
+
+            static func track(elapsed: TimeInterval, playing: Bool = true) -> NowPlaying {
+                NowPlaying(bundleID: "com.apple.Music", title: "Midnight Window", artist: "The Example Band", duration: 200,
+                           elapsed: elapsed, timestamp: Date(timeIntervalSince1970: 1_000_000), rate: playing ? 1 : 0,
+                           isPlaying: playing)
+            }
+
+            func builds(_ id: WidgetID) -> Int { counter.builds[id, default: 0] }
+            var widgetBuilds: [Int] { [WidgetID.media, .calendar, .quickApps].map(builds) }
+        }
+
+        private func host(_ scene: Scene) -> Hosted<some View> {
+            let (hosted, _) = hostedCanvas(scene.model, scene.registry)
+            hosted.settle(0.3)
+            return hosted
+        }
+
+        /// The owner moves the keyboard focus (Tab, type-to-capture): only the widget that gains it and the one that
+        /// loses it are built again, and the canvas is not re-evaluated. The views that show focus see the move.
+        @Test func aFocusMoveRebuildsOnlyTheWidgetsWhoseFocusChanged() {
+            let scene = Scene()
+            let hosted = host(scene)
+            defer { hosted.tearDown() }
+            let canvas = scene.source.paletteReads
+            var media = scene.builds(.media), calendar = scene.builds(.calendar), probe = scene.builds(.quickApps)
+
+            scene.model.focusedWidget = .calendar
+            hosted.settle()
+            #expect(scene.seen.last.focusedWidget == .calendar)
+            #expect(scene.builds(.calendar) > calendar, "the widget that gained focus was not told")
+            #expect(scene.builds(.media) == media, "a widget whose focus did not change was rebuilt")
+            #expect(scene.builds(.quickApps) == probe, "a widget whose focus did not change was rebuilt")
+            #expect(scene.source.paletteReads == canvas, "the canvas was re-evaluated")
+
+            media = scene.builds(.media); calendar = scene.builds(.calendar)
+            scene.model.focusedWidget = .media
+            hosted.settle()
+            #expect(scene.builds(.media) > media && scene.builds(.calendar) > calendar)
+            #expect(scene.builds(.quickApps) == probe, "a widget whose focus did not change was rebuilt")
+        }
+
+        /// Holding ⌘ shows the key caps: no widget is built again, and neither the canvas nor the header is
+        /// re-evaluated (only the key caps and the views that read the hints are).
+        @Test func aHintToggleRebuildsNoWidgetNorTheCanvasOrTheHeader() {
+            let scene = Scene()
+            let hosted = host(scene)
+            defer { hosted.tearDown() }
+            let builds = scene.widgetBuilds, canvas = scene.source.paletteReads, priority = scene.activity.priorityReads
+
+            scene.model.showsCommandHints = true
+            hosted.settle()
+            #expect(scene.seen.last.showsCommandHints)
+            #expect(scene.widgetBuilds == builds, "a widget was rebuilt")
+            #expect(scene.source.paletteReads == canvas, "the canvas was re-evaluated")
+            #expect(scene.activity.priorityReads == priority, "the canvas or the header was re-evaluated")
+
+            scene.model.showsCommandHints = false
+            hosted.settle()
+            #expect(!scene.seen.last.showsCommandHints)
+            #expect(scene.widgetBuilds == builds && scene.activity.priorityReads == priority)
+        }
+
+        /// A key press turns the focus rings on: the card chrome draws them, no widget is built again and the canvas
+        /// is not re-evaluated. Occlusion reaches the widgets the same way (running rings pause).
+        @Test func keyboardNavigationAndVisibilityRebuildNoWidget() {
+            let scene = Scene()
+            let hosted = host(scene)
+            defer { hosted.tearDown() }
+            let builds = scene.widgetBuilds, canvas = scene.source.paletteReads, priority = scene.activity.priorityReads
+
+            scene.model.keyboardNavigation = true
+            hosted.settle()
+            #expect(scene.seen.last.keyboardNavigation)
+            #expect(scene.widgetBuilds == builds, "a widget was rebuilt")
+            #expect(scene.source.paletteReads == canvas && scene.activity.priorityReads == priority,
+                    "the canvas or the header was re-evaluated")
+
+            scene.model.isVisibleOnScreen = false
+            hosted.settle()
+            #expect(!scene.seen.last.isOnScreen)
+            #expect(scene.widgetBuilds == builds, "a widget was rebuilt")
+        }
+
+        /// A new playback position (a seek, a new anchor) updates the view that shows the track, not the canvas (its
+        /// keyline needs only whether music plays) nor the open header (the primary's priority needs the same).
+        @Test func aNowPlayingSnapshotReEvaluatesOnlyTheViewsThatShowTheTrack() {
+            let scene = Scene()
+            let hosted = host(scene)
+            defer { hosted.tearDown() }
+            let line = scene.builds(TrackWidget.line), builds = scene.widgetBuilds
+            let canvas = scene.source.paletteReads, priority = scene.activity.priorityReads
+            #expect(canvas > 0 && priority > 0)                       // the probes count: music plays, a primary leads
+
+            scene.source.nowPlaying = Scene.track(elapsed: 42)
+            hosted.settle()
+            #expect(scene.builds(TrackWidget.line) > line, "the view that shows the track was not updated")
+            #expect(scene.widgetBuilds == builds, "a widget was rebuilt")
+            #expect(scene.source.paletteReads == canvas, "the canvas was re-evaluated")
+            #expect(scene.activity.priorityReads == priority, "the canvas or the header was re-evaluated")
+
+            // Pausing changes the keyline and the primary's priority: both are evaluated again.
+            scene.source.nowPlaying = Scene.track(elapsed: 42, playing: false)
+            hosted.settle()
+            #expect(scene.activity.priorityReads > priority)
         }
     }
 }

@@ -1,6 +1,7 @@
 // CrannyNotchUI/NotchScene.swift — the render model of one notch (one per display panel, one per stage).
 // The contract of ARCHITECTURE.md §4.12. Additive since the foundation: `middleLabelWidth` (open issue 3),
-// `isVisibleOnScreen`, `OpenState.gestureVelocity` and `headerActivity` (with `OpenHeaderActivity`).
+// `isVisibleOnScreen`, `OpenState.gestureVelocity` and `headerActivity` (with `OpenHeaderActivity`). Keyboard focus,
+// hold-⌘ hints and keyboard navigation moved out of `context` into properties of their own (energy pass).
 import CrannyCore
 import CrannyEffects
 import Foundation
@@ -81,6 +82,13 @@ public nonisolated struct OpenState: Equatable, Sendable {
     public var gestureTranslation: CGSize = .zero
     /// Facts for feature views (`@Environment(\.notchContext)`); the canvas keeps `phase` and `layout` in step.
     public var context = NotchContext()
+    /// The widget that has keyboard focus or is in a focus mode (`@Environment(\.notchFocusedWidget)`). The owner
+    /// mirrors `NotchUIActions.focusWidget` and `OpenState.focus` into it.
+    public var focusedWidget: WidgetID?
+    /// Hold-⌘ hints are visible (`@Environment(\.notchShowsCommandHints)`).
+    public var showsCommandHints = false
+    /// The last interaction was the keyboard: focus rings show (`@Environment(\.notchKeyboardNavigation)`).
+    public var keyboardNavigation = false
     /// Drop and scroll zones of this canvas (the shell routes AppKit events to them).
     public let zones: NotchZones
 
@@ -112,7 +120,8 @@ public nonisolated struct OpenState: Equatable, Sendable {
     /// changes. Ignored on notched displays, where the camera housing is the middle (DESIGN.md §3.5).
     public var middleLabelWidth: CGFloat = 0
     /// The panel is on screen and not occluded (`NSWindow.occlusionState`). The owner clears it while the panel
-    /// is covered, so the light layer and other effects pause (DESIGN.md §4.7). Stages leave it on.
+    /// is covered, so the light layer and other effects pause (DESIGN.md §4.7; widgets read
+    /// `@Environment(\.notchIsOnScreen)`). Stages leave it on.
     public var isVisibleOnScreen = true
 }
 
@@ -136,7 +145,7 @@ public struct NotchUIActions {
     public var commitLayout: @MainActor ([NookPage]) -> Void = { _ in }
     /// ⌘K / ⌘E / Esc chain / focus mode: NotchUI asks, the owner writes `open.mode`.
     public var setMode: @MainActor (NookMode) -> Void = { _ in }
-    /// Keyboard focus moved to a widget (nil = none); the owner mirrors it into `context.focusedWidget`.
+    /// Keyboard focus moved to a widget (nil = none); the owner mirrors it into `focusedWidget`.
     public var focusWidget: @MainActor (WidgetID?) -> Void = { _ in }
     /// VoiceOver "Dismiss" action and swipe-up on the satellite.
     public var dismissActivity: @MainActor (ActivityID) -> Void = { _ in }

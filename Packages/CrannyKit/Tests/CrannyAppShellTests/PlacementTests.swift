@@ -63,7 +63,7 @@ private func keyEvent(_ characters: String, keyCode: UInt16, in window: NSWindow
     f.viewModel.send(.hotKey)
     #expect(router.handleKeyDown(try #require(keyEvent("h", keyCode: 4, in: panel))) == nil)
     #expect(log.typed == ["h"])
-    #expect(f.scene.open?.page == "page.notes" && f.scene.context.focusedWidget == .notes)
+    #expect(f.scene.open?.page == "page.notes" && f.scene.focusedWidget == .notes)
 }
 
 /// A target that names no widget (a third-party one) is always captured, as before.
@@ -85,7 +85,7 @@ private func keyEvent(_ characters: String, keyCode: UInt16, in window: NSWindow
     f.settings[CoreSettings.pages] = [NookPreset.minimal.page,
                                       NookPage(id: "page.work", symbol: "calendar", items: [.init(.calendar, cells: 4)])]
     f.viewModel.send(.open(page: .nook, focus: .calendar, reason: .keyboard))
-    #expect(f.scene.open?.page == "page.work" && f.scene.context.focusedWidget == .calendar)
+    #expect(f.scene.open?.page == "page.work" && f.scene.focusedWidget == .calendar)
     f.viewModel.send(.close)
     f.viewModel.send(.open(page: nil, focus: .calendar, reason: .programmatic))
     #expect(f.scene.open?.page == "page.work")

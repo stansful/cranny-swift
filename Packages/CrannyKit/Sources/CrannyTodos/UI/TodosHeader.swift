@@ -7,7 +7,7 @@ import SwiftUI
 
 struct TodosHeader: View {
     @Environment(\.cranny) private var theme
-    @Environment(\.notchContext) private var notchContext
+    @Environment(\.notchShowsCommandHints) private var showsCommandHints
     let count: TodoHeaderCount
     let showsCount: Bool
     let saveFailed: Bool
@@ -40,7 +40,7 @@ struct TodosHeader: View {
                 .lineLimit(1)
                 .accessibilityAddTraits(.isHeader)
             Spacer(minLength: Space.xs)
-            if showsCount && notchContext.showsCommandHints && isFocusedWidget {
+            if showsCount && showsCommandHints && isFocusedWidget {
                 HStack(spacing: Space.xxs) {
                     KeyCap("↩")
                     KeyCap("␣")
@@ -56,7 +56,7 @@ struct TodosHeader: View {
                     .animation(theme.animation(.contentSwap), value: count)
             }
         }
-        .animation(theme.animation(.hover), value: notchContext.showsCommandHints)
+        .animation(theme.animation(.hover), value: showsCommandHints)
     }
 }
 

@@ -92,7 +92,7 @@ import Foundation
     /// printable key (Shift allowed; ⌘ ⌃ ⌥ shortcuts and whitespace are left to the Nook).
     private func captureCharacters(_ event: NSEvent) -> String? {
         guard !capturedThisOpen, let open = viewModel.state.openState, open.reason == .keyboard, open.mode == .grid,
-              open.focus == nil, viewModel.scene.context.focusedWidget == nil,
+              open.focus == nil, viewModel.scene.focusedWidget == nil,
               !(panel?.firstResponder is NSText) else { return nil }
         return Self.printable(event.characters, modifiers: event.modifierFlags)
     }

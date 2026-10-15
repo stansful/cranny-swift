@@ -101,5 +101,7 @@ import Testing
     #expect(interval() == nil)
     environment.isFullScreenInFront = false
     #expect(RunningRing.frameInterval(environment.effectBudget(isOpen: true, isOnScreen: true, reduceMotion: true)) == nil)
+    // The ring passes `notchIsOnScreen`: an occluded panel holds the frame.
+    #expect(RunningRing.frameInterval(environment.effectBudget(isOpen: true, isOnScreen: false, reduceMotion: false)) == nil)
 }
 

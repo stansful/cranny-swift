@@ -8,7 +8,6 @@ import SwiftUI
 
 struct WidgetGridPage: View {
     @Environment(\.cranny) private var theme
-    @Environment(\.notchContext) private var context
     @Environment(\.notchEntrance) private var entrance
     @Namespace private var rotor
     @FocusState private var focused: WidgetID?

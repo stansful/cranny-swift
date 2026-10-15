@@ -93,10 +93,12 @@ private enum RunStateKey: Equatable {
 
 /// An indeterminate run shown as a ring that fills quickly, then ever more slowly (we never know how long a
 /// shortcut takes). Ticks through `EffectClock` only while the effect budget allows (ARCHITECTURE.md §9.2), at
-/// most 8 times a second; otherwise it holds its last frame. Under Reduce Motion it rests at a quarter. The budget
-/// is read here, in the only view that needs it, so idle tiles do not depend on it.
+/// most 8 times a second; otherwise it holds its last frame (also while the panel is occluded: `notchIsOnScreen`).
+/// Under Reduce Motion it rests at a quarter. The budget is read here, in the only view that needs it, so idle tiles
+/// do not depend on it.
 struct RunningRing: View {
     @Environment(\.cranny) private var theme
+    @Environment(\.notchIsOnScreen) private var isOnScreen
     let since: Date
     let size: CGFloat
     let environment: any SystemEnvironment
@@ -112,7 +114,7 @@ struct RunningRing: View {
     }
 
     var body: some View {
-        let frameInterval = Self.frameInterval(environment.effectBudget(isOpen: true, isOnScreen: true,
+        let frameInterval = Self.frameInterval(environment.effectBudget(isOpen: true, isOnScreen: isOnScreen,
                                                                          reduceMotion: theme.reduceMotion))
         EffectClock(minimumInterval: frameInterval) { date in
             ProgressRing(progress: theme.reduceMotion ? 0.25 : Self.progress(elapsed: date.timeIntervalSince(since)),

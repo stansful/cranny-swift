@@ -248,6 +248,9 @@ public nonisolated enum MediaCommand: Sendable, Equatable {
 @MainActor public protocol NowPlayingSource: AnyObject, Observable {
     /// The current track, nil when nothing plays or was paused long enough ago.
     var nowPlaying: NowPlaying? { get }
+    /// `nowPlaying?.isPlaying == true`. A source that keeps it as its own value, written only when playback starts or
+    /// stops, spares the views that need only this (the keyline, an activity's priority) every other snapshot.
+    var isPlaying: Bool { get }
     /// The current artwork, nil until loaded or when there is none.
     var artwork: CGImage? { get }
     /// `AmbientPalette.extract(from:)` of the artwork (cached per track); nil = no artwork yet.
@@ -258,6 +261,11 @@ public nonisolated enum MediaCommand: Sendable, Equatable {
     var audioEnergy: Double { get }
     /// Sends a command to the player; true when the player accepted it.
     @discardableResult func send(_ command: MediaCommand) async -> Bool
+}
+
+public extension NowPlayingSource {
+    /// Read from `nowPlaying`, so it depends on the whole snapshot (CrannyMedia keeps its own value).
+    var isPlaying: Bool { nowPlaying?.isPlaying == true }
 }
 
 /// Optional health facts of the `NowPlayingSource` for `--diagnostics` (ARCHITECTURE.md §6.5: the media source in

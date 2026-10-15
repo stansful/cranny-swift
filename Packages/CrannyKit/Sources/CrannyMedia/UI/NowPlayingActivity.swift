@@ -33,7 +33,9 @@ import SwiftUI
     // MARK: LiveActivity
 
     var isActive: Bool { service.nowPlaying != nil && !pauseExpired }
-    var priority: ActivityPriority { service.nowPlaying?.isPlaying == true ? .ongoing : .passive }
+    /// Reads `isPlaying`, not the snapshot: the canvas and the open header read the primary's priority, so a new
+    /// playback position does not re-evaluate them.
+    var priority: ActivityPriority { service.isPlaying ? .ongoing : .passive }
     var revision: Int { service.trackChangeCount }
     var palette: AmbientPalette? { service.palette }
     var opensWidget: WidgetID? { .media }

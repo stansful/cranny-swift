@@ -10,7 +10,9 @@ import SwiftUI
 
 struct NookView: View {
     @Environment(\.cranny) private var theme
-    @Environment(\.notchContext) private var context
+    /// Only these fields of the context: the panel is not re-evaluated when its phase changes.
+    @Environment(\.notchContext.isPreview) private var isPreview
+    @Environment(\.notchContext.redactsPersonalData) private var redactsPersonalData
     /// Direction of the last tab change, set one update BEFORE the page changes so the leaving page and the
     /// arriving page slide the same way (a removed view keeps the transition of its last update).
     @State private var forward = true
@@ -46,7 +48,7 @@ struct NookView: View {
             AccessibilityNotification.LayoutChanged().post()                // VoiceOver lands in the opened panel
             // The header and the widgets started their entrance in this update; what appears later doesn't stagger.
             Task { @MainActor in entrance.isEntering = false }
-            if let qa = NotchUIQAHooks.mode, !NotchUIQAHooks.didApplyMode, !context.isPreview {   // DEBUG-only visual QA
+            if let qa = NotchUIQAHooks.mode, !NotchUIQAHooks.didApplyMode, !isPreview {   // DEBUG-only visual QA
                 NotchUIQAHooks.didApplyMode = true
                 Task { @MainActor in actions.setMode(qa) }
             }
@@ -110,7 +112,7 @@ struct NookView: View {
             modulePage.makeView(WidgetContext(
                 cells: model.openColumns, rows: theme.grid.rows,
                 contentSize: CGSize(width: theme.grid.width(cells: model.openColumns), height: theme.grid.height),
-                isPreview: context.isPreview, redactsPersonalData: context.redactsPersonalData))
+                isPreview: isPreview, redactsPersonalData: redactsPersonalData))
             .staggeredReveal(delay: 0)
         } else {
             PlaceholderPage(symbol: pageID == .tray ? "tray.full.fill" : "square.grid.2x2.fill", columns: model.openColumns)

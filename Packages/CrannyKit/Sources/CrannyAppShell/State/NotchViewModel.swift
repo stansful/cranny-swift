@@ -70,8 +70,8 @@ import SwiftUI
         a.dismissActivity = { [weak self] id in self?.dismissActivity(id) }
         a.openSettings = { [weak self] in self?.openSettings() }
         a.focusWidget = { [weak self] widget in
-            guard let self, self.scene.context.focusedWidget != widget else { return }
-            self.scene.context.focusedWidget = widget
+            guard let self, self.scene.focusedWidget != widget else { return }
+            self.scene.focusedWidget = widget
         }
         // Edit layout (⌘E) commits through the owner: the scene is never written by the views (§4.12).
         a.commitLayout = { [weak self] pages in self?.registry.services.settings[CoreSettings.pages] = pages }
@@ -123,12 +123,12 @@ import SwiftUI
 
     /// Hold-⌘ hints (DESIGN.md §6.5) and keyboard-driven focus rings, from `KeyboardRouter`.
     func setCommandHints(_ visible: Bool) {
-        guard scene.context.showsCommandHints != visible else { return }
-        scene.context.showsCommandHints = visible
+        guard scene.showsCommandHints != visible else { return }
+        scene.showsCommandHints = visible
         if visible { onEvent(.commandHintsShown) }
     }
     func setKeyboardNavigation(_ on: Bool) {
-        if scene.context.keyboardNavigation != on { scene.context.keyboardNavigation = on }
+        if scene.keyboardNavigation != on { scene.keyboardNavigation = on }
     }
 
     /// Live rubber-band offset of a two-finger swipe in progress (`GestureRouter`); zero on release.
@@ -328,16 +328,19 @@ import SwiftUI
         context.page = state.openState?.page
         context.openReason = state.openState?.reason
         context.redactsPersonalData = state.environment.demoMode && registry.services.settings[CoreSettings.demoRedactsCalendar]
+        if context != scene.context { scene.context = context }
+        // Focus, hints and focus rings are the scene's own properties: a key press changes only the views showing them.
+        var focusedWidget = scene.focusedWidget
         let focus = state.openState?.focus
-        if focus != syncedFocus { context.focusedWidget = focus; syncedFocus = focus }
+        if focus != syncedFocus { focusedWidget = focus; syncedFocus = focus }
         if state.openState == nil {
-            context.focusedWidget = nil
-            context.showsCommandHints = false
+            focusedWidget = nil
+            setCommandHints(false)
             syncedFocus = nil
         }
+        if scene.focusedWidget != focusedWidget { scene.focusedWidget = focusedWidget }
         // Focus rings follow the way it was opened; KeyboardRouter updates them on later keys and clicks.
-        if opening { context.keyboardNavigation = state.openState?.reason == .keyboard }
-        if context != scene.context { scene.context = context }
+        if opening { setKeyboardNavigation(state.openState?.reason == .keyboard) }
         let columns = openColumns(for: state.openState?.page ?? config.lastPage)
         if scene.openColumns != columns { scene.openColumns = columns }
         didSync()

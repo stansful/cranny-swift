@@ -5,6 +5,7 @@
 // when what it draws changes: the hover and popover state live in the chrome (`CardHoverChrome`), so a pointer
 // passing over a card redraws the chrome alone, and a card whose inputs are unchanged is skipped (`WidgetCard:
 // Equatable`, used with `.equatable()`), so a grid update or a drag in the layout editor rebuilds no other widget.
+// A focus move re-evaluates every card but builds only the widgets whose context changed (`WidgetContent`).
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -25,7 +26,10 @@ struct CardCommands {
 
 struct WidgetCard: View {
     @Environment(\.cranny) private var theme
-    @Environment(\.notchContext) private var context
+    @Environment(\.notchFocusedWidget) private var focusedWidget
+    /// Only these fields of the context: a card is not re-evaluated when the phase or the page changes.
+    @Environment(\.notchContext.isPreview) private var isPreview
+    @Environment(\.notchContext.redactsPersonalData) private var redactsPersonalData
     let item: NookItem
     let registry: ModuleRegistry
     var rows: Int = 2
@@ -49,12 +53,13 @@ struct WidgetCard: View {
         let grid = theme.grid
         if let widget {
             let inset = widget.isFrameless ? 0 : grid.density.cardPadding
-            widget.makeBody(context: WidgetContext(
+            WidgetContent(widget: widget, context: WidgetContext(
                 cells: cells, rows: rows,
                 contentSize: CGSize(width: grid.width(cells: cells) - 2 * inset,
                                     height: CardChrome.height(rows: rows, grid: grid) - 2 * inset),
-                isEditingLayout: isEditing, isFocused: isFocused || context.focusedWidget == widget.id,
-                isPreview: context.isPreview, redactsPersonalData: context.redactsPersonalData))
+                isEditingLayout: isEditing, isFocused: isFocused || focusedWidget == widget.id,
+                isPreview: isPreview, redactsPersonalData: redactsPersonalData))
+            .equatable()
         } else {
             let placeholder = WidgetPlaceholder(item.widget)
             VStack(spacing: Space.s) {
@@ -73,11 +78,23 @@ struct WidgetCard: View {
 extension WidgetCard: Equatable {
     /// Equal when the card draws the same: its item, rows, mode, focus, size clamping and registry, and commands for
     /// the same page. The command closures themselves are left out: every parent update builds new ones that do the
-    /// same (`CardCommands`). The theme, the context and observed widget state still update a card as usual.
+    /// same (`CardCommands`). The theme, the environment and observed widget state still update a card as usual.
     static func == (a: WidgetCard, b: WidgetCard) -> Bool {
         a.item == b.item && a.registry === b.registry && a.rows == b.rows && a.isEditing == b.isEditing
             && a.isFocused == b.isFocused && a.clampsToSizes == b.clampsToSizes && a.commands.page == b.commands.page
     }
+}
+
+/// The widget's content (`makeBody`), built again only for another widget or another context (with `.equatable()`).
+/// The card is re-evaluated for its theme, its chrome and every focus move, the widget only when what it is told
+/// changes: a focus move rebuilds the widget that gains focus and the one that loses it, no other.
+private struct WidgetContent: View, Equatable {
+    let widget: AnyNookWidget
+    let context: WidgetContext
+
+    var body: some View { widget.makeBody(context: context) }
+
+    static func == (a: WidgetContent, b: WidgetContent) -> Bool { a.widget === b.widget && a.context == b.context }
 }
 
 // MARK: - Chrome
@@ -86,7 +103,8 @@ extension WidgetCard: Equatable {
 /// list. A modifier, so a change of that state re-evaluates the chrome, not the widget it wraps (`content`).
 private struct CardHoverChrome: ViewModifier {
     @Environment(\.cranny) private var theme
-    @Environment(\.notchContext) private var context
+    @Environment(\.notchKeyboardNavigation) private var keyboardNavigation
+    @Environment(\.notchContext.openReason) private var openReason
     @State private var hovered = false
     @State private var showsOptions = false
     @State private var showsKeyboardMenu = false
@@ -106,7 +124,7 @@ private struct CardHoverChrome: ViewModifier {
                 if !isEditing {
                     // Always in the hierarchy (its NSMenu must survive the pointer leaving the card for the menu);
                     // visible on hover, while its ⌘. list is open, or with keyboard focus on the card.
-                    let visible = hovered || showsKeyboardMenu || (isFocused && context.keyboardNavigation)
+                    let visible = hovered || showsKeyboardMenu || (isFocused && keyboardNavigation)
                     CardOverflowMenu(widget: id, hasOptions: widget?.hasOptions ?? false, cells: cells,
                                      commands: commands, showOptions: { showsOptions = true })
                         .popover(isPresented: $showsKeyboardMenu, arrowEdge: .bottom) {
@@ -122,7 +140,7 @@ private struct CardHoverChrome: ViewModifier {
             .popover(isPresented: $showsOptions, arrowEdge: .bottom) {
                 if let widget { WidgetOptionsPopover(widget: widget) }
             }
-            .crannyFocusRing(isFocused && (context.keyboardNavigation || context.openReason == .keyboard),
+            .crannyFocusRing(isFocused && (keyboardNavigation || openReason == .keyboard),
                              radius: theme.grid.cardRadius)
             .onHover { hovered = $0 }
             .background {
