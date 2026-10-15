@@ -21,8 +21,9 @@ nonisolated struct AmbientDrawableLayout: Equatable, Sendable {
     var region: CGSize
     /// Pixel rows of the view above the drawable.
     var offset: Int
-    /// The drawable view's frame in the light's (unflipped) view: its top edge `offset` pixels below the view's top,
-    /// one pixel of the drawable per device pixel.
+    /// The drawable view's frame in the light's (unflipped) view: its top edge `offset` pixels below the view's top.
+    /// A pixel covers `bounds / (bounds × scale).rounded()` points, as when one drawable of the whole view was
+    /// stretched over its bounds, so a size that is not a whole number of pixels maps to the screen as it always did.
     var frame: CGRect
 
     /// Whether the drawable holds pixels outside the band (left by a resize).
@@ -36,7 +37,9 @@ nonisolated struct AmbientDrawableLayout: Equatable, Sendable {
     /// otherwise grown in `step`s; nil: exactly the band.
     init?(bounds: CGSize, scale: CGFloat, litTop: CGFloat, growingFrom current: CGSize? = nil) {
         guard scale > 0, bounds.width >= 1, bounds.height >= 1 else { return nil }
-        let width = Self.wholePixels(bounds.width * scale), height = Self.wholePixels(bounds.height * scale)
+        // The whole view's drawable as it always was: its size in pixels, rounded, stretched over the bounds.
+        let width = max(Int((bounds.width * scale).rounded()), 1), height = max(Int((bounds.height * scale).rounded()), 1)
+        let pointsPerPixel = CGSize(width: bounds.width / CGFloat(width), height: bounds.height / CGFloat(height))
         let offset = min(Int((max(litTop, 0) * scale).rounded(.down)), height - 1)
         var w = width, h = height - offset
         region = CGSize(width: w, height: h)
@@ -46,12 +49,9 @@ nonisolated struct AmbientDrawableLayout: Equatable, Sendable {
         }
         pixels = CGSize(width: w, height: h)
         self.offset = offset
-        frame = CGRect(x: 0, y: bounds.height - CGFloat(offset + h) / scale,
-                       width: CGFloat(w) / scale, height: CGFloat(h) / scale)
+        frame = CGRect(x: 0, y: bounds.height - CGFloat(offset + h) * pointsPerPixel.height,
+                       width: CGFloat(w) * pointsPerPixel.width, height: CGFloat(h) * pointsPerPixel.height)
     }
-
-    /// Pixels that cover `length` (a sub-pixel remainder counts as a pixel; float noise below 0.001 does not).
-    private static func wholePixels(_ length: CGFloat) -> Int { max(Int((length - 0.001).rounded(.up)), 1) }
 
     private static func stepped(_ pixels: Int) -> Int { (pixels + step - 1) / step * step }
 }

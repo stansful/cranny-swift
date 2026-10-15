@@ -18,8 +18,10 @@ import Testing
     let halo = try #require(AmbientDrawableLayout(bounds: CGSize(width: 300, height: 100), scale: 1, litTop: 0))
     #expect(halo.offset == 0 && halo.pixels == CGSize(width: 300, height: 100) && halo.frame.origin == .zero)
     let morphing = try #require(AmbientDrawableLayout(bounds: CGSize(width: 300.3, height: 100.6), scale: 2, litTop: 20))
-    #expect(morphing.pixels == CGSize(width: 601, height: 202 - 40), "a partly covered pixel is drawn")
-    #expect(abs(morphing.frame.maxY - (100.6 - 20)) < 1e-9, "the band's top keeps its place under the clear rows")
+    #expect(morphing.pixels == CGSize(width: 601, height: 201 - 40), "the whole view's drawable, rounded, minus the clear rows")
+    #expect(abs(morphing.frame.maxY - (100.6 - 40 * 100.6 / 201)) < 1e-9,
+            "a pixel covers as many points as when the whole drawable was stretched over the bounds")
+    #expect(abs(morphing.frame.width - 300.3) < 1e-9 && abs(morphing.frame.minY) < 1e-9, "stretched to the bounds")
     #expect(AmbientDrawableLayout(bounds: CGSize(width: 0.5, height: 100), scale: 2, litTop: 0) == nil)
     let tiny = try #require(AmbientDrawableLayout(bounds: CGSize(width: 10, height: 2), scale: 1, litTop: 40))
     #expect(tiny.offset == 1 && tiny.pixels.height == 1, "at least one row is drawn")
