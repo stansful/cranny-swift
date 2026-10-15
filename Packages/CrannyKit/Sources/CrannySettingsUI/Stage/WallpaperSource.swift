@@ -2,9 +2,10 @@
 // read ONLY when the file lies outside the folders macOS protects with a Files & Folders prompt
 // (`ProtectedLocations`): reading those from Settings would raise a privacy prompt nobody asked for
 // (ARCHITECTURE §10.15); the stage then shows the neutral gradient. Decoding happens off the main actor into a
-// small thumbnail (about 2 MB). Only the last one per display is kept, for its URL: reopening the stage on the same
-// wallpaper needs no decode (nor does a stage that imitates another display meanwhile), and a changed wallpaper
-// replaces its display's miniature instead of adding one per URL for the rest of the session.
+// small thumbnail (about 2 MB). While Settings is open, only the last one per display is kept, for its URL: the stage
+// reappearing on the same wallpaper needs no decode (nor does a stage that imitates another display meanwhile), and a
+// changed wallpaper replaces its display's miniature instead of adding one per URL. Closing Settings purges them
+// (`purge()`), so the next open decodes again, as the first one did.
 import AppKit
 import CoreGraphics
 import CrannyCore
@@ -25,15 +26,24 @@ enum WallpaperSource {
 
     /// Per display (`NSScreenNumber`), the last miniature decoded, with its wallpaper's URL.
     @MainActor private static var last: [UInt32: (url: URL, miniature: Miniature)] = [:]
+    /// Bumped by `purge()`: a decode on its way then is not kept.
+    @MainActor private static var generation = 0
 
     /// The miniature of the wallpaper on `screen`, or nil (unsafe location, unreadable or a video wallpaper).
     @MainActor static func miniature(for screen: NSScreen, maxPixelSize: Int = 960) async -> Miniature? {
         guard let url = NSWorkspace.shared.desktopImageURL(for: screen) else { return nil }
         let display = (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value ?? 0
         if let cached = last[display], cached.url == url { return cached.miniature }
+        let started = generation
         let miniature = await decode(url, maxPixelSize: maxPixelSize)
-        if let miniature { last[display] = (url, miniature) }
+        if let miniature, generation == started { last[display] = (url, miniature) }
         return miniature
+    }
+
+    /// Forgets every miniature (Settings closed; the stage holds none then).
+    @MainActor static func purge() {
+        last.removeAll()
+        generation += 1
     }
 
     /// The safety check (it may read symbolic links), thumbnail decode and top-band luminance, off the main actor.

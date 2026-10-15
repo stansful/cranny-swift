@@ -1,4 +1,6 @@
+import CoreGraphics
 import CrannyCore
+import CrannyNotchUI
 import Foundation
 import Testing
 @testable import CrannySettingsUI
@@ -32,6 +34,35 @@ import Testing
     let activities = SettingsSession(registry: registry, initialPage: "activities#satellite")
     #expect(activities.currentPage == .liveActivities)
     if SettingsQAOptions.stageState == nil { #expect(activities.stage.state == .activity) }
+}
+
+/// Closing the window releases its views, not the session: the stage stops (no view may be left to stop it) and lets
+/// go of the wallpaper miniature, decoded again when the stage next appears; the pane, the search, the sidebar's pick
+/// and the Undo offer stay, and the banner of a rebuilt window does not announce the offer to VoiceOver again.
+@Test func closingTheWindowKeepsTheSessionAndDropsTheWallpaper() async throws {
+    let registry = ModuleRegistry(services: .preview())
+    let session = SettingsSession(registry: registry, initialPage: "appearance#motion")
+    #expect(session.query == (SettingsQAOptions.search ?? "") && session.sidebarSelection == .pane(.appearance))
+    session.query = "motion"
+    session.resetAll.resetAll()
+    #expect(session.resetAll.takeAnnouncement())                                 // the banner's first appearance
+    let context = try #require(CGContext(data: nil, width: 8, height: 8, bitsPerComponent: 8, bytesPerRow: 0,
+                                         space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+    session.stage.wallpaper = WallpaperSource.Miniature(image: try #require(context.makeImage()), topIsLight: false)
+    session.stage.start()
+
+    session.windowDidClose()
+    #expect(session.stage.wallpaper == nil)
+    #expect(session.currentPage == .appearance && session.query == "motion" && session.sidebarSelection == .pane(.appearance))
+    #expect(session.resetAll.canUndo && !session.resetAll.takeAnnouncement())
+    registry.services.settings[CoreSettings.density] = .roomy                   // a stopped stage follows nothing
+    try await Task.sleep(for: .milliseconds(100))
+    #expect(session.stage.model.theme.density != .roomy)
+
+    session.resetAll.dismiss()
+    session.resetAll.resetAll()                                                  // a new offer is announced again
+    #expect(session.resetAll.takeAnnouncement())
+    session.resetAll.dismiss()
 }
 
 /// The search index is built for a query and reused until what it indexes changes.

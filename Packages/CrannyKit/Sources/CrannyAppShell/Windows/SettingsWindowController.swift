@@ -3,8 +3,11 @@
 // programmatically from an agent app (no SwiftUI `Settings` scene). 860 × 620 by default, 780 × 560 minimum; the frame
 // is autosaved (not in a Debug QA run with its own defaults suite) and the last pane is restored (`ShellDefaults`).
 // SwiftUI drives the toolbar and title (`sceneBridgingOptions`), so the sidebar and toolbar get the system's Liquid
-// Glass on macOS 26+ and Cranny adds none of its own. The window keeps one `SettingsSession` for its lifetime: opening
-// a pane navigates it, so the Reset All Undo offer, the search and the preview stage survive.
+// Glass on macOS 26+ and Cranny adds none of its own. The controller keeps one `SettingsSession` for the run: opening
+// a pane navigates it, so the Reset All Undo offer, the search and the preview stage survive. Closing releases the
+// window, its hosting controller and the SwiftUI tree (an ordered-out hosting controller still re-evaluates bodies on
+// every observed change), as the Welcome window does; the next open builds them again around the same session, at the
+// autosaved frame, so only pane-local view state (scroll positions, a pane's own picks) starts fresh.
 import AppKit
 import CrannyCore
 import CrannySettingsUI
@@ -13,14 +16,17 @@ import SwiftUI
 @MainActor final class SettingsWindowController: NSObject, NSWindowDelegate {
     /// Not a Cranny setting (Reset All keeps it): the pane shown last, restored when Settings opens without one.
     private static let lastPaneKey = "CrannySettingsLastPane"
+    /// AppKit's frame autosave name (the frame is stored under "NSWindow Frame CrannySettings").
+    private static let frameAutosaveName = "CrannySettings"
 
     private let registry: ModuleRegistry
     private let defaults: UserDefaults
     /// False in a QA run with its own suite: AppKit's frame autosave would write the standard domain.
     private let autosavesFrame: Bool
-    private var window: NSWindow?
-    /// The window's state; `show(page:)` navigates it.
-    private var session: SettingsSession?
+    /// Only while Settings is open: released on close.
+    private(set) var window: NSWindow?
+    /// The window's state, kept for the run (also while no window exists); `show(page:)` navigates it.
+    private(set) var session: SettingsSession?
     /// The app that was frontmost before Settings opened gets activation back on close.
     private var previousApp: NSRunningApplication?
 
@@ -31,19 +37,42 @@ import SwiftUI
         autosavesFrame = defaults.autosavesWindowFrames
     }
 
-    /// Opens (or brings forward) Settings, showing `page` if given ("pane" or "pane#row"); nil restores the last pane.
+    /// Opens (or brings forward) Settings, showing `page` if given ("pane" or "pane#row"); nil shows the pane shown last.
     /// Call in response to a user action (cooperative activation, DESIGN.md §11.1).
     func show(page: SettingsPageID?) {
         let front = NSWorkspace.shared.frontmostApplication
         if front?.processIdentifier != ProcessInfo.processInfo.processIdentifier { previousApp = front }
+        let window = preparedWindow(at: page)
+        NSApp.activate()
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    /// The Settings window at `page` (nil keeps the session's pane; the first open restores the last one), not yet
+    /// ordered in: the open window navigated, never rebuilt (the Undo offer, the search and the stage stay), or a new
+    /// one built around the kept session. `show(page:)` brings it forward; tests call this alone.
+    func preparedWindow(at page: SettingsPageID?) -> NSWindow {
         if let window, let session {
-            // Navigate, never rebuild: the Undo offer, the search and the stage stay.
-            if let page { session.open(page) }
-            NSApp.activate()
-            window.makeKeyAndOrderFront(nil)
-            return
+            session.open(page)
+            return window
         }
-        let session = SettingsSession(registry: registry, initialPage: page ?? lastPage)
+        let session: SettingsSession
+        if let kept = self.session {
+            kept.open(page)
+            session = kept
+        } else {
+            session = SettingsSession(registry: registry, initialPage: page ?? lastPage)
+            self.session = session
+            #if DEBUG
+            scheduleQASnapshot()
+            #endif
+        }
+        let window = makeWindow(session: session)
+        self.window = window
+        return window
+    }
+
+    /// A new window hosting `session`; the frame autosave restores where it was.
+    private func makeWindow(session: SettingsSession) -> NSWindow {
         let host = NSHostingController(rootView: SettingsRootView(session: session) { [weak self] shown in
             self?.rememberLastPane(shown)
         })
@@ -62,21 +91,23 @@ import SwiftUI
         window.collectionBehavior.insert(.fullScreenNone)
         window.delegate = self
         window.center()
-        if autosavesFrame { window.setFrameAutosaveName("CrannySettings") }
-        self.window = window
-        self.session = session
-        NSApp.activate()
-        window.makeKeyAndOrderFront(nil)
+        if autosavesFrame { window.setFrameAutosaveName(Self.frameAutosaveName) }
         #if DEBUG
         applyQAAppearance(to: window)
-        scheduleQASnapshot()
         #endif
+        return window
     }
 
     func windowWillClose(_ notification: Notification) {
         // Cooperative activation hand-back (§5.9, [UNVERIFIED] R1 §3.5).
         if let previousApp, !previousApp.isTerminated { previousApp.activate() }
         previousApp = nil
+        // Release the window (AppKit lets go of it once the close is done) and with it the hosting controller and the
+        // SwiftUI tree; keep the session. The frame is already saved: giving up the autosave name keeps it saved and
+        // lets the next window take the name even if this one is still alive then (a name is unique per live window).
+        if autosavesFrame { window?.setFrameAutosaveName("") }
+        window = nil
+        session?.windowDidClose()
     }
 
     #if DEBUG

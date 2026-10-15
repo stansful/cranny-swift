@@ -87,7 +87,7 @@ import SwiftUI
     }
 
     /// Stops observing and cancels a playing chip or Motion replay, settling on the picker state (the stage
-    /// disappeared or its window is hidden).
+    /// disappeared, or its window is hidden or closed).
     func stop() {
         tokens.forEach { $0.cancel() }
         tokens.removeAll()

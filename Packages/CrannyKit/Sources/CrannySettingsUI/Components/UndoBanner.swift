@@ -1,5 +1,6 @@
 // CrannySettingsUI/Components/UndoBanner.swift — the 10-s Undo offer after "Reset All Settings…" (DESIGN.md §11.3),
-// floating at the bottom of the window. ⌘Z works while it is visible; VoiceOver hears it once.
+// floating at the bottom of the window. ⌘Z works while it is visible; VoiceOver hears it once per offer, also when
+// Settings is closed and opened again while the offer lasts (the banner then appears again silently).
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -34,6 +35,7 @@ struct UndoBanner: View {
         .shadow(color: .black.opacity(0.12), radius: 10, y: 4)
         .accessibilityElement(children: .contain)
         .onAppear {
+            guard controller.takeAnnouncement() else { return }
             AccessibilityNotification.Announcement(
                 String(localized: "All settings were reset. Undo is available for 10 seconds.", bundle: .module,
                        comment: "Settings: VoiceOver announcement after Reset All Settings")).post()

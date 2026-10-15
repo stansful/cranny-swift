@@ -1,7 +1,8 @@
 // CrannySettingsUI/SettingsRootView.swift — the Settings window content (DESIGN.md §11): a `NavigationSplitView` with
 // the searchable sidebar of shell and module panes, the live preview stage pinned above every pane that has one,
-// the pane itself and its "Reset ‹Pane›…" footer, and the 10-s Undo banner after Reset All. Its state lives in a
-// `SettingsSession`, which the window controller keeps and navigates.
+// the pane itself and its "Reset ‹Pane›…" footer, and the 10-s Undo banner after Reset All. Its state (the search text
+// and the sidebar's pick included) lives in a `SettingsSession`, which the window controller keeps and navigates, also
+// while no window exists.
 import CrannyCore
 import CrannyNotchUI
 import Foundation
@@ -11,8 +12,6 @@ import SwiftUI
 public struct SettingsRootView: View {
     private let onPageChange: (@MainActor (SettingsPageID) -> Void)?
     @State private var session: SettingsSession
-    @State private var query = ""
-    @State private var sidebarSelection: SidebarItem?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Opens on `initialPage` (General when nil). A deep link "pane#row" (e.g. `general#hoverDelay`) also scrolls to
@@ -26,14 +25,16 @@ public struct SettingsRootView: View {
     public init(session: SettingsSession, onPageChange: (@MainActor (SettingsPageID) -> Void)? = nil) {
         self.onPageChange = onPageChange
         _session = State(initialValue: session)
-        _sidebarSelection = State(initialValue: .pane(session.navigator.selection))
-        _query = State(initialValue: SettingsQAOptions.search ?? "")
     }
 
     private var registry: ModuleRegistry { session.registry }
     private var navigator: SettingsNavigator { session.navigator }
     private var resetAll: ResetAllController { session.resetAll }
     private var stage: StageController { session.stage }
+    private var sidebarSelection: SidebarItem? {
+        get { session.sidebarSelection }
+        nonmutating set { session.sidebarSelection = newValue }
+    }
 
     /// Shell panes + module panes, ordered by group then order (§11.1).
     var pages: [SettingsPage] { Self.pages(registry: registry) }
@@ -44,10 +45,11 @@ public struct SettingsRootView: View {
 
     public var body: some View {
         let pages = self.pages
-        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = session.query.trimmingCharacters(in: .whitespacesAndNewlines)
         NavigationSplitView {
-            SettingsSidebar(pages: pages, results: trimmed.isEmpty ? nil : searchIndex(pages).search(trimmed), selection: $sidebarSelection)
-                .searchable(text: $query, placement: .sidebar,
+            SettingsSidebar(pages: pages, results: trimmed.isEmpty ? nil : searchIndex(pages).search(trimmed),
+                            selection: $session.sidebarSelection)
+                .searchable(text: $session.query, placement: .sidebar,
                             prompt: Text("Search", bundle: .module, comment: "Settings sidebar: search field placeholder"))
                 .navigationSplitViewColumnWidth(min: SettingsMetrics.sidebarWidth.min, ideal: SettingsMetrics.sidebarWidth.ideal,
                                                 max: SettingsMetrics.sidebarWidth.max)
@@ -78,7 +80,12 @@ public struct SettingsRootView: View {
         }
         .onChange(of: navigator.selection, initial: true) { _, selection in
             if !Self.item(sidebarSelection, points: selection) { sidebarSelection = .pane(selection) }
-            stage.select(Self.stageState(for: pages.first { $0.id == selection }))
+            // A new pane sets the stage's state; a window rebuilt on the pane the stage already shows keeps the state
+            // picked there.
+            if session.stagedPane != selection {
+                session.stagedPane = selection
+                stage.select(Self.stageState(for: pages.first { $0.id == selection }))
+            }
             onPageChange?(selection)
         }
         .onChange(of: trimmed.isEmpty) { _, isEmpty in

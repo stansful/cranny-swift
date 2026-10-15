@@ -10,6 +10,8 @@ import Observation
     private(set) var canUndo = false
     @ObservationIgnored private var snapshot: SettingsStore.Snapshot?
     @ObservationIgnored private var expiry: Task<Void, Never>?
+    /// The current offer was announced to VoiceOver (`takeAnnouncement()`).
+    @ObservationIgnored private var isAnnounced = false
     @ObservationIgnored private let settings: SettingsStore
     @ObservationIgnored private let app: any AppControl
     @ObservationIgnored private let undoWindow: Duration
@@ -27,6 +29,7 @@ import Observation
         snapshot = settings.snapshot()
         app.resetAllSettings()
         canUndo = true
+        isAnnounced = false
         expiry?.cancel()
         expiry = Task { [weak self, undoWindow, sleep] in
             try? await sleep(undoWindow)
@@ -40,6 +43,13 @@ import Observation
         guard canUndo, let snapshot else { return }
         settings.restore(snapshot)
         dismiss()
+    }
+
+    /// True the first time the banner asks for the current offer: it is announced once, also when the banner appears
+    /// again in a rebuilt Settings window.
+    func takeAnnouncement() -> Bool {
+        defer { isAnnounced = true }
+        return !isAnnounced
     }
 
     /// Ends the Undo offer (timeout or the banner's close button).
