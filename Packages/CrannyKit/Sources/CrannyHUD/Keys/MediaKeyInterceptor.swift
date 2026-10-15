@@ -186,9 +186,14 @@ nonisolated final class MediaKeyInterceptor: KeyInterceptor {
             return Unmanaged.passUnretained(event)
         case .systemDefined:
             defer { interceptor.eventHandled() }
-            guard let nsEvent = NSEvent(cgEvent: event),
-                  let key = MediaKeyEvent.decode(subtype: Int(nsEvent.subtype.rawValue), data1: nsEvent.data1,
-                                                 flags: event.flags.rawValue) else { return Unmanaged.passUnretained(event) }
+            // The tap thread's run loop drains no autorelease pool by itself, and every mouse-button press is a
+            // system-defined event too: the decoding's objects are released per event, not when the thread ends.
+            let key = autoreleasepool { () -> MediaKeyEvent? in
+                guard let nsEvent = NSEvent(cgEvent: event) else { return nil }
+                return MediaKeyEvent.decode(subtype: Int(nsEvent.subtype.rawValue), data1: nsEvent.data1,
+                                            flags: event.flags.rawValue)
+            }
+            guard let key else { return Unmanaged.passUnretained(event) }
             return interceptor.handler.handle(key) ? nil : Unmanaged.passUnretained(event)
         }
     }
