@@ -1,8 +1,10 @@
 // CrannyAppShell/App/Diagnostics.swift — `Cranny --diagnostics <file.json>`: CI/launch smoke test, no UI.
-// Keys read by scripts/smoke.sh: resourceBundles, bridge, mainMenu, shaders. Also effectsRenderer and media (QA).
+// Keys read by scripts/smoke.sh: resourceBundles, bridge, mainMenu, shaders. Also effectsRenderer (how the ambient
+// light is drawn under the current settings) and media (QA).
 import AppKit
 import CrannyCore
 import CrannyEffects
+import CrannyNotchUI
 import Foundation
 
 enum Diagnostics {
@@ -29,8 +31,10 @@ enum Diagnostics {
         r["bridge"] = FileManager.default.fileExists(atPath: bridge) ? bridge : "(missing)"
         // Metal effects: the CrannyEffects bundle's default.metallib, loaded the way the app loads it (Bundle.module).
         r["shaders"] = EffectsDiagnostics.shaderStatus
-        // How the ambient light is drawn: "metal-layer", "swiftui-shader" or "fallback" (CrannyEffects).
-        r["effectsRenderer"] = EffectsDiagnostics.ambientRenderer
+        // How the ambient light is drawn: "core-animation" with Appearance ▸ Quality ▸ Efficient (DESIGN.md §5.7), else
+        // "metal-layer", "swiftui-shader" or "fallback" (CrannyEffects).
+        r["effectsRenderer"] = ThemeResolver.ambientDetail(settings: registry.services.settings) == .efficient
+            ? "core-animation" : EffectsDiagnostics.ambientRenderer
         // The media source's health facts (provider, state, elected player as unknown/none/some; no names).
         if let media = registry.services.nowPlaying as? any NowPlayingDiagnostics { r["media"] = media.diagnostics }
         // Which display(s) get a panel under the current settings, in AppKit screen coordinates (visual QA).

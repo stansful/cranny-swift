@@ -118,6 +118,6 @@ Register and typography (as macOS 27 writes zh_CN):
 | Storage (Settings ▸ Tray section) | 文件存放 | not 存储, which is the Save button in the same pane |
 | Next to the original (Save results) | 原件所在位置 | permission prompts: 原文件所在的文件夹 |
 | Rename | 重新命名 | Apple |
-| Quality (the light: Detailed · Efficient) | 质量 (精细 · 节能) | Settings ▸ Appearance ▸ Light; search keywords 内存 · 性能 |
+| Quality (the light: Detailed · Efficient) | 质量 (精细 · 高效) | Settings ▸ Appearance ▸ Light; never 节能 (it saves memory, battery is not promised); search keywords 内存 · 性能 |
 
 Reviewed by an independent review pass; the rows above include its changes.

@@ -11,7 +11,9 @@
 //   lines sit at 80–92 % of the height.
 // - Looping: every animation repeats forever from `AmbientCAClock.epoch` in the clock layer's time, with periods that
 //   share no small common multiple, so the light never visibly loops; its values are fractions (anchor points, scales,
-//   opacities) or fixed point offsets, so a resize changes the layers' geometry but never an animation.
+//   opacities) or fixed point offsets, so a resize changes the layers' geometry but never a looping animation.
+// - Song change: the view lifts the whole light once (`AmbientCANSView`); the tide instead deepens its waves in place
+//   (`playSwell`, path keyframes drawn for the current size, dropped by a resize).
 // - Live audio energy is not used (it would need work per frame in the app); the light shows energy 0.
 import AppKit
 import CrannyCore
@@ -33,6 +35,16 @@ protocol AmbientCAEffect: AnyObject {
     func installAnimations(frameRate: Float)
     /// The layers that hold looping animations now (tests).
     var animatedLayers: [CALayer] { get }
+    /// Plays the song-change swell itself, started `elapsed` seconds ago, asking for `frameRate`; false leaves it to
+    /// the view, which lifts the whole light (the default).
+    func playSwell(elapsed: Double, frameRate: Float) -> Bool
+    /// Drops a swell that `playSwell` started (the clock is about to jump to another time).
+    func stopSwell()
+}
+
+extension AmbientCAEffect {
+    func playSwell(elapsed: Double, frameRate: Float) -> Bool { false }
+    func stopSwell() {}
 }
 
 // MARK: - Shared helpers
@@ -70,11 +82,6 @@ nonisolated enum AmbientCA {
         return mask
     }
 
-    /// The band mask of the aurora's SwiftUI fallback (`BandMask`): clear over the top 40 %, opaque from 48 %.
-    static func bandMask() -> CAGradientLayer {
-        verticalMask([(0, 0), (0.40, 0), (0.48, 1), (1, 1)])
-    }
-
     /// A looping animation of `keyPath` from `from` to `to` and back (a sine-like breath), `period` seconds a cycle,
     /// starting `phase` (0…1 of the cycle) into it at the clock's epoch.
     static func breath(_ keyPath: String, from: Double, to: Double, period: Double, phase: Double,
@@ -110,6 +117,26 @@ nonisolated enum AmbientCA {
         return animation
     }
 
+    /// The key of the song-change swell on any layer.
+    static let swellKey = "songChange"
+
+    /// The song-change swell of `keyPath` on `layer`: `values` at 0, 25, 60 and 100 % of the ripple's 0.6 s (quick
+    /// rise, gentle settle), started `elapsed` seconds ago in the layer's own time. Starting it in the past (rather
+    /// than with a `timeOffset`, which wraps around) plays only what is left of it.
+    static func swell(_ keyPath: String, values: [Any], elapsed: Double, on layer: CALayer,
+                      frameRate: Float) -> CAKeyframeAnimation {
+        let swell = CAKeyframeAnimation(keyPath: keyPath)
+        swell.values = values
+        swell.keyTimes = [0, 0.25, 0.6, 1]
+        swell.timingFunctions = [CAMediaTimingFunction(name: .easeOut), CAMediaTimingFunction(name: .easeInEaseOut),
+                                 CAMediaTimingFunction(name: .easeIn)]
+        swell.duration = Ripple.duration
+        swell.beginTime = layer.convertTime(CACurrentMediaTime(), from: nil) - elapsed
+        swell.preferredFrameRateRange = CAFrameRateRange(minimum: max(frameRate / 2, 1), maximum: frameRate,
+                                                         preferred: frameRate)
+        return swell
+    }
+
     /// Radial-gradient colours of a curtain: alpha `peak` · (1 − smoothstep(0.3, 1, r)), full over the inner third and
     /// fading softly to the ellipse's edge (r 1), like the shader's envelope that is full from about 70 % of the height
     /// down and fades out toward the band.
@@ -142,10 +169,12 @@ nonisolated enum AmbientCA {
 
 // MARK: - Aurora
 
-/// Soft curtains of palette light rising from the bottom edge: four wide glows along the edge (stops 3 · 1 · 2 · 3
-/// from left to right, as the fallback mesh's bottom row) and four narrow rays above them (1 · 2 · 3 · 1). Each is
-/// the radial gradient of an ellipse centred on the bottom edge; it drifts sideways, breathes in height and, for the
-/// rays, in brightness, each on its own period (8–59 s a cycle).
+/// Curtains of palette light rising from the bottom edge to a flat, soft top: four wide glows along the edge (stops
+/// 3 · 1 · 2 · 3 from left to right, as the fallback mesh's bottom row) and six thin streaks over them (1 · 2 · 3 ·
+/// 1 · 2 · 3) with uneven tops. Each is the radial gradient of an ellipse centred on the bottom edge and only colours
+/// the light: the group's static rise mask (clear over the top 40 %, then rising like the shader's light) makes the
+/// top edge. Each curtain drifts sideways and breathes in height and brightness, each on its own period (12–45 s a
+/// cycle).
 final class AuroraCA: AmbientCAEffect {
     /// One curtain: where it stands (fractions of the light's size) and how it moves.
     nonisolated struct Curtain: Equatable, Sendable {
@@ -154,7 +183,7 @@ final class AuroraCA: AmbientCAEffect {
         var halfHeight: Double     // fraction of the height (the curtain's top at rest: 1 − halfHeight)
         var stop: Int
         var isRay: Bool
-        var drift: Double          // anchor-point travel, ± fraction of the curtain's own width
+        var drift: Double          // anchor-point travel, ± half this fraction of the curtain's own width
         var driftPeriod: Double
         var swell: ClosedRange<Double>   // height scale
         var swellPeriod: Double
@@ -162,25 +191,31 @@ final class AuroraCA: AmbientCAEffect {
         var glowPeriod: Double
     }
 
-    /// The curtains, back to front. Each stands on the bottom edge and reaches about 62 % of the light's height, so it
-    /// fades out where the band mask begins (the top 40 % stays clear whatever the swell does).
+    /// The curtains, back to front. The glows reach past the top edge, so they are nearly even over the lit 60 % and
+    /// the rise mask alone shapes their top (no domes); the streaks are 5–7 % of the width wide and end between 15 %
+    /// and 38 % from the top, under the mask. The glows drift ± 4 % of the width over 27–39 s, the streaks ± 3 % over
+    /// 29–45 s.
     static let curtains: [Curtain] = [
-        Curtain(x: 0.00, halfWidth: 0.32, halfHeight: 0.60, stop: 2, isRay: false, drift: 0.06, driftPeriod: 47.4,
-                swell: 0.90...1.05, swellPeriod: 26.6, glow: 0.85...1, glowPeriod: 19.4),
-        Curtain(x: 0.35, halfWidth: 0.28, halfHeight: 0.63, stop: 0, isRay: false, drift: 0.07, driftPeriod: 58.6,
-                swell: 0.88...1.04, swellPeriod: 35.8, glow: 0.85...1, glowPeriod: 23.0),
-        Curtain(x: 0.66, halfWidth: 0.28, halfHeight: 0.62, stop: 1, isRay: false, drift: 0.07, driftPeriod: 38.2,
-                swell: 0.89...1.05, swellPeriod: 23.4, glow: 0.85...1, glowPeriod: 29.8),
-        Curtain(x: 1.00, halfWidth: 0.32, halfHeight: 0.60, stop: 2, isRay: false, drift: 0.06, driftPeriod: 53.8,
-                swell: 0.90...1.05, swellPeriod: 30.2, glow: 0.85...1, glowPeriod: 21.6),
-        Curtain(x: 0.14, halfWidth: 0.07, halfHeight: 0.64, stop: 0, isRay: true, drift: 0.45, driftPeriod: 33.4,
-                swell: 0.84...1.04, swellPeriod: 14.6, glow: 0.45...1, glowPeriod: 11.8),
-        Curtain(x: 0.42, halfWidth: 0.09, halfHeight: 0.63, stop: 1, isRay: true, drift: 0.40, driftPeriod: 41.8,
-                swell: 0.82...1.04, swellPeriod: 17.8, glow: 0.45...1, glowPeriod: 9.4),
-        Curtain(x: 0.61, halfWidth: 0.08, halfHeight: 0.64, stop: 2, isRay: true, drift: 0.42, driftPeriod: 29.0,
-                swell: 0.84...1.03, swellPeriod: 12.2, glow: 0.45...1, glowPeriod: 13.6),
-        Curtain(x: 0.87, halfWidth: 0.07, halfHeight: 0.63, stop: 0, isRay: true, drift: 0.45, driftPeriod: 37.6,
-                swell: 0.83...1.04, swellPeriod: 15.8, glow: 0.45...1, glowPeriod: 7.8),
+        Curtain(x: 0.00, halfWidth: 0.34, halfHeight: 1.05, stop: 2, isRay: false, drift: 0.13, driftPeriod: 27.4,
+                swell: 0.94...1.04, swellPeriod: 26.6, glow: 0.85...1, glowPeriod: 19.4),
+        Curtain(x: 0.35, halfWidth: 0.30, halfHeight: 1.05, stop: 0, isRay: false, drift: 0.15, driftPeriod: 39.2,
+                swell: 0.94...1.04, swellPeriod: 35.8, glow: 0.85...1, glowPeriod: 23.0),
+        Curtain(x: 0.66, halfWidth: 0.30, halfHeight: 1.05, stop: 1, isRay: false, drift: 0.15, driftPeriod: 31.8,
+                swell: 0.94...1.04, swellPeriod: 23.4, glow: 0.85...1, glowPeriod: 29.8),
+        Curtain(x: 1.00, halfWidth: 0.34, halfHeight: 1.05, stop: 2, isRay: false, drift: 0.13, driftPeriod: 35.6,
+                swell: 0.94...1.04, swellPeriod: 30.2, glow: 0.85...1, glowPeriod: 21.6),
+        Curtain(x: 0.10, halfWidth: 0.030, halfHeight: 0.62, stop: 0, isRay: true, drift: 1.0, driftPeriod: 33.4,
+                swell: 0.85...1.03, swellPeriod: 14.6, glow: 0.60...1, glowPeriod: 11.8),
+        Curtain(x: 0.26, halfWidth: 0.025, halfHeight: 0.80, stop: 1, isRay: true, drift: 1.0, driftPeriod: 41.8,
+                swell: 0.85...1.03, swellPeriod: 17.8, glow: 0.60...1, glowPeriod: 13.4),
+        Curtain(x: 0.43, halfWidth: 0.035, halfHeight: 0.70, stop: 2, isRay: true, drift: 1.0, driftPeriod: 29.0,
+                swell: 0.85...1.03, swellPeriod: 12.2, glow: 0.60...1, glowPeriod: 15.6),
+        Curtain(x: 0.57, halfWidth: 0.028, halfHeight: 0.85, stop: 0, isRay: true, drift: 1.0, driftPeriod: 37.6,
+                swell: 0.85...1.03, swellPeriod: 15.8, glow: 0.60...1, glowPeriod: 12.6),
+        Curtain(x: 0.74, halfWidth: 0.032, halfHeight: 0.66, stop: 1, isRay: true, drift: 1.0, driftPeriod: 45.2,
+                swell: 0.85...1.03, swellPeriod: 19.6, glow: 0.60...1, glowPeriod: 17.2),
+        Curtain(x: 0.90, halfWidth: 0.026, halfHeight: 0.78, stop: 2, isRay: true, drift: 1.0, driftPeriod: 31.4,
+                swell: 0.85...1.03, swellPeriod: 13.4, glow: 0.60...1, glowPeriod: 14.2),
     ]
 
     let group: CALayer
@@ -188,15 +223,35 @@ final class AuroraCA: AmbientCAEffect {
     private let layers: [CAGradientLayer]
 
     init() {
-        group = AmbientCA.group(mask: AmbientCA.bandMask())
+        group = AmbientCA.group(mask: Self.riseMask())
         layers = Self.curtains.map { _ in AmbientCA.ellipse() }
         for layer in layers { content.addSublayer(layer) }
     }
 
-    /// Peak alpha (inside the group) of a curtain: the wide glows hold the edge, the rays add structure, more of it
+    /// The aurora's static mask: clear over the top 40 %, then rising to opaque at 90 % of the height, fitted so that
+    /// with the curtains under it each row's mean brightness follows the Metal aurora's (within ≈ 0.02 of alpha at
+    /// Vivid, DESIGN.md §5.7): a flat, soft top whatever the curtains do.
+    static let riseStops: [(location: Double, alpha: Double)] = [
+        (0, 0), (0.40, 0), (0.45, 0.24), (0.50, 0.44), (0.55, 0.56), (0.60, 0.67), (0.65, 0.76), (0.70, 0.83),
+        (0.80, 0.93), (0.90, 1), (1, 1),
+    ]
+
+    static func riseMask() -> CAGradientLayer {
+        AmbientCA.verticalMask(riseStops.map { ($0.location, $0.alpha) })
+    }
+
+    /// Peak alpha (inside the group) of a curtain: the wide glows hold the edge, the streaks add structure, more of it
     /// at Vivid (DESIGN.md §5.6 rule 3: intensity scales structure, never the ceiling).
     static func peak(_ curtain: Curtain, level: AmbienceLevel) -> Double {
-        curtain.isRay ? 0.35 + 0.30 * level.intensity : 0.70
+        curtain.isRay ? 0.20 + 0.15 * level.intensity : 0.66
+    }
+
+    /// Radial-gradient colours of a streak: alpha `peak` · (1 − smoothstep(0, 1, r)), no flat core, so it reads as a
+    /// thin line of light rather than a column.
+    static func streak(_ rgb: RGB, peak: Double) -> (colors: [CGColor], locations: [NSNumber]) {
+        let radii = (0...10).map { Double($0) / 10 }
+        let colors = radii.map { r in AmbientCA.color(rgb, peak * (1 - Easing.smoothstep(0, 1, r))) }
+        return (colors, radii.map { NSNumber(value: $0) })
     }
 
     func layout(_ size: CGSize) {
@@ -210,22 +265,24 @@ final class AuroraCA: AmbientCAEffect {
 
     func apply(glows: [RGB], level: AmbienceLevel) {
         for (layer, curtain) in zip(layers, Self.curtains) {
-            let bump = AmbientCA.curtain(AmbientCA.stop(glows, curtain.stop), peak: Self.peak(curtain, level: level))
+            let rgb = AmbientCA.stop(glows, curtain.stop), peak = Self.peak(curtain, level: level)
+            let bump = curtain.isRay ? Self.streak(rgb, peak: peak) : AmbientCA.curtain(rgb, peak: peak)
             layer.colors = bump.colors
             layer.locations = bump.locations
         }
     }
 
     func installAnimations(frameRate: Float) {
+        // Drift, swell and glow phases come from separate hash ranges, so no two curtains share a phase.
         for (i, (layer, c)) in zip(layers, Self.curtains).enumerated() {
             layer.add(AmbientCA.breath("anchorPoint.x", from: 0.5 - c.drift / 2, to: 0.5 + c.drift / 2,
                                        period: c.driftPeriod, phase: AmbientCA.hash(i), frameRate: frameRate),
                       forKey: "drift")
             layer.add(AmbientCA.breath("transform.scale.y", from: c.swell.lowerBound, to: c.swell.upperBound,
-                                       period: c.swellPeriod, phase: AmbientCA.hash(i + 8), frameRate: frameRate),
+                                       period: c.swellPeriod, phase: AmbientCA.hash(i + 40), frameRate: frameRate),
                       forKey: "swell")
             layer.add(AmbientCA.breath("opacity", from: c.glow.lowerBound, to: c.glow.upperBound,
-                                       period: c.glowPeriod, phase: AmbientCA.hash(i + 16), frameRate: frameRate),
+                                       period: c.glowPeriod, phase: AmbientCA.hash(i + 80), frameRate: frameRate),
                       forKey: "glow")
         }
     }
@@ -241,9 +298,11 @@ final class AuroraCA: AmbientCAEffect {
 final class MotesCA: AmbientCAEffect {
     /// Points below the bottom edge where a mote starts and above the top where it ends, so none pops in view.
     static let margin: CGFloat = 20
-    /// The light's usual height: a mote's period is its speed over this span, so it rises at 5–14 pt/s in a light of
-    /// this height and proportionally faster or slower in others (the animation stays a fraction of the height).
-    static let referenceHeight: CGFloat = 240
+    /// The open panel's light (DESIGN.md §6.1: 656 × 170), where the light is seen most: a mote's period is its speed
+    /// over this span, so it rises at 5–14 pt/s there and proportionally faster or slower in a taller or shorter light
+    /// (the animation stays a fraction of the height). Fixed rather than read from the bounds when the animations are
+    /// installed: the light is built while the shape is still opening.
+    static let referenceHeight: CGFloat = 170
 
     /// One mote's seeded parameters (`MoteMath.mote`'s hashes).
     nonisolated struct Mote: Equatable, Sendable {
@@ -349,9 +408,11 @@ final class MotesCA: AmbientCAEffect {
 // MARK: - Tide
 
 /// Three luminous wave lines along the bottom edge (line i in stop i, baseline at 80 / 86 / 92 % of the height): each
-/// a path a light and a wavelength wide, stroked as a 1.5-pt core over two wider, fainter blooms, travelling one
-/// wavelength to the left per period (seamless: the path repeats every wavelength). A horizontal mask thins the
-/// lines toward both ends, as the shader's taper.
+/// a path a light and a wavelength wide, stroked as a 1.75-pt core over four wider, fainter strokes that grade its
+/// bloom (the shader's soft falloff), travelling one wavelength to the left per period (seamless: the path repeats
+/// every wavelength). A horizontal mask thins the lines toward both ends, as the shader's taper. A song change deepens
+/// the waves in place (`playSwell`). The lines are not rasterized: with five strokes a line, a cached bitmap per line
+/// measured no cheaper in the window server (ARCHITECTURE.md §9.2).
 final class TideCA: AmbientCAEffect {
     /// Line i's wavelength in widths of the light (`TideMath`'s spatial rate 0.75 + 0.35 i per width).
     static func cycles(_ i: Int) -> Double { 0.75 + 0.35 * Double(i) }
@@ -359,16 +420,22 @@ final class TideCA: AmbientCAEffect {
     static func period(_ i: Int) -> Double { 1 / (0.09 + 0.035 * Double(i)) }
     /// Amplitude at energy 0 (`TideMath.line`: (3 + 7 · energy) · (1 − 0.2 · i) pt).
     static func amplitude(_ i: Int) -> Double { 3 * (1 - 0.2 * Double(i)) }
-    /// The strokes of one line: width (pt) and alpha relative to the line's strength.
-    static let strokes: [(width: CGFloat, alpha: Double)] = [(10, 0.10), (5, 0.24), (1.5, 0.92)]
-    /// Points above and below the line that its strokes and waves can reach.
-    static let halfBand: CGFloat = 12
+    /// The strokes of one line, widest first: width (pt) and alpha relative to the line's strength (each capped at 1).
+    /// Over black they sum to the shader's core plus its 0.35 · exp(−(d/3)²) bloom: the same peak, a graded edge.
+    static let strokes: [(width: CGFloat, alpha: Double)] = [(9, 0.06), (7, 0.075), (5, 0.115), (3, 0.09), (1.75, 1.35)]
+    /// Points above and below the line that its strokes and waves can reach, the song-change swell included.
+    static let halfBand: CGFloat = 16
+    /// The song-change swell: each line's amplitude over the ripple, in multiples of its resting amplitude (the
+    /// shaders' energy pulse lifts the waves from 3 to 6.5 pt and lets them settle).
+    static let swellScales: [Double] = [1, 2.1, 1.4, 1]
 
     let group: CALayer
     let content = AmbientCA.still(CALayer())
     /// One travelling layer per line, holding its strokes.
     private let lines: [CALayer]
     private let shapes: [[CAShapeLayer]]
+    /// The light's size at the last layout (the swell's paths are drawn for it).
+    private var size: CGSize = .zero
 
     init() {
         let taper = CAGradientLayer()
@@ -400,20 +467,28 @@ final class TideCA: AmbientCAEffect {
     static func travel(_ i: Int) -> Double { 1 / (1 + cycles(i)) }
 
     func layout(_ size: CGSize) {
+        stopSwell()                                 // a swell drawn for the old size would jump
+        self.size = size
         group.mask?.frame = CGRect(origin: .zero, size: size)
-        let width = max(size.width, 1)
         for (i, line) in lines.enumerated() {
-            let wavelength = width / CGFloat(Self.cycles(i))
+            let wavelength = max(size.width, 1) / CGFloat(Self.cycles(i))
             let base = size.height * CGFloat(0.80 + 0.06 * Double(i))
-            line.bounds = CGRect(x: 0, y: 0, width: width + wavelength, height: 2 * Self.halfBand)
+            line.bounds = CGRect(x: 0, y: 0, width: max(size.width, 1) + wavelength, height: 2 * Self.halfBand)
             line.position = CGPoint(x: 0, y: base - Self.halfBand)
-            let path = Self.wave(length: width + wavelength, wavelength: wavelength,
-                                 amplitude: CGFloat(Self.amplitude(i)), phase: 2.1 * Double(i), midline: Self.halfBand)
+            let path = Self.path(i, size: size, amplitudeScale: 1)
             for shape in shapes[i] {
                 shape.frame = line.bounds
                 shape.path = path
             }
         }
+    }
+
+    /// Line i's wave for a light of `size`, its amplitude `amplitudeScale` times the resting one.
+    static func path(_ i: Int, size: CGSize, amplitudeScale: Double) -> CGPath {
+        let width = max(size.width, 1)
+        let wavelength = width / CGFloat(cycles(i))
+        return wave(length: width + wavelength, wavelength: wavelength,
+                    amplitude: CGFloat(amplitude(i) * amplitudeScale), phase: 2.1 * Double(i), midline: halfBand)
     }
 
     /// y(x) = midline + A · [sin(kx + φ) + 0.45 · sin(2kx − φ)], k = 2π / wavelength, every 2 pt over `length`. The
@@ -442,7 +517,7 @@ final class TideCA: AmbientCAEffect {
         for (i, strokes) in shapes.enumerated() {
             let rgb = AmbientCA.stop(glows, i)
             for (shape, stroke) in zip(strokes, Self.strokes) {
-                shape.strokeColor = AmbientCA.color(rgb, strength * stroke.alpha)
+                shape.strokeColor = AmbientCA.color(rgb, min(1, strength * stroke.alpha))
             }
         }
     }
@@ -454,7 +529,29 @@ final class TideCA: AmbientCAEffect {
         }
     }
 
+    /// The song change in place: every line's waves deepen to 2.1 × and settle (path keyframes the window server
+    /// plays), instead of the whole tide lifting as a block. The strokes live under the clock, which runs while a swell
+    /// starts; a paused clock holds the swell where it is, and `stopSwell` drops it before the clock jumps.
+    func playSwell(elapsed: Double, frameRate: Float) -> Bool {
+        guard size.width >= 1, size.height >= 1 else { return false }
+        for (i, strokes) in shapes.enumerated() {
+            let paths = Self.swellScales.map { Self.path(i, size: size, amplitudeScale: $0) }
+            for shape in strokes {
+                shape.add(AmbientCA.swell("path", values: paths, elapsed: elapsed, on: shape, frameRate: frameRate),
+                          forKey: AmbientCA.swellKey)
+            }
+        }
+        return true
+    }
+
+    func stopSwell() {
+        for shape in shapes.joined() { shape.removeAnimation(forKey: AmbientCA.swellKey) }
+    }
+
     var animatedLayers: [CALayer] { lines.filter { !($0.animationKeys() ?? []).isEmpty } }
+
+    /// The stroke layers that hold a swell now (tests).
+    var swellingLayers: [CALayer] { shapes.joined().filter { $0.animation(forKey: AmbientCA.swellKey) != nil } }
 }
 
 // MARK: - Halo

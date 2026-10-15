@@ -19506,7 +19506,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "詳細"
+            "value" : "高精細"
           }
         },
         "ko" : {
@@ -21805,7 +21805,7 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "省エネ"
+            "value" : "軽量"
           }
         },
         "ko" : {
@@ -21883,7 +21883,7 @@
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "ประหยัด"
+            "value" : "เรียบง่าย"
           }
         },
         "tr" : {
@@ -21907,13 +21907,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "节能"
+            "value" : "高效"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "節能"
+            "value" : "高效率"
           }
         }
       }
@@ -21984,7 +21984,7 @@
         "hi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "किफ़ायती गुणवत्ता में रोशनी सरल होती है और बहुत कम मेमोरी खर्च करती है।"
+            "value" : "किफ़ायती गुणवत्ता में रोशनी सरल होती है और कहीं कम मेमोरी इस्तेमाल करती है।"
           }
         },
         "hr" : {
@@ -22014,13 +22014,13 @@
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“省エネ”では光がシンプルになり、メモリの使用量が大幅に少なくなります。"
+            "value" : "“軽量”では光がシンプルになり、メモリの使用量が大幅に少なくなります。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "‘효율적으로’로 설정하면 조명이 단순해지고 메모리를 훨씬 적게 사용합니다."
+            "value" : "‘효율적으로’를 선택하면 조명이 단순해지고 메모리를 훨씬 적게 사용합니다."
           }
         },
         "ms" : {
@@ -22062,7 +22062,7 @@
         "ro" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cu calitatea „Eficientă”, lumina e mai simplă și folosește mult mai puțină memorie."
+            "value" : "Cu calitatea „Eficientă”, lumina este mai simplă și folosește mult mai puțină memorie."
           }
         },
         "ru" : {
@@ -22092,7 +22092,7 @@
         "th" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "คุณภาพแบบประหยัดจะแสดงแสงที่เรียบง่ายกว่า และใช้หน่วยความจำน้อยลงมาก"
+            "value" : "แบบเรียบง่ายจะแสดงแสงที่ไม่ซับซ้อน และใช้หน่วยความจำน้อยลงมาก"
           }
         },
         "tr" : {
@@ -22104,7 +22104,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "За економної якості світло простіше й витрачає набагато менше пам’яті."
+            "value" : "За економної якості світло простіше й витрачає набагато менше памʼяті."
           }
         },
         "vi" : {
@@ -22116,13 +22116,13 @@
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“节能”会显示更简单的光效，占用的内存少得多。"
+            "value" : "“高效”会显示更简单的光效，占用的内存少得多。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "「節能」會顯示較簡單的光線，佔用的記憶體少得多。"
+            "value" : "「高效率」會顯示較簡單的光線，佔用的記憶體少得多。"
           }
         }
       }
@@ -77513,7 +77513,7 @@
         "uk" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "пам’ять"
+            "value" : "памʼять"
           }
         },
         "vi" : {
@@ -78408,7 +78408,7 @@
         "el" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "απόδοση"
+            "value" : "επίδοση"
           }
         },
         "es" : {
@@ -78456,7 +78456,7 @@
         "id" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "performa"
+            "value" : "kinerja"
           }
         },
         "it" : {

@@ -48,8 +48,8 @@ struct AppearancePane: View {
                                     comment: "Settings ▸ Appearance: footnote of Effect"))
                     .disabled(ambience == .off)
                 ChoiceRow(AppearanceRows.ambientDetail, settings: settings, key: CoreSettings.ambientDetail, choices: [
-                    Choice(value: .detailed, label: String(localized: "Detailed", bundle: .module, comment: "Settings ▸ Appearance ▸ Quality: option (the default, the full light)")),
-                    Choice(value: .efficient, label: String(localized: "Efficient", bundle: .module, comment: "Settings ▸ Appearance ▸ Quality: option (a simpler light that uses much less memory)")),
+                    Choice(value: .detailed, label: AppearanceRows.detailedLabel),
+                    Choice(value: .efficient, label: AppearanceRows.efficientLabel),
                 ], footnote: String(localized: "Efficient draws a simpler light that uses much less memory.", bundle: .module,
                                     comment: "Settings ▸ Appearance: footnote of Quality (the ambient light)"))
                     .disabled(ambience == .off)

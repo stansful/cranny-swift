@@ -34,11 +34,20 @@ enum AppearanceRows {
                         title: String(localized: "Effect", bundle: .module, comment: "Settings ▸ Appearance: picker Aurora / Motes / Tide"),
                         keywords: [String(localized: "aurora", bundle: .module, comment: "Settings search: keyword for the light effect")])
     }
+    /// Searchable by its options too: the README and the footnote name the setting "Quality ▸ Efficient".
     static var ambientDetail: SettingsRowInfo {
         SettingsRowInfo(.appearance, "ambientDetail",
                         title: String(localized: "Quality", bundle: .module, comment: "Settings ▸ Appearance: picker Detailed / Efficient (how the ambient light is drawn)"),
                         keywords: [String(localized: "memory", bundle: .module, comment: "Settings search: keyword for the light's Quality (Efficient uses less memory)"),
-                                   String(localized: "performance", bundle: .module, comment: "Settings search: keyword for the light's Quality")])
+                                   String(localized: "performance", bundle: .module, comment: "Settings search: keyword for the light's Quality"),
+                                   detailedLabel, efficientLabel])
+    }
+    /// Quality's options, shared by the pane's picker and the row's search keywords.
+    static var detailedLabel: String {
+        String(localized: "Detailed", bundle: .module, comment: "Settings ▸ Appearance ▸ Quality: option (the default, the full light)")
+    }
+    static var efficientLabel: String {
+        String(localized: "Efficient", bundle: .module, comment: "Settings ▸ Appearance ▸ Quality: option (a simpler light that uses much less memory)")
     }
     static var albumGlow: SettingsRowInfo {
         SettingsRowInfo(.appearance, "albumGlow",

@@ -17,7 +17,10 @@ import SwiftUI
 /// - Rendering: a dedicated Metal layer whenever shaders run, which `ImageRenderer`, `cacheDisplay`,
 ///   `drawingGroup()` and shader effects over the light cannot see; `ambientLightRendering(.inline)` keeps it in SwiftUI.
 public struct AmbientLayer: View, Animatable {
-    /// The light's colours; animate a change with `CrannyMotion.Kind.colorShift` to cross-fade.
+    /// The light's colours; animate a change with `CrannyMotion.Kind.colorShift` to cross-fade. With Appearance ▸
+    /// Quality ▸ Efficient (the theme's `ambientDetail`) the live light cross-fades a new palette by itself: set it
+    /// without animation there, or every frame of a SwiftUI animation recolours its Core Animation layers (DESIGN.md
+    /// §5.7).
     public var palette: AmbientPalette
     /// Settings ▸ Appearance ▸ Ambient light (the theme's `effectiveAmbience`).
     public var level: AmbienceLevel

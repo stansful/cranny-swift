@@ -4,6 +4,7 @@
 import AppKit
 import CoreGraphics
 import CrannyCore
+import CrannyEffects
 import Foundation
 import SwiftUI
 import Testing
@@ -87,9 +88,14 @@ import Testing
             defer { hosted.tearDown() }
             let views = Set(Self.classNames(hosted.host))
             #expect(views.contains("AmbientCANSView") == (detail == .efficient), "\(detail): \(views.sorted())")
-            if detail == .efficient { #expect(!views.contains("AmbientMetalNSView")) }
+            // Detailed keeps the Metal layer wherever it runs (shaders and the layer available on this Mac).
+            #expect(views.contains("AmbientMetalNSView") == (detail == .detailed && metalLayerRuns),
+                    "\(detail): \(views.sorted())")
         }
     }
+
+    /// The Metal layer can draw the light here (CrannyEffects' own report, as `Cranny --diagnostics` gives it).
+    private var metalLayerRuns: Bool { EffectsDiagnostics.ambientRenderer == "metal-layer" }
 
     private static func classNames(_ view: NSView) -> [String] {
         [String(describing: type(of: view))] + view.subviews.flatMap(classNames)

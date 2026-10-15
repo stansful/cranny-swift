@@ -11,7 +11,7 @@
 //   view layer (clips) → fill layer: the rise from the bottom edge (a mask while 0 < fill < 1, an opacity fade under
 //   Reduce Motion) and the target of the cross-fades (a `CATransition` for palette, level and effect changes)
 //     → the effect's group: alpha cap (group opacity) and its static mask (AmbientCAEffects.swift)
-//       → swell layer: the song-change lift, in real time
+//       → swell layer: the song-change lift, in real time (the tide deepens its waves under the clock instead)
 //         → clock layer: every looping animation lives under it (AmbientCAState.swift explains the clock)
 //           → the effect's content.
 //
@@ -228,6 +228,7 @@ final class AmbientCANSView: NSView {
             install(rate: AmbientCAClock.frameRate(interval: nil))
         }
         if state.rests {
+            effect?.stopSwell()                     // the clock jumps: a tide swell must not wait for its time
             stoppedTime = state.restingTime
             setClock(running: false)
         } else if running != isClockRunning {
@@ -264,6 +265,12 @@ final class AmbientCANSView: NSView {
     /// The clock layer's speed: 1 while the light moves, 0 while it stands still (tests).
     var clockSpeed: Float { clockLayer.speed }
 
+    /// The clock layer itself: the effect's content lives under it (tests).
+    var clockLayerForTests: CALayer { clockLayer }
+
+    /// The layer that lifts the whole light for a song change (tests).
+    var swellLayerForTests: CALayer { swellLayer }
+
     /// Whether the fill mask shows now (tests).
     var isFillMasked: Bool { fillLayer.mask != nil }
 
@@ -271,22 +278,19 @@ final class AmbientCANSView: NSView {
     var fillOpacity: Float { fillLayer.opacity }
 
     /// A new song change lifts the light by 3 % of its height (at most 8 pt) and lets it settle within the ripple's
-    /// 0.6 s: the shaders' energy pulse, without the distortion. Only while the light moves, once per change.
+    /// 0.6 s: the shaders' energy pulse, without the distortion (the tide deepens its waves in place instead,
+    /// `TideCA.playSwell`). Only while the light moves, once per change; a change that arrived while the light was
+    /// paused plays only the part of the swell that is left.
     private func applySwell(_ state: AmbientCAState) {
         guard let start = state.rippleStart, start != swelledFor, isClockRunning,
               let elapsed = Ripple.elapsed(since: start, at: Date()) else { return }
         swelledFor = start
+        let rate = installedFrameRate ?? 30
+        if effect?.playSwell(elapsed: elapsed, frameRate: rate) == true { return }
         let lift = min(max(0.03 * bounds.height, 3), 8)
-        let swell = CAKeyframeAnimation(keyPath: "transform.translation.y")
-        swell.values = [0, -lift, -lift * 0.35, 0]
-        swell.keyTimes = [0, 0.25, 0.6, 1]
-        swell.timingFunctions = [CAMediaTimingFunction(name: .easeOut), CAMediaTimingFunction(name: .easeInEaseOut),
-                                 CAMediaTimingFunction(name: .easeIn)]
-        swell.duration = Ripple.duration
-        swell.timeOffset = elapsed
-        swell.beginTime = swellLayer.convertTime(CACurrentMediaTime(), from: nil)
-        swell.preferredFrameRateRange = frameRange(installedFrameRate ?? 30)
-        swellLayer.add(swell, forKey: "swell")
+        swellLayer.add(AmbientCA.swell("transform.translation.y", values: [0, -lift, -lift * 0.35, 0],
+                                       elapsed: elapsed, on: swellLayer, frameRate: rate),
+                       forKey: AmbientCA.swellKey)
     }
 
     /// One cross-fade of the whole light (old look → new look) on the fill layer, unless one is playing. Core Animation

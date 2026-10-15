@@ -81,7 +81,7 @@ Register and typography (follow macOS 27 Japanese):
 | Paused / Resumed (wing words) | 一時停止 / 再開 | |
 | Accent | アクセントカラー (HUD color option: アクセント) | |
 | Ambient light / Underglow | 環境光 / アンダーグロー | |
-| Quality (the light: Detailed · Efficient) | 品質 (詳細 · 省エネ) | Settings ▸ Appearance ▸ Light; search keywords メモリ · パフォーマンス |
+| Quality (the light: Detailed · Efficient) | 品質 (高精細 · 軽量) | Settings ▸ Appearance ▸ Light; never 省エネ (it saves memory, battery is not promised) or 詳細 (= details); search keywords メモリ · パフォーマンス |
 | Motion: Calm / Standard / Lively / Instant | 動き: 穏やか / 標準 / 活発 / 即時 | |
 | Density: Compact / Standard / Roomy | 密度: コンパクト / 標準 / ゆったり | |
 | Floating island / Attached / Glass island | フローティングアイランド / 上端に密着 / ガラスアイランド | as ダイナミックアイランド |

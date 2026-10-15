@@ -8,7 +8,9 @@ import SwiftUI
 /// - Rendering: a dedicated Metal layer whenever shaders run, which `ImageRenderer`, `cacheDisplay`,
 ///   `drawingGroup()` and shader effects over the light cannot see; `ambientLightRendering(.inline)` keeps it in SwiftUI.
 public struct HaloField: View, Animatable {
-    /// The light's colours (`glow1` blooms).
+    /// The light's colours (`glow1` blooms); a change cross-fades when animated. With Appearance ▸ Quality ▸ Efficient
+    /// (the theme's `ambientDetail`) the live light cross-fades a new palette by itself: set it without animation
+    /// there, or every frame of a SwiftUI animation recolours its Core Animation layers (DESIGN.md §5.7).
     public var palette: AmbientPalette
     /// Settings ▸ Appearance ▸ Ambient light.
     public var level: AmbienceLevel
@@ -16,7 +18,8 @@ public struct HaloField: View, Animatable {
     public var budget: EffectBudget
     /// Unit point in the view (default: the bottom edge's centre).
     public var center: UnitPoint
-    /// Points; alpha falls to 3.6 % of its peak at this distance.
+    /// Points; alpha falls to 3.6 % of its peak at this distance. With Appearance ▸ Quality ▸ Efficient set it without
+    /// animation: the live halo is rebuilt (and cross-faded) for every new radius.
     public var radius: CGFloat
 
     /// A halo of `palette.glow1` at `level`.

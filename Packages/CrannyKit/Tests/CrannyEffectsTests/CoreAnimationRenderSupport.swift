@@ -29,8 +29,10 @@ func caState(_ effect: AmbientEffect, palette: AmbientPalette = .afterglow, leve
 }
 
 /// Renders the light of `view` (its fill layer and everything under it) at `scale` pixels per point into a premultiplied
-/// sRGB RGBA8 raster, row 0 = top. The tree is lent to a flipped container for the render and given back.
-@MainActor func rasterizeCA(_ view: AmbientCANSView, scale: CGFloat = 1) throws -> Raster {
+/// sRGB RGBA8 raster, row 0 = top, as it shows at the media time `time` (default: now). The tree is lent to a flipped
+/// container for the render and given back.
+@MainActor func rasterizeCA(_ view: AmbientCANSView, scale: CGFloat = 1,
+                            at time: CFTimeInterval? = nil) throws -> Raster {
     let light = view.lightLayer
     let parent = try #require(light.superlayer)
     let size = view.bounds.size
@@ -47,11 +49,13 @@ func caState(_ effect: AmbientEffect, palette: AmbientPalette = .afterglow, leve
         parent.addSublayer(light)
         CATransaction.commit()
     }
-    return try rasterize(layer: container, size: size, scale: scale)
+    return try rasterize(layer: container, size: size, scale: scale, at: time)
 }
 
-/// Renders any layer tree whose root is `size` points at `scale` with `CARenderer`; row 0 of the raster is the top.
-@MainActor func rasterize(layer: CALayer, size: CGSize, scale: CGFloat) throws -> Raster {
+/// Renders any layer tree whose root is `size` points at `scale` with `CARenderer`, its animations at the media time
+/// `time` (default: now); row 0 of the raster is the top.
+@MainActor func rasterize(layer: CALayer, size: CGSize, scale: CGFloat,
+                          at time: CFTimeInterval? = nil) throws -> Raster {
     let device = try #require(AmbientGPU.device(), "no Metal device")
     let queue = try #require(device.makeCommandQueue())
     let w = Int(size.width * scale), h = Int(size.height * scale)
@@ -71,7 +75,7 @@ func caState(_ effect: AmbientEffect, palette: AmbientPalette = .afterglow, leve
     renderer.layer = root
     renderer.bounds = root.frame
     CATransaction.flush()                                  // the renderer sees committed layers only
-    renderer.beginFrame(atTime: CACurrentMediaTime(), timeStamp: nil)
+    renderer.beginFrame(atTime: time ?? CACurrentMediaTime(), timeStamp: nil)
     renderer.addUpdate(renderer.bounds)
     renderer.render()
     renderer.endFrame()
@@ -109,4 +113,19 @@ func writePNG(_ raster: Raster, to url: URL) throws {
     }
     let rep = NSBitmapImageRep(cgImage: try #require(image))
     try #require(rep.representation(using: .png, properties: [:])).write(to: url)
+}
+
+extension Raster {
+    /// The alpha-weighted mean row of the light (0 = top): where it sits vertically.
+    var centroidRow: Double {
+        var weighted = 0.0, total = 0.0
+        for y in 0..<height {
+            for x in 0..<width {
+                let a = alpha(x, y)
+                weighted += a * Double(y)
+                total += a
+            }
+        }
+        return total > 0 ? weighted / total : 0
+    }
 }

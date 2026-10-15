@@ -110,4 +110,4 @@ Register and typography (as macOS writes Thai):
 | Move earlier / Move later (reorder actions) | เลื่อนลำดับขึ้น / เลื่อนลำดับลง | Move up/down/left/right stay ย้ายขึ้น/ย้ายลง/ย้ายไปทางซ้าย/ย้ายไปทางขวา |
 | Dismiss | ปิดทิ้ง | Apple (67 uses); the Reset All banner's close button is plain ปิด |
 | Pause (media, Timer, Live Activities) / Paused | หยุดพัก / หยุดพักอยู่ | Apple (Control Center Now Playing, Clock); Resume = ทำต่อ, media Resume = เล่นต่อ |
-| Quality (the light: Detailed · Efficient) | คุณภาพ (ละเอียด · ประหยัด) | Settings ▸ Appearance ▸ Light; search keywords หน่วยความจำ · ประสิทธิภาพ |
+| Quality (the light: Detailed · Efficient) | คุณภาพ (ละเอียด · เรียบง่าย) | Settings ▸ Appearance ▸ Light; never “ประหยัด” (Low Power Mode is โหมดประหยัดพลังงาน; it saves memory, battery is not promised); search keywords หน่วยความจำ · ประสิทธิภาพ |
