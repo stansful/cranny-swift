@@ -5,8 +5,9 @@
 // needs (`PointerGate`): a move or drag far from every panel, on the display the main actor already knows, wakes
 // nothing else. The main actor publishes the gate after each change of what it reads (`PointerMonitor.gateChanged`);
 // until it has, every event goes through. Forwarded events wait for one hop to the main run loop (`TapQueue`), which
-// runs in the default and modal-panel modes only: not while a menu, a control or a window drag tracks, when NSEvent
-// monitors see nothing either.
+// runs in the default and modal-panel modes only: not while a menu, a control, a window drag or a drag session of ours
+// tracks (NSEvent monitors see none of those events); the hop reports them once the loop ends, where the pointer is then
+// (`PointerMonitor.dragMayBeLive` keeps such a drag from the drag detector's inspection).
 //
 // macOS 27 enables a listen-only mouse tap only in a process with Input Monitoring or Accessibility (without either it
 // is created and stays disabled). The tap is created only when a silent check finds one of them, and `PointerMonitor`
@@ -128,9 +129,12 @@ nonisolated struct PointerSpeed: Equatable, Sendable {
 }
 
 /// The tap thread's bookkeeping between the window server and the main actor; `PointerTap` keeps it behind its lock.
-/// Every event updates the speed and goes through the gate; the newest event the gate held back is kept, so a gate that
-/// changes (`invalidate`, `publish`) still forwards it when it would now: an event that raced the main actor's change is
-/// judged by the new gate, as a monitor's event would have been. Pure, tested.
+/// Every event updates the speed and goes through the gate. The newest event the gate held back while a hop was being
+/// handled is kept, so the gate published after it (`publish`) still forwards it when it would now: an event that raced
+/// the main actor's change is judged by the new gate, as a monitor's event would have been. Nothing older is: the hop
+/// read where the pointer is when it ran (`take`), and a change outside a hop (`invalidate`) forwards the events from
+/// then on, never one from before it, so a pointer at rest is not reported again (a monitor would have handled that
+/// event before the change). Pure, tested.
 nonisolated struct PointerRelay: Sendable {
     private(set) var gate = PointerGate()
     private(set) var queue = TapQueue()
@@ -155,11 +159,11 @@ nonisolated struct PointerRelay: Sendable {
     }
 
     /// What the gate reads changed on the main actor, which publishes again only at its next hop: until then every event
-    /// goes through, the newest one held back included. True when that needs a new hop.
-    mutating func invalidate() -> Bool {
+    /// goes through. One held back before the change is dropped: reporting it now would be a move the pointer did not
+    /// make (a peek appearing under a pointer at rest would count as hovered at once).
+    mutating func invalidate() {
         gate.forwardAll = true
-        guard !isPaused, let held = heldBack else { return false }
-        return forward(held.kind)
+        heldBack = nil
     }
 
     /// The main actor's gate after a change; the newest event held back goes through if this gate wants it. True when
@@ -170,9 +174,11 @@ nonisolated struct PointerRelay: Sendable {
         return forward(held.kind)
     }
 
-    /// The hop runs: the waiting kinds move to `buffer`.
+    /// The hop runs: the waiting kinds move to `buffer`. An event held back until now is covered by the hop, which reads
+    /// where the pointer is.
     mutating func take(into buffer: inout [PointerMonitor.Kind]) {
         hopScheduled = false
+        heldBack = nil
         queue.take(into: &buffer)
     }
 
@@ -316,9 +322,9 @@ nonisolated final class PointerTap: Sendable {
         }
     }
 
-    /// `PointerRelay.invalidate`, scheduling the hop it needs.
+    /// `PointerRelay.invalidate`.
     func invalidate() {
-        if shared.withLockUnchecked({ $0.relay.invalidate() }) { deliver() }
+        shared.withLockUnchecked { $0.relay.invalidate() }
     }
 
     /// `PointerRelay.publish`, scheduling the hop it needs.

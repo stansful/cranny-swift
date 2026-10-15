@@ -1,6 +1,7 @@
 // The pointer tap (ARCHITECTURE.md §5.5, §9.2): the gate never keeps from the main actor an event that would change a
 // panel's hover, a drag's inspection, the drag detector's baseline or the pointer's display; the queue keeps every
-// change of kind; the relay judges an event that raced a change by the new gate; and the monitor picks the tap only
+// change of kind; the relay judges an event that raced a change by the new gate and never reports a pointer at rest
+// again; a drag reported after its button came up is not inspected; and the monitor picks the tap only
 // when macOS enables it, falls back to NSEvent monitors when it stops, and pauses either backend. A stand-in window
 // server (`PointerTap.System`) and hand-made events: nothing here needs a permission or moves the pointer.
 import AppKit
@@ -151,15 +152,17 @@ private let grid: [CGPoint] = stride(from: -14.0, through: screen.maxX + 14, by:
     hops.append(relay.received(.moved, at: notch, time: 1.03))                            // at the notch: through
     #expect(hops == [false, false, true])
     relay.take(into: &buffer)
-    hops = [relay.received(.moved, at: far, time: 1.04)]
-    hops.append(relay.invalidate())                                                       // a change: the kept one goes
-    #expect(hops == [false, true])
+    hops = [relay.received(.moved, at: far, time: 1.04)]                                  // kept back, then at rest
+    relay.invalidate()                                                                    // a change: not reported again
+    relay.take(into: &buffer)
+    #expect(hops == [false] && buffer.isEmpty && !relay.hopScheduled)
+    hops = [relay.received(.moved, at: far, time: 1.05)]                                  // the next one goes, and all
+    hops.append(relay.received(.moved, at: far, time: 1.055))                             // until published
+    #expect(hops == [true, false])
     relay.take(into: &buffer)
     #expect(buffer == [.moved])
-    hops = [relay.received(.moved, at: far, time: 1.05)]                                  // and all, until published
-    #expect(hops == [true])
-    relay.take(into: &buffer)
 
+    // A hop is being handled (taken), a move arrives and is kept back, the hop's handling changes the gate.
     hops = [relay.publish(gate(zones)), relay.received(.moved, at: far, time: 1.06)]
     var inside = gate(zones)
     inside.forwardAll = true                                                              // the pointer went inside
@@ -167,6 +170,14 @@ private let grid: [CGPoint] = stride(from: -14.0, through: screen.maxX + 14, by:
     #expect(hops == [false, false, true])
     relay.take(into: &buffer)
     #expect(buffer == [.moved])
+
+    // One kept back before a hop is covered by it (the hop reads where the pointer is): no later publish reports it.
+    hops = [relay.publish(gate(zones)), relay.received(.moved, at: notch, time: 1.07)]
+    hops.append(relay.received(.moved, at: far, time: 1.08))
+    relay.take(into: &buffer)
+    hops.append(relay.publish(inside))
+    relay.take(into: &buffer)
+    #expect(hops == [false, true, false, false] && buffer.isEmpty)
 }
 
 @Test func theRelayStaysQuietWhilePausedAndMeasuresSpeedFromEventTimes() {
@@ -178,8 +189,10 @@ private let grid: [CGPoint] = stride(from: -14.0, through: screen.maxX + 14, by:
     var buffer: [PointerMonitor.Kind] = []
     relay.take(into: &buffer)
     #expect(buffer.isEmpty)                                                               // dropped by the pause
-    hops = [relay.received(.up, at: CGPoint(x: 300, y: 300), time: 1.1), relay.invalidate()]
-    #expect(hops == [false, false])
+    hops = [relay.received(.up, at: CGPoint(x: 300, y: 300), time: 1.1)]
+    relay.invalidate()
+    relay.take(into: &buffer)
+    #expect(hops == [false] && buffer.isEmpty)
     relay.resume(at: CGPoint(x: 300, y: 682), time: 2)
     #expect(relay.speed.current(now: 2.01) == 0)
     hops = [relay.received(.moved, at: CGPoint(x: 312, y: 300), time: 2.01)]              // every event until published
@@ -275,12 +288,52 @@ private nonisolated final class FakeWindowServer: Sendable {
     spin()
     #expect(kinds == [.dragged, .up])
 
+    // A change while the pointer rests far away (a peek appearing): no move it did not make, then every move until the
+    // gate is published again.
     kinds.removeAll()
     tap.received(.mouseMoved, location: CGPoint(x: 300, y: 600), timestamp: ns(1.1))
-    published.forwardAll = true                                                           // say a panel's state changed
     monitor.gateChanged()
     spin()
-    #expect(kinds == [.moved])                                                            // the raced move came through
+    #expect(kinds.isEmpty)
+    tap.received(.mouseMoved, location: CGPoint(x: 301, y: 600), timestamp: ns(1.2))
+    spin()
+    #expect(kinds == [.moved])
+    tap.received(.mouseMoved, location: CGPoint(x: 302, y: 600), timestamp: ns(1.3))       // published: kept back again
+    spin()
+    #expect(kinds == [.moved])
+
+    // A change made while a hop is handled: a move that raced it is judged by the new gate.
+    kinds.removeAll()
+    monitor.stop()
+    server.enabled.withLock { $0 = true }                                                // the stand-in's one switch
+    var raced = false
+    monitor.start(gate: { published }) { [weak monitor] _, kind in
+        kinds.append(kind)
+        guard !raced, let monitor else { return }
+        raced = true
+        monitor.tap?.received(.mouseMoved, location: CGPoint(x: 300, y: 600), timestamp: ns(1.4))   // kept back
+        published.forwardAll = true                                                       // say the pointer went inside
+        monitor.gateChanged()
+    }
+    #expect(monitor.backend == .tap && kinds == [.moved])                                 // the start's report
+    spin()
+    #expect(kinds == [.moved, .moved])                                                    // the raced move came through
+}
+
+/// A drag reported by a hop after its button came up (our own drag session, which a hop waits out) is no drag the
+/// detector may inspect; a monitor's drag always is.
+@Test func onlyALiveDragMayBeInspected() throws {
+    _ = NSApplication.shared
+    let server = FakeWindowServer()
+    let monitor = PointerMonitor(tapSystem: server.system)
+    monitor.start { _, _ in }
+    defer { monitor.stop() }
+    _ = try #require(monitor.tap)
+    #expect(monitor.dragMayBeLive == (NSEvent.pressedMouseButtons != 0))
+    let monitors = PointerMonitor(tapSystem: nil)
+    monitors.start { _, _ in }
+    defer { monitors.stop() }
+    #expect(monitors.dragMayBeLive)
 }
 
 /// A tap that stops (a revoked grant) hands over to the NSEvent monitors at the next press or resume; pausing works on

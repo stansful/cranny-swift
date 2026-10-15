@@ -27,9 +27,11 @@ extension OverlayCoordinator {
     func pointerEvent(_ point: CGPoint, kind: PointerMonitor.Kind) {
         updatePointerDisplay(point)
         // A file drag acts only within a drag zone; elsewhere the detector leaves the drag pasteboard alone. Asked only
-        // while the drag waits for its inspection (once per mouse-down).
+        // while the drag waits for its inspection (once per mouse-down), and not for a drag that is over already (the
+        // tap's report of our own drag session, `PointerMonitor.dragMayBeLive`).
         let nearPanel = kind == .dragged && drags.awaitsInspection
             && controllers.values.contains { $0.hoverZones?.dragZone.contains(point) == true }
+            && pointer.dragMayBeLive
         if let change = drags.update(kind, nearPanel: nearPanel) {
             pointer.gateChanged()                                              // a file drag started or ended
             if change == nil { for controller in controllers.values { controller.dragEnded() } }

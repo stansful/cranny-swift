@@ -74,6 +74,12 @@ private let log = Log.logger(.overlay)
         return globalMonitor != nil || localMonitor != nil || isPaused ? .monitors : nil
     }
 
+    /// Whether a drag being reported can still be under way: always for a monitor's event (handled as it arrives); for
+    /// the tap's, only while a mouse button is down. A hop waits out our own event-tracking loops, so it reports their
+    /// drags (a Tray tile's drag session, a control) after the button came up, events the NSEvent monitors never see:
+    /// the drag detector does not inspect the drag pasteboard for them (our own drags are no file drags, `DropRouter`).
+    var dragMayBeLive: Bool { tap == nil || NSEvent.pressedMouseButtons != 0 }
+
     /// Pointer speed in pt/s from the two most recent events. A pointer that has not moved for 50 ms is at rest.
     var currentSpeed: CGFloat {
         let now = ProcessInfo.processInfo.systemUptime
