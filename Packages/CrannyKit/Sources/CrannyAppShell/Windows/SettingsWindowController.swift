@@ -7,7 +7,8 @@
 // a pane navigates it, so the Reset All Undo offer, the search and the preview stage survive. Closing releases the
 // window, its hosting controller and the SwiftUI tree (an ordered-out hosting controller still re-evaluates bodies on
 // every observed change), as the Welcome window does; the next open builds them again around the same session, at the
-// autosaved frame, so only pane-local view state (scroll positions, a pane's own picks) starts fresh.
+// frame the window had (autosaved; kept for the run in a QA run), so only pane-local view state (scroll positions, a
+// pane's own picks) starts fresh.
 import AppKit
 import CrannyCore
 import CrannySettingsUI
@@ -29,6 +30,9 @@ import SwiftUI
     private(set) var session: SettingsSession?
     /// The app that was frontmost before Settings opened gets activation back on close.
     private var previousApp: NSRunningApplication?
+    /// Without frame autosave (a QA run with its own suite): where the window was when it closed, so the next one
+    /// opens there for the rest of the run, as the autosave would.
+    private var closedFrame: CGRect?
 
     /// `defaults` is the app's `ShellDefaults` (tests pass an in-memory one).
     init(registry: ModuleRegistry, defaults: ShellDefaults) {
@@ -71,7 +75,7 @@ import SwiftUI
         return window
     }
 
-    /// A new window hosting `session`; the frame autosave restores where it was.
+    /// A new window hosting `session`, where the last one was (the frame autosave; a QA run's `closedFrame`).
     private func makeWindow(session: SettingsSession) -> NSWindow {
         let host = NSHostingController(rootView: SettingsRootView(session: session) { [weak self] shown in
             self?.rememberLastPane(shown)
@@ -91,7 +95,11 @@ import SwiftUI
         window.collectionBehavior.insert(.fullScreenNone)
         window.delegate = self
         window.center()
-        if autosavesFrame { window.setFrameAutosaveName(Self.frameAutosaveName) }
+        if autosavesFrame {
+            window.setFrameAutosaveName(Self.frameAutosaveName)
+        } else if let closedFrame {
+            window.setFrame(closedFrame, display: false)
+        }
         #if DEBUG
         applyQAAppearance(to: window)
         #endif
@@ -105,7 +113,8 @@ import SwiftUI
         // Release the window (AppKit lets go of it once the close is done) and with it the hosting controller and the
         // SwiftUI tree; keep the session. The frame is already saved: giving up the autosave name keeps it saved and
         // lets the next window take the name even if this one is still alive then (a name is unique per live window).
-        if autosavesFrame { window?.setFrameAutosaveName("") }
+        // Without the autosave, the controller keeps the frame for the next window.
+        if autosavesFrame { window?.setFrameAutosaveName("") } else { closedFrame = window?.frame }
         window = nil
         session?.windowDidClose()
     }
