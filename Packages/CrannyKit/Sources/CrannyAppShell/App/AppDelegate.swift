@@ -5,11 +5,13 @@
 // before any module launched, so no terminate hook runs then either (`LaunchGate`), and before the one-time settings
 // upgrade, so it writes no preference. `ShellDefaults` picks where settings live (a Debug QA run's own suite).
 // Energy: a few seconds after launch, while the app is idle, the Metal effects are prepared off the main thread
-// (`EffectsPreparation`), so the first open of the panel compiles nothing during its animation.
+// (`EffectsPreparation`), so the first open of the panel compiles nothing during its animation; not with
+// Appearance ▸ Quality ▸ Efficient, whose Core Animation light uses no Metal at all.
 // Memory: before anything draws, CoreGraphics' glyph cache gets a smaller limit (`GlyphCacheLimit`).
 import AppKit
 import CrannyCore
 import CrannyEffects
+import CrannyNotchUI
 import Foundation
 
 /// Owned by the app target via `@NSApplicationDelegateAdaptor`.
@@ -69,13 +71,15 @@ public final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// The light's Metal pipelines and the moments' shaders, compiled at utility priority once the launch has settled.
     /// Skipped while the light could not use them (Ambience Off; Low Power or a hot Mac, which draw the static halo;
-    /// Reduce Motion or Motion ▸ Instant, which draw the SwiftUI fallback); the first open that needs them later builds
-    /// them itself, as before.
+    /// Reduce Motion or Motion ▸ Instant, which draw the SwiftUI fallback; Quality ▸ Efficient, whose Core Animation
+    /// light and still moments use no Metal, so preparing would only cost the GPU memory that setting saves); the first
+    /// open that needs them later builds them itself, as before.
     private func prepareEffects(settings: SettingsStore) {
         Task(priority: .utility) {
             try? await Task.sleep(for: Self.effectsPreparationDelay, tolerance: .seconds(1))
             let info = ProcessInfo.processInfo
             guard settings[CoreSettings.ambience] != .off, settings[CoreSettings.motion] != .instant,
+                  ThemeResolver.ambientDetail(settings: settings) == .detailed,
                   !info.isLowPowerModeEnabled, info.thermalState.rawValue < ProcessInfo.ThermalState.serious.rawValue,
                   !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion else { return }
             await EffectsPreparation.prepare()
