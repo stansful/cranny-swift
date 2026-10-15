@@ -162,6 +162,8 @@ public nonisolated enum CoreSettings {
     public static let ambience = SettingKey<AmbienceLevel>(.appearance, "ambience", default: .subtle)
     /// Appearance ▸ Ambient light ▸ Effect.
     public static let effect = SettingKey<AmbientEffect>(.appearance, "effect", default: .aurora)
+    /// Appearance ▸ Ambient light ▸ Quality: the Metal light (Detailed) or the Core Animation light (Efficient).
+    public static let ambientDetail = SettingKey<AmbientDetail>(.appearance, "ambientDetail", default: .detailed)
     /// Appearance ▸ Album glow behind artwork.
     public static let albumGlow = SettingKey<Bool>(.appearance, "albumGlow", default: true)
     /// Appearance ▸ Underglow (Vivid ambience only).
