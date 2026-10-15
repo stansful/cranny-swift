@@ -4,6 +4,10 @@
 //              calibrate                  the Appearance ▸ Notch fit outline and loupe
 //              keyboard                   open as the hot key does (takes key focus) and log focus facts
 //   --qa-page <page id>                   with `open`: show this page (`nook` = Home, `tray`, `page.<uuid>`)
+//   --qa-close-after <seconds>            close the panel that many seconds after launch, as `--qa-state closed`
+//                                         does (memory measured after a close: docs/CONTRIBUTING.md)
+//   --qa-reopen-after <seconds>           with --qa-close-after: open `--qa-page` again that many seconds after each
+//                                         close and close it --qa-close-after seconds later (open/close cycles)
 //   --qa-exit-after <seconds>             quit after that many seconds (screenshots in scripts and CI)
 //   --qa-settings <pane id>               also open Settings at that pane (`general`, `about`, …)
 //   --qa-capture <directory>              write a PNG of each visible window (the panel, Settings) after
@@ -51,6 +55,10 @@ enum QAHooks {
     struct Options: Equatable {
         var state: State?
         var page: PageID?
+        /// `--qa-close-after`: seconds after launch at which the panel closes (held closed, like `--qa-state closed`).
+        var closeAfter: Double?
+        /// `--qa-reopen-after`: with `closeAfter`, seconds after each close at which the panel opens again.
+        var reopenAfter: Double?
         var exitAfter: Double?
         var settingsPage: SettingsPageID?
         var captureDirectory: URL?
@@ -62,10 +70,11 @@ enum QAHooks {
         /// `--qa-snapshot`: a `.png` file (the panel canvas, NotchUI) or a directory for in-process window snapshots.
         var snapshotPath: String?
 
-        init(state: State? = nil, page: PageID? = nil, exitAfter: Double? = nil, settingsPage: SettingsPageID? = nil,
-             captureDirectory: URL? = nil, captureAfter: Double = 3,
-             welcomeStep: String? = nil, tutorialStep: Int? = nil, snapshotPath: String? = nil) {
-            self.state = state; self.page = page; self.exitAfter = exitAfter; self.settingsPage = settingsPage
+        init(state: State? = nil, page: PageID? = nil, closeAfter: Double? = nil, reopenAfter: Double? = nil,
+             exitAfter: Double? = nil, settingsPage: SettingsPageID? = nil, captureDirectory: URL? = nil,
+             captureAfter: Double = 3, welcomeStep: String? = nil, tutorialStep: Int? = nil, snapshotPath: String? = nil) {
+            self.state = state; self.page = page; self.closeAfter = closeAfter; self.reopenAfter = reopenAfter
+            self.exitAfter = exitAfter; self.settingsPage = settingsPage
             self.captureDirectory = captureDirectory; self.captureAfter = captureAfter
             self.welcomeStep = welcomeStep; self.tutorialStep = tutorialStep; self.snapshotPath = snapshotPath
         }
@@ -75,6 +84,8 @@ enum QAHooks {
             func value(_ name: String) -> String? { parsed.value(after: name) }
             self.init(state: value("--qa-state").flatMap(State.init(rawValue:)),
                       page: value("--qa-page").map(PageID.init(rawValue:)),
+                      closeAfter: value("--qa-close-after").flatMap(Double.init).flatMap { $0 > 0 ? $0 : nil },
+                      reopenAfter: value("--qa-reopen-after").flatMap(Double.init).flatMap { $0 > 0 ? $0 : nil },
                       exitAfter: value("--qa-exit-after").flatMap(Double.init).flatMap { $0 > 0 ? $0 : nil },
                       settingsPage: value("--qa-settings").map(SettingsPageID.init(rawValue:)),
                       captureDirectory: value("--qa-capture").map { URL(fileURLWithPath: $0, isDirectory: true) },
@@ -86,7 +97,7 @@ enum QAHooks {
 
         /// A snapshot alone forces nothing (it records what the other arguments show).
         var isEmpty: Bool {
-            state == nil && exitAfter == nil && settingsPage == nil && captureDirectory == nil
+            state == nil && closeAfter == nil && exitAfter == nil && settingsPage == nil && captureDirectory == nil
                 && welcomeStep == nil && tutorialStep == nil
         }
 
@@ -111,6 +122,20 @@ enum QAHooks {
             Task {
                 try? await Task.sleep(for: .milliseconds(300))
                 overlay.forceQAState(state, page: options.page)
+            }
+        }
+        if let seconds = options.closeAfter {
+            Task {
+                try? await Task.sleep(for: .seconds(seconds))
+                while !Task.isCancelled {
+                    log.info("QA: closing after \(seconds, privacy: .public) s")
+                    overlay.forceQAState(.closed, page: nil)
+                    guard let reopen = options.reopenAfter else { return }
+                    try? await Task.sleep(for: .seconds(reopen))
+                    log.info("QA: opening again after \(reopen, privacy: .public) s")
+                    overlay.forceQAState(.open, page: options.page)
+                    try? await Task.sleep(for: .seconds(seconds))
+                }
             }
         }
         if let directory = options.captureDirectory {

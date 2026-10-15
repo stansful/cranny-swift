@@ -81,5 +81,11 @@ import Testing
     #expect(QAHooks.Options(arguments: ["Cranny", "--qa-state", "sideways", "--qa-exit-after", "-1"]).isEmpty)
     #expect(QAHooks.Options(arguments: ["Cranny", "--qa-state"]).state == nil)
     #expect(QAHooks.Options(arguments: ["Cranny", "--qa-settings", "about"]).settingsPage == .about)
+    let closing = QAHooks.Options(arguments: ["Cranny", "--qa-state", "open", "--qa-close-after", "8", "--qa-exit-after", "20"])
+    #expect(closing == QAHooks.Options(state: .open, closeAfter: 8, exitAfter: 20))
+    #expect(!QAHooks.Options(arguments: ["Cranny", "--qa-close-after", "4"]).isEmpty)
+    #expect(QAHooks.Options(arguments: ["Cranny", "--qa-close-after", "0"]).closeAfter == nil)
+    let cycling = QAHooks.Options(arguments: ["Cranny", "--qa-state", "open", "--qa-close-after", "6", "--qa-reopen-after", "4"])
+    #expect(cycling == QAHooks.Options(state: .open, closeAfter: 6, reopenAfter: 4))
 }
 #endif

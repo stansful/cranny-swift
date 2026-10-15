@@ -139,6 +139,8 @@ scripts/run.sh -- "${QA[@]}" -AppleLanguages "(ar)" -AppleTextDirection YES --qa
 | `--qa-state calibrate` | The Appearance ▸ Notch fit outline and loupe. |
 | `--qa-state keyboard` | Opens as the hot key does (takes key focus) and logs focus facts. |
 | `--qa-page <page id>` | With `open`: shows that page — `nook` (Home), a module page such as `tray`, or a user page `page.<uuid>`. A page that does not exist opens the last page instead, as it does for users. |
+| `--qa-close-after <seconds>` | Closes the panel that many seconds after launch and holds it closed, as `--qa-state closed` does: with `--qa-state open`, measures what an open panel leaves behind (`footprint <pid>`). |
+| `--qa-reopen-after <seconds>` | With `--qa-close-after`: opens the `--qa-page` page again that many seconds after each close and closes it after the `--qa-close-after` interval, so the panel cycles until the run ends (memory that grows per open). |
 | `--qa-exit-after <seconds>` | Quits after that many seconds. |
 | `--qa-settings <pane id>[#<row>]` | Also opens Settings at that pane (`general`, `appearance`, `keyboard`, `nook`, `activities`, `hud`, `gestures`, `media`, `calendar`, `shortcuts`, `tray`, `permissions`, `about`); `general#hoverDelay` also scrolls to and highlights a row. |
 | `--qa-capture <dir>` [`--qa-capture-after <s>`] | Writes a PNG of each visible window (the panel, Settings) after that many seconds (default 3). |
