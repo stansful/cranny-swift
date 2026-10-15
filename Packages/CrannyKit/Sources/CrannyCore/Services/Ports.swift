@@ -7,6 +7,7 @@ import Foundation
 import Observation
 import SwiftUI
 import UniformTypeIdentifiers
+import os
 
 // MARK: - NotchControl (implemented by CrannyAppShell)
 
@@ -259,6 +260,9 @@ public nonisolated enum MediaCommand: Sendable, Equatable {
     var trackChangeCount: Int { get }
     /// 0…1 RMS (60 ms attack / 300 ms release) while the Live visualizer runs; otherwise 0.
     var audioEnergy: Double { get }
+    /// `audioEnergy` for readers off the main actor (the ambient light's render thread reads it once per frame);
+    /// nil when the source keeps none, and the light then reads `audioEnergy` on the main actor.
+    var audioEnergyLevel: AudioEnergyLevel? { get }
     /// Sends a command to the player; true when the player accepted it.
     @discardableResult func send(_ command: MediaCommand) async -> Bool
 }
@@ -266,6 +270,23 @@ public nonisolated enum MediaCommand: Sendable, Equatable {
 public extension NowPlayingSource {
     /// Read from `nowPlaying`, so it depends on the whole snapshot (CrannyMedia keeps its own value).
     var isPlaying: Bool { nowPlaying?.isPlaying == true }
+    /// None: the light reads `audioEnergy` on the main actor (CrannyMedia keeps a level).
+    var audioEnergyLevel: AudioEnergyLevel? { nil }
+}
+
+/// The live audio energy (0…1) behind a lock, readable from any thread without a hop to the main actor. The source
+/// writes it wherever it writes `NowPlayingSource.audioEnergy`, with the same value. Reading it is not an
+/// observation, so it never re-evaluates a view.
+public nonisolated final class AudioEnergyLevel: Sendable {
+    private let energy = OSAllocatedUnfairLock(initialState: 0.0)
+
+    public init() {}
+
+    /// The energy now, from any thread.
+    public var current: Double { energy.withLock { $0 } }
+
+    /// The source's new energy (each time `audioEnergy` changes).
+    public func set(_ value: Double) { energy.withLock { $0 = value } }
 }
 
 /// Optional health facts of the `NowPlayingSource` for `--diagnostics` (ARCHITECTURE.md §6.5: the media source in

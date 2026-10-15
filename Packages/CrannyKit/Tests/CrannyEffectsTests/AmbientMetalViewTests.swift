@@ -5,10 +5,11 @@ import QuartzCore
 import Testing
 @testable import CrannyEffects
 
-// The dedicated layer's energy rules (ARCHITECTURE.md §9.2): no frame loop while paused, hidden or occluded; a paused
-// layer redraws only when an input changes, once per main-queue turn, and not while occluded; the drawable covers only
-// the lit band and does not reallocate on every resize frame. The window is never ordered in, so nothing appears on
-// screen and the window server reports it as occluded (tests that need it visible say so: `treatsWindowAsVisible`).
+// The dedicated layer's energy rules (ARCHITECTURE.md §9.2): no frame loop while paused, hidden or occluded; steady
+// frames on the render thread at the budget's rate, time continuing across a pause; a paused layer redraws only when
+// an input changes, once per main-queue turn, and not while occluded; the drawable covers only the lit band and does
+// not reallocate on every resize frame. The window is never ordered in, so nothing appears on screen and the window
+// server reports it as occluded (tests that need it visible say so: `treatsWindowAsVisible`).
 
 @MainActor private func hostedView(_ state: AmbientLayerState) throws -> (AmbientMetalNSView, NSWindow) {
     let view = AmbientMetalNSView()
@@ -86,6 +87,135 @@ import Testing
     #expect(view.framesDrawn == frames)
 }
 
+/// A running layer draws its steady frames on its render thread: they keep coming while the main thread is busy, with
+/// the energy read from a shared level; a main-actor energy closure leaves them to the main thread; a stopped layer
+/// draws nothing more.
+@Test(.enabled(if: shadersRun)) func runningLayerDrawsOffTheMainThread() async throws {
+    let level = AudioEnergyLevel()
+    level.set(0.5)
+    let (view, window) = try await runningView(layerState(.aurora), energy: AmbientEnergySource(level))   // 30 fps
+    defer { window.close() }
+    var before = view.framesDrawnOffMain
+    blockMainThread(for: 0.5)                                           // the main thread is busy for 15 frames
+    #expect(view.framesDrawnOffMain - before >= 5, "\(view.framesDrawnOffMain - before) frames off the main thread")
+    view.energySource = AmbientEnergySource { 0.5 }                     // energy only on the main actor
+    before = view.framesDrawn
+    blockMainThread(for: 0.3)
+    #expect(view.framesDrawn == before, "these frames wait for the main thread")
+    let offMain = view.framesDrawnOffMain
+    try await eventually { view.framesDrawn > before + 1 }
+    #expect(view.framesDrawn > before + 1, "and the main thread draws them")
+    #expect(view.framesDrawnOffMain == offMain)
+    view.stop()
+    before = view.framesDrawn
+    try await Task.sleep(for: .milliseconds(200))
+    #expect(view.framesDrawn == before)
+}
+
+/// The render thread draws at the budget's rate: 20 fps on battery, at most 30 on AC, never a burst.
+@Test(.enabled(if: shadersRun)) func renderThreadKeepsTheBudgetsRate() async throws {
+    var state = layerState(.tide)
+    state.interval = 1.0 / 20
+    let (view, window) = try await runningView(state)
+    defer { view.stop(); window.close() }
+    var before = view.framesDrawnOffMain
+    blockMainThread(for: 0.6)
+    let battery = view.framesDrawnOffMain - before
+    #expect(battery >= 4 && battery <= 13, "\(battery) frames in 0.6 s at 20 fps")
+    state.interval = 1.0 / 30                                           // plugged in: the same thread, a new rate
+    view.state = state
+    before = view.framesDrawnOffMain
+    blockMainThread(for: 0.6)
+    let mains = view.framesDrawnOffMain - before
+    #expect(mains >= 6 && mains <= 19, "\(mains) frames in 0.6 s at 30 fps")
+}
+
+/// Time continues across a pause (Reduce Motion, occlusion, a paused budget): the first frame after it shows the last
+/// frame's time, not the wall clock, and the render thread goes on from there.
+@Test(.enabled(if: shadersRun)) func renderThreadContinuesTimeAcrossAPause() async throws {
+    var state = layerState(.motes)
+    let (view, window) = try await runningView(state)
+    defer { view.stop(); window.close() }
+    state.interval = nil                                                // paused: no more frames off the main thread
+    view.state = state
+    await view.pausedRedraw?.value
+    let paused = try #require(view.lastFrameTime)
+    let offMain = view.framesDrawnOffMain
+    try await Task.sleep(for: .milliseconds(300))
+    #expect(view.framesDrawnOffMain == offMain)
+    #expect(view.lastFrameTime == paused, "a paused layer keeps its time")
+    state.interval = 1.0 / 30                                           // resumed
+    view.state = state
+    let resumed = shaderSeconds(from: paused, to: try #require(view.lastFrameTime))
+    #expect(resumed < 0.05, "resumed \(resumed) s after the pause's time")
+    blockMainThread(for: 0.3)
+    #expect(view.framesDrawnOffMain > offMain)
+    let later = shaderSeconds(from: paused, to: try #require(view.lastFrameTime))
+    #expect(later > 0.15 && later < 0.4, "\(later) s after 0.3 s of frames")
+}
+
+/// Shader seconds from `start` to `end` (the shader clock wraps every hour).
+private func shaderSeconds(from start: Double, to end: Double) -> Double {
+    (end - start + 3600).truncatingRemainder(dividingBy: 3600)
+}
+
+/// While the loop runs, a resize is drawn on the main thread inside the transaction, and so are the frame that returns
+/// the grown drawable to the band and the one after it (each changes the layer); then the render thread draws again.
+@Test(.enabled(if: shadersRun)) func runningLayerLeavesLayerChangesToTheMainThread() async throws {
+    let (view, window) = try await runningView(layerState(.motes))
+    defer { view.stop(); window.close() }
+    for step in 1...10 { view.setFrameSize(NSSize(width: 440 + Double(step) * 3.3, height: 130 + Double(step) * 1.7)) }
+    view.setFrameSize(NSSize(width: 450, height: 140))                  // shrinking: the drawable keeps its slack
+    #expect(view.drawableLayout?.hasSlack == true)
+    #expect(view.metalLayer.presentsWithTransaction)
+    let offMain = view.framesDrawnOffMain
+    blockMainThread(for: 0.3)                                           // ticks come, none may draw off the main thread
+    #expect(view.framesDrawnOffMain == offMain)
+    try await eventually { view.framesDrawnOffMain > offMain }
+    #expect(view.drawableLayout?.hasSlack == false, "the main thread returned the drawable to the band")
+    #expect(!view.metalLayer.presentsWithTransaction)
+}
+
+/// The render thread holds its loop only until `stop()`: then it removes its timer, ends and lets the loop go.
+@Test func stoppedLoopEndsItsThread() async throws {
+    weak var weakLoop: AmbientFrameLoop?
+    do {
+        let loop = AmbientFrameLoop(layer: CAMetalLayer())
+        weakLoop = loop
+        loop.run(at: 1.0 / 30)
+        try await Task.sleep(for: .milliseconds(100))                   // the thread is up and ticking
+        loop.run(at: nil)
+        loop.run(at: 1.0 / 20)
+        loop.stop()
+    }
+    try await eventually { weakLoop == nil }
+    #expect(weakLoop == nil, "the thread ended and let its loop go")
+}
+
+/// A view whose loop runs and has drawn on its render thread. The window is never ordered in; `treatsWindowAsVisible`
+/// stands for a visible one.
+@MainActor private func runningView(_ state: AmbientLayerState, energy: AmbientEnergySource? = nil) async throws
+    -> (AmbientMetalNSView, NSWindow) {
+    let (view, window) = try hostedView(state)
+    view.energySource = energy
+    view.treatsWindowAsVisible = true
+    NotificationCenter.default.post(name: NSWindow.didChangeOcclusionStateNotification, object: window)
+    #expect(view.isRunning)
+    try await eventually { view.framesDrawnOffMain > 0 }
+    try #require(view.framesDrawnOffMain > 0, "the render thread draws")
+    return (view, window)
+}
+
+/// Waits until `condition` holds, checking every 20 ms for at most `turns` checks. Bounded by main-actor turns, not by
+/// the clock: parallel suites can keep the main actor busy for more than ten seconds, and the frames these tests wait
+/// for need main-actor turns too.
+@MainActor private func eventually(turns: Int = 500, _ condition: () -> Bool) async throws {
+    for _ in 0..<turns where !condition() { try await Task.sleep(for: .milliseconds(20)) }
+}
+
+/// Keeps the main thread from running anything else for `seconds`.
+@MainActor private func blockMainThread(for seconds: Double) { Thread.sleep(forTimeInterval: seconds) }
+
 @Test(.enabled(if: shadersRun)) func dismantledLayerStops() throws {
     var state = layerState(.motes)
     state.interval = nil
@@ -112,10 +242,13 @@ import Testing
     window.contentView = nil
     #expect(view.renderer == nil, "a view out of its window must not keep the GPU")
     #expect(view.metalLayer.device == nil, "nor may its layer")
+    #expect(!view.renderThreadHasInputs, "nor its render thread")
     window.contentView = view
     #expect(view.renderer != nil)
+    #expect(view.renderThreadHasInputs)
     view.stop()
     #expect(view.renderer == nil)
+    #expect(!view.renderThreadHasInputs)
 }
 
 /// A resize (the open and close morph) draws exactly one frame at the new size, presented with the new bounds; a

@@ -376,6 +376,7 @@ import Testing
         live.onFrame(LiveFrame(bars: [0.1, 0.2, 0.3, 0.4, 0.5], energy: 0.403, hasAudio: true))
         #expect(e.liveStatus == .receiving)
         #expect(e.energy == 0.4)                                          // quantized to 1/50
+        #expect(e.energyLevel.current == 0.4)                             // the same value for the light's thread
         #expect(sink.levels == [[0.1, 0.2, 0.3, 0.4, 0.5]])
         #expect(e.render(isPlaying: true, trackKey: "k", reduceMotion: false) == .live)
 
@@ -384,6 +385,7 @@ import Testing
         #expect(!live.isRunning)                                          // nothing on screen: the tap stops
         #expect(e.liveStatus == .off)
         #expect(e.energy == 0)
+        #expect(e.energyLevel.current == 0)
     }
 
     @Test func runningLiveLoopFollowsThePowerSource() async throws {

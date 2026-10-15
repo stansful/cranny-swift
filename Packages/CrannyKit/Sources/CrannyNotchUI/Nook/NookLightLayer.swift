@@ -69,7 +69,8 @@ struct NookLightLayer: View {
 }
 
 /// The light with the live audio energy (0…1, 0 without a source). The energy is not read here: the light samples it
-/// in each frame it draws (`AmbientEnergySource`), so an energy change re-evaluates no view, this one included.
+/// in each frame it draws (`AmbientEnergySource`), so an energy change re-evaluates no view, this one included. A
+/// source's `audioEnergyLevel` (CrannyMedia keeps one) lets the Metal layer read it on its render thread.
 /// A frozen light (Reduce Motion, Motion ▸ Instant, snapshots, Low Power, a full-screen app in front) gets no source:
 /// it keeps its resting frame at energy 0 instead of being redrawn with every change of the music's loudness.
 private struct EnergizedLight: View {
@@ -86,6 +87,7 @@ private struct EnergizedLight: View {
 
     private var energySource: AmbientEnergySource? {
         guard let source, !budget.reduceMotion, !budget.lowPower, !budget.fullScreenFront else { return nil }
+        if let level = source.audioEnergyLevel { return AmbientEnergySource(level) }
         return AmbientEnergySource { source.audioEnergy }
     }
 }

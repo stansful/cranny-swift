@@ -60,6 +60,9 @@ nonisolated struct LiveFrame: Equatable, Sendable {
 
     /// 0…1 loudness for the light layer (Live only; 0 otherwise), quantized to 1/50 to limit invalidations.
     private(set) var energy: Double = 0
+    /// `energy` for readers off the main actor (`NowPlayingSource.audioEnergyLevel`: the light's render thread),
+    /// written together with it.
+    @ObservationIgnored let energyLevel = AudioEnergyLevel()
     private(set) var liveStatus: LiveStatus = .off
 
     static let pausedGrace: Duration = .seconds(10)
@@ -277,7 +280,7 @@ nonisolated struct LiveFrame: Equatable, Sendable {
     private func stopLive() {
         live?.stop()
         idleFrames = false
-        if energy != 0 { energy = 0 }
+        if energy != 0 { energy = 0; energyLevel.set(0) }
         if [.receiving, .waiting, .silent].contains(liveStatus) { liveStatus = .off }
     }
 
@@ -292,7 +295,7 @@ nonisolated struct LiveFrame: Equatable, Sendable {
             liveStatus = .silent           // denied permission delivers silence; so does a quiet passage
         }
         let quantized = (frame.energy * 50).rounded() / 50
-        if quantized != energy { energy = quantized }
+        if quantized != energy { energy = quantized; energyLevel.set(quantized) }
         idleFrames = !frame.hasAudio && quantized == 0
         if let live, live.isRunning { live.retune(interval: liveInterval) }   // probe ↔ frame rate; no-op if unchanged
         guard liveStatus == .receiving else { return }

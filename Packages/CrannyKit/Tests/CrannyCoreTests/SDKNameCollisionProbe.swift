@@ -39,6 +39,7 @@ private typealias ProbeAppIdentity = AppIdentity
 private typealias ProbeAppIdentityResolver = AppIdentityResolver
 private typealias ProbeAppInfo = AppInfo
 private typealias ProbeAppPaths = AppPaths
+private typealias ProbeAudioEnergyLevel = AudioEnergyLevel
 private typealias ProbeAudioHAL = AudioHAL
 private typealias ProbeBidiIsolation = BidiIsolation
 private typealias ProbeBlurScale = BlurScale

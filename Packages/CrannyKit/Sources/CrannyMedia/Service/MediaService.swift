@@ -30,6 +30,7 @@ private nonisolated let log = Log.logger(.media)
     private(set) var artworkKey: String?
     private(set) var trackChangeCount = 0
     var audioEnergy: Double { visualizer.energy }
+    var audioEnergyLevel: AudioEnergyLevel? { visualizer.energyLevel }
 
     // MARK: Module state
     private(set) var status: MediaProviderStatus = .idle

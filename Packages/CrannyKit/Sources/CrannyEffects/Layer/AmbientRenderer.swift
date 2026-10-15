@@ -15,6 +15,11 @@
 // (`AmbientFrameTables`) in `buffer(1)`. A drawable of exactly the lit band is neither loaded nor cleared (the triangle
 // overwrites every pixel); a larger one left by a resize is cleared and the shader is scissored to the band (plus the
 // one pixel Core Animation's filter reads at its edge).
+//
+// Threads: the sharing registry (`renderer(forDisplay:)`, `prewarm()`) is main-actor state; drawing is not. A view
+// draws its steady frames on its render thread and its resize and paused frames on the main thread
+// (AmbientFrameLoop.swift), and views on two displays share a renderer, so the per-frame tables sit behind a lock
+// and everything else is immutable (Metal's command queue is thread-safe).
 import CoreGraphics
 import CrannyCore
 import Foundation
@@ -25,19 +30,23 @@ import os
 
 private nonisolated let log = Log.logger(.effects)
 
-@MainActor final class AmbientRenderer {
+nonisolated final class AmbientRenderer: Sendable {
     /// 8-bit sRGB-encoded storage, like the SwiftUI layers the stitchable shaders draw into; the dither is
     /// sized for it (±0.5 LSB).
-    nonisolated static let pixelFormat = MTLPixelFormat.bgra8Unorm
+    static let pixelFormat = MTLPixelFormat.bgra8Unorm
     /// Pixels drawn past the region of a larger drawable, for Core Animation's filter at the light's edge (`encode`).
-    nonisolated static let filterMargin = 1
+    static let filterMargin = 1
 
     let device: any MTLDevice
     private let queue: any MTLCommandQueue
     private let pipelines: [AmbientEffect: any MTLRenderPipelineState]
-    /// The per-frame tables, refilled in place (no allocation per frame).
-    private var auroraTable: [SIMD4<Float>] = []
-    private var moteTable: [SIMD4<Float>] = []
+    /// The per-frame tables, refilled in place (no allocation per frame); one frame encodes at a time.
+    private let tables = OSAllocatedUnfairLock(initialState: Tables())
+
+    private struct Tables: Sendable {
+        var aurora: [SIMD4<Float>] = []
+        var motes: [SIMD4<Float>] = []
+    }
 
     /// What a renderer is made of; built off the main actor by `prewarm()`, or synchronously by `init?(device:)`.
     nonisolated struct Parts: Sendable {
@@ -61,7 +70,7 @@ private nonisolated let log = Log.logger(.effects)
 
     /// The library, one pipeline per ambient effect and a command queue on `device`, on any thread; nil (logged) on any
     /// failure.
-    nonisolated static func build(on device: any MTLDevice) -> Parts? {
+    static func build(on device: any MTLDevice) -> Parts? {
         guard ShaderEffects.isAvailable, let url = ShaderEffects.libraryURL else { return nil }
         let pipelines: [AmbientEffect: any MTLRenderPipelineState]
         do {
@@ -90,7 +99,7 @@ private nonisolated let log = Log.logger(.effects)
     }
 
     /// The fragment function of each ambient effect.
-    nonisolated static func fragmentName(_ effect: AmbientEffect) -> String {
+    static func fragmentName(_ effect: AmbientEffect) -> String {
         switch effect {
         case .aurora: "auroraFragment"
         case .motes: "motesFragment"
@@ -102,7 +111,7 @@ private nonisolated let log = Log.logger(.effects)
     /// Pixels per point the layer renders `effect` at. The aurora and the halo are low-frequency light (their finest
     /// structure is ≈ 10 pt), so they render at 1 pixel per point and Core Animation scales them up: a quarter of the
     /// GPU work on Retina displays with no visible difference. Motes and tide lines need every pixel.
-    nonisolated static func renderScale(for effect: AmbientEffect, displayScale: CGFloat) -> CGFloat {
+    static func renderScale(for effect: AmbientEffect, displayScale: CGFloat) -> CGFloat {
         switch effect {
         case .aurora, .halo: min(displayScale, 1)
         case .motes, .tide: displayScale
@@ -114,7 +123,7 @@ private nonisolated let log = Log.logger(.effects)
     /// motes are clear down to 40 % of the height, the tide above `0.8 · h − 1.45 · (3 + 7 · energy) − 10`; each
     /// moved up by the ripple's reach (`Ripple.amplitude`) and a point of margin. The halo lights everything. `energy`
     /// counts as at least the ripple's pulse (1.5), so the drawable does not change with the music.
-    nonisolated static func litTop(_ effect: AmbientEffect, height: CGFloat, energy: Double) -> CGFloat {
+    static func litTop(_ effect: AmbientEffect, height: CGFloat, energy: Double) -> CGFloat {
         let reach = Ripple.amplitude + 1
         let top: CGFloat
         switch effect {
@@ -127,19 +136,19 @@ private nonisolated let log = Log.logger(.effects)
 
     // MARK: - Sharing
 
-    private final class WeakRenderer {
+    @MainActor private final class WeakRenderer {
         weak var renderer: AmbientRenderer?
         init(_ renderer: AmbientRenderer) { self.renderer = renderer }
     }
 
     /// Renderers in use, by GPU registry ID (views keep them alive).
-    private static var inUse: [UInt64: WeakRenderer] = [:]
+    @MainActor private static var inUse: [UInt64: WeakRenderer] = [:]
     /// Kept between opens: only a renderer whose GPU cannot be a discrete one held awake for nothing.
-    private static var kept: AmbientRenderer?
+    @MainActor private static var kept: AmbientRenderer?
 
     /// The renderer for the panel on `displayID` (nil: the main display), shared by every view on the same GPU.
     /// nil when no renderer can be built here; `AmbientLayerSupport` then turns the layer path off for good.
-    static func renderer(forDisplay displayID: CGDirectDisplayID?) -> AmbientRenderer? {
+    @MainActor static func renderer(forDisplay displayID: CGDirectDisplayID?) -> AmbientRenderer? {
         guard let device = AmbientGPU.device(forDisplay: displayID) else {
             AmbientLayerSupport.shared.layerFailed(reason: "no Metal device")
             return nil
@@ -158,7 +167,7 @@ private nonisolated let log = Log.logger(.effects)
     /// those with several discrete GPUs); a no-op once a renderer exists, and while the light cannot use the layer
     /// (`-CrannyDisableEffectLayer`, or the layer path already off). A failure is left to `renderer(forDisplay:)`,
     /// which tries again and turns the layer path off.
-    static func prewarm() async {
+    @MainActor static func prewarm() async {
         guard ShaderEffects.allowsLayer, AmbientLayerSupport.shared.isUsable, kept == nil,
               inUse.values.allSatisfy({ $0.renderer == nil }) else { return }
         let parts = await Task.detached(priority: .utility) { () -> Parts? in
@@ -172,7 +181,7 @@ private nonisolated let log = Log.logger(.effects)
     }
 
     /// Shares `renderer` with every view on its GPU, and keeps it between opens unless that could pin a discrete GPU.
-    private static func register(_ renderer: AmbientRenderer) {
+    @MainActor private static func register(_ renderer: AmbientRenderer) {
         inUse = inUse.filter { $0.value.renderer != nil }
         inUse[renderer.device.registryID] = WeakRenderer(renderer)
         if !AmbientGPU.mayPinDiscreteGPU(AmbientGPU.Candidate(renderer.device), deviceCount: AmbientGPU.deviceCount) {
@@ -186,12 +195,13 @@ private nonisolated let log = Log.logger(.effects)
     /// of a larger drawable the light fills (`AmbientDrawableLayout.region`, plus `filterMargin`); the rest is cleared.
     /// `synchronized` presents it inside the current Core Animation transaction (a resize: the new frame appears
     /// together with the new bounds, never stretched); otherwise it is presented as soon as the GPU is done. Returns
-    /// false when nothing was drawn.
+    /// false when nothing was drawn. Any thread, but a synchronized frame (or the first frame after one, which turns
+    /// `presentsWithTransaction` off again) only on the main thread: the layer's properties change only there.
     @discardableResult
     func draw(_ effect: AmbientEffect, uniforms: AmbientUniforms, in layer: CAMetalLayer, region: CGSize? = nil,
               synchronized: Bool = false) -> Bool {
         guard pipelines[effect] != nil else { return false }
-        layer.presentsWithTransaction = synchronized
+        if layer.presentsWithTransaction != synchronized { layer.presentsWithTransaction = synchronized }
         guard let drawable = layer.nextDrawable(), let buffer = queue.makeCommandBuffer(),
               encode(effect, uniforms: uniforms, target: drawable.texture, region: region, clears: false, into: buffer)
         else { return false }
@@ -271,11 +281,15 @@ private nonisolated let log = Log.logger(.effects)
         encoder.setFragmentBytes(&values, length: MemoryLayout<AmbientUniforms>.stride, index: 0)
         switch effect {
         case .aurora:
-            AmbientFrameTables.auroraLab(uniforms, into: &auroraTable)
-            setTable(auroraTable, on: encoder)
+            tables.withLockUnchecked { tables in
+                AmbientFrameTables.auroraLab(uniforms, into: &tables.aurora)
+                setTable(tables.aurora, on: encoder)
+            }
         case .motes:
-            AmbientFrameTables.motes(uniforms, into: &moteTable)
-            setTable(moteTable, on: encoder)
+            tables.withLockUnchecked { tables in
+                AmbientFrameTables.motes(uniforms, into: &tables.motes)
+                setTable(tables.motes, on: encoder)
+            }
         case .tide, .halo:
             break
         }

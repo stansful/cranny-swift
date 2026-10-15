@@ -13,6 +13,19 @@ import Testing
     #expect(AmbientEnergySource { 0.4 }.sample() == 0.4)
 }
 
+/// A shared level reads the same values, and on any thread: the Metal layer's render thread reads it there.
+@Test func levelSourceIsReadableOffTheMainActor() async {
+    let level = AudioEnergyLevel()
+    level.set(1.4)
+    let source = AmbientEnergySource(level)
+    #expect(source.sample() == 1)
+    #expect(source.level === level)
+    #expect(AmbientEnergySource { 0.4 }.level == nil, "a closure is read on the main actor only")
+    level.set(0.3)
+    let offMain = await Task.detached { AmbientEnergySource.clamped(level.current) }.value
+    #expect(offMain == 0.3)
+}
+
 /// The music's loudness as the source reads it, counting the reads.
 private final class Loudness {
     var level = 0.2
