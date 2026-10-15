@@ -2,7 +2,7 @@
 // `SyntaxStyler`, as the editor's storage delegate drives it, without TextKit layout (the `KeystrokeBenchmark`
 // covers the whole keystroke). Markdown and Swift at 2 000, 20 000 and 32 000 units, then the work a keystroke
 // leaves for the background in a long note (above `SyntaxStyler.synchronousLimit`), and a whole pass with and
-// without the checkpoints `SyntaxCache` keeps. Run in Release with
+// without the checkpoints `SyntaxCache` keeps (also of one-line minified JSON and CSS). Run in Release with
 //   CRANNY_SYNTAX_BENCH=/path/to/report.txt swift test -c release -Xswiftc -enable-testing -Xswiftc -DDEBUG \
 //     --scratch-path .build-release --filter SyntaxKeystrokeBenchmark
 // (`-DDEBUG` as in `KeystrokeBenchmark`.)
@@ -39,6 +39,8 @@ import Testing
         }
 
         """
+    private static let minifiedJSON = #"{"id":12345,"name":"value","tags":["a","b"],"ok":true},"#
+    private static let minifiedCSS = ".card{color:#1e2026;margin:0 auto;padding:4px 8px}"
 
     private static func text(_ block: String, units: Int) -> String {
         let length = (block as NSString).length
@@ -139,8 +141,12 @@ import Testing
             lines.append("background work per typed character, \(name) (µs, median): " + cells.joined(separator: " · "))
         }
         // A whole pass (a note opens, a paste, undo or redo): the tokens alone and with the checkpoints the cache keeps.
+        // Minified JSON and CSS are one line: no checkpoint to resume at, so every keystroke takes a whole pass, and
+        // their looks (one per string or declaration) must not each scan the rest of the line.
         let clock = ContinuousClock()
-        for (name, block, language) in [("markdown", Self.markdown, CodeLanguage.markdown), ("swift", Self.swift, .swift)] {
+        let wholePasses = [("markdown", Self.markdown, CodeLanguage.markdown), ("swift", Self.swift, .swift),
+                           ("minified json", Self.minifiedJSON, .json), ("minified css", Self.minifiedCSS, .css)]
+        for (name, block, language) in wholePasses {
             let source = SourceText(Self.text(block, units: 32_000))
             var plain: [Double] = [], recording: [Double] = []
             for _ in 0..<15 {

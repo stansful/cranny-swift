@@ -139,7 +139,7 @@ nonisolated struct TokenSink {
     private(set) var isStopped = false
     /// The index in the old checkpoints of the one this pass met.
     private(set) var met: Int?
-    /// The furthest position a decision so far looked at ahead of the scan (`read(upTo:)`).
+    /// The end of the furthest line a decision so far looked at ahead of the scan (`read(upTo:)`).
     private(set) var horizon = 0
 
     private let records: Bool
@@ -183,9 +183,13 @@ nonisolated struct TokenSink {
     /// It counts as reading to the end of that line: the rest of the line decides whether the tokenizer's range ends
     /// at or before `position` (a fence's closing line, a `</style>`), which would have cut the look short. A look
     /// that got to the range's `end` likewise counts as reading the line `end` is on.
+    /// A look short of the horizon cannot move it (the horizon is a line end, or the line start the pass began at,
+    /// which every look is at or after), so a line is scanned once: a minified JSON or CSS line, with a look per
+    /// string or declaration, stays linear. Only a recording pass keeps a horizon.
     mutating func read(upTo position: Int, end: Int, in s: SourceText) {
-        let reached = s.lineEnd(from: min(position, end))
-        if reached > horizon { horizon = reached }
+        let reached = min(position, end)
+        guard records, reached >= horizon else { return }
+        horizon = s.lineEnd(from: reached)
     }
 
     /// A tokenizer for a nested body (a fence's, a `<script>`'s) starts inside `level`.
