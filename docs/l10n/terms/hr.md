@@ -88,5 +88,6 @@ Register and style, following macOS 27 in Croatian:
 | Help menu (macOS) | izbornik pomoći | Apple “Prikaži izbornik pomoći” |
 | Narrower / Wider (actions) | Suzi / Proširi | VoiceOver actions and buttons are verbs, like “Premjesti ulijevo” |
 | system (… of macOS) | … sustava | “indikator sustava”, “zvuk sustava”, “izvor medija sustava”; never “sistemski” |
+| Quality (the light: Detailed · Efficient) | Kvaliteta (Detaljna · Štedljiva) | Settings ▸ Appearance ▸ Light; search keywords memorija · performanse |
 
 Reviewed 2026-10-14 (independent review).

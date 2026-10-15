@@ -97,6 +97,7 @@ adjectives in common gender (“Cranny, lukket”). Compounds with a name take a
 | Density: Compact / Standard / Roomy | Kompakt / Standard / Romslig | |
 | Ambient light · Subtle / Vivid | Stemningslys · Dempet / Kraftig | |
 | Effect: Aurora / Motes / Tide | Nordlys / Støvkorn / Tidevann | |
+| Quality (the light: Detailed · Efficient) | Kvalitet (Detaljert · Effektiv) | Settings ▸ Appearance ▸ Light; search keywords minne · ytelse |
 | Floating island · Attached · Glass island · Handle | Flytende øy · Festet · Glassøy · Håndtak | |
 | Notch fit · Notch width · Corner radius | Tilpasning til hakket · Hakkbredde · Hjørneradius | section header is a noun |
 | Fold away after | Trekk inn etter | |

@@ -98,6 +98,7 @@ Crannyn (gen.), Crannyyn (ill.), Crannylle (all.); other cases are avoided by re
 | handle (no-notch displays) | kahva | |
 | Ambient light / Underglow / Album glow / Progress rim | Tunnelmavalo / Alahehku / Albumin hehku / Edistymisreuna | |
 | Effect: Aurora / Motes / Tide | Tehoste: Revontulet / Hiukkaset / Vuorovesi | |
+| Quality (the light: Detailed · Efficient) | Laatu (Yksityiskohtainen · Säästävä) | Settings ▸ Appearance ▸ Light; search keywords muisti · suorituskyky |
 | Motion: Calm / Standard / Lively / Instant | Liike: Rauhallinen / Normaali / Eloisa / Heti | |
 | Density: Compact / Standard / Roomy | Tiheys: Tiivis / Normaali / Väljä | |
 | Typing effect | Kirjoitustehoste | |

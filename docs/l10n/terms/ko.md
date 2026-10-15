@@ -120,6 +120,7 @@ Register and style follow Korean macOS 27 (checked in the system's own loctables
 | Compress (images, video) | 용량 줄이기 | distinct from Zip |
 | Convert · Resize | 변환 · 크기 조절 | |
 | Ambient light · Light | 배경 조명 · 조명 | |
+| Quality (the light: Detailed · Efficient) | 품질 (세밀하게 · 효율적으로) | Settings ▸ Appearance ▸ Light; search keywords 메모리 · 성능 |
 | Floating island · Attached · Glass island | 플로팅 아일랜드 · 상단 부착 · 글래스 아일랜드 | Attached = a tab on the top edge (DESIGN.md §3); never “붙임형” |
 | handle (no-notch) | 핸들 | |
 | Density: Compact · Standard · Roomy | 밀도: 촘촘하게 · 표준 · 여유롭게 | |

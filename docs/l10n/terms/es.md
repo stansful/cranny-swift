@@ -116,6 +116,7 @@ America differ, prefer the neutral word, but keep Apple's term where people look
 | Quick Look | Vista rápida | Apple es |
 | Show / Reveal in Finder | Mostrar en el Finder | Apple es |
 | Type to capture | Captura al escribir | |
+| Quality (the light: Detailed · Efficient) | Calidad (Detallada · Eficiente) | Settings ▸ Appearance ▸ Light; search keywords memoria · rendimiento |
 
 ## Apple names used (from `apple-terms.py es`)
 

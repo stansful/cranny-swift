@@ -116,6 +116,7 @@ many (millions; same wording as other), other.
 | ambient light | lumière ambiante | Subtle / Vivid = Douce / Vive |
 | density | densité | Compacte / Standard / Aérée |
 | motion | mouvement | Calme / Standard / Vif / Instantané |
+| Quality (the light: Detailed · Efficient) | Qualité (Détaillée · Économe) | Settings ▸ Appearance ▸ Light; search keywords mémoire · performances |
 
 ## Review rulings (independent review, 2026-10-14)
 

@@ -76,6 +76,7 @@ Register and style, following macOS 27 in Hindi (checked against the system's ow
 | artwork | कलाकृति | Apple: ऐल्बम कलाकृति |
 | accent / accent color | ऐक्सेंट / ऐक्सेंट कलर | Apple's term |
 | Ambient light · Effect · Underglow | ऐम्बिएंट लाइट · प्रभाव · नीचे की चमक | |
+| Quality (the light: Detailed · Efficient) | गुणवत्ता (विस्तृत · किफ़ायती) | Settings ▸ Appearance ▸ Light; search keywords मेमोरी · प्रदर्शन |
 | Floating island · Attached · Glass island | फ़्लोटिंग आइलैंड · जुड़ा हुआ · ग्लास आइलैंड | |
 | handle (no-notch) | हैंडल | |
 | Notch fit | नॉच फ़िट | |

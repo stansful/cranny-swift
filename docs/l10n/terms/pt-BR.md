@@ -127,6 +127,7 @@ read on this Mac). Brazilian vocabulary only: arquivo, tela, câmera, app, apaga
 | swipe (gesture) | deslizar | "Para trocar de faixa, deslize dois dedos para os lados"; toggles "Ocultar deslizando para cima" |
 | Meeting soon band ("in 4m") | %@ | the bare duration "4min" (like Russian «4 мин»): "em 4min" is 49 pt in the 48-pt slot |
 | Undo / Cancel | Desfazer / Cancelar | |
+| Quality (the light: Detailed · Efficient) | Qualidade (Detalhada · Eficiente) | Settings ▸ Appearance ▸ Light; search keywords memória · desempenho |
 
 ## Apple names used (from `apple-terms.py pt-BR`)
 

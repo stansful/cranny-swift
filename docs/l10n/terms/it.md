@@ -112,6 +112,7 @@ Where Apple has a word for a concept, Cranny uses it; Cranny's own concepts get 
 | Handle | Maniglia | |
 | Ambient light · Underglow · Album glow · Progress rim | Luce ambientale · Bagliore inferiore · Alone della copertina · Bordo di avanzamento | the glow sits behind the artwork ("copertina") |
 | Ambient light options Off / Subtle / Vivid | No / Tenue / Intensa | not "Vivace": that is Motion's Lively |
+| Quality (the light: Detailed · Efficient) | Qualità (Dettagliata · Efficiente) | Settings ▸ Appearance ▸ Light; search keywords memoria · prestazioni |
 | Motion options Calm / Standard / Lively / Instant | Calmo / Standard / Vivace / Istantaneo | |
 | Notch fit | Adattamento tacca | |
 | Excluded apps | App escluse | |

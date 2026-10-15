@@ -112,6 +112,7 @@ Register and style, following macOS 27 in Slovenian (checked in the system's own
 | Off / On / Automatic / None | Izklopljeno / Vklopljeno / Samodejno / Brez | Apple |
 | Accent (colour) | Barva poudarka / poudarek | Apple “Barva poudarka”; colours feminine: Modra, Vijolična, Rožnata, Rdeča, Oranžna, Rumena, Zelena, Grafitna, Zelenomodra; Quick Apps tiles also Rjava, Siva, Indigo, Pastelno zelena (Apple's Mint) |
 | Ambient light (Off / Subtle / Vivid) | Ambientna svetloba (Izklopljeno / Nežna / Živa) | |
+| Quality (the light: Detailed · Efficient) | Kakovost (Podrobna · Varčna) | Settings ▸ Appearance ▸ Light; search keywords pomnilnik · zmogljivost |
 | Motion (Calm / Standard / Lively / Instant) | Gibanje (Umirjeno / Standardno / Živahno / Takoj) | “Takoj” also for an instant hover delay |
 | Density (Compact / Standard / Roomy) | Gostota (Strnjeno / Standardno / Prostorno) | |
 | floating island · attached | plavajoči otok · pritrjeno | no-notch styles |

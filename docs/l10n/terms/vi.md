@@ -110,6 +110,7 @@ Register and typography (as macOS writes Vietnamese):
 | Remove (a widget from a page) | Xóa khỏi trang | |
 | Fold away after | Thu lại khi không hoạt động | the value (seconds / "Không bao giờ") follows the label |
 | tutorial step counter "2 of 5" / "Step 2 of 5" | 2 trên 5 / Bước 2 trên 5 | |
+| Quality (the light: Detailed · Efficient) | Chất lượng (Chi tiết · Tiết kiệm) | Settings ▸ Appearance ▸ Light; search keywords bộ nhớ · hiệu năng |
 
 Verified with vi imported: FlashLabelFitTests, BandCopyTests,
 FeaturedRowTests, the header tab test and the longest tutorial bubble pass for vi; `lint-copy.py` and

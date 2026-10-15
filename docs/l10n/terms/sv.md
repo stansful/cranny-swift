@@ -95,6 +95,7 @@ needed, adjectives in common gender (“Cranny är öppen”).
 | artwork | omslag | |
 | visualizer · Live · Ambient · Static | visualiserare · Realtid · Stämning · Statisk | “visualiseraren Realtid”; a live stream with no duration is “Direkt” (Apple Home: DIREKT) |
 | Ambient light · Subtle · Vivid | Stämningsljus · Dämpat · Starkt | |
+| Quality (the light: Detailed · Efficient) | Kvalitet (Detaljerad · Effektiv) | Settings ▸ Appearance ▸ Light; search keywords minne · prestanda |
 | media helper | mediehjälparen | |
 | Apple Events fallback | reservlösning via Apple Events | |
 | event · all-day | händelse · heldag | Apple Calendar |

@@ -92,6 +92,7 @@ Register and style, following macOS 27 Arabic:
 | Paused · Resumed (pause confirmation) | متوقفة · نشطة | 38 / 32 pt; the sentence says «تم إيقاف الأنشطة المباشرة مؤقتًا» / «تم استئناف…» |
 | Hi (greeting) | مرحبًا | 30 pt |
 | in %@ (band) | بعد %@ | «بعد ٣٠د» is 41 pt in compactLabel |
+| Quality (the light: Detailed · Efficient) | الجودة (مفصّلة · موفّرة) | Settings ▸ Appearance ▸ Light; search keywords الذاكرة · الأداء |
 
 ## Apple names used (apple-terms.py)
 

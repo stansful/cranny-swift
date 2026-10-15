@@ -101,6 +101,7 @@ Register and style, as macOS writes Polish:
 | accent | akcent; Kolor akcentu | Apple's word |
 | Ambient light · Underglow · Album glow | Światło otoczenia · Poświata pod spodem · Poświata albumu | |
 | Effect: Aurora · Motes · Tide | Zorza · Drobinki · Fala | |
+| Quality (the light: Detailed · Efficient) | Jakość (Szczegółowa · Oszczędna) | Settings ▸ Appearance ▸ Light; search keywords pamięć · wydajność |
 | Feel It (haptic test button) | Wypróbuj | |
 | Notch fit | Dopasowanie do wycięcia | |
 | floating island · attached · handle | pływająca wyspa · przy krawędzi · uchwyt | |

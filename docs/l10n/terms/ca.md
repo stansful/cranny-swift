@@ -120,3 +120,4 @@ _Reviewed 2026-10-14 (independent review): rows marked ★ changed or were added
 | pane (in prose) ★ | secció | "Tota la configuració d’aquesta secció…" |
 | sec (timer unit) ★ | s | SI symbol; "seg." is Spanish |
 | Not saved (to-dos header) ★ | Sense desar | invariable |
+| Quality (the light: Detailed · Efficient) | Qualitat (Detallada · Eficient) | Settings ▸ Appearance ▸ Light; search keywords memòria · rendiment |
