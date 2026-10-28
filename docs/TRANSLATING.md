@@ -1,7 +1,7 @@
 # Translating Cranny
 
 Cranny ships in 35 languages: English, the source, and every UI language macOS 27 ships (the list is in
-`scripts/lib/l10n/languages.json` and in the README). **The translations were produced and cross-reviewed by AI.**
+`scripts/lib/l10n/languages.json` and in the [user guide](USER-GUIDE.md#languages)). **The translations were produced and cross-reviewed by AI.**
 Each language was translated, then checked by a second, independent review pass against Apple's own wording in that
 language, and every string passes the automated checks below (placeholders, plural forms, quotation marks, measured
 widths). What they have not had is a native speaker's review. If something in your language is wrong, stiff, too

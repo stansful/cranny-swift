@@ -73,7 +73,8 @@ Cranny/                                   ← repo root
 ├─ VERSION                                ← marketing version, e.g. 0.1.0 (scripts/make-release.sh writes it, scripts/lib/build.sh reads it; on main a
 │                                            version without a release is released as tag vX.Y.Z, §8.9)
 ├─ LICENSE                                ← MIT
-├─ README.md                              ← install (Gatekeeper "Open Anyway" / xattr), build (Xcode + Metal Toolchain, D13), permissions FAQ ("perl" helper)
+├─ README.md                              ← short illustrated overview (en/ru), screenshots in docs/images/
+├─ docs/USER-GUIDE.md                     ← install (Gatekeeper "Open Anyway" / xattr), build (Xcode + Metal Toolchain, D13), permissions FAQ ("perl" helper)
 ├─ THIRD_PARTY_NOTICES.md                 ← "no third-party code included" + acknowledgements shown in About
 ├─ Makefile                               ← thin wrapper around scripts/
 └─ .gitignore

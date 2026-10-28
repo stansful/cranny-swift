@@ -34,7 +34,7 @@ enum AppearanceRows {
                         title: String(localized: "Effect", bundle: .module, comment: "Settings ▸ Appearance: picker Aurora / Motes / Tide"),
                         keywords: [String(localized: "aurora", bundle: .module, comment: "Settings search: keyword for the light effect")])
     }
-    /// Searchable by its options too: the README and the footnote name the setting "Quality ▸ Efficient".
+    /// Searchable by its options too: the user guide (docs/USER-GUIDE.md) and the footnote name the setting "Quality ▸ Efficient".
     static var ambientDetail: SettingsRowInfo {
         SettingsRowInfo(.appearance, "ambientDetail",
                         title: String(localized: "Quality", bundle: .module, comment: "Settings ▸ Appearance: picker Detailed / Efficient (how the ambient light is drawn)"),

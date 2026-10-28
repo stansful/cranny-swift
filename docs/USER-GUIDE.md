@@ -1,13 +1,12 @@
-# Cranny
+# Cranny — user guide
 
-**A calm, keyboard-friendly home for the notch on your Mac.** Cranny turns the camera housing into a
-small panel that grows out of the hardware: what's playing, your next meeting, a running timer, files
-you're moving, the volume — glanceable when closed, a full set of widgets when you open it.
-Free and open source (MIT), no account, no analytics.
+The full reference that used to be the README: install and Gatekeeper, building from source, every permission and why
+it is asked, the "perl" media helper, known limitations and privacy. The short, illustrated overview is the
+[README](../README.md).
 
-> **Status: 0.1.0, the first complete build.** Every feature below is implemented, reviewed and covered by about
-> 1,800 unit tests, and `make dist` produces a universal app. So far it has run only on macOS 27 on an external
-> display, and nobody has used it with real input yet — see [Known limitations](#known-limitations).
+> **Status (written for 0.1.0, the first complete build).** Every feature below is implemented, reviewed and covered
+> by about 1,800 unit tests, and `make dist` produces a universal app. So far it has run only on macOS 27 on an
+> external display, and nobody has used it with real input yet — see [Known limitations](#known-limitations).
 
 ## Features
 
@@ -44,7 +43,7 @@ Arabic and Hebrew use a right-to-left layout. **About the translations:** Englis
 language was translated and cross-reviewed by AI, using Apple's own terms for macOS in that language and checked by
 automated tests (placeholders, plural forms, quotation marks, and the measured width of every text that has to fit
 the notch). They have not been reviewed by native speakers yet, so some wording will be off. Corrections are very
-welcome — an issue quoting the text is enough; [docs/TRANSLATING.md](docs/TRANSLATING.md) shows how to fix or review
+welcome — an issue quoting the text is enough; [TRANSLATING.md](TRANSLATING.md) shows how to fix or review
 a language.
 
 ## Install
@@ -94,7 +93,7 @@ make help       # everything else (strings, smoke test, dist, …)
 ```
 
 Every rebuild of an ad-hoc signed app looks like a new app to macOS privacy controls, so granted
-permissions reset; see [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) for a stable development identity.
+permissions reset; see [CONTRIBUTING.md](CONTRIBUTING.md) for a stable development identity.
 
 ## Permissions FAQ
 
@@ -144,8 +143,8 @@ for most of the automated QA). So far:
   setup and what is playing); the Instruments check on a 120-Hz MacBook is still to do.
 - Builds are **ad-hoc signed and not notarized**; the **update check is off** until releases are published.
 
-The checklists for these runs are [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §11.2 and
-[docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) ("Manual checks"); open issues are in ARCHITECTURE.md §10.20.
+The checklists for these runs are [ARCHITECTURE.md](ARCHITECTURE.md) §11.2 and
+[CONTRIBUTING.md](CONTRIBUTING.md) ("Manual checks"); open issues are in ARCHITECTURE.md §10.20.
 
 ## Privacy
 
@@ -157,13 +156,13 @@ The checklists for these runs are [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) �
 
 ## Contributing
 
-Bug reports and pull requests are welcome. Start with [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md)
-(workflow, rules, how to build one module, visual QA), then [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-(code structure and contracts) and [docs/DESIGN.md](docs/DESIGN.md) (every pixel, color and animation).
-Translators: [docs/TRANSLATING.md](docs/TRANSLATING.md).
+Bug reports and pull requests are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md)
+(workflow, rules, how to build one module, visual QA), then [ARCHITECTURE.md](ARCHITECTURE.md)
+(code structure and contracts) and [DESIGN.md](DESIGN.md) (every pixel, color and animation).
+Translators: [TRANSLATING.md](TRANSLATING.md).
 
 ## Credits
 
 Cranny is original work by the Cranny contributors, MIT-licensed, with zero third-party code. Technique
-acknowledgements are in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). SF Symbols and system
+acknowledgements are in [THIRD_PARTY_NOTICES.md](../THIRD_PARTY_NOTICES.md). SF Symbols and system
 frameworks are Apple's.
