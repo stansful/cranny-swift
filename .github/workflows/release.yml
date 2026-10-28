@@ -6,8 +6,8 @@ name: Release
 # Cranny-<version>.dmg, .zip and .sha256, and they are published as GitHub release "Cranny <version>" with the tag
 # v<version> on the built commit: a draft first, every upload checked, then published as the latest release, which
 # the in-app update check polls. A push that does not bump the version is tested and ends with a notice. Bump it with
-# scripts/make-release.sh, which commits "Release: version X.Y.Z". Nothing is built or published from a commit whose
-# checks fail: re-run the failed jobs, or push a fix (the version is still unreleased).
+# scripts/make-release.sh, which commits "feat: release - version X.Y.Z". Nothing is built or published from a commit
+# whose checks fail: re-run the failed jobs, or push a fix (the version is still unreleased).
 #
 # Jobs:
 #   gate     reads the version and its release state (.github/scripts/release-state.sh).
@@ -99,7 +99,7 @@ jobs:
               released)
                 build=false
                 publish=false
-                echo "::notice title=Nothing to release::Version ${version} is already released. Bump it with scripts/make-release.sh (commit \"Release: version X.Y.Z\") and push to release."
+                echo "::notice title=Nothing to release::Version ${version} is already released. Bump it with scripts/make-release.sh (commit \"feat: release - version X.Y.Z\") and push to release."
                 ;;
               retry)
                 build=true

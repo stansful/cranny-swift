@@ -190,9 +190,9 @@ else
 fi
 
 # --- the release commit
-if has 'message="Release: version $new"' "$MAKE" && has "grep -v '^- Release: version [0-9]'" "$NOTES" &&
-  has 'commit \"Release: version X.Y.Z\"' "$RELEASE"; then
-  ok "release-notes.sh leaves out the commit make-release.sh makes (\"Release: version X.Y.Z\")"
+if has 'message="feat: release - version $new"' "$MAKE" && has "-e '^- feat: release - version [0-9]'" "$NOTES" &&
+  has 'commit \"feat: release - version X.Y.Z\"' "$RELEASE"; then
+  ok "release-notes.sh leaves out the commit make-release.sh makes (\"feat: release - version X.Y.Z\")"
 else
   nok "release-notes.sh leaves out the commit make-release.sh makes" "the release commit's subject differs between them"
 fi

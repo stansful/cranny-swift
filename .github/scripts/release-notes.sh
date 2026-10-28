@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Prints the notes of release $VERSION: the commit subjects since the previous release tag (the highest vX.Y.Z or
 # X.Y.Z tag in the history of $GITHUB_SHA other than this release's own), newest first, one "- " line each, without
-# merges and without the release commits of scripts/make-release.sh.
+# merges and without the release commits of scripts/make-release.sh ("feat: release - version X.Y.Z", and the older
+# "Release: version X.Y.Z").
 #
 # Env: GITHUB_SHA (default HEAD), VERSION (default: the VERSION file).
 # Reads the tags and the history of this checkout (release.yml fetches them all).
@@ -22,6 +23,6 @@ version_valid "$VERSION" || {
 prev="$(git -C "$ROOT_DIR" tag --merged "$sha" | highest_tag "$(release_tag "$VERSION")")"
 prev=${prev#* }
 changes="$(git -C "$ROOT_DIR" log --no-merges --max-count=200 --pretty=format:'- %s' "${prev:+$prev..}$sha" |
-  { grep -v '^- Release: version [0-9]' || true; })"
+  { grep -v -e '^- feat: release - version [0-9]' -e '^- Release: version [0-9]' || true; })"
 
 printf '%s\n' "${changes:-- Release $VERSION}"

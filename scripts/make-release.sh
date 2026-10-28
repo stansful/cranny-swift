@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # Prepares a release: shows the current version (VERSION) and the last release tag, asks for the new version (Enter
-# takes the next minor version), checks that it is higher than the current version and every release tag (local
-# ones and origin's), writes it into VERSION and commits only that file as "Release: version X.Y.Z". It never
-# pushes: the release starts when that commit reaches main on GitHub (.github/workflows/release.yml: the CI checks,
-# scripts/build-release.sh and the GitHub release vX.Y.Z). No tags here: GitHub creates the tag vX.Y.Z when the
-# workflow publishes the release.
+# takes the next patch version), checks that it is higher than the current version and every release tag (local
+# ones and origin's), writes it into VERSION and commits only that file as "feat: release - version X.Y.Z". It
+# never pushes: the release starts when that commit reaches main on GitHub (.github/workflows/release.yml: the CI
+# checks, scripts/build-release.sh and the GitHub release vX.Y.Z). No tags here: GitHub creates the tag vX.Y.Z when
+# the workflow publishes the release.
 #
 #   scripts/make-release.sh [X.Y.Z|patch|minor|major] [--yes] [--no-commit]
 #
@@ -20,15 +20,15 @@ source "$HERE/lib/version.sh"
 
 usage() {
   cat <<'EOF'
-Prepares a Cranny release: writes the new version into VERSION and commits it as "Release: version X.Y.Z".
+Prepares a Cranny release: writes the new version into VERSION and commits it as "feat: release - version X.Y.Z".
 Release X.Y.Z (tag vX.Y.Z) comes out when that commit reaches main on GitHub (.github/workflows/release.yml).
 
   scripts/make-release.sh [X.Y.Z|patch|minor|major] [--yes] [--no-commit]
 
-  X.Y.Z         the new version; without it the script shows the current one and asks (Enter: the next minor version)
+  X.Y.Z         the new version; without it the script shows the current one and asks (Enter: the next patch version)
   patch, minor, major
                 the next patch, minor or major version
-  -y, --yes     no questions: the next minor version (unless one is given), commit without asking
+  -y, --yes     no questions: the next patch version (unless one is given), commit without asking
   --no-commit   only write the version into VERSION, no commit
   -h, --help    this help
 
@@ -161,15 +161,14 @@ fi
 base=$current
 [ -z "$highest" ] || ! version_gt "$highest_version" "$base" || base=$highest_version
 # The bumps of the base that are still versions (above the current version and every tag they always are); Enter and
-# --yes take the minor one, else the major one, else the patch one, as the numbers run out of digits
+# --yes take the patch one, else the minor one, else the major one, as the numbers run out of digits
 choices='' suggested=''
 for kind in patch minor major; do
   v="$(version_bump "$base" "$kind")"
   version_valid "$v" || continue
   choices="$choices${choices:+, }$v ($kind)"
-  [ "$kind" = patch ] || [ -n "$suggested" ] || suggested=$v
+  [ -n "$suggested" ] || suggested=$v
 done
-[ -n "$suggested" ] || suggested=${choices%% *}
 [ -n "$suggested" ] ||
   die "there is no version after $base with at most 9 digits per number: nothing left to release."
 
@@ -239,7 +238,7 @@ else
 fi
 
 # --- VERSION and the commit
-message="Release: version $new"
+message="feat: release - version $new"
 numstat="$(printf '1\t1\t%s' "$APP_VERSION_FILE")"
 restore() { git checkout -q -- "$APP_VERSION_FILE"; }
 trap 'restore; printf "\nInterrupted: %s restored.\n" "$APP_VERSION_FILE" >&2; exit 130' INT TERM

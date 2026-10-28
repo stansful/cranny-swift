@@ -76,8 +76,8 @@ rn() {
   RC=$?
 }
 
-# 0.0.9 (plain, annotated) - fix: second (v0.1.0) - [side: side work (v0.1.5)] - Release: version 0.2.0 -
-# topic merge (feat: topic, Release: version numbers in the docs) - fix: third
+# 0.0.9 (plain, annotated) - fix: second (v0.1.0) - [side: side work (v0.1.5)] - feat: release - version 0.2.0 -
+# topic merge (feat: topic, feat: release - version numbers in the docs) - fix: third
 new_repo "$WORK/main"
 git -C "$REPO" tag -a 0.0.9 -m annotated
 c -m 'fix: second'
@@ -86,10 +86,10 @@ git -C "$REPO" checkout -q -b side
 c -m 'side work'
 git -C "$REPO" tag v0.1.5
 git -C "$REPO" checkout -q main
-c -m 'Release: version 0.2.0'
+c -m 'feat: release - version 0.2.0'
 git -C "$REPO" checkout -q -b topic
 c -m 'feat: topic'
-c -m 'Release: version numbers in the docs'
+c -m 'feat: release - version numbers in the docs'
 git -C "$REPO" checkout -q main
 tick=$((tick + 1))
 GIT_AUTHOR_DATE="@$tick +0000" GIT_COMMITTER_DATE="@$tick +0000" git -C "$REPO" merge -q --no-ff -m 'Merge branch topic' topic
@@ -97,17 +97,17 @@ c -m 'fix: third' -m 'A body line that is not a subject.'
 
 rn
 check "the commits since the previous release tag in the history (v0.1.0, not the side branch's v0.1.5), newest first" \
-  '[ $RC = 0 ] && notes "- fix: third" "- Release: version numbers in the docs" "- feat: topic"'
+  '[ $RC = 0 ] && notes "- fix: third" "- feat: release - version numbers in the docs" "- feat: topic"'
 check "...only '- <subject>' lines: no header, no merges, no release commits, no bodies" \
   '[ -z "$(printf "%s\n" "$OUT" | grep -v "^- ")" ] && ! printf "%s\n" "$OUT" | grep -q -e Merge -e "version 0.2.0" -e "body line"'
 git -C "$REPO" tag v0.2.0
 rn
 check "this release's own tag v0.2.0 on GITHUB_SHA (a retry) is not the previous one" \
-  '[ $RC = 0 ] && notes "- fix: third" "- Release: version numbers in the docs" "- feat: topic"'
+  '[ $RC = 0 ] && notes "- fix: third" "- feat: release - version numbers in the docs" "- feat: topic"'
 git -C "$REPO" tag -d v0.2.0 >/dev/null
 git -C "$REPO" tag -a v0.2.0 -m annotated
 rn
-check "...an annotated one neither" '[ $RC = 0 ] && notes "- fix: third" "- Release: version numbers in the docs" "- feat: topic"'
+check "...an annotated one neither" '[ $RC = 0 ] && notes "- fix: third" "- feat: release - version numbers in the docs" "- feat: topic"'
 rn VERSION=0.2.1
 check "...but it is the previous release of the next version (VERSION=0.2.1)" '[ $RC = 0 ] && notes "- Release 0.2.1"'
 git -C "$REPO" tag -d v0.2.0 >/dev/null
@@ -119,14 +119,14 @@ check "GITHUB_SHA on the side branch: since v0.1.0 there" '[ $RC = 0 ] && notes 
 printf '0.3.0\n' >"$REPO/VERSION"
 rn
 check "the version comes from the VERSION file: 0.3.0, still since v0.1.0" \
-  '[ $RC = 0 ] && notes "- fix: third" "- Release: version numbers in the docs" "- feat: topic"'
+  '[ $RC = 0 ] && notes "- fix: third" "- feat: release - version numbers in the docs" "- feat: topic"'
 git -C "$REPO" tag v0.2.0
 rn
 check "...and v0.2.0 is then the previous release: '- Release 0.3.0'" '[ $RC = 0 ] && notes "- Release 0.3.0"'
 printf '\n  0.2.0 \t\r\n\n' >"$REPO/VERSION"
 rn
 check "the VERSION file's line is read without the blanks around it (0.2.0, so v0.2.0 is its own tag)" \
-  '[ $RC = 0 ] && notes "- fix: third" "- Release: version numbers in the docs" "- feat: topic"'
+  '[ $RC = 0 ] && notes "- fix: third" "- feat: release - version numbers in the docs" "- feat: topic"'
 git -C "$REPO" tag -d v0.2.0 >/dev/null
 
 new_repo "$WORK/first"
@@ -142,15 +142,17 @@ check "...tags that are not releases (not-a-release, v0.1, 0.1.0-rc1, V0.1.0) do
 git -C "$REPO" tag 0.1.0
 rn
 check "a plain tag X.Y.Z on GITHUB_SHA itself, nothing since: '- Release X.Y.Z'" '[ $RC = 0 ] && notes "- Release 0.2.0"'
-c -m 'Release: version 0.2.0'
+c -m 'feat: release - version 0.2.0'
 rn
 check "only a release commit since the last tag: '- Release X.Y.Z'" '[ $RC = 0 ] && notes "- Release 0.2.0"'
 rn VERSION=0.2.1
 check "...with the version of VERSION" '[ $RC = 0 ] && notes "- Release 0.2.1"'
-c -m 'Release: version 0.1.1'
-c -m 'Release: version'
+c -m 'feat: release - version 0.1.1'
+c -m 'Release: version 0.1.2'
+c -m 'feat: release - version'
 rn
-check "every 'Release: version <digits>' commit is left out, not one that only starts like it" '[ $RC = 0 ] && notes "- Release: version"'
+check "every 'feat: release - version <digits>' commit (and the older 'Release: version <digits>') is left out, not one that only starts like it" \
+  '[ $RC = 0 ] && notes "- feat: release - version"'
 for v in v0.2.0 0.2 0.2.0.0 02.0.0 0.2.0-rc1 1000000000.0.0 "0.2.0 "; do
   rn VERSION="$v"
   check "a malformed VERSION '$v' is refused" '[ $RC = 1 ] && [ "$OUT" = "release-notes: '"'"'$v'"'"' is not X.Y.Z" ]'
@@ -159,7 +161,7 @@ printf '0.2.0\n0.2.0\n' >"$REPO/VERSION"
 rn
 check "a VERSION file with two lines is refused" '[ $RC = 1 ] && [ "$OUT" = "release-notes: '"''"' is not X.Y.Z" ]'
 rn VERSION=0.2.0
-check "...unless VERSION is given" '[ $RC = 0 ] && notes "- Release: version"'
+check "...unless VERSION is given" '[ $RC = 0 ] && notes "- feat: release - version"'
 printf 'v0.2.0\n' >"$REPO/VERSION"
 rn
 check "a VERSION file with v0.2.0 is refused" '[ $RC = 1 ] && [ "$OUT" = "release-notes: '"'"'v0.2.0'"'"' is not X.Y.Z" ]'

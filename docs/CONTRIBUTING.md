@@ -265,13 +265,13 @@ scripts/build-release.sh                     # optional: the same release files 
 ```
 
 The new version is X.Y.Z without leading zeros or "v", higher than `VERSION` and every release tag (the script reads
-origin's tags too); Enter takes the next minor version. The commit, "Release: version X.Y.Z", holds `VERSION` and
-nothing else; the script never pushes or tags. On every push to main, `release.yml` runs the whole CI (`ci.yml`) and,
-when `VERSION` has no release yet, builds it with `scripts/build-release.sh` on the `xcode-27` image and publishes
-"Cranny X.Y.Z" with `Cranny-X.Y.Z.dmg`, `.zip` and `.sha256`: a draft first, every upload checked against the build,
-then the latest release, which GitHub tags vX.Y.Z on the built commit. A push without a new version is only tested.
-Nothing is published from a commit whose checks fail: push a fix (the version is still unreleased) or re-run the
-failed jobs. Run the workflow by hand with `dry_run` to build any branch without publishing.
+origin's tags too); Enter takes the next patch version. The commit, "feat: release - version X.Y.Z", holds `VERSION`
+and nothing else; the script never pushes or tags. On every push to main, `release.yml` runs the whole CI (`ci.yml`)
+and, when `VERSION` has no release yet, builds it with `scripts/build-release.sh` on the `xcode-27` image and
+publishes "Cranny X.Y.Z" with `Cranny-X.Y.Z.dmg`, `.zip` and `.sha256`: a draft first, every upload checked against
+the build, then the latest release, which GitHub tags vX.Y.Z on the built commit. A push without a new version is
+only tested. Nothing is published from a commit whose checks fail: push a fix (the version is still unreleased) or
+re-run the failed jobs. Run the workflow by hand with `dry_run` to build any branch without publishing.
 
 - A release needs every shipped language translated, with no key pending (docs/TRANSLATING.md ▸ New strings);
   `scripts/build-release.sh --allow-pending`, which CI runs, only warns.

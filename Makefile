@@ -7,7 +7,7 @@ SHELL := /bin/bash
 help:            ## Show this help
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  make %-14s %s\n", $$1, $$2}'
 
-release:         ## New version in VERSION + commit "Release: version X.Y.Z" (scripts/make-release.sh; ARGS=patch|X.Y.Z)
+release:         ## New version in VERSION + commit "feat: release - version X.Y.Z" (scripts/make-release.sh; ARGS=patch|X.Y.Z)
 	@scripts/make-release.sh $(ARGS)
 
 build-release:   ## Release files of VERSION as GitHub builds them -> dist/ (scripts/build-release.sh; ARGS=--test)
