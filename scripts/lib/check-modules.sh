@@ -5,13 +5,14 @@
 # fails the target too (zero-warning policy): warnings are built as errors, so a warned file
 # never produces an object and fails again on every run, warm scratch dir or clean.
 #
-#   scripts/check-modules.sh                 # all non-test targets, sequential
-#   scripts/check-modules.sh CrannyMedia     # just these targets
-#   JOBS=4 scripts/check-modules.sh          # build targets in parallel
-#   TEST=1 scripts/check-modules.sh          # also run `swift test`
-#   ALLOW_WARNINGS=1 scripts/check-modules.sh   # report warnings without failing (only on a target's
-#                                               # first/clean build: plain warnings are not sticky)
-source "$(dirname "$0")/lib.sh"
+#   scripts/lib/check-modules.sh                 # all non-test targets, sequential
+#   scripts/lib/check-modules.sh CrannyMedia     # just these targets
+#   JOBS=4 scripts/lib/check-modules.sh          # build targets in parallel
+#   TEST=1 scripts/lib/check-modules.sh          # also run `swift test`
+#   ALLOW_WARNINGS=1 scripts/lib/check-modules.sh   # report warnings without failing (only on a target's
+#                                                   # first/clean build: plain warnings are not sticky)
+# shellcheck source=scripts/lib/common.sh
+source "$(dirname "$0")/common.sh"
 ensure_xcode   # SwiftPM from Xcode's toolchain (CLT's would work too, but keep one toolchain)
 ensure_metal_toolchain   # CrannyEffects (and everything above it) compiles Metal shaders
 
@@ -19,7 +20,7 @@ ensure_metal_toolchain   # CrannyEffects (and everything above it) compiles Meta
 # target whose resources include .metal files; the bundle is complete and correct (tests check it).
 BENIGN_WARNINGS='missing creator for mutated node: .*CrannyKit_CrannyEffects\.bundle/Contents/MacOS'
 
-cd "$PACKAGE_DIR"
+cd "$PACKAGE_DIR" || exit
 if (($#)); then
   targets=("$@")
 else

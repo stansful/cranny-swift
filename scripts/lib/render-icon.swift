@@ -1,7 +1,7 @@
-// scripts/render-icon.swift — renders the two image layers of App/AppIcon.icon, the Icon Composer
+// scripts/lib/render-icon.swift — renders the two image layers of App/AppIcon.icon, the Icon Composer
 // document of the app icon "Light from the nook" (DESIGN.md §15). Original artwork, MIT.
 //
-//   make icon                                          # = xcrun swift scripts/render-icon.swift App/AppIcon.icon/Assets
+//   make icon                                          # = xcrun swift scripts/lib/render-icon.swift App/AppIcon.icon/Assets
 //
 // Writes notch.png (the notch silhouette, black, hanging from the top edge) and light.png (the fan of light
 // beneath it, blended plus-lighter by icon.json). Both are 1024 × 1024 with transparency. The fill, the glass,

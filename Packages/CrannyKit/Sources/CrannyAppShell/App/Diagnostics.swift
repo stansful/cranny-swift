@@ -1,5 +1,5 @@
 // CrannyAppShell/App/Diagnostics.swift — `Cranny --diagnostics <file.json>`: CI/launch smoke test, no UI.
-// Keys read by scripts/smoke.sh: resourceBundles, bridge, mainMenu, shaders. Also effectsRenderer and media (QA).
+// Keys read by scripts/lib/smoke.sh: resourceBundles, bridge, mainMenu, shaders. Also effectsRenderer and media (QA).
 import AppKit
 import CrannyCore
 import CrannyEffects

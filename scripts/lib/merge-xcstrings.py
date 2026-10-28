@@ -4,10 +4,12 @@
 Parallel work packages add keys to the same catalog; a line-based merge turns
 that into JSON conflicts. This driver merges per key and per language instead.
 
-Install once per clone (scripts/lib.sh does not do it for you):
+Install once per clone (scripts/lib/common.sh does not do it for you):
 
     git config merge.xcstrings.name "String Catalog union merge"
-    git config merge.xcstrings.driver "python3 scripts/merge-xcstrings.py %O %A %B"
+    git config merge.xcstrings.driver 'f=scripts/lib/merge-xcstrings.py; [ -f "$f" ] || f=scripts/merge-xcstrings.py; python3 "$f" %O %A %B'
+
+(the fallback serves branches from before this file moved from scripts/ to scripts/lib/).
 
 `.gitattributes` maps `*.xcstrings` to this driver. Rules, per key:
 - only one side touched it          -> take that side

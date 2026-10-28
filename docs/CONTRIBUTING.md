@@ -42,18 +42,19 @@ are normative.
 
 ```sh
 make check                                   # every CrannyKit target builds alone, zero warnings (JOBS=4 to parallelize)
-scripts/check-modules.sh CrannyTimer         # just your module (logs in build/logs/)
+scripts/lib/check-modules.sh CrannyTimer     # just your module (logs in build/logs/)
 make test                                    # swift test (all test targets)
 cd Packages/CrannyKit && swift test --scratch-path .build-test --filter CrannyTimerTests
 make strings                                 # add new English keys to the String Catalogs
 make l10n-pending                            # mark them pending in every language you did not translate (docs/TRANSLATING.md)
 make strings-check                           # catalogs in sync + copy rules + every shipped language valid (CI)
-make copy-check                              # just the copy rules (scripts/lint-copy.py, no build)
-make l10n-check                              # shipped languages complete and valid (scripts/l10n/validate.py, no build)
+make copy-check                              # just the copy rules (scripts/lib/lint-copy.py, no build)
+make l10n-check                              # shipped languages complete and valid (scripts/lib/l10n/validate.py, no build)
 make probe-check                             # SDK name-collision probe is current
 make build && make smoke                     # universal Release app + launch smoke test (--diagnostics)
 make run                                     # Debug build + launch through LaunchServices
 make dist                                    # zip + dmg + sha256 in dist/
+make scripts-test                            # tests of the release scripts and workflows (no build)
 ```
 
 **Building in the Xcode app rewrites String Catalogs.** After an IDE build, Xcode's catalog editor sorts keys
@@ -100,9 +101,9 @@ there for the Settings miniature or an app left in Downloads (ARCHITECTURE.md §
 
 ```sh
 QA=(--qa-defaults-suite app.cranny.Cranny.qa)            # an array: bash and zsh pass it as two arguments
-scripts/run.sh -- "${QA[@]}" --qa-state open --qa-page nook --qa-exit-after 8
-scripts/run.sh -- "${QA[@]}" --qa-state open --qa-page nook --qa-calendar sample --qa-snapshot /tmp/open.png --qa-exit-after 6
-scripts/run.sh -- "${QA[@]}" --qa-pause oneHour --qa-state closed --qa-snapshot /tmp/pause.png --qa-exit-after 5
+scripts/lib/run.sh -- "${QA[@]}" --qa-state open --qa-page nook --qa-exit-after 8
+scripts/lib/run.sh -- "${QA[@]}" --qa-state open --qa-page nook --qa-calendar sample --qa-snapshot /tmp/open.png --qa-exit-after 6
+scripts/lib/run.sh -- "${QA[@]}" --qa-pause oneHour --qa-state closed --qa-snapshot /tmp/pause.png --qa-exit-after 5
 defaults delete app.cranny.Cranny.qa                      # the next session starts from the defaults
 ```
 
@@ -111,7 +112,7 @@ mirrors the app only with `-AppleTextDirection YES` as well. Pass both to QA Ara
 to see Arabic-Indic digits. Rules and tests: ARCHITECTURE.md §8.7 rule 10.
 
 ```sh
-scripts/run.sh -- "${QA[@]}" -AppleLanguages "(ar)" -AppleTextDirection YES --qa-state open --qa-page nook \
+scripts/lib/run.sh -- "${QA[@]}" -AppleLanguages "(ar)" -AppleTextDirection YES --qa-state open --qa-page nook \
   --qa-media playing --qa-calendar sample --qa-snapshot /tmp/open-ar.png --qa-exit-after 6
 ```
 
@@ -250,6 +251,36 @@ Package test processes resolve English for `String(localized:)`; the suites that
 
 `CRANNY_MEDIA_BRIDGE=<dylib>` also tells a Debug build of the app which media bridge to load (Release ignores it).
 
+## Releases
+
+A release is a commit on main that changes `VERSION`; GitHub Actions does the rest (`.github/workflows/release.yml`).
+
+```sh
+scripts/make-release.sh                      # shows VERSION and the last release tag, asks for the new version, commits it
+scripts/make-release.sh patch --yes          # no questions (also minor, major or X.Y.Z; --no-commit only writes VERSION)
+git push origin main                         # the CI checks, the release build and GitHub release vX.Y.Z
+scripts/build-release.sh                     # optional: the same release files locally, in dist/ (--test: CI checks first)
+```
+
+The new version is X.Y.Z without leading zeros or "v", higher than `VERSION` and every release tag (the script reads
+origin's tags too); Enter takes the next minor version. The commit, "Release: version X.Y.Z", holds `VERSION` and
+nothing else; the script never pushes or tags. On every push to main, `release.yml` runs the whole CI (`ci.yml`) and,
+when `VERSION` has no release yet, builds it with `scripts/build-release.sh` on the `xcode-27` image and publishes
+"Cranny X.Y.Z" with `Cranny-X.Y.Z.dmg`, `.zip` and `.sha256`: a draft first, every upload checked against the build,
+then the latest release, which GitHub tags vX.Y.Z on the built commit. A push without a new version is only tested.
+Nothing is published from a commit whose checks fail: push a fix (the version is still unreleased) or re-run the
+failed jobs. Run the workflow by hand with `dry_run` to build any branch without publishing.
+
+- A release needs every shipped language translated, with no key pending (docs/TRANSLATING.md ▸ New strings);
+  `scripts/build-release.sh --allow-pending`, which CI runs, only warns.
+- It is ad-hoc signed and not notarized unless the repository has all five signing secrets:
+  `DEVELOPER_ID_P12_BASE64` and `DEVELOPER_ID_P12_PASSWORD` (the "Developer ID Application" certificate with its
+  private key, exported as .p12) and `NOTARY_KEY_P8_BASE64`, `NOTARY_KEY_ID` and `NOTARY_ISSUER_ID` (an App Store
+  Connect API key for notarytool). Some but not all of them fail the release. Locally, `SIGN_IDENTITY` and `TEAM_ID`
+  (plus `NOTARY_PROFILE` from `xcrun notarytool store-credentials`) do the same for `scripts/build-release.sh`.
+- `make scripts-test` runs the tests of these scripts and of the workflows (`scripts/tests/`); CI runs them with
+  actionlint and shellcheck.
+
 ## Manual checks (each release)
 
 Some things only a person at a Mac can check: real input, a hardware notch, permission prompts. The hardware
@@ -263,7 +294,7 @@ unverified is listed in ARCHITECTURE.md §10.20. Also check:
   `tccutil reset AudioCapture app.cranny.Cranny`, play music, then choose Live in Settings ▸ Media. macOS should
   ask once for System Audio Recording and never for the microphone, and after you allow it the bars should follow
   the music. If they stay flat, put `com.apple.security.device.audio-input` and `NSMicrophoneUsageDescription`
-  back and add the entitlement to the allow-list in `scripts/smoke.sh`.
+  back and add the entitlement to the allow-list in `scripts/lib/smoke.sh`.
 
 ## Engineering rules (summary of ARCHITECTURE.md §9)
 
@@ -300,7 +331,7 @@ pass the module bundle (`Text("…", bundle: .module, comment: "…")`, `String(
 never bare `LocalizedStringKey` initializers inside the package. Keys are the English text, written to
 the copy rules below; every key has a comment `"<Surface>: <purpose>"` (one comment per key; a key used in
 two places shares one). **New or changed English text: translate it or mark it pending, for every shipped
-language** (all 35, `scripts/l10n/languages.json`). Translate the languages you know through `scripts/l10n`
+language** (all 35, `scripts/lib/l10n/languages.json`). Translate the languages you know through `scripts/lib/l10n`
 (`export.py <lang> --missing-only` → `validate.py` → `import.py`; Russian follows the glossary in ARCHITECTURE.md
 §8.7), then run `make l10n-pending`, which gives every language still without the key the English text in state
 `needs_review`. `make strings-check` (and CI) accepts pending keys and lists them; it fails on a key a shipped
@@ -311,18 +342,23 @@ Formatting through `FormatStyle` only. A name, file name or key combination put 
 media and rings left to right, physical input converted). Every count gets plural variations in the catalog (English one/other,
 Russian one/few/many/other), also when English writes both forms alike; `make l10n-check` fails a count without
 them. Never choose words with `count == 1` for a number that is shown.
-**Translations** (every UI language macOS ships) come in through `scripts/l10n`: `export.py <lang>` writes one
+**Translations** (every UI language macOS ships) come in through `scripts/lib/l10n`: `export.py <lang>` writes one
 JSON file for translators, `validate.py` checks it, `import.py` writes it back, `pending.py` marks what is not
 translated yet, and `apple-terms.py <lang>` lists Apple's own names for Apple's apps and settings in that language.
 [docs/TRANSLATING.md](TRANSLATING.md) is the guide for translators (rules, terminology sheets in
-`docs/l10n/terms/`, adding a language); `scripts/l10n/README.md` documents the file format and every check.
+`docs/l10n/terms/`, adding a language); `scripts/lib/l10n/README.md` documents the file format and every check.
 Catalogs are JSON, so parallel branches conflict line by line; `.gitattributes` routes them to a
 per-key merge driver. Enable it once per clone:
 
 ```zsh
 git config merge.xcstrings.name "String Catalog union merge"
-git config merge.xcstrings.driver "python3 scripts/merge-xcstrings.py %O %A %B"
+git config merge.xcstrings.driver 'f=scripts/lib/merge-xcstrings.py; [ -f "$f" ] || f=scripts/merge-xcstrings.py; python3 "$f" %O %A %B'
 ```
+
+The driver runs from the working tree being merged into, so it falls back to the old `scripts/merge-xcstrings.py` on a
+branch from before the scripts moved to `scripts/lib/`. A clone set up before the move runs the second line again
+(`git config --get merge.xcstrings.driver` shows what it uses): the old command finds no driver after the move, and
+git then reports a conflict that keeps only your side of the catalog.
 
 **Copy.** These rules apply to every key and Info.plist string (the docs keep their own spelling):
 
@@ -354,7 +390,7 @@ git config merge.xcstrings.driver "python3 scripts/merge-xcstrings.py %O %A %B"
   pane names change between macOS versions (macOS 15 renamed General ▸ Login Items to "Login Items &
   Extensions"). Cranny's own panes may use paths: "Settings ▸ Keyboard".
 
-`make strings-check` also runs `scripts/lint-copy.py`, which checks spelling, punctuation, System Settings
+`make strings-check` also runs `scripts/lib/lint-copy.py`, which checks spelling, punctuation, System Settings
 paths and the competitor denylist (ARCHITECTURE.md D20) in every catalog; case needs a reviewer.
 
 **Accessibility.** Every control has a localized label, every widget is a VoiceOver container, every
@@ -388,7 +424,7 @@ existing user who kept the old one. Add a step to `CrannyCore/Settings/SettingsU
 value for installs from an earlier revision and bump `currentRevision` (ARCHITECTURE.md §3.11; revision 1 kept Type
 to capture on Notes for existing users when the fresh-install default became Off).
 
-**Definition of done.** `scripts/check-modules.sh <YourTarget>` with zero warnings; your tests pass;
+**Definition of done.** `scripts/lib/check-modules.sh <YourTarget>` with zero warnings; your tests pass;
 `make strings-check` (every new key translated or pending in every shipped language, copy rules); `make build && make smoke`; previews, accessibility
 labels and Reduce Motion behaviour for every view; energy rules respected; settings keys documented in
 your `<Module>Settings` enum; permissions declared; the package's acceptance criteria demonstrated in the

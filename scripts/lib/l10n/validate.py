@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Check a translation before it goes into the String Catalogs (exit status 1 on errors; warnings are printed).
 
-    python3 -I scripts/l10n/validate.py de de.json            # a translator file (from export.py)
-    python3 -I scripts/l10n/validate.py de --catalogs         # what the catalogs hold for German now
-    python3 -I scripts/l10n/validate.py --shipped             # every language marked "shipped" (make strings-check)
-    python3 -I scripts/l10n/validate.py --shipped --release   # … and no key pending translation (release.yml)
-    python3 -I scripts/l10n/validate.py de de.json --glossary de-terms.json   # also compare with Apple's terms
+    python3 -I scripts/lib/l10n/validate.py de de.json            # a translator file (from export.py)
+    python3 -I scripts/lib/l10n/validate.py de --catalogs         # what the catalogs hold for German now
+    python3 -I scripts/lib/l10n/validate.py --shipped             # every language marked "shipped" (make strings-check)
+    python3 -I scripts/lib/l10n/validate.py --shipped --release   # … and no key pending translation (build-release.sh)
+    python3 -I scripts/lib/l10n/validate.py de de.json --glossary de-terms.json   # also compare with Apple's terms
 
 Errors:
 - completeness: every key of the export has a translation (a file made with --missing-only must still hold every key
@@ -407,7 +407,7 @@ def check_language_entry(report, code):
 
 def main(argv):
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("language", nargs="?", help="language code from scripts/l10n/languages.json")
+    parser.add_argument("language", nargs="?", help="language code from scripts/lib/l10n/languages.json")
     parser.add_argument("file", nargs="?", help="translator JSON (from export.py, \"translation\" filled in)")
     parser.add_argument("--catalogs", action="store_true", help="check what the String Catalogs hold for the language")
     parser.add_argument("--shipped", action="store_true", help="check every language marked shipped in languages.json")

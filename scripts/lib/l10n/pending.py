@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Mark new English strings "pending translation" in every shipped language (make l10n-pending).
 
-    python3 -I scripts/l10n/pending.py               # every catalog: each key a shipped language lacks
-    python3 -I scripts/l10n/pending.py --dry-run     # report, write nothing
+    python3 -I scripts/lib/l10n/pending.py               # every catalog: each key a shipped language lacks
+    python3 -I scripts/lib/l10n/pending.py --dry-run     # report, write nothing
 
 The policy (docs/TRANSLATING.md ▸ New strings): a pull request that adds or changes English text either brings its
 translations or marks them pending. This script does the second: for every translatable key that has no

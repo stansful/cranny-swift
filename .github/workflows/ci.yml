@@ -1,16 +1,63 @@
+# Tests every pull request, and any branch by hand (workflow_dispatch). A push to main does not start this workflow:
+# release.yml calls it (workflow_call) before it builds and publishes anything, so the checks run once per push and
+# no skipped CI run is left behind. Pushes to other branches start nothing: with a pull request open they would run
+# the macOS jobs a second time for the same commit.
+#   scripts         actionlint (the workflows), shellcheck (scripts/, .github/scripts/) and the tests of the release
+#                   scripts (scripts/tests/run.sh)
+#   build           the GitHub xcode-27 image: copy rules, languages, every module alone + unit tests, the name probe,
+#                   the String Catalogs, then scripts/build-release.sh --allow-pending: the release build, its smoke
+#                   test and the packages, as release.yml builds the release (ad-hoc signed here)
+#   build-macos-26  the fallback and minimum-toolchain job: the same steps on Xcode 26 except the String Catalogs
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      release:
+        description: Called by release.yml, which runs these checks on every push to main
+        type: boolean
+        default: false
 
+permissions:
+  contents: read
+
+# A newer push to a branch or pull request cancels its older checks. The checks release.yml calls get a group of
+# their own run (release.yml queues its runs itself), so nothing, not even a dry run of the same branch, cancels
+# them.
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ inputs.release && format('release-{0}', github.run_id) || github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ !inputs.release }}
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 jobs:
+  scripts:
+    name: Scripts and workflows
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      ACTIONLINT_IMAGE: rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # the workflows, with shellcheck over their run: scripts
+      - name: actionlint
+        run: docker run --rm -v "$PWD:/repo" -w /repo "$ACTIONLINT_IMAGE" -color
+      # actionlint does not look at script files; the same image's shellcheck does
+      - name: shellcheck
+        if: ${{ !cancelled() }}
+        run: |
+          docker run --rm -v "$PWD:/repo" -w /repo --entrypoint shellcheck "$ACTIONLINT_IMAGE" -x -f gcc \
+            scripts/*.sh scripts/lib/*.sh scripts/tests/*.sh .github/scripts/*.sh
+      - name: Release scripts tests (make-release.sh, build-release.sh, release-state.sh, release-notes.sh)
+        if: ${{ !cancelled() }}
+        run: scripts/tests/run.sh
+
   build:
     # Xcode-27 image (arm64, macOS 27, Xcode 27.0 default; public preview since 2026-07-16).
     # The `build-macos-26` job below is the fallback while it is in preview and covers the
@@ -18,7 +65,9 @@ jobs:
     runs-on: xcode-27
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Toolchain
         run: |
@@ -28,37 +77,33 @@ jobs:
 
       - name: Metal Toolchain (CrannyEffects compiles Metal shaders)
         run: |
-          xcodebuild -showComponent MetalToolchain | grep -q 'Status: installed' || xcodebuild -downloadComponent MetalToolchain
+          if ! grep -q 'Status: installed' <<<"$(xcodebuild -showComponent MetalToolchain)"; then
+            xcodebuild -downloadComponent MetalToolchain
+          fi
           xcodebuild -showComponent MetalToolchain
           xcrun metal -v
 
       - name: Copy rules per language (American spelling, typographic punctuation, competitor denylist)
-        run: /usr/bin/python3 -I scripts/lint-copy.py
+        run: /usr/bin/python3 -I scripts/lib/lint-copy.py
 
       - name: Shipped languages are complete and valid (placeholders, plural forms, quotes; new keys may be pending)
-        run: /usr/bin/python3 -I scripts/l10n/validate.py --shipped
+        run: /usr/bin/python3 -I scripts/lib/l10n/validate.py --shipped
 
       - name: Every CrannyKit module builds on its own (zero warnings) + unit tests
-        run: JOBS=3 TEST=1 scripts/check-modules.sh
+        run: JOBS=3 TEST=1 scripts/lib/check-modules.sh
 
       - name: SDK name-collision probe is up to date
-        run: CHECK=1 scripts/name-probe.sh
+        run: CHECK=1 scripts/lib/name-probe.sh
 
       - name: String Catalogs are in sync with code
-        run: CHECK=1 scripts/sync-strings.sh
+        run: CHECK=1 scripts/lib/sync-strings.sh
 
-      - name: Release build (universal arm64 + x86_64, ad-hoc signed)
+      - name: Release build, smoke test and packages (scripts/build-release.sh, ad-hoc signed)
         env:
           BUILD_NUMBER: ${{ github.run_number }}
-        run: scripts/build.sh
+        run: scripts/build-release.sh --allow-pending
 
-      - name: Launch smoke test (--diagnostics, no UI)
-        run: scripts/smoke.sh
-
-      - name: Package zip + dmg
-        run: scripts/dist.sh
-
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: Cranny-${{ github.sha }}
           path: |
@@ -68,7 +113,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: logs-${{ github.sha }}
@@ -83,7 +128,9 @@ jobs:
     timeout-minutes: 30
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Toolchain
         run: |
@@ -93,34 +140,30 @@ jobs:
 
       - name: Metal Toolchain (CrannyEffects compiles Metal shaders)
         run: |
-          xcodebuild -showComponent MetalToolchain | grep -q 'Status: installed' || xcodebuild -downloadComponent MetalToolchain
+          if ! grep -q 'Status: installed' <<<"$(xcodebuild -showComponent MetalToolchain)"; then
+            xcodebuild -downloadComponent MetalToolchain
+          fi
           xcodebuild -showComponent MetalToolchain
           xcrun metal -v
 
       - name: Copy rules per language (American spelling, typographic punctuation, competitor denylist)
-        run: /usr/bin/python3 -I scripts/lint-copy.py
+        run: /usr/bin/python3 -I scripts/lib/lint-copy.py
 
       - name: Shipped languages are complete and valid (placeholders, plural forms, quotes; new keys may be pending)
-        run: /usr/bin/python3 -I scripts/l10n/validate.py --shipped
+        run: /usr/bin/python3 -I scripts/lib/l10n/validate.py --shipped
 
       - name: Every CrannyKit module builds on its own (zero warnings) + unit tests
-        run: JOBS=3 TEST=1 scripts/check-modules.sh
+        run: JOBS=3 TEST=1 scripts/lib/check-modules.sh
 
       - name: SDK name-collision probe is up to date
-        run: CHECK=1 scripts/name-probe.sh
+        run: CHECK=1 scripts/lib/name-probe.sh
 
-      - name: Release build (universal arm64 + x86_64, ad-hoc signed)
+      - name: Release build, smoke test and packages (scripts/build-release.sh, ad-hoc signed)
         env:
           BUILD_NUMBER: ${{ github.run_number }}
-        run: scripts/build.sh
+        run: scripts/build-release.sh --allow-pending
 
-      - name: Launch smoke test (--diagnostics, no UI)
-        run: scripts/smoke.sh
-
-      - name: Package zip + dmg
-        run: scripts/dist.sh
-
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: Cranny-macos-26-${{ github.sha }}
           path: |
@@ -130,7 +173,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         if: failure()
         with:
           name: logs-macos-26-${{ github.sha }}

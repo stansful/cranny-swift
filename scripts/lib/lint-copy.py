@@ -9,7 +9,7 @@ is an identifier or has a `defaultValue:`):
 - System Settings is named by its pane ("Login Items in System Settings"), never by a ▸ path, because the
   path differs between macOS versions. Cranny's own "Settings ▸ Keyboard" paths are fine.
 
-Every other language a catalog holds (each must be in scripts/l10n/languages.json):
+Every other language a catalog holds (each must be in scripts/lib/l10n/languages.json):
 
 - Typographic punctuation: no ASCII " or ' unless that language's quote style (languages.json "quoteStyle", as
   macOS writes it: Arabic uses straight quotes) has them; one … instead of three dots.
@@ -18,10 +18,10 @@ Every language, the source included:
 
 - Clean room (ARCHITECTURE.md D20, §8.7 rule 8): no competitor product names ("Nook", …).
 
-scripts/l10n/validate.py checks translations in depth (placeholders, plural forms, quote characters, "Cranny").
+scripts/lib/l10n/validate.py checks translations in depth (placeholders, plural forms, quote characters, "Cranny").
 
-    python3 -I scripts/lint-copy.py                  # every catalog
-    python3 -I scripts/lint-copy.py CrannyTimer App  # just these targets ("App" = App/InfoPlist.xcstrings)
+    python3 -I scripts/lib/lint-copy.py                  # every catalog
+    python3 -I scripts/lib/lint-copy.py CrannyTimer App  # just these targets ("App" = App/InfoPlist.xcstrings)
 
 Exit status 1 lists every problem as `catalog: "key": problem`.
 """
@@ -32,7 +32,7 @@ import os
 import re
 import sys
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 # British spellings and the American form to use. Matched as whole words or word starts, case-insensitively.
 BRITISH = {
@@ -78,11 +78,11 @@ BRITISH = {
 BRITISH_RE = [(re.compile(r"\b" + stem, re.IGNORECASE), us) for stem, us in BRITISH.items()]
 DENYLIST = re.compile(r"nook|alcove|atoll|boring\.notch", re.IGNORECASE)
 SETTINGS_PATH = re.compile(r"System Settings\s*▸")
-LANGUAGES = os.path.join(ROOT, "scripts/l10n/languages.json")
+LANGUAGES = os.path.join(ROOT, "scripts/lib/l10n/languages.json")
 
 
 def quote_styles():
-    """{language: set of ASCII quote characters its style allows} from scripts/l10n/languages.json."""
+    """{language: set of ASCII quote characters its style allows} from scripts/lib/l10n/languages.json."""
     with open(LANGUAGES, encoding="utf-8") as handle:
         table = json.load(handle)
     return {entry["code"]: set("".join(entry["quoteStyle"]["primary"] + entry["quoteStyle"]["secondary"])) & {"'", '"'}
@@ -174,7 +174,7 @@ def main(argv):
                     continue
                 if language not in styles:
                     problems.append(f"{name}: {json.dumps(key, ensure_ascii=False)}: language “{language}” is not in "
-                                    f"scripts/l10n/languages.json")
+                                    f"scripts/lib/l10n/languages.json")
                     continue
                 seen = set()
                 for text in values(localization):

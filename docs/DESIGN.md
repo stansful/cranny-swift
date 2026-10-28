@@ -1339,7 +1339,7 @@ The closed shape is drawn 0.5 pt inside the measured cutout, with a radius sligh
   - The panel becomes key only when opened by the keyboard, when a text field is clicked, or when a Tray tile is clicked.
   - Key status for typing holds the panel open. A Tray tile click takes key status for the selection only: Space, ⌘C and ⌘⌫ reach the Tray and never the frontmost app, yet the panel still closes when the pointer leaves, after the grace period. Typing in a text field afterwards holds it open as usual.
   - On close, `orderOut` + `orderFrontRegardless` hands key status back to the previous window.
-  - ⌘A/C/V/X/Z work because the SwiftUI `App` lifecycle installs a main menu with Edit (verified by `scripts/smoke.sh`, ARCHITECTURE D12); R1's hidden Edit menu is the fallback only if a future SDK drops it.
+  - ⌘A/C/V/X/Z work because the SwiftUI `App` lifecycle installs a main menu with Edit (verified by `scripts/lib/smoke.sh`, ARCHITECTURE D12); R1's hidden Edit menu is the fallback only if a future SDK drops it.
 - **Full screen** is detected per R1: the menu-bar window is missing on that display, and another app's window covers it.
 
 ### 3.7 Display and full-screen policy
@@ -2464,7 +2464,7 @@ Haptics use `NSHapticFeedbackManager.defaultPerformer.perform(_, performanceTime
   "supported-platforms" : { "squares" : [ "macOS" ] }
 }
 ```
-- **Layers are generated:** `scripts/render-icon.swift` (`make icon`) draws both PNGs with CoreGraphics; change the script, never the PNGs.
+- **Layers are generated:** `scripts/lib/render-icon.swift` (`make icon`) draws both PNGs with CoreGraphics; change the script, never the PNGs.
 - **Notch group:** `notch.png` is a 1024 canvas with the notch path hanging from y = 0, built like `NotchShape` (continuous bottom corners, quarter-circle ears): body 0.40 × 0.15 of the 824-pt body width, ears 0.045, bottom radius 0.06. It is black. Glass is on, so the system's specular edge gives it the "precision" highlight.
 - **Light group:** `light.png` (no background) holds two radial gradients:
   - the core #9EFFEB → #54C7F2 → transparent #8B6CFF at (512, 170), r 400, squashed 1.25× vertically;
@@ -2476,7 +2476,7 @@ Haptics use `NSHapticFeedbackManager.defaultPerformer.perform(_, performanceTime
 
 **In-app use:** About and onboarding show the compiled icon via `NSApp.applicationIconImage`; actool already generates the macOS 14/15 fallback, so v1 ships no second renderer.
 
-**Flat fallback** (optional tooling, not built in v1: only if a build path ever skips actool; the layers come from `scripts/render-icon.swift`). `CrannyIconRenderer.draw(in: CGContext, side:)` uses CoreGraphics only, with no blur filters, so it renders identically at every size:
+**Flat fallback** (optional tooling, not built in v1: only if a build path ever skips actool; the layers come from `scripts/lib/render-icon.swift`). `CrannyIconRenderer.draw(in: CGContext, side:)` uses CoreGraphics only, with no blur filters, so it renders identically at every size:
 1. Follow the macOS icon grid: an 824-pt body centred on 1024, clipped by a continuous squircle (r 185.4, taken from `RoundedRectangle(style: .continuous).path(in:).cgPath`).
 2. Draw a drop shadow: black 35 %, blur 28, y −10.
 3. Fill the body with a P3 gradient from (0.20, 0.21, 0.25) to (0.055, 0.058, 0.07).
@@ -2540,17 +2540,17 @@ A build script could render 16–1024 px for an `AppIcon.appiconset`; it is need
 
 ## 17. Copy and localisation
 
-- **Languages:** English (the source) and Russian ship today; the target set is every language macOS 27 ships (`scripts/l10n/languages.json`, ARCHITECTURE §8.7), in String Catalogs (`.xcstrings`) with translator comments. Apple's apps, panes and settings keep Apple's own names in every language (`scripts/l10n/apple-terms.py`).
+- **Languages:** English (the source) and Russian ship today; the target set is every language macOS 27 ships (`scripts/lib/l10n/languages.json`, ARCHITECTURE §8.7), in String Catalogs (`.xcstrings`) with translator comments. Apple's apps, panes and settings keep Apple's own names in every language (`scripts/lib/l10n/apple-terms.py`).
 - **Formatting:** numbers, dates and durations always go through `FormatStyle`, never concatenation (12/24-hour clock from the locale).
 - **Right to left** (Arabic, Hebrew): the layout mirrors — tabs from the right, cards, the compact wings (glyph right of the camera, value left of it), the satellite beyond the left wing, Settings and Welcome — while the notch stays centred on the camera. Time-based media keeps its direction: ⏮ ⏯ ⏭, the scrubber with elapsed left and "−remaining" right, the playback rim; rings fill clockwise from 12 o'clock. ← / → and Move Left / Right go the way they point; day paging uses `chevron.backward` / `chevron.forward`; names and keys inside a sentence are bidi-isolated (ARCHITECTURE §8.7 rule 10).
-- **Voice:** calm, plain and sentence case (title case only in standard AppKit chrome: the menu bar menu and the Settings window's menu items and push buttons), American English, ’ and “ ” in English and « » in Russian; the full rules are `docs/CONTRIBUTING.md` ▸ Copy, checked by `scripts/lint-copy.py`. No exclamation marks, no "Oops", no marketing words inside the product. Examples:
+- **Voice:** calm, plain and sentence case (title case only in standard AppKit chrome: the menu bar menu and the Settings window's menu items and push buttons), American English, ’ and “ ” in English and « » in Russian; the full rules are `docs/CONTRIBUTING.md` ▸ Copy, checked by `scripts/lib/lint-copy.py`. No exclamation marks, no "Oops", no marketing words inside the product. Examples:
   - empty Media "Nothing playing"; Calendar "No more events today"; Tray "Drop files on the notch to keep them here";
   - permission rows "Show your events in Cranny. Cranny never edits or uploads them."
 - **Length:** Russian runs 15–35 % longer.
   - Compact slots never hold free text except tested `compactLabel` abbreviations and a confirmation flash's word, which must fit the wing by measured width in every language (§9.1, design ruling E4).
   - Tab labels collapse to icons rather than truncate; titles truncate at the tail and file names in the middle.
   - Pseudo-localisation at 1.4× is meant to be part of the snapshot suite (not built yet; ARCHITECTURE §10.20).
-- **Names:** Cranny's user-facing vocabulary is **Cranny** (the open panel: "Open Cranny"), **Home** (the widget page), **Layout & Widgets**, **Tray**, **live activity**, **peek**, **pipeline**. "Nook" is an internal code name only and never appears in UI text, because NotchNook labels its own panel tabs "Nook" and "Tray" (ARCHITECTURE D20). It uses no competitor product names or UI strings; `scripts/lint-copy.py` checks every catalog against the denylist in ARCHITECTURE §8.7 on every `make strings-check` and CI run. Russian terms follow the glossary there (ARCHITECTURE §8.7 rule 7), guarded by `TerminologyTests`: for example «Убрать» for taking an app or item off a list («Убрать приложение», «Убрать с полки»; «Удалить приложение» would read as uninstalling it) and «плеер» for a media app. An app is always named as Finder names it, never by its bundle ID; one that is gone reads "App not installed" / «Приложение не установлено».
+- **Names:** Cranny's user-facing vocabulary is **Cranny** (the open panel: "Open Cranny"), **Home** (the widget page), **Layout & Widgets**, **Tray**, **live activity**, **peek**, **pipeline**. "Nook" is an internal code name only and never appears in UI text, because NotchNook labels its own panel tabs "Nook" and "Tray" (ARCHITECTURE D20). It uses no competitor product names or UI strings; `scripts/lib/lint-copy.py` checks every catalog against the denylist in ARCHITECTURE §8.7 on every `make strings-check` and CI run. Russian terms follow the glossary there (ARCHITECTURE §8.7 rule 7), guarded by `TerminologyTests`: for example «Убрать» for taking an app or item off a list («Убрать приложение», «Убрать с полки»; «Удалить приложение» would read as uninstalling it) and «плеер» for a media app. An app is always named as Finder names it, never by its bundle ID; one that is gone reads "App not installed" / «Приложение не установлено».
 
 ---
 

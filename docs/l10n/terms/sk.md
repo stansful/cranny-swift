@@ -105,4 +105,4 @@ Register and typography, as macOS 27 writes Slovak (checked in the system's own 
 
 Review (independent review pass): 79 strings changed.
 
-Verification: `validate.py sk` exits 0 (13 warnings, all names or units Slovak writes like English: Symbol, Panel, Trackpad, video, min, +1 min, and the alert sounds Funky, Mezzo, Pong, Sonar, Sonumi as macOS names them). With `sk` imported, the measured-width tests (FlashLabelFitTests, BandCopyTests, FeaturedRowTests, the header tab test, the longest tutorial bubble) pass for `sk`, and `scripts/lint-copy.py` passes.
+Verification: `validate.py sk` exits 0 (13 warnings, all names or units Slovak writes like English: Symbol, Panel, Trackpad, video, min, +1 min, and the alert sounds Funky, Mezzo, Pong, Sonar, Sonumi as macOS names them). With `sk` imported, the measured-width tests (FlashLabelFitTests, BandCopyTests, FeaturedRowTests, the header tab test, the longest tutorial bubble) pass for `sk`, and `scripts/lib/lint-copy.py` passes.

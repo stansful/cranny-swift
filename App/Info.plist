@@ -10,7 +10,7 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2026 Cranny contributors. MIT License.</string>
 	<!-- Without this, SwiftPM resource bundles fall back to English (R4 §3.4). Every language of
-	     scripts/l10n/languages.json (scripts/smoke.sh checks the built app); a language without translations yet
+	     scripts/lib/l10n/languages.json (scripts/lib/smoke.sh checks the built app); a language without translations yet
 	     shows Cranny's own text in English. -->
 	<key>CFBundleLocalizations</key>
 	<array>

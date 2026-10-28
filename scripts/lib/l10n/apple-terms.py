@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Apple's own names for Apple's UI, read from this Mac's system localizations: a glossary for translators.
 
-    python3 -I scripts/l10n/apple-terms.py de                 # {"System Settings": "Systemeinstellungen", …}
-    python3 -I scripts/l10n/apple-terms.py de -o de-terms.json
-    python3 -I scripts/l10n/apple-terms.py de --details       # value, source file, key and conflicting alternatives
-    python3 -I scripts/l10n/apple-terms.py --list             # the English terms
+    python3 -I scripts/lib/l10n/apple-terms.py de                 # {"System Settings": "Systemeinstellungen", …}
+    python3 -I scripts/lib/l10n/apple-terms.py de -o de-terms.json
+    python3 -I scripts/lib/l10n/apple-terms.py de --details       # value, source file, key and conflicting alternatives
+    python3 -I scripts/lib/l10n/apple-terms.py --list             # the English terms
 
 Cranny's copy names Apple's apps, System Settings panes, privacy services, accessibility settings, Finder places and
 alert sounds; a translation must use macOS's own words for them so people find the right switch ("Allow Cranny
@@ -260,7 +260,7 @@ def lookup(term, code):
 
 def main(argv):
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("language", nargs="?", help="language code from scripts/l10n/languages.json")
+    parser.add_argument("language", nargs="?", help="language code from scripts/lib/l10n/languages.json")
     parser.add_argument("-o", "--output", help="write the JSON to this file instead of stdout")
     parser.add_argument("--details", action="store_true", help="value, source, key and alternatives per term")
     parser.add_argument("--list", action="store_true", help="print the English terms and exit")

@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
 # Debug build (host arch) + launch.
 #
-#   scripts/run.sh                      # build, quit the old dev instance, open the new one
-#   scripts/run.sh --no-build           # just relaunch
-#   scripts/run.sh -- --some-app-arg    # pass arguments to the app
-#   XOJIT=1 scripts/run.sh              # keep Xcode-style Debug (XOJIT previews => hardened runtime OFF)
-#   DEV_SIGN_IDENTITY="Cranny Dev" scripts/run.sh   # sign with a stable identity so TCC grants survive rebuilds
+#   scripts/lib/run.sh                      # build, quit the old dev instance, open the new one
+#   scripts/lib/run.sh --no-build           # just relaunch
+#   scripts/lib/run.sh -- --some-app-arg    # pass arguments to the app
+#   XOJIT=1 scripts/lib/run.sh              # keep Xcode-style Debug (XOJIT previews => hardened runtime OFF)
+#   DEV_SIGN_IDENTITY="Cranny Dev" scripts/lib/run.sh   # sign with a stable identity so TCC grants survive rebuilds
 #
 # Launches through LaunchServices (`open`) so macOS attributes TCC prompts
 # (Camera, Calendars, Accessibility, Automation...) to Cranny itself rather than to
 # the terminal that spawned it.
-source "$(dirname "$0")/lib.sh"
+# shellcheck source=scripts/lib/common.sh
+source "$(dirname "$0")/common.sh"
 
 build=1
 app_args=()
@@ -34,7 +35,7 @@ if (( build )); then
   # resource entitlements for camera/calendars/Apple Events).
   [[ "${XOJIT:-0}" == 1 ]] || overrides+=(ENABLE_XOJIT_PREVIEWS=NO)
   # Stable code identity keeps TCC grants (Accessibility, Camera, Calendars) across rebuilds:
-  #   DEV_SIGN_IDENTITY="Cranny Dev" scripts/run.sh   (a self-signed Code Signing certificate in your login keychain)
+  #   DEV_SIGN_IDENTITY="Cranny Dev" scripts/lib/run.sh   (a self-signed Code Signing certificate in your login keychain)
   [[ -z "${DEV_SIGN_IDENTITY:-}" ]] || overrides+=(CODE_SIGN_IDENTITY="$DEV_SIGN_IDENTITY")
   log "Building Debug"
   mkdir -p "$BUILD_DIR/logs"

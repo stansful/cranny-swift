@@ -1,7 +1,7 @@
 # Translating Cranny
 
 Cranny ships in 35 languages: English, the source, and every UI language macOS 27 ships (the list is in
-`scripts/l10n/languages.json` and in the README). **The translations were produced and cross-reviewed by AI.**
+`scripts/lib/l10n/languages.json` and in the README). **The translations were produced and cross-reviewed by AI.**
 Each language was translated, then checked by a second, independent review pass against Apple's own wording in that
 language, and every string passes the automated checks below (placeholders, plural forms, quotation marks, measured
 widths). What they have not had is a native speaker's review. If something in your language is wrong, stiff, too
@@ -9,7 +9,7 @@ long or not what macOS says, a correction is very welcome: an issue that quotes 
 better.
 
 This guide covers fixing or reviewing a language, adding strings in code (the policy that keeps CI green), and
-adding a language. The file format and the checks in detail: [`scripts/l10n/README.md`](../scripts/l10n/README.md).
+adding a language. The file format and the checks in detail: [`scripts/lib/l10n/README.md`](../scripts/lib/l10n/README.md).
 Strategy and rules for code: [ARCHITECTURE.md §8.7](ARCHITECTURE.md).
 
 ## Where things are
@@ -18,10 +18,10 @@ Strategy and rules for code: [ARCHITECTURE.md §8.7](ARCHITECTURE.md).
 |---|---|
 | Strings, one String Catalog per module | `Packages/CrannyKit/Sources/<Target>/Resources/Localizable.xcstrings` |
 | Permission prompts (Info.plist usage strings) | `App/InfoPlist.xcstrings` |
-| Languages: codes, plural categories, quotation marks, register notes, `shipped` | `scripts/l10n/languages.json` |
+| Languages: codes, plural categories, quotation marks, register notes, `shipped` | `scripts/lib/l10n/languages.json` |
 | Terminology sheet per language: Cranny's names, Apple's names, register, typography, decisions | [`docs/l10n/terms/<code>.md`](l10n/terms/) |
 | Russian glossary (the reference translation) | [ARCHITECTURE.md §8.7](ARCHITECTURE.md), rule 7 |
-| Tools: export, validate, import, pending, Apple's terms | `scripts/l10n/` (Python 3 from macOS, no Xcode needed) |
+| Tools: export, validate, import, pending, Apple's terms | `scripts/lib/l10n/` (Python 3 from macOS, no Xcode needed) |
 
 Keys are the English text itself. Every key has a comment `"<surface>: <purpose>"` that says where the text appears
 and what it does; read it before translating.
@@ -32,17 +32,17 @@ The tools work on one JSON file per language, so you never edit the catalogs by 
 root (`-I` keeps Python from importing anything from the current directory):
 
 ```sh
-python3 -I scripts/l10n/export.py de -o de.json              # every string, with English, comment, Russian, current German
-python3 -I scripts/l10n/apple-terms.py de -o de-terms.json   # Apple's own German names, read from this Mac
+python3 -I scripts/lib/l10n/export.py de -o de.json              # every string, with English, comment, Russian, current German
+python3 -I scripts/lib/l10n/apple-terms.py de -o de-terms.json   # Apple's own German names, read from this Mac
 # edit the "translation" fields in de.json (only those)
-python3 -I scripts/l10n/validate.py de de.json --glossary de-terms.json   # errors stop here; read the warnings too
-python3 -I scripts/l10n/import.py de de.json                 # writes the catalogs (validates first)
-make strings-check                                           # catalogs in sync, copy rules, every shipped language valid
-make test                                                    # includes the measured-width tests (below)
+python3 -I scripts/lib/l10n/validate.py de de.json --glossary de-terms.json   # errors stop here; read the warnings too
+python3 -I scripts/lib/l10n/import.py de de.json                 # writes the catalogs (validates first)
+make strings-check                                               # catalogs in sync, copy rules, every shipped language valid
+make test                                                        # includes the measured-width tests (below)
 ```
 
 `export.py de --missing-only` exports only what German lacks or has pending. Small fixes can also be made in
-Xcode's String Catalog editor; then run `python3 -I scripts/l10n/validate.py de --catalogs` and `make strings-check`.
+Xcode's String Catalog editor; then run `python3 -I scripts/lib/l10n/validate.py de --catalogs` and `make strings-check`.
 When you change a term, change every string that uses it (search the export for the old word) and update the
 language's sheet in `docs/l10n/terms/`, so the next translator keeps it.
 
@@ -64,9 +64,9 @@ its own (docs/CONTRIBUTING.md ▸ Visual QA hooks):
 
 ```sh
 QA=(--qa-defaults-suite app.cranny.Cranny.qa)
-scripts/run.sh -- "${QA[@]}" -AppleLanguages "(de)" -AppleLocale de_DE --qa-state open --qa-page nook \
+scripts/lib/run.sh -- "${QA[@]}" -AppleLanguages "(de)" -AppleLocale de_DE --qa-state open --qa-page nook \
   --qa-media playing --qa-calendar sample --qa-snapshot /tmp/home-de.png --qa-exit-after 6
-scripts/run.sh -- "${QA[@]}" -AppleLanguages "(ar)" -AppleTextDirection YES -AppleLocale ar_SA --qa-state open \
+scripts/lib/run.sh -- "${QA[@]}" -AppleLanguages "(ar)" -AppleTextDirection YES -AppleLocale ar_SA --qa-state open \
   --qa-page nook --qa-snapshot /tmp/home-ar.png --qa-exit-after 6     # Arabic and Hebrew need -AppleTextDirection YES
 defaults delete app.cranny.Cranny.qa
 ```
@@ -79,7 +79,7 @@ These hold in every language. `validate.py` checks the mechanical ones; the rest
   way your language does with foreign names (Turkish “Cranny’yi”, Finnish “Crannyn”).
 - **Never write “Nook”** — nor NotchNook, Notch Nook, Alcove, Atoll or boring.notch — not even as the translation
   of an English word, and never look at other notch apps' translations. Cranny is a clean-room project
-  (ARCHITECTURE.md D20); `validate.py` and `scripts/lint-copy.py` reject these names in every language. The built-in
+  (ARCHITECTURE.md D20); `validate.py` and `scripts/lib/lint-copy.py` reject these names in every language. The built-in
   page is “Home”.
 - **Placeholders** stay: every `%@`, `%lld`, `%#@name@` of the English, with the same types. Reorder with positions
   (`%2$@ … %1$lld`), and never mix positional and plain specifiers in one string. Numbers, dates, times and durations
@@ -119,7 +119,7 @@ choices for each shipped language: **translate it, or mark it pending.** Either 
    `Text("…", bundle: .module, comment: …)` (ARCHITECTURE.md §8.7) and run `make strings`: it adds the English keys
    to the module's catalog.
 2. Either **translate**: for a language you know, `export.py <lang> --missing-only -o <lang>.json`, fill in, validate,
-   import (above). Or **mark it pending**: `make l10n-pending` (`scripts/l10n/pending.py`) gives every shipped
+   import (above). Or **mark it pending**: `make l10n-pending` (`scripts/lib/l10n/pending.py`) gives every shipped
    language that lacks the key the English text, in that language's plural shape, with state `needs_review`.
    Do both: translate what you can, then mark the rest pending.
 3. `make strings-check` must pass. It fails on a key that a shipped language has **no entry** for, and accepts a
@@ -128,7 +128,8 @@ choices for each shipped language: **translate it, or mark it pending.** Either 
 
 Pending keys are translated before a release: `export.py <lang> --missing-only` lists them with `"translation":
 null` (the English placeholder is not offered as a translation), and `import.py` replaces them with state
-`translated`. The release workflow runs `validate.py --shipped --release`, which fails while any key is pending.
+`translated`. The release build (`scripts/build-release.sh`, which the release workflow runs) checks
+`validate.py --shipped --release`, which fails while any key is pending.
 Russian follows the same rule; the Russian terminology tests skip pending keys until they are translated.
 
 Only Cranny's own strings count: text that comes from the system (app names, display names, file names) is never in
@@ -139,7 +140,7 @@ a catalog.
 `languages.json` already lists every language macOS 27 offers for its UI (English variants and regional variants
 that fall back on their own, such as es-419 → es, are left out). When macOS adds one:
 
-1. Add its entry to `scripts/l10n/languages.json`: code, macOS's `.lproj` name (`appleCode`), names, `rtl`, the
+1. Add its entry to `scripts/lib/l10n/languages.json`: code, macOS's `.lproj` name (`appleCode`), names, `rtl`, the
    CLDR plural categories (`validate.py` warns when they differ from this Mac's ICU), `pluralExactValues`,
    `quoteStyle` as macOS writes it, register and typography `notes`, and `"shipped": false`.
 2. Add the code to `CFBundleLocalizations` in `App/Info.plist` and to `knownRegions` in the Xcode project
@@ -154,10 +155,10 @@ that fall back on their own, such as es-419 → es, are left out). When macOS ad
 
 | Command | Checks |
 |---|---|
-| `python3 -I scripts/l10n/validate.py <lang> <file>` | a translator file: completeness, placeholders, plural categories, quotes, “Cranny”, no competitor names |
-| `python3 -I scripts/l10n/validate.py <lang> --catalogs` | the same for what the catalogs hold now |
+| `python3 -I scripts/lib/l10n/validate.py <lang> <file>` | a translator file: completeness, placeholders, plural categories, quotes, “Cranny”, no competitor names |
+| `python3 -I scripts/lib/l10n/validate.py <lang> --catalogs` | the same for what the catalogs hold now |
 | `make l10n-check` (`validate.py --shipped`) | every shipped language complete and valid; pending keys are warnings |
-| `validate.py --shipped --release` | the same, and no key pending (release workflow) |
-| `make copy-check` (`scripts/lint-copy.py`) | English copy rules; quotes and ellipses per language; competitor denylist |
+| `validate.py --shipped --release` | the same, and no key pending (`scripts/build-release.sh`, the release workflow) |
+| `make copy-check` (`scripts/lib/lint-copy.py`) | English copy rules; quotes and ellipses per language; competitor denylist |
 | `make strings-check` | catalogs in sync with the code + copy rules + `l10n-check` (CI) |
 | `make test` | the measured-width and terminology tests, among all others |

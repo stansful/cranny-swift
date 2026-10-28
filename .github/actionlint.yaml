@@ -1,0 +1,5 @@
+# actionlint (ci.yml's scripts job): runner labels it does not know yet.
+self-hosted-runner:
+  labels:
+    # GitHub's Xcode 27 image (public preview, ARCHITECTURE.md §8.9); actionlint 1.7.12 predates it
+    - xcode-27

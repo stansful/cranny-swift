@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Shared helpers for Cranny scripts. Source it; do not execute it.
+# Shared helpers for the Cranny scripts in scripts/lib. Source it; do not execute it.
+# shellcheck disable=SC2034 # the variables are for the scripts that source this file
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 PROJECT="$ROOT/Cranny.xcodeproj"
 SCHEME="Cranny"
 PACKAGE_DIR="$ROOT/Packages/CrannyKit"

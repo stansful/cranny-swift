@@ -1,7 +1,7 @@
-"""Shared code of the localization tools in scripts/l10n (Python 3 standard library only).
+"""Shared code of the localization tools in scripts/lib/l10n (Python 3 standard library only).
 
 The tools (export.py, import.py, validate.py, apple-terms.py) import this module; it is not a tool itself.
-It knows where the String Catalogs are, reads scripts/l10n/languages.json, converts catalog entries to the
+It knows where the String Catalogs are, reads scripts/lib/l10n/languages.json, converts catalog entries to the
 translator JSON format and back, extracts format specifiers and classifies fixed-width surfaces.
 
 Translator JSON ("text") format, used for the English source, the Russian reference and the translation:
@@ -23,11 +23,11 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(os.path.dirname(HERE))
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
 LANGUAGES_PATH = os.path.join(HERE, "languages.json")
 PLURAL_ORDER = ["zero", "one", "two", "few", "many", "other"]
 
-# Competitor names (ARCHITECTURE.md D20, §8.7 rule 8); also in scripts/lint-copy.py.
+# Competitor names (ARCHITECTURE.md D20, §8.7 rule 8); also in scripts/lib/lint-copy.py.
 DENYLIST = re.compile(r"nook|alcove|atoll|boring\.notch", re.IGNORECASE)
 BRAND = "Cranny"
 
@@ -48,7 +48,7 @@ def languages():
 def language(code):
     table = languages()
     if code not in table:
-        die(f"unknown language {code!r}; scripts/l10n/languages.json has: {', '.join(table)}")
+        die(f"unknown language {code!r}; scripts/lib/l10n/languages.json has: {', '.join(table)}")
     return table[code]
 
 
@@ -79,14 +79,14 @@ def load_catalog(path):
 
 
 def _merge_driver():
-    spec = importlib.util.spec_from_file_location("merge_xcstrings", os.path.join(ROOT, "scripts/merge-xcstrings.py"))
+    spec = importlib.util.spec_from_file_location("merge_xcstrings", os.path.join(ROOT, "scripts/lib/merge-xcstrings.py"))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
 
 
 def serialize(data, trailing_newline=True):
-    """Xcode/xcstringstool formatting (the serializer of scripts/merge-xcstrings.py)."""
+    """Xcode/xcstringstool formatting (the serializer of scripts/lib/merge-xcstrings.py)."""
     return _merge_driver().xcode_json(data) + ("\n" if trailing_newline else "")
 
 

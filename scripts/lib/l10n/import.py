@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """Write a translator file (export.py format, "translation" filled in) into the String Catalogs.
 
-    python3 -I scripts/l10n/import.py de de.json              # validate, then write every translated key
-    python3 -I scripts/l10n/import.py de de.json --dry-run    # report what would change, write nothing
-    python3 -I scripts/l10n/import.py de de.json --force      # write the items without errors although others have some
+    python3 -I scripts/lib/l10n/import.py de de.json              # validate, then write every translated key
+    python3 -I scripts/lib/l10n/import.py de de.json --dry-run    # report what would change, write nothing
+    python3 -I scripts/lib/l10n/import.py de de.json --force      # write the items without errors although others have some
 
 Every item whose "translation" is not null becomes the key's localization for the language, with every string
 unit in state "translated": a plain string unit, plural variations with exactly the language's CLDR categories,
 or a string unit with substitutions. Everything else in the catalogs (other languages, comments, extraction
 state, keys not in the file) stays as it is, and the files keep Xcode's formatting (the serializer of
-scripts/merge-xcstrings.py), so `make strings-check` sees no formatting change.
+scripts/lib/merge-xcstrings.py), so `make strings-check` sees no formatting change.
 
 The file is checked with validate.py first: with errors nothing is written, unless --force, which still skips
 the items that have errors. Keys that are no longer in the catalogs are skipped with a warning. Afterwards run
-`make strings-check`; the language counts as shipped once scripts/l10n/languages.json says "shipped": true.
+`make strings-check`; the language counts as shipped once scripts/lib/l10n/languages.json says "shipped": true.
 """
 
 import argparse
@@ -29,7 +29,7 @@ import validate  # noqa: E402
 
 def main(argv):
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("language", help="language code from scripts/l10n/languages.json")
+    parser.add_argument("language", help="language code from scripts/lib/l10n/languages.json")
     parser.add_argument("file", help="translator JSON from export.py with \"translation\" filled in")
     parser.add_argument("--dry-run", action="store_true", help="report, write nothing")
     parser.add_argument("--force", action="store_true", help="write the valid items even when others have errors")

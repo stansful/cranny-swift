@@ -1,21 +1,22 @@
 #!/usr/bin/env bash
 # Package build/Cranny.app as dist/Cranny-<version>.zip and .dmg (+ SHA-256 sums).
 #
-#   scripts/dist.sh                 # uses existing build/Cranny.app, or builds it first
-#   REBUILD=1 scripts/dist.sh
+#   scripts/lib/dist.sh                 # uses existing build/Cranny.app, or builds it first
+#   REBUILD=1 scripts/lib/dist.sh
 #
 # Maintainers with an Apple Developer ID can produce a notarized release:
 #   xcrun notarytool store-credentials cranny-notary --apple-id you@example.com --team-id TEAMID1234
 #   SIGN_IDENTITY="Developer ID Application: Jane Doe (TEAMID1234)" TEAM_ID=TEAMID1234 \
-#   NOTARY_PROFILE=cranny-notary REBUILD=1 scripts/dist.sh
+#   NOTARY_PROFILE=cranny-notary REBUILD=1 scripts/lib/dist.sh
 # Without those variables the app stays ad-hoc signed: users must allow it once in
 # System Settings > Privacy & Security ("Open Anyway"), or run
 #   xattr -dr com.apple.quarantine /Applications/Cranny.app
-source "$(dirname "$0")/lib.sh"
+# shellcheck source=scripts/lib/common.sh
+source "$(dirname "$0")/common.sh"
 
 APP="$BUILD_DIR/Cranny.app"
 if [[ "${REBUILD:-0}" == 1 || ! -d "$APP" ]]; then
-  "$ROOT/scripts/build.sh"
+  "$ROOT/scripts/lib/build.sh"
 fi
 ensure_xcode
 
@@ -63,4 +64,5 @@ hdiutil verify "$DIST/$NAME.dmg" >/dev/null
 
 (cd "$DIST" && shasum -a 256 "$NAME.zip" "$NAME.dmg" > "$NAME.sha256")
 log "Artifacts in $DIST:"
+# shellcheck disable=SC2012 # a listing for people
 ls -lh "$DIST" | sed 1d >&2

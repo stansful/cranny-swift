@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Export every translatable string for translators, as one JSON file per language.
 
-    python3 -I scripts/l10n/export.py de                    # every key -> stdout
-    python3 -I scripts/l10n/export.py de -o de.json         # … into a file
-    python3 -I scripts/l10n/export.py de --missing-only     # only keys German does not have yet (or has untranslated)
+    python3 -I scripts/lib/l10n/export.py de                    # every key -> stdout
+    python3 -I scripts/lib/l10n/export.py de -o de.json         # … into a file
+    python3 -I scripts/lib/l10n/export.py de --missing-only     # only keys German does not have yet (or has untranslated)
 
 The file covers every String Catalog (Packages/CrannyKit/Sources/*/Resources/Localizable.xcstrings and
 App/InfoPlist.xcstrings). Each item of "strings" is:
@@ -89,7 +89,7 @@ def export(code, missing_only=False):
             "Cranny is never translated or transliterated; never write “Nook”.",
             "Name Apple’s apps, panes and settings exactly as macOS does in your language (apple-terms.py glossary).",
             "constrained: the text sits in a fixed-width place; maxWidth.hint says how much room there is.",
-            "Check: python3 -I scripts/l10n/validate.py <lang> <file>; write back: python3 -I scripts/l10n/import.py <lang> <file>.",
+            "Check: python3 -I scripts/lib/l10n/validate.py <lang> <file>; write back: python3 -I scripts/lib/l10n/import.py <lang> <file>.",
         ],
         "strings": items,
     }
@@ -97,7 +97,7 @@ def export(code, missing_only=False):
 
 def main(argv):
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    parser.add_argument("language", help="language code from scripts/l10n/languages.json (de, pt-BR, zh-Hans…)")
+    parser.add_argument("language", help="language code from scripts/lib/l10n/languages.json (de, pt-BR, zh-Hans…)")
     parser.add_argument("--missing-only", action="store_true", help="only keys without a complete translation")
     parser.add_argument("-o", "--output", help="write to this file instead of stdout")
     args = parser.parse_args(argv)

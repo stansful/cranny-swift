@@ -1,8 +1,8 @@
 // CrannyEffects/EffectsDiagnostics.swift — the one public window onto the internal `ShaderEffects`
-// (ARCHITECTURE.md D13), for `Cranny --diagnostics` and scripts/smoke.sh.
+// (ARCHITECTURE.md D13), for `Cranny --diagnostics` and scripts/lib/smoke.sh.
 import Foundation
 
-/// Read-only status of the Metal effects for `Cranny --diagnostics` and `scripts/smoke.sh`.
+/// Read-only status of the Metal effects for `Cranny --diagnostics` and `scripts/lib/smoke.sh`.
 public nonisolated enum EffectsDiagnostics {
     /// "ok" when the Metal effects can run here; otherwise why every effect uses its SwiftUI fallback
     /// ("default.metallib is not in the bundle", "no Metal device", "CrannyDisableShaders is set", "missing …").

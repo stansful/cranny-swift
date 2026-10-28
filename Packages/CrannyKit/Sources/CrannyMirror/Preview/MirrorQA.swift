@@ -2,7 +2,7 @@
 // (docs/CONTRIBUTING.md): `--qa-mirror <scenario>` swaps the camera, discovery and permission for the sample
 // parts, so every state can be screenshotted in the real panel without a camera, a prompt or a click.
 //
-//   scripts/run.sh -- --qa-state open --qa-page nook --qa-mirror running --qa-exit-after 8
+//   scripts/lib/run.sh -- --qa-state open --qa-page nook --qa-mirror running --qa-exit-after 8
 //
 // Scenarios: off · running · toolbar (running + toolbar held visible) · starting · denied · restricted ·
 // nocamera · lidclosed · failed. The whole file is compiled out of Release builds.

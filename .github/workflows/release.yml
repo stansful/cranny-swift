@@ -1,31 +1,173 @@
 name: Release
 
+# Releases Cranny from main. Every push to main runs the whole CI first (ci.yml through workflow_call; ci.yml skips
+# its own run of that push, so the checks run once). When the version in VERSION has no release yet,
+# scripts/build-release.sh (what a local release build runs) builds the universal app, smoke-tests it and packages
+# Cranny-<version>.dmg, .zip and .sha256, and they are published as GitHub release "Cranny <version>" with the tag
+# v<version> on the built commit: a draft first, every upload checked, then published as the latest release, which
+# the in-app update check polls. A push that does not bump the version is tested and ends with a notice. Bump it with
+# scripts/make-release.sh, which commits "Release: version X.Y.Z". Nothing is built or published from a commit whose
+# checks fail: re-run the failed jobs, or push a fix (the version is still unreleased).
+#
+# Jobs:
+#   gate     reads the version and its release state (.github/scripts/release-state.sh).
+#   quality  the whole CI (ci.yml) on every push to main, released or not.
+#   build    scripts/build-release.sh on the xcode-27 image: Developer ID signed and notarized when the signing
+#            secrets exist, else ad-hoc signed. No write token.
+#   publish  creates the release: draft -> upload and check the assets -> publish (GitHub creates the tag).
+#
+# Signing secrets, all five or none: DEVELOPER_ID_P12_BASE64 and DEVELOPER_ID_P12_PASSWORD (the "Developer ID
+# Application" certificate with its private key, as .p12), NOTARY_KEY_P8_BASE64, NOTARY_KEY_ID and NOTARY_ISSUER_ID
+# (an App Store Connect API key for notarytool).
+#
+# workflow_dispatch with dry_run builds any branch the same way and publishes nothing.
+
 on:
   push:
-    tags: ['v*']          # e.g. git tag v0.2.0 && git push origin v0.2.0
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Build only: no tag, no release"
+        type: boolean
+        default: false
 
-permissions:
-  contents: write         # create the GitHub Release
+permissions: {}
+
+concurrency:
+  # Releases queue up and are never cancelled half-way. Dry runs get their own group.
+  group: ${{ inputs.dry_run && format('release-dry-run-{0}', github.run_id) || 'release' }}
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash --noprofile --norc -euo pipefail {0}
 
 jobs:
-  release:
+  gate:
+    name: Decide
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.decide.outputs.version }}
+      tag: ${{ steps.decide.outputs.tag }}
+      build: ${{ steps.decide.outputs.build }}
+      publish: ${{ steps.decide.outputs.publish }}
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            /VERSION
+            /scripts/lib/
+            /.github/scripts/
+          sparse-checkout-cone-mode: false
+
+      - name: Read the version and its release state
+        id: decide
+        env:
+          DRY_RUN: ${{ inputs.dry_run == true }}
+          GH_TOKEN: ${{ github.token }}
+          # git ls-remote origin with the job's token: the checkouts keep no credentials, and a private repository
+          # needs them (a credential helper for the git of this step only)
+          GIT_CONFIG_COUNT: 1
+          GIT_CONFIG_KEY_0: credential.helper
+          GIT_CONFIG_VALUE_0: '!f() { test "$1" = get && echo username=x-access-token && echo "password=$GH_TOKEN"; }; f'
+        run: |
+          . scripts/lib/version.sh
+          if ! version="$(app_version_get .)"; then
+            echo "::error file=VERSION::VERSION must hold exactly one line, the version X.Y.Z."
+            exit 1
+          fi
+
+          if [[ "$DRY_RUN" == "true" ]]; then
+            # Any branch and any version: build and check, never publish. The state is only reported.
+            state="$(bash .github/scripts/release-state.sh)" || state="not releasable"
+            build=true
+            publish=false
+          else
+            if [[ "$GITHUB_REF" != "refs/heads/main" ]]; then
+              echo "::error::Releases are published only from main. Use dry_run to build another branch."
+              exit 1
+            fi
+            state="$(bash .github/scripts/release-state.sh)"
+            case $state in
+              released)
+                build=false
+                publish=false
+                echo "::notice title=Nothing to release::Version ${version} is already released. Bump it with scripts/make-release.sh (commit \"Release: version X.Y.Z\") and push to release."
+                ;;
+              retry)
+                build=true
+                publish=true
+                echo "::notice::Tag $(release_tag "$version") is already on this commit without a release: publishing it."
+                ;;
+              new)
+                build=true
+                publish=true
+                ;;
+              *)
+                echo "::error::release-state.sh printed '${state}'."
+                exit 1
+                ;;
+            esac
+          fi
+
+          {
+            echo "version=$version"
+            echo "tag=$(release_tag "$version")"
+            echo "build=$build"
+            echo "publish=$publish"
+          } >> "$GITHUB_OUTPUT"
+          echo "Version $version ($state): build $build, publish $publish"
+
+  # Every push to main, released or not, gets the whole CI here (ci.yml itself ignores pushes to main). It runs even
+  # when the gate refused the version, so the push is still tested.
+  quality:
+    name: CI
+    needs: gate
+    if: ${{ !cancelled() }}
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+    with:
+      release: true
+
+  build:
+    name: Build release
+    needs: [gate, quality]
+    if: needs.gate.outputs.build == 'true'
     runs-on: xcode-27
     timeout-minutes: 45
+    permissions:
+      contents: read
     env:
-      # Optional Developer ID signing + notarization. When these secrets are absent the
-      # release is ad-hoc signed (users allow it once in System Settings > Privacy & Security).
-      HAS_SIGNING: ${{ secrets.DEVELOPER_ID_P12_BASE64 != '' && secrets.NOTARY_KEY_P8_BASE64 != '' }}
+      VERSION: ${{ needs.gate.outputs.version }}
     steps:
-      - uses: actions/checkout@v7
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
-      - name: Version from tag (must match VERSION)
+      - name: Toolchain
         run: |
-          test "$(tr -d '[:space:]' < VERSION)" = "${GITHUB_REF_NAME#v}" || { echo "::error::VERSION file does not match tag $GITHUB_REF_NAME"; exit 1; }
-          echo "MARKETING_VERSION=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
-          echo "BUILD_NUMBER=${{ github.run_number }}" >> "$GITHUB_ENV"
+          xcode-select -p
+          xcodebuild -version
+          swift --version
 
-      - name: Import Developer ID certificate + notary key
-        if: env.HAS_SIGNING == 'true'
+      - name: Metal Toolchain (CrannyEffects compiles Metal shaders)
+        run: |
+          if ! grep -q 'Status: installed' <<<"$(xcodebuild -showComponent MetalToolchain)"; then
+            xcodebuild -downloadComponent MetalToolchain
+          fi
+          xcodebuild -showComponent MetalToolchain
+          xcrun metal -v
+
+      - name: Import the Developer ID certificate and the notary key
         env:
           P12_BASE64: ${{ secrets.DEVELOPER_ID_P12_BASE64 }}
           P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
@@ -33,47 +175,258 @@ jobs:
           NOTARY_KEY_ID: ${{ secrets.NOTARY_KEY_ID }}
           NOTARY_ISSUER_ID: ${{ secrets.NOTARY_ISSUER_ID }}
         run: |
+          configured=0
+          for name in P12_BASE64 P12_PASSWORD NOTARY_KEY_P8_BASE64 NOTARY_KEY_ID NOTARY_ISSUER_ID; do
+            [[ -z "${!name}" ]] || configured=$((configured + 1))
+          done
+          if ((configured == 0)); then
+            echo "::notice title=Ad-hoc signed release::No Developer ID secrets: the release is ad-hoc signed and not notarized (users allow it once in System Settings > Privacy & Security)."
+            exit 0
+          fi
+          if ((configured != 5)); then
+            echo "::error title=Signing is half configured::Set all five signing secrets (DEVELOPER_ID_P12_BASE64, DEVELOPER_ID_P12_PASSWORD, NOTARY_KEY_P8_BASE64, NOTARY_KEY_ID, NOTARY_ISSUER_ID) or none."
+            exit 1
+          fi
+          umask 077
           KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
           KEYCHAIN_PASSWORD="$(uuidgen)"
-          echo "$P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          printf '%s' "$P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           security set-keychain-settings -lut 21600 "$KEYCHAIN"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
           security import "$RUNNER_TEMP/cert.p12" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          rm -f "$RUNNER_TEMP/cert.p12"
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
-          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          keychains=()
+          while IFS= read -r line; do
+            line="${line#"${line%%[![:space:]]*}"}"
+            keychains+=("${line//\"/}")
+          done < <(security list-keychains -d user)
+          security list-keychains -d user -s "$KEYCHAIN" "${keychains[@]}"
           IDENTITY="$(security find-identity -v -p codesigning "$KEYCHAIN" | awk -F'"' '/Developer ID Application/ {print $2; exit}')"
-          TEAM_ID="$(echo "$IDENTITY" | sed -E 's/.*\(([A-Z0-9]{10})\)$/\1/')"
-          echo "SIGN_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
-          echo "TEAM_ID=$TEAM_ID" >> "$GITHUB_ENV"
-          echo "$NOTARY_KEY_P8_BASE64" | base64 --decode > "$RUNNER_TEMP/notary.p8"
+          TEAM_ID="$(sed -nE 's/.*\(([A-Z0-9]{10})\)$/\1/p' <<<"$IDENTITY")"
+          if [[ -z "$IDENTITY" || -z "$TEAM_ID" ]]; then
+            echo "::error title=No Developer ID identity::DEVELOPER_ID_P12_BASE64 holds no \"Developer ID Application: Name (TEAMID)\" certificate with its key."
+            exit 1
+          fi
+          printf '%s' "$NOTARY_KEY_P8_BASE64" | base64 --decode > "$RUNNER_TEMP/notary.p8"
           xcrun notarytool store-credentials cranny-notary \
             --key "$RUNNER_TEMP/notary.p8" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER_ID" \
             --keychain "$KEYCHAIN"
-          echo "NOTARY_PROFILE=cranny-notary" >> "$GITHUB_ENV"
-          echo "NOTARY_KEYCHAIN=$KEYCHAIN" >> "$GITHUB_ENV"
+          rm -f "$RUNNER_TEMP/notary.p8"
+          {
+            echo "SIGN_IDENTITY=$IDENTITY"
+            echo "TEAM_ID=$TEAM_ID"
+            echo "NOTARY_PROFILE=cranny-notary"
+            echo "NOTARY_KEYCHAIN=$KEYCHAIN"
+          } >> "$GITHUB_ENV"
+          echo "Signing as $IDENTITY"
 
-      - name: Metal Toolchain (CrannyEffects compiles Metal shaders)
-        run: |
-          xcodebuild -showComponent MetalToolchain | grep -q 'Status: installed' || xcodebuild -downloadComponent MetalToolchain
-          xcodebuild -showComponent MetalToolchain
-          xcrun metal -v
-
-      - name: Every shipped language translated, none pending (docs/TRANSLATING.md ▸ New strings)
-        run: /usr/bin/python3 -I scripts/l10n/validate.py --shipped --release --quiet
-
-      - name: Build (universal)
-        run: scripts/build.sh
-
-      - name: Launch smoke test
-        run: scripts/smoke.sh
-
-      - name: Package (+ notarize when signing is configured)
-        run: scripts/dist.sh
-
-      - name: Publish GitHub Release
+      - name: Build release (scripts/build-release.sh)
         env:
-          GH_TOKEN: ${{ github.token }}
+          BUILD_NUMBER: ${{ github.run_number }}
+        run: scripts/build-release.sh --out "$RUNNER_TEMP/out"
+
+      - name: Check the release files
         run: |
-          gh release create "$GITHUB_REF_NAME" dist/*.zip dist/*.dmg dist/*.sha256 \
-            --title "Cranny $MARKETING_VERSION" --generate-notes --verify-tag
+          . scripts/lib/version.sh
+          if [[ "$(app_version_get .)" != "$VERSION" ]]; then
+            echo "::error file=VERSION::VERSION is not $VERSION."
+            exit 1
+          fi
+          expected="$(release_assets "$VERSION" | LC_ALL=C sort)"
+          actual="$(cd "$RUNNER_TEMP/out" && find . -mindepth 1 -maxdepth 1 | sed 's|^\./||' | LC_ALL=C sort)"
+          if [[ "$expected" != "$actual" ]]; then
+            echo "::error::The build holds ${actual//$'\n'/ }, not ${expected//$'\n'/ }."
+            exit 1
+          fi
+          (cd "$RUNNER_TEMP/out" && shasum -a 256 -c "Cranny-$VERSION.sha256")
+
+      - name: Upload build outputs
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-${{ env.VERSION }}
+          path: ${{ runner.temp }}/out/
+          if-no-files-found: error
+          retention-days: ${{ needs.gate.outputs.publish == 'true' && 7 || 1 }}
+          compression-level: 0
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: failure()
+        with:
+          name: release-logs-${{ github.sha }}
+          path: build/logs/
+
+      - name: Remove signing material
+        if: always()
+        run: |
+          if [[ -e "$RUNNER_TEMP/signing.keychain-db" ]]; then
+            security delete-keychain "$RUNNER_TEMP/signing.keychain-db" || true
+          fi
+          rm -f "$RUNNER_TEMP/cert.p12" "$RUNNER_TEMP/notary.p8"
+
+  # A separate job, so the write token never shares a machine with the build, and a failed upload can be re-run
+  # without rebuilding.
+  publish:
+    name: Publish release
+    needs: [gate, quality, build]
+    if: needs.gate.outputs.publish == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.gate.outputs.version }}
+      TAG: ${{ needs.gate.outputs.tag }}
+      GH_REPO: ${{ github.repository }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      # Full history and tags for the notes, without the tree.
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+          sparse-checkout: |
+            /VERSION
+            /scripts/lib/
+            /.github/scripts/
+          sparse-checkout-cone-mode: false
+
+      - name: Download build outputs
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: release-${{ env.VERSION }}
+          path: ${{ runner.temp }}/release-assets
+
+      # The commit subjects since the previous release tag
+      - name: Write release notes
+        run: |
+          bash .github/scripts/release-notes.sh > "$RUNNER_TEMP/release-notes.md"
+          cat "$RUNNER_TEMP/release-notes.md"
+
+      - name: Publish ${{ needs.gate.outputs.tag }}
+        env:
+          # git ls-remote origin with the job's token: the checkouts keep no credentials, and a private repository
+          # needs them (a credential helper for the git of this step only)
+          GIT_CONFIG_COUNT: 1
+          GIT_CONFIG_KEY_0: credential.helper
+          GIT_CONFIG_VALUE_0: '!f() { test "$1" = get && echo username=x-access-token && echo "password=$GH_TOKEN"; }; f'
+        run: |
+          . scripts/lib/version.sh
+          # Fresh state, not the gate's: this job may be a re-run days later.
+          state="$(bash .github/scripts/release-state.sh)"
+          if [[ "$state" == released ]]; then
+            # A re-run after GitHub applied the publish but answered it with an error: the release went live
+            # from this very commit.
+            if [[ "$(git ls-remote --tags origin | tag_commit "$TAG")" == "$GITHUB_SHA" ]]; then
+              echo "::notice::${TAG} is already published from this commit."
+              exit 0
+            fi
+            echo "::error::${TAG} has already been released from another commit."
+            exit 1
+          fi
+          # A re-run of an old run must not release a commit that main has already moved past. That newer run
+          # releases the version instead (GITHUB_TOKEN could not tag this commit anyway once the workflows differ).
+          tip="$(git ls-remote origin refs/heads/main | cut -f 1)"
+          if [[ "$tip" != "$GITHUB_SHA" ]]; then
+            echo "::notice title=Not published::main moved to ${tip}; the run for that commit releases ${TAG}."
+            exit 0
+          fi
+
+          assets=()
+          while IFS= read -r name; do
+            assets+=("$RUNNER_TEMP/release-assets/$name")
+          done < <(release_assets "$VERSION")
+          for f in "${assets[@]}"; do
+            if [[ ! -s "$f" ]]; then
+              echo "::error::The build outputs lack $(basename "$f")."
+              exit 1
+            fi
+          done
+          (cd "$RUNNER_TEMP/release-assets" && sha256sum -c "Cranny-$VERSION.sha256")
+
+          # A run interrupted before publishing leaves a draft. Remove our own, never one a person made.
+          gh api --paginate "repos/$GH_REPO/releases?per_page=100" \
+            --jq '.[] | select(.draft and .tag_name == env.TAG) | "\(.id) \(.author.login)"' \
+            | while read -r release_id author; do
+                if [[ "$author" != "github-actions[bot]" ]]; then
+                  echo "::error::Draft release ${TAG} by ${author} already exists. Publish or delete it, then re-run."
+                  exit 1
+                fi
+                gh api --method DELETE "repos/$GH_REPO/releases/$release_id" --silent
+              done
+
+          # 1) A draft: invisible to /releases/latest, which the in-app update check polls. GitHub creates the tag on
+          #    publish. The API returns the draft's id at once; everything below works with that id, never with a
+          #    lookup in the release list, which lags behind.
+          id="$(gh api --method POST "repos/$GH_REPO/releases" \
+            -f tag_name="$TAG" -f target_commitish="$GITHUB_SHA" \
+            -f name="Cranny $VERSION" -F body=@"$RUNNER_TEMP/release-notes.md" \
+            -F draft=true --jq .id)"
+          if [[ ! "$id" =~ ^[0-9]+$ ]]; then
+            echo "::error::Creating the draft for ${TAG} returned no release id: ${id}"
+            exit 1
+          fi
+          # A failed step removes the draft, but never a release that went live: GitHub may apply the PATCH below
+          # and still answer it with an error, so once the PATCH was sent only a release that is still a draft
+          # goes. A re-run then finds the release published from this commit.
+          trap 'if [[ -z "${published:-}" ]] && { [[ -z "${patching:-}" ]] || [[ "$(gh api "repos/$GH_REPO/releases/$id" --jq .draft 2>/dev/null)" == true ]]; }; then gh api --method DELETE "repos/$GH_REPO/releases/$id" --silent || true; fi' EXIT
+
+          # 2) Every asset, then the draft's asset list against the built files: name, size and digest
+          for f in "${assets[@]}"; do
+            curl -fsS --max-time 600 -X POST \
+              -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+              -H "Content-Type: application/octet-stream" --data-binary "@$f" \
+              "https://uploads.github.com/repos/$GH_REPO/releases/$id/assets?name=$(basename "$f")" > /dev/null
+          done
+          uploaded="$RUNNER_TEMP/uploaded.txt"
+          for _ in 1 2 3 4 5 6; do
+            gh api "repos/$GH_REPO/releases/$id" \
+              --jq '.assets[] | "\(.name) \(.size) \(.state) \(.digest // "-")"' > "$uploaded"
+            [[ "$(wc -l < "$uploaded")" -ne "${#assets[@]}" ]] || break
+            sleep 5
+          done
+          if [[ "$(wc -l < "$uploaded")" -ne "${#assets[@]}" ]]; then
+            echo "::error::The draft has $(wc -l < "$uploaded") assets instead of ${#assets[@]}."
+            exit 1
+          fi
+          for f in "${assets[@]}"; do
+            name="$(basename "$f")"
+            size="" asset_state="" digest=""
+            read -r _ size asset_state digest < <(awk -v n="$name" '$1 == n' "$uploaded") || true
+            if [[ "$size" != "$(wc -c < "$f" | tr -d ' ')" || "$asset_state" != uploaded ]]; then
+              echo "::error::${name} on the draft does not match the built file (size ${size:-?}, state ${asset_state:-?})."
+              exit 1
+            fi
+            if [[ "$digest" == "-" ]]; then
+              echo "::warning::GitHub reported no digest for ${name}."
+            elif [[ "$digest" != "sha256:$(sha256sum "$f" | cut -d ' ' -f 1)" ]]; then
+              echo "::error::${name} on the draft has digest ${digest}, which differs from the built file."
+              exit 1
+            fi
+          done
+
+          # 3) Publish as the latest release
+          patching=1
+          gh api --method PATCH "repos/$GH_REPO/releases/$id" -F draft=false -f make_latest=true --silent
+          published=1
+
+          latest=""
+          for _ in 1 2 3 4 5 6; do
+            latest="$(gh api "repos/$GH_REPO/releases/latest" --jq .tag_name || true)"
+            [[ "$latest" == "$TAG" ]] && break
+            sleep 5
+          done
+          if [[ "$latest" != "$TAG" ]]; then
+            echo "::error::/releases/latest returns \"${latest}\", not ${TAG}."
+            exit 1
+          fi
+          # The tag GitHub created on publish, an annotated one followed to its commit
+          tag_sha="$(git ls-remote --tags origin | tag_commit "$TAG")"
+          if [[ "$tag_sha" != "$GITHUB_SHA" ]]; then
+            echo "::error::Tag ${TAG} points at ${tag_sha:-nothing}, not ${GITHUB_SHA}."
+            exit 1
+          fi
+          echo "Published https://github.com/$GH_REPO/releases/tag/$TAG"

@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 # Release build of Cranny.app (universal arm64 + x86_64) -> build/Cranny.app
 #
-#   scripts/build.sh                 # ad-hoc signed ("Sign to Run Locally"), no Apple account needed
-#   ARCHS=arm64 scripts/build.sh     # single-arch (faster)
-#   CONFIGURATION=Debug scripts/build.sh
-#   SIGN_IDENTITY="Developer ID Application: Jane Doe (TEAMID1234)" TEAM_ID=TEAMID1234 scripts/build.sh
-source "$(dirname "$0")/lib.sh"
+#   scripts/lib/build.sh                 # ad-hoc signed ("Sign to Run Locally"), no Apple account needed
+#   ARCHS=arm64 scripts/lib/build.sh     # single-arch (faster)
+#   CONFIGURATION=Debug scripts/lib/build.sh
+#   SIGN_IDENTITY="Developer ID Application: Jane Doe (TEAMID1234)" TEAM_ID=TEAMID1234 scripts/lib/build.sh
+# shellcheck source=scripts/lib/common.sh
+source "$(dirname "$0")/common.sh"
 ensure_xcode
 ensure_metal_toolchain   # CrannyEffects compiles Metal shaders
 
