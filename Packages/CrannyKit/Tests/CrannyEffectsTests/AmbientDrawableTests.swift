@@ -128,8 +128,9 @@ func bandDrawableMatchesTheWholeLayer(_ effect: AmbientEffect) throws {
     #expect(AmbientFrameTables.halfRounded(1) == 1)
     #expect(AmbientFrameTables.halfRounded(0) == 0)
     #expect(AmbientFrameTables.halfRounded(0.1) == 0.0999755859375)                    // 1638 · 2⁻¹⁴
-    #expect(AmbientFrameTables.halfRounded(1 + 0.5 / 1024) == 1, "ties go to even")
-    #expect(AmbientFrameTables.halfRounded(1 + 1.5 / 1024) == 1 + 2.0 / 1024)
+    let ulp: Float = 1.0 / 1024                                                        // half-precision step in [1, 2)
+    #expect(AmbientFrameTables.halfRounded(1 + ulp / 2) == 1, "ties go to even")
+    #expect(AmbientFrameTables.halfRounded(1 + 1.5 * ulp) == 1 + 2 * ulp)
     #if arch(arm64)
     for i in 0...1000 {
         let x = Float(i) / 1000
