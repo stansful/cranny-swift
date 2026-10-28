@@ -16,14 +16,15 @@ nonisolated enum TodoCheckStyle: Equatable, Sendable {
     case drawWithMotes
 
     /// Delight caps (DESIGN.md §5.5): none in full screen or while Live Activities are paused; Calm and
-    /// Reduce Motion get the instant check; Instant animates nothing.
-    static func resolve(personality: MotionPersonality, reduceMotion: Bool,
+    /// Reduce Motion get the instant check; Instant animates nothing. Appearance ▸ Quality ▸ Efficient keeps Lively's
+    /// check without the motes: they are a Canvas, which would give Cranny the GPU memory that setting saves (§5.7).
+    static func resolve(personality: MotionPersonality, reduceMotion: Bool, detail: AmbientDetail = .detailed,
                         isFullScreenInFront: Bool, areActivitiesPaused: Bool) -> TodoCheckStyle {
         if reduceMotion || isFullScreenInFront || areActivitiesPaused { return .instant }
         switch personality {
         case .calm, .instant: return .instant
         case .standard: return .draw
-        case .lively: return .drawWithMotes
+        case .lively: return detail == .efficient ? .draw : .drawWithMotes
         }
     }
 

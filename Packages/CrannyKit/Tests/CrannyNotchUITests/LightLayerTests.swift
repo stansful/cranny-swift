@@ -73,31 +73,45 @@ import Testing
         #expect(ThemeResolver.ambientDetail(settings: settings) == .efficient)
     }
 
-    /// Efficient draws the live panel's light with Core Animation (DESIGN.md §5.7); snapshots keep the SwiftUI path,
-    /// so their pixels are the same for both settings. Detailed keeps the Metal layer.
-    @Test func efficientLightsTheLivePanelWithCoreAnimation() throws {
+    /// Snapshots keep the SwiftUI path whatever Appearance ▸ Quality says, so their pixels are the same for both.
+    @Test func snapshotsDrawTheSameLightForBothQualities() throws {
         #expect(difference(try light(effect: .tide, detail: .efficient), try light(effect: .tide, detail: .detailed)) < 0.001)
-        for detail in AmbientDetail.allCases {
-            let (model, registry) = previewScene(.open)
-            registry.services.settings[CoreSettings.ambientDetail] = detail
-            model.theme = ThemeResolver.theme(settings: registry.services.settings, albumAccent: nil,
-                                              notchUnit: model.layout.metrics.unit, isFloatingDisplay: false)
-            let hosted = Hosted(NookLightLayer(model: model, registry: registry)
-                .frame(width: size.width, height: size.height)
-                .crannyThemeRoot(model.theme), size: size)
-            defer { hosted.tearDown() }
-            let views = Set(Self.classNames(hosted.host))
-            #expect(views.contains("AmbientCANSView") == (detail == .efficient), "\(detail): \(views.sorted())")
-            // Detailed keeps the Metal layer wherever it runs (shaders and the layer available on this Mac).
-            #expect(views.contains("AmbientMetalNSView") == (detail == .detailed && metalLayerRuns),
-                    "\(detail): \(views.sorted())")
-        }
     }
+}
 
-    /// The Metal layer can draw the light here (CrannyEffects' own report, as `Cranny --diagnostics` gives it).
-    private var metalLayerRuns: Bool { EffectsDiagnostics.ambientRenderer == "metal-layer" }
+extension HostedTests {
+    /// Efficient draws the live panel's light with Core Animation (DESIGN.md §5.7); Detailed keeps the Metal layer.
+    /// With the Mac's Reduce Transparency on there is no light to look for.
+    @MainActor @Suite("Light layer (hosted, off-screen)") struct HostedLightLayerTests {
+        private let size = CGSize(width: 656, height: 170)
 
-    private static func classNames(_ view: NSView) -> [String] {
-        [String(describing: type(of: view))] + view.subviews.flatMap(classNames)
+        @Test(.enabled(if: !NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency))
+        func efficientLightsTheLivePanelWithCoreAnimation() {
+            for detail in AmbientDetail.allCases {
+                let (model, registry) = previewScene(.open)
+                registry.services.settings[CoreSettings.ambientDetail] = detail
+                model.theme = ThemeResolver.theme(settings: registry.services.settings, albumAccent: nil,
+                                                  notchUnit: model.layout.metrics.unit, isFloatingDisplay: false)
+                let hosted = Hosted(NookLightLayer(model: model, registry: registry)
+                    .frame(width: size.width, height: size.height)
+                    .crannyThemeRoot(model.theme), size: size)
+                defer { hosted.tearDown() }
+                let views = Set(Self.classNames(hosted.host))
+                #expect(views.contains("AmbientCANSView") == (detail == .efficient), "\(detail): \(views.sorted())")
+                // Detailed keeps the Metal layer wherever it runs (shaders and the layer available on this Mac; the
+                // Mac's Reduce Motion rests the light on the SwiftUI path).
+                #expect(views.contains("AmbientMetalNSView") == (detail == .detailed && metalLayerRuns),
+                        "\(detail): \(views.sorted())")
+            }
+        }
+
+        /// The Metal layer can draw the light here (CrannyEffects' own report, as `Cranny --diagnostics` gives it).
+        private var metalLayerRuns: Bool {
+            EffectsDiagnostics.ambientRenderer == "metal-layer" && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        }
+
+        private static func classNames(_ view: NSView) -> [String] {
+            [String(describing: type(of: view))] + view.subviews.flatMap(classNames)
+        }
     }
 }

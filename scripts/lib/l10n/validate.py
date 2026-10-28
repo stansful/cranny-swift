@@ -20,7 +20,8 @@ Errors:
 - no empty values; no competitor names ("Nook" …, ARCHITECTURE.md D20) in any language;
 - "Cranny" kept as written wherever English has it (never translated or transliterated);
 - quote characters of the language (languages.json "quoteStyle"; no ASCII quotes unless macOS uses them there);
-  French no-break spaces inside « » and before : ; ! ?; "..." instead of "…";
+  French no-break spaces inside « » and before : ; ! ?; "..." instead of "…"; Ukrainian ʼ (U+02BC) between letters,
+  not ’ or ';
 - the English source (language "en"): every count has plural variations (one/other), except the numbers listed in
   NOT_COUNTS (labels, positions, codes).
 Warnings: a translation identical to English (unless it only holds names macOS keeps, see KEEP_AS_IS), a constrained
@@ -63,7 +64,7 @@ KEEP_AS_IS = {
     "Cmd", "Ctrl", "Opt", "Tab", "Return", "Space", "pt", "px", "MB", "GB", "KB", "ms", "AM", "PM", "Wi", "Fi",
     "Liquid", "Glass",
 }
-QUOTES = set("“”„‟«»‹›「」『』״\"‘‚‛'")      # ’ (U+2019) is also the apostrophe: never checked
+QUOTES = set("“”„‟«»‹›「」『』״\"‘‚‛'")      # ’ (U+2019) is also the apostrophe: not checked as a quote (uk: ʼ)
 NO_BREAK = "  "
 
 

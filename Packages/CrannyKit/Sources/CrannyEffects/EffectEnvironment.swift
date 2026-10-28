@@ -54,7 +54,7 @@ nonisolated enum EffectsQA {
 
     /// `budget` as if on screen, with no full-screen app in front and without Low Power (and on battery if asked)
     /// while the QA switch is set.
-    static func adjusted(_ budget: EffectBudget) -> EffectBudget {
+    static func adjusted(_ budget: EffectBudget, keepsRunning: Bool = EffectsQA.keepsRunning) -> EffectBudget {
         guard keepsRunning else { return budget }
         var adjusted = budget
         adjusted.onScreen = true

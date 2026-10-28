@@ -876,6 +876,15 @@ public nonisolated enum AmbientEffect: String, CaseIterable, Codable, Sendable {
     case halo     // one static bloom (Low Power Mode fallback)
 }
 
+/// Settings ▸ Appearance ▸ Light ▸ Quality: how the ambient light (and the light's moments) are drawn (DESIGN.md §5.1).
+public nonisolated enum AmbientDetail: String, CaseIterable, Codable, Sendable {
+    /// The default: the Metal light (CrannyEffects' dedicated Metal layer and shaders, DESIGN.md §5.6).
+    case detailed
+    /// A simpler light of Core Animation layers that the window server animates: no Metal in Cranny, so no GPU
+    /// memory charged to the app and no wake-up per frame (DESIGN.md §5.7). Moments play their still variants.
+    case efficient
+}
+
 public nonisolated struct CrannyTheme: Equatable, Sendable {
     // User settings
     public var accent: RGB = RGB(hex: 0x409CFF)        // already resolved by AccentResolver
@@ -887,6 +896,8 @@ public nonisolated struct CrannyTheme: Equatable, Sendable {
     public var motion: MotionPersonality = .standard
     public var ambience: AmbienceLevel = .subtle
     public var effect: AmbientEffect = .aurora
+    /// How the light is drawn: the Metal light (default) or the Core Animation light (Settings ▸ Appearance ▸ Quality).
+    public var ambientDetail: AmbientDetail = .detailed
     public var translucentBackground = false
     public var glassIsland = false                       // Liquid Glass island (26+); set by the panel only on floating-style displays
     public var hapticsEnabled = true
@@ -1777,7 +1788,7 @@ All effects are pure functions of time, palette, energy and intensity. They hold
 
 All are original and capped: at most one plays at a time; none play in full screen, while the panel is covered, while the screen is locked or while Live Activities are paused; and none play under Motion ▸ Instant. Under Calm and under Reduce Motion each moment plays its variant from the last column instead (design ruling R2): First light fades in statically, Timer done shows the static ember glow, Charger connected lights the rim at once and the satellite split fades. Song change (colour only, carried by the palette cross-fade) and File caught (no gulp; the haptic stays) draw no moment then, so they are not scheduled and never keep the stage from a moment that shows. The ambient light is not a moment: under Calm it keeps moving.
 
-**Quality ▸ Efficient** (§5.7): every moment plays its variant from the last column, as under Calm and Reduce Motion, because the animated designs are Metal shaders or Canvases and either would give Cranny the GPU memory that setting saves. The song change is the exception: the Core Animation light lifts once with the palette cross-fade (the tide deepens its waves instead, §5.7). The gulp, the to-do check and the HUD bump are shape motion and unchanged.
+**Quality ▸ Efficient** (§5.7): every moment plays its variant from the last column, as under Calm and Reduce Motion, because the animated designs are Metal shaders or Canvases and either would give Cranny the GPU memory that setting saves. The song change is the exception: the Core Animation light lifts once with the palette cross-fade (the tide deepens its waves instead, §5.7). The gulp, the to-do check and the HUD bump are shape motion and unchanged, except the to-do check's Lively motes: they are a Canvas, so Efficient draws the check without them (Standard's check).
 
 **Who triggers what** (ARCHITECTURE §3.6, §4.6 step 7): feature modules cannot import `CrannyEffects`, so an activity only *names* its moment (`LiveActivity.delight`: Timer done → `.emberBurst`, Charging → `.chargeSweep`); the shell adds `.songRipple`, `.firstLight` and `.gulp`, applies the caps above, and CrannyNotchUI draws the moment from `CrannyEffects`. The to-do check and its Lively motes are drawn inside the To-dos widget; the drop, satellite neck and HUD bump are motion owned by NotchUI and the HUD.
 
@@ -1792,7 +1803,7 @@ All are original and capped: at most one plays at a time; none play in full scre
 | **File caught** | The shape "gulps" (height −3 pt, spring back over 0.25 s) and plays a `.generic` haptic | No gulp; haptic stays |
 | **Charger connected** | A green sweep along the lower rim | Instant rim |
 | **Satellite split** | The liquid neck, 0.38 s | Fade |
-| **To-do done** | The check draws itself (trim 0 → 1, 0.25 s); Lively adds six motes | Instant check |
+| **To-do done** | The check draws itself (trim 0 → 1, 0.25 s); Lively adds six motes (not with Quality ▸ Efficient) | Instant check |
 | **HUD at a limit** | A 2-pt rubber-band bump | Kept, with no overshoot |
 
 ### 5.6 Metal shaders

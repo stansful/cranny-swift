@@ -47,6 +47,18 @@ private func budget(lowPower: Bool = false, reduceMotion: Bool = false, isOpen: 
     #expect(MomentPath.resolve(budget: budget(lowPower: true), shadersAvailable: true) == .fallback)
 }
 
+/// Callers animate palette changes unless the light cross-fades them itself (Efficient's live Core Animation light).
+@Test func onlyTheCoreAnimationLightCrossFadesItsPalettes() {
+    #expect(AmbientLayer.crossFadesPalettes(budget: budget(), detail: .efficient, rendering: .automatic))
+    #expect(AmbientLayer.crossFadesPalettes(budget: budget(reduceMotion: true), detail: .efficient, rendering: .automatic))
+    #expect(!AmbientLayer.crossFadesPalettes(budget: budget(), detail: .efficient, rendering: .inline), "snapshots")
+    #expect(!AmbientLayer.crossFadesPalettes(budget: budget(), detail: .detailed, rendering: .automatic))
+    #expect(!AmbientLayer.crossFadesPalettes(budget: budget(lowPower: true), detail: .efficient, rendering: .automatic,
+                                             qaKeepsRunning: false), "Low Power's halo")
+    #expect(AmbientLayer.crossFadesPalettes(budget: budget(lowPower: true), detail: .efficient, rendering: .automatic,
+                                            qaKeepsRunning: true), "the Debug effects switch keeps the light, as in the light")
+}
+
 @Test func crossFadeFollowsTheColourShiftToken() {
     #expect(AmbientCAFade.motion(.colorShift, personality: .standard, reduceMotion: false)
             == AmbientCAFade(duration: 0.8, curve: .easeInEaseOut))
@@ -128,6 +140,21 @@ private func budget(lowPower: Bool = false, reduceMotion: Bool = false, isOpen: 
         state.rests = false
         view.state = state
         #expect(view.clockSpeed == 1 && abs(view.lightTime - 7.3) < 0.05)
+    }
+
+    /// A light first shown while the budget pauses it (a full-screen app in front, off screen) stands on its resting
+    /// frame, as the Metal light draws one still frame, and runs from there once the budget runs it.
+    @Test func aLightFirstShownPausedStandsOnItsRestingFrame() async throws {
+        let view = caView(.motes, time: 7.3, interval: nil, rests: false)
+        #expect(!view.isClockRunning && view.clockSpeed == 0)
+        #expect(abs(view.lightTime - 7.3) < 1e-6)
+        try await Task.sleep(for: .milliseconds(120))
+        #expect(abs(view.lightTime - 7.3) < 1e-6, "a paused light stands still")
+        var state = try #require(view.state)
+        state.interval = 1.0 / 30
+        view.state = state
+        #expect(view.isClockRunning && view.clockSpeed == 1)
+        #expect(abs(view.lightTime - 7.3) < 0.05, "it runs from its resting frame")
     }
 
     /// The fill rises under a mask and fades under Reduce Motion; settled, no mask is left (no offscreen pass).
@@ -229,9 +256,24 @@ private func budget(lowPower: Bool = false, reduceMotion: Bool = false, isOpen: 
         let settled = try rasterizeCA(view, at: now + 0.4)          // 0.7 s: over
         #expect(still.centroidRow - lifted.centroidRow > 1, "lifted (\(still.centroidRow) → \(lifted.centroidRow))")
         #expect(abs(settled.centroidRow - still.centroidRow) < 0.05, "settled (\(settled.centroidRow))")
-        // The same change again does nothing; a paused light does not swell.
+        // A new change lifts it, and the same change does nothing when something else changes (both while the change
+        // is still under way, however long the renders above took); a paused light does not swell, and plays what is
+        // left of the swell once it runs.
+        state.rippleStart = Date()
         view.state = state
-        #expect(view.swellLayerForTests.animation(forKey: AmbientCA.swellKey) === swell)
+        let fresh = try #require(view.swellLayerForTests.animation(forKey: AmbientCA.swellKey))
+        #expect(fresh !== swell, "a new change lifts it")
+        state.level = .vivid
+        view.state = state
+        #expect(view.swellLayerForTests.animation(forKey: AmbientCA.swellKey) === fresh, "each change lifts it once")
+        state.interval = nil
+        state.rippleStart = Date()
+        view.state = state
+        #expect(view.swellLayerForTests.animation(forKey: AmbientCA.swellKey) === fresh, "a paused light does not swell")
+        state.interval = 1.0 / 30
+        view.state = state
+        let resumed = try #require(view.swellLayerForTests.animation(forKey: AmbientCA.swellKey))
+        #expect(resumed !== fresh, "the change swells once the light runs")
     }
 
     /// The tide deepens its waves in place for a song change instead of lifting as a block; resting drops it.
@@ -377,13 +419,14 @@ private nonisolated struct EverythingProbe: CustomStringConvertible, Sendable {
     }
 }
 
-/// The same probe on Detailed (unchanged): the Metal layer, its renderer, the device queries and the GPU memory the
-/// driver charges for them are all there, so the probe above would see them.
+/// The same probe on Detailed (unchanged): the Metal layer, its renderer and the device queries are all there, so the
+/// probe above would see them. How much GPU memory the driver charges for them depends on the GPU (≈ 267 MB on an
+/// M4 Max), so the 100-MB floor is checked only with `CRANNY_INTEGRATION=1`, never on CI's virtual GPU.
 @Test(.enabled(if: shadersRun)) func detailedStillDrawsWithMetal() async {
     await #expect(processExitsWith: .success) {
         let probe = await MainActor.run { hostEverything(detail: .detailed) }
         guard !probe.coreAnimation, probe.metal, probe.queries > 0, probe.renderers > 0,
-              probe.graphicsMB.map({ $0 > 100 }) ?? true else {
+              !integrationTests || probe.graphicsMB.map({ $0 > 100 }) ?? true else {
             FileHandle.standardError.write(Data("Detailed did not draw with Metal: \(probe)\n".utf8))
             exit(1)
         }

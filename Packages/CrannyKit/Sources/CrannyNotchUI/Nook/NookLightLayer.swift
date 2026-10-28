@@ -55,9 +55,11 @@ struct NookLightLayer: View {
         .onChange(of: delight?.serial) { _, _ in start(delight) }
     }
 
-    /// Whether the light on screen is Efficient's Core Animation light (snapshots and Low Power's halo stay in SwiftUI).
+    /// Whether the light on screen is Efficient's Core Animation light (snapshots and Low Power's halo stay in SwiftUI),
+    /// decided as the light decides it.
     private func fadesInLayer(_ budget: EffectBudget) -> Bool {
-        theme.ambientDetail == .efficient && !isSnapshot && !budget.lowPower
+        AmbientLayer.crossFadesPalettes(budget: budget, detail: theme.ambientDetail,
+                                        rendering: isSnapshot ? .inline : .automatic)
     }
 
     private func light(level: AmbienceLevel, budget: EffectBudget) -> some View {

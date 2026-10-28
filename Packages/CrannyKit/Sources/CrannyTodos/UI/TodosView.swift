@@ -45,7 +45,8 @@ struct TodosView: View {
             switch content {
             case .list:
                 TodoListView(model: model, items: items, metrics: metrics,
-                             checkStyle: model.checkStyle(personality: theme.motion, reduceMotion: theme.reduceMotion),
+                             checkStyle: model.checkStyle(personality: theme.motion, reduceMotion: theme.reduceMotion,
+                                                          detail: theme.ambientDetail),
                              isReadOnly: isReadOnly, redacts: context.redactsPersonalData,
                              isFocusedWidget: context.isFocused, hasSaveError: showsSaveError) { ring in
                     TodosHeader(count: headerCount, showsCount: context.cells >= 3, saveFailed: showsSaveError,

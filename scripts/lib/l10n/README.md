@@ -89,8 +89,9 @@ segment, a table column header, a 2-cell widget (`…widget, 2 cells`, Mirror / 
   the reviewed translation does it).
 - Sentence case everywhere, except where the language capitalizes otherwise (German nouns) and where English uses
   title case for standard macOS menus and buttons — follow your language's macOS convention there.
-- Typography: your language's quotation marks (`quoteStyle`), the apostrophe ’, one-character ellipsis …, the
-  no-break spaces your language uses (French before : ; ! ? and inside « »). No straight quotes unless macOS uses
+- Typography: your language's quotation marks (`quoteStyle`), the apostrophe ’ (Ukrainian: ʼ U+02BC between
+  letters, as macOS writes памʼять), one-character ellipsis …, the no-break spaces your language uses (French
+  before : ; ! ? and inside « »). No straight quotes unless macOS uses
   them in your language (Arabic).
 - Use the register macOS uses in your language (du/Sie, tu/vous… — the `notes` in `languages.json`).
 
@@ -101,7 +102,7 @@ whose every form is `needs_review` is *pending*, listed as one warning per langu
 `--release`); a placeholder lost, added or of another type; positional and
 plain specifiers mixed; plural categories that are not exactly the language's; an empty string; "Nook" and the
 other denylisted names; "Cranny" missing or misspelled; quotation marks of another language or straight quotes;
-three dots; French spaces. Warnings: a string identical to English (unless it is only names macOS keeps, such as
+three dots; French spaces; in Ukrainian, ’ or ' between letters instead of ʼ. Warnings: a string identical to English (unless it is only names macOS keeps, such as
 AirDrop or Finder), a constrained string much longer than English, English that changed since the export, plural
 forms collapsed into one string where English varies, and (with `--glossary`) an Apple term left in English.
 `import.py` refuses a file with errors (`--force` writes only the items without errors).

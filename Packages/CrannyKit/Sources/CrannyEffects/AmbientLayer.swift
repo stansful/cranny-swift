@@ -60,6 +60,22 @@ public struct AmbientLayer: View, Animatable {
         }
     }
 
+    /// Whether the light with `budget` is Efficient's Core Animation light, which cross-fades a new palette by itself:
+    /// set the palette without animation then. The light's own decision (Low Power's halo and `.inline` snapshots stay
+    /// in SwiftUI; the Debug effects switch applies), made without asking about the Metal library.
+    public static func crossFadesPalettes(budget: EffectBudget, detail: AmbientDetail,
+                                          rendering: AmbientLightRendering) -> Bool {
+        crossFadesPalettes(budget: budget, detail: detail, rendering: rendering, qaKeepsRunning: EffectsQA.keepsRunning)
+    }
+
+    /// `qaKeepsRunning`: the Debug effects switch (`EffectsQA.keepsRunning`), a parameter for tests.
+    static func crossFadesPalettes(budget: EffectBudget, detail: AmbientDetail, rendering: AmbientLightRendering,
+                                   qaKeepsRunning: Bool) -> Bool {
+        rendering == .automatic
+            && AmbientPath.resolve(budget: EffectsQA.adjusted(budget, keepsRunning: qaKeepsRunning), detail: detail,
+                                   shadersAvailable: false, layerAllowed: false) == .coreAnimation
+    }
+
     /// `ambientIn` (easeOut 0.5 s after 0.1 s) rises from the bottom edge; `ambientOut` (easeIn 0.2 s) drains.
     /// Reduce Motion turns both into a 0.2-s fade; Instant shows the end state at once.
     private func setFilled(_ filled: Bool) {

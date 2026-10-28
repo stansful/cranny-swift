@@ -193,7 +193,10 @@ final class AmbientCANSView: NSView {
         clockLayer.addSublayer(next.content)
         next.group.addSublayer(swellLayer)
         fillLayer.addSublayer(next.group)
-        if effect == nil { stoppedTime = state.restingTime }       // the first light opens on its resting frame
+        if effect == nil {                       // the first light opens on its resting frame, stopped until the budget
+            stoppedTime = state.restingTime      // runs it (a new clock layer would follow the media clock at speed 1)
+            setClock(running: false)
+        }
         effect = next
         builtFor = (state.effect, state.halo)
         installedFrameRate = nil

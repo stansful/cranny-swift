@@ -91,9 +91,10 @@ private let log = Log.logger(.todos)
     func item(_ id: Todo.ID) -> Todo? { store.list.item(id) }
     private var visibleIDs: [Todo.ID] { visibleItems.map(\.id) }
 
-    /// How the check appears right now (personality and Reduce Motion come from the theme).
-    func checkStyle(personality: MotionPersonality, reduceMotion: Bool) -> TodoCheckStyle {
-        .resolve(personality: personality, reduceMotion: reduceMotion,
+    /// How the check appears right now (personality, Reduce Motion and Appearance ▸ Quality come from the theme).
+    func checkStyle(personality: MotionPersonality, reduceMotion: Bool,
+                    detail: AmbientDetail = .detailed) -> TodoCheckStyle {
+        .resolve(personality: personality, reduceMotion: reduceMotion, detail: detail,
                  isFullScreenInFront: environment.isFullScreenInFront,
                  areActivitiesPaused: environment.areLiveActivitiesPaused)
     }

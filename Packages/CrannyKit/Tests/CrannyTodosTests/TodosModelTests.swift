@@ -343,6 +343,9 @@ struct TodosModelTests {
     @Test func checkStyleFollowsTheEnvironment() {
         let model = model()
         #expect(model.checkStyle(personality: .lively, reduceMotion: false) == .drawWithMotes)
+        // Appearance ▸ Quality ▸ Efficient: the check still draws itself, without the motes' Canvas.
+        #expect(model.checkStyle(personality: .lively, reduceMotion: false, detail: .efficient) == .draw)
+        #expect(model.checkStyle(personality: .standard, reduceMotion: false, detail: .efficient) == .draw)
         environment.isFullScreenInFront = true
         #expect(model.checkStyle(personality: .lively, reduceMotion: false) == .instant)
         environment.isFullScreenInFront = false
