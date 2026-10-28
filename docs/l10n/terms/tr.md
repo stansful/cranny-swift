@@ -119,6 +119,7 @@ or the Apple pattern “Sil: “%@””. Dotted/dotless i: İ/i, I/ı. Turkish 
 | units hr · min · sec | sa · dk · sn | display only: the timer’s typed-entry parser reads English/Russian units, so the example “25 or 90s” stays “25 veya 90s” |
 | System settings named in copy | “Hareketi azalt”, “Saydamlığı azalt”, “Kontrastı artır”, “Renk olmadan farklılaştır” | Apple’s names in quotes |
 | Alert sounds | System Settings ▸ Ses names: Esinti, Balon, Kristal, Zıpla, Çakıl Taşı; Boop, Funky, Heroine, Mezzo, Pluck, Pong, Sonar, Sonumi, Submerge stay as macOS keeps them | |
+| Quality (the light: Detailed · Efficient) | Kalite (Ayrıntılı · Verimli) | Settings ▸ Appearance ▸ Light; search keywords bellek · performans |
 
 ## Band texts (measured, SF Rounded 13/12 pt, every notch unit)
 

@@ -34,6 +34,20 @@ private func index(_ extra: [SettingsPage] = [], aliases: [SettingsPageID: [Stri
     #expect(search.search("calibrate").rows.map(\.pane) == [.appearance])
 }
 
+/// Appearance ▸ Quality (the ambient light's Detailed / Efficient) sits under Effect and is found by its label, by its
+/// options and by what Efficient saves (memory) or tunes (performance).
+@Test func qualityRowIsListedAndFound() throws {
+    let rows = AppearanceRows.all.map(\.id)
+    let effect = try #require(rows.firstIndex(of: AppearanceRows.effect.id))
+    #expect(rows.firstIndex(of: AppearanceRows.ambientDetail.id) == effect + 1)
+    #expect(AppearanceRows.ambientDetail.id == "appearance.ambientDetail")
+    let search = index()
+    #expect(search.search("quality").rows.map(\.id) == [AppearanceRows.ambientDetail.id])
+    #expect(search.search("memory").rows.map(\.id) == [AppearanceRows.ambientDetail.id])
+    #expect(search.search("perf").panes.contains(.appearance))
+    #expect(search.search("effic").rows.map(\.id) == [AppearanceRows.ambientDetail.id], "by the option's name")
+}
+
 @Test func aliasesApplyOnlyToRegisteredPanes() {
     #expect(index().search("dock").panes.isEmpty)
     #expect(index([modulePage(.shortcuts, "Shortcuts")]).search("dock").panes == [.shortcuts])

@@ -89,6 +89,7 @@ Apple's own names come from `apple-terms.py id` (read from macOS 27) and from ma
 | Sound output · output device · Mute · Muted | Output bunyi · perangkat output · Bisukan · Dibisukan | Apple ("Bunyi") |
 | Low Power Mode · Low battery · Charging | Mode Daya Rendah · Baterai lemah · Mengisi daya | Apple |
 | Ambient light · Subtle · Vivid | Cahaya ambien · Lembut · Cerah | the light layer; "pendar" for glow |
+| Quality (the light: Detailed · Efficient) | Kualitas (Detail · Hemat) | Settings ▸ Appearance ▸ Light; search keywords memori · kinerja |
 | Motion (Appearance picker) · Calm / Standard / Lively / Instant | Animasi · Tenang / Standar / Lincah / Instan | not "Gerakan": that is the Gestures pane (Apple's trackpad word); Apple's "Kurangi gerakan" stays quoted in the footnote; search keyword "animasi gerakan" |
 | Gestures (Settings pane) · swipe | Gerakan · gesek | Apple's trackpad "Gerakan Lainnya" |
 | Notch fit | Penyesuaian notch | not "kesesuaian" (conformity) |

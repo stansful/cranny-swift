@@ -77,6 +77,7 @@ menus, Calendar, Music, Preview, System Settings, the keyboard-shortcut table).
 | draw / show the HUD | memaparkan | not "melukis" (draw with a pen) |
 | the helper answered in N ms · didn't answer · sees | bertindak balas dalam N ms · tidak membalas · mengesan | not "menjawab" / colloquial "nampak" |
 | Effect: Aurora · Motes · Tide | Aurora · Zarah · Pasang surut | "Aurora" as Apple's Malay (ExtensionKit); search word keeps "cahaya kutub" |
+| Quality (the light: Detailed · Efficient) | Kualiti (Terperinci · Cekap) | Settings ▸ Appearance ▸ Light; search keywords memori · prestasi |
 | Open %@ · Run %@ | Buka %@ (an app) · Buka “%@” / Jalankan “%@” (a note, a shortcut) | app names unquoted, as Apple's Malay ("Buka dalam %@"); user-made titles in quotes |
 | Pause Live Activities · Paused · Resumed | Jeda Aktiviti Langsung · Dijeda · Aktif | wing words measured: "Dijeda" fits the 48-pt slot; "Aktif" (the state after resuming) fits — "Diteruskan" does not fit even the 72-pt slot; the sentence keeps "diteruskan" |
 | Copied (Tray wing) | Disalin | 46 pt at 1u, fits the medium slot |

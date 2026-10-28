@@ -225,6 +225,9 @@ def check_item(report, code, info, catalog, key, comment, english, translation, 
                 report.error(here, "French: a plain space before : ; ! ? — use a no-break space (U+00A0 or U+202F)")
             if re.search(r"(?<=[^\s\d/  %])[;!?](?=\s|$)|(?<=[A-Za-zÀ-ÿ])[:](?=\s|$)", string):
                 report.warn(here, "French: no space before : ; ! ? (macOS writes a no-break space)")
+        if code == "uk" and re.search(r"(?<=[Ѐ-ӿ])[’'](?=[Ѐ-ӿ])", string):
+            report.error(here, "Ukrainian apostrophe: write ʼ (U+02BC) between letters, as macOS does (памʼять), "
+                               "not ’ or ' (search also splits words at them)")
     if english_has_brand and not any(l10n.BRAND in s for _, s, *_ in tr_forms):
         report.error(at, "“Cranny” is missing: the name is never translated or transliterated")
     elif english_has_brand:

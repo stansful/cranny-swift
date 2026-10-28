@@ -120,6 +120,7 @@ dash (English "—"); "&" only where Apple uses it (pane names). Nouns capitaliz
 | Type to capture | Tippen zum Erfassen | |
 | Ambient light · Subtle · Vivid | Umgebungslicht · Dezent · Kräftig | |
 | Effect: Aurora · Motes · Tide | Polarlicht · Funken · Gezeiten | |
+| Quality (the light: Detailed · Efficient) | Qualität (Detailliert · Sparsam) | Settings ▸ Appearance ▸ Light; search keywords Speicher · Leistung |
 | floating island · attached · handle | schwebende Insel · angedockt · Griff | |
 | Notch fit | Notch-Anpassung | |
 | Copied · Done · Failed · Hi (flash words) | Kopiert · Fertig · Fehler · Hallo | measured against the wings |

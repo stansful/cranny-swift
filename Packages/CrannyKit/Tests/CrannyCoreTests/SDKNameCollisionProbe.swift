@@ -30,6 +30,7 @@ private typealias ProbeActivityPreference = ActivityPreference
 private typealias ProbeActivityPriority = ActivityPriority
 private typealias ProbeActivityTag = ActivityTag
 private typealias ProbeAmbienceLevel = AmbienceLevel
+private typealias ProbeAmbientDetail = AmbientDetail
 private typealias ProbeAmbientEffect = AmbientEffect
 private typealias ProbeAmbientPalette = AmbientPalette
 private typealias ProbeAnnouncer = Announcer

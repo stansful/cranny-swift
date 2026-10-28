@@ -196,14 +196,15 @@ the live service with samples, so nothing reaches a real player, camera, calenda
 | `--qa-hud volume\|muted\|brightness\|keyboard[:<0…1>]`, `--qa-hud-fine`, `--qa-hud-device` | HUD: shows it for an hour, with fine-step ticks or a device glyph (`CrannyHUD/QA/HUDQAHook.swift`). |
 | `--qa-system charging\|charged\|plugged\|unplugged\|warning\|critical\|airpods\|trackpad\|headphones` | System activities: that activity with sample data, held until quit (`CrannySystemActivities/SystemQAScenario.swift`). |
 
-### Effects (`CrannyEffects/ShaderEffects.swift`, `EffectEnvironment.swift`)
+### Effects (`CrannyEffects/ShaderEffects.swift`, `EffectEnvironment.swift`, `CrannyNotchUI/ThemeResolver.swift`)
 
 | Argument | Effect |
 |---|---|
 | `-CrannyDisableShaders YES` | Every effect on its SwiftUI fallback (also Release: QA and energy A/B runs). |
 | `-CrannyDisableEffectLayer YES` | The ambient light through SwiftUI shaders instead of its Metal layer (also Release: energy A/B runs). |
-| `-CrannyQAEffectsAlwaysOn YES` | Keeps the light running at full quality while the screen is locked, the panel occluded or Low Power Mode on, to measure its CPU cost on a locked machine. |
+| `-CrannyQAEffectsAlwaysOn YES` | Keeps the light running at full quality while the screen is locked, the panel occluded, a full-screen app in front or Low Power Mode on, to measure its cost on a locked machine or one in use. |
 | `-CrannyQAEffectsOnBattery YES` | With the above: the battery frame rate (20 fps). |
+| `-CrannyQAAmbientDetail efficient\|detailed` | Overrides Appearance ▸ Quality for the run (the panel, the Settings stage, onboarding and the effects preparation): `efficient` is the Core Animation light (DESIGN.md §5.7), `detailed` the Metal light. For capture and energy runs; it writes nothing (seeding `-cranny.appearance.ambientDetail` works too). |
 
 ### Opt-in tests
 
@@ -243,6 +244,7 @@ on: **`CRANNY_SNAPSHOT_DIR=<dir>`**. Each test target writes into its own folder
 | `Todos` | `TodosSnapshotTests` | The widget's states. |
 | `Notes` | `CrannyNotesTests.SnapshotGallery` | Cards with the real editor (Debug builds). |
 | `Media` | `CrannyMediaTests.SnapshotRenderTests` | The widget and the Now Playing presentations. |
+| `Effects` | `CoreAnimationLightTests` | Each effect at Subtle and Vivid, `<effect>-<level>-detailed.png` (the Metal layer's pipeline) beside `<effect>-<level>-efficient.png` (the Core Animation light rendered with `CARenderer`), on their resting frame. Needs a Metal device. |
 | `Timer`, `HUD`, `Mirror`, `Onboarding` | `TimerSnapshotTests`, `HUDRenderTests`, `MirrorResourceTests`, `RenderedSurfacesTests` | Render checks that always run; with the variable set they also write their PNGs (Onboarding: the Welcome steps and the longest tutorial bubble in every language). |
 
 Package test processes resolve English for `String(localized:)`; the suites that render Russian say so above.

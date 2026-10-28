@@ -96,6 +96,7 @@ sentence go in quotes (“Afspiller nu”, “Læg på hylden”), pane names in
 | artwork | albumbillede | |
 | visualizer · Live · Ambient · Static | visualisering · Realtid · Stemning · Statisk | |
 | Ambient light | Stemningslys | |
+| Quality (the light: Detailed · Efficient) | Kvalitet (Detaljeret · Effektiv) | Settings ▸ Appearance ▸ Light; search keywords hukommelse · ydeevne |
 | media helper | mediehjælper | |
 | Apple Events fallback | reserve via Apple Events | |
 | Calendar event · all-day | begivenhed · heldags / Hele dagen | Apple Calendar |

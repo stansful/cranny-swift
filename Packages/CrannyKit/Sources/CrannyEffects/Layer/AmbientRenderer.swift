@@ -146,6 +146,12 @@ nonisolated final class AmbientRenderer: Sendable {
     /// Kept between opens: only a renderer whose GPU cannot be a discrete one held awake for nothing.
     @MainActor private static var kept: AmbientRenderer?
 
+    /// Renderers alive now, in use or kept between opens (tests: Appearance ▸ Quality ▸ Efficient builds none).
+    @MainActor static var registeredCount: Int {
+        let alive = inUse.values.compactMap(\.renderer) + (kept.map { [$0] } ?? [])
+        return Set(alive.map(ObjectIdentifier.init)).count
+    }
+
     /// The renderer for the panel on `displayID` (nil: the main display), shared by every view on the same GPU.
     /// nil when no renderer can be built here; `AmbientLayerSupport` then turns the layer path off for good.
     @MainActor static func renderer(forDisplay displayID: CGDirectDisplayID?) -> AmbientRenderer? {

@@ -102,6 +102,7 @@ Register and typography, as macOS 27 writes Slovak (checked in the system's own 
 | Apple Events fallback | záložné ovládanie cez Apple Events | in the toggle, footnotes, warnings and test results alike |
 | Timer units under a preset (uppercase) | h · min · s | Apple's Clock (HRS → H, sec → s); Start button "Spustiť" |
 | Hover delay | Oneskorenie pri podržaní kurzora | "pri podržaní" alone would also mean holding a key |
+| Quality (the light: Detailed · Efficient) | Kvalita (Podrobná · Úsporná) | Settings ▸ Appearance ▸ Light; search keywords pamäť · výkon |
 
 Review (independent review pass): 79 strings changed.
 

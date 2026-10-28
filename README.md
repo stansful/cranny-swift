@@ -23,7 +23,8 @@ Free and open source (MIT), no account, no analytics.
 - **Keyboard first** — ⌃⌥N opens Cranny from anywhere, ⌘K finds any action, hold ⌘ to see every shortcut, start typing
   to capture a note or to-do (off until you pick a layout with Notes, or choose a target in Settings ▸ Keyboard).
 - **For notched MacBooks and external displays** — a shape built to match the notch, a floating island on displays
-  without one, per-display settings, an optional ambient light layer drawn with Metal.
+  without one, per-display settings, an optional ambient light layer drawn with Metal (or, with Settings ▸
+  Appearance ▸ Quality ▸ Efficient, a simpler Core Animation light that uses far less memory).
 - **Settings you can see** — a live preview of the real notch views, search, per-row reset, and a Welcome window with a
   one-minute tutorial.
 - **Respectful** — Reduce Motion, Reduce Transparency, Increase Contrast, keyboard-only use and VoiceOver labels and

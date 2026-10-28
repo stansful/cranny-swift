@@ -6,6 +6,7 @@
 import CoreGraphics
 import Foundation
 import Metal
+import os
 
 nonisolated enum AmbientGPU {
     /// What the policy needs to know about one Metal device.
@@ -47,6 +48,7 @@ nonisolated enum AmbientGPU {
 
     /// The Metal device for effects on `displayID` (nil: the main display), or nil when this Mac has none.
     static func device(forDisplay displayID: CGDirectDisplayID? = nil) -> (any MTLDevice)? {
+        countQuery()
         let devices = MTLCopyAllDevices()
         let display = CGDirectDisplayCopyCurrentMetalDevice(displayID ?? CGMainDisplayID())?.registryID
         guard let index = choose(devices.map(Candidate.init), displayDevice: display) else { return nil }
@@ -54,5 +56,16 @@ nonisolated enum AmbientGPU {
     }
 
     /// The number of Metal devices in this Mac (for `mayPinDiscreteGPU`).
-    static var deviceCount: Int { MTLCopyAllDevices().count }
+    static var deviceCount: Int {
+        countQuery()
+        return MTLCopyAllDevices().count
+    }
+
+    /// How many times the effects asked Metal for this Mac's devices (tests: Appearance ▸ Quality ▸ Efficient never
+    /// does, so the process gets no GPU device from them).
+    static var deviceQueries: Int { queries.withLock { $0 } }
+
+    private static let queries = OSAllocatedUnfairLock(initialState: 0)
+
+    private static func countQuery() { queries.withLock { $0 += 1 } }
 }

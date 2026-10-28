@@ -101,6 +101,7 @@ System Settings and Shortcuts loctables):
 | Motion: Calm · Standard · Lively · Instant | Спокійно · Стандартно · Жваво · Миттєво | |
 | Ambient light: Off · Subtle · Vivid | Вимк. · Мʼяке · Яскраве | “Фонове світло” |
 | Effect: Aurora · Motes · Tide | Сяйво · Порошинки · Приплив | “сяйво” only for Aurora; any other glow is “світіння” |
+| Quality (the light: Detailed · Efficient) | Якість (Детальна · Економна) | Settings ▸ Appearance ▸ Light; search keywords памʼять · продуктивність |
 | Album glow · Underglow · Progress rim | Світіння альбому · Підсвічування знизу · Лінія прогресу | |
 | Density: Compact · Standard · Roomy | Компактно · Стандартно · Просторо | |
 | Text size: Small · Medium · Large · Extra large | Малий · Середній · Великий · Дуже великий | |

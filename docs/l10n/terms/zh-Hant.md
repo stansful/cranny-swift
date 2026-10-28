@@ -91,6 +91,7 @@ Register and typography (follow macOS 27 Traditional Chinese, Taiwan vocabulary;
 | Paused / Resumed (wing words) | 已暫停 / 已恢復 | Pause/Resume Live Activities = 暫停/恢復即時動態 |
 | Accent | 強調顏色 | as System Settings ▸ Appearance |
 | Ambient light / Underglow / Album glow | 環境光 / 底部光暈 / 專輯光暈 | |
+| Quality (the light: Detailed · Efficient) | 品質 (精細 · 高效率) | Settings ▸ Appearance ▸ Light; not 節能 (it saves memory, battery is not promised); search keywords 記憶體 · 效能 |
 | Motion: Calm / Standard / Lively / Instant | 動畫：平穩 / 標準 / 活潑 / 立即 | 動態 is taken by 即時動態 |
 | Density: Compact / Standard / Roomy | 密度：緊湊 / 標準 / 寬鬆 | |
 | Floating island / Attached / Glass island | 浮動島 / 貼齊頂端 / 玻璃島 | as 動態島 |

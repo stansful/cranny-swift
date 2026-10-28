@@ -2,7 +2,8 @@
 // CrannyEffects' `AmbientLayer` in the effect of Appearance ▸ Effect (aurora, motes or tide; the static halo under
 // Low Power). It fills the frame the canvas gives it (`LightFrame`: the shape's body at its CURRENT, animating size),
 // so it rides the bottom edge as the panel opens; it rises with `ambientIn`, the canvas fades it out with
-// `ambientOut`, and palettes cross-fade with `colorShift`. The light's moments come from CrannyEffects too:
+// `ambientOut`, and palettes cross-fade with `colorShift` (Appearance ▸ Quality ▸ Efficient: the Core Animation light
+// cross-fades them itself, DESIGN.md §5.7). The light's moments come from CrannyEffects too:
 // `FirstLight` (the first open per session, 1.0 s) and `songChangeRipple` (0.6 s), each started by the scene's
 // delight serial, which the shell has already capped (DESIGN.md §5.5). Energy budget: ≤ 30 fps on AC, ≤ 20 on
 // battery, paused while closed, hidden, occluded or behind a full-screen app, a resting frame under Reduce Motion.
@@ -45,11 +46,18 @@ struct NookLightLayer: View {
             }
         }
         .songChangeRipple(songChange)
-        .animation(theme.animation(.colorShift), value: model.ambient)
+        // Efficient's Core Animation light cross-fades palettes itself (outside the app, in the window server); a
+        // SwiftUI animation would hand it a new palette on every frame instead.
+        .animation(fadesInLayer(budget) ? nil : theme.animation(.colorShift), value: model.ambient)
         .ambientLightRendering(isSnapshot ? .inline : .automatic)
         .allowsHitTesting(false)
         .accessibilityHidden(true)
         .onChange(of: delight?.serial) { _, _ in start(delight) }
+    }
+
+    /// Whether the light on screen is Efficient's Core Animation light (snapshots and Low Power's halo stay in SwiftUI).
+    private func fadesInLayer(_ budget: EffectBudget) -> Bool {
+        theme.ambientDetail == .efficient && !isSnapshot && !budget.lowPower
     }
 
     private func light(level: AmbienceLevel, budget: EffectBudget) -> some View {

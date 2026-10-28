@@ -18,6 +18,15 @@ public nonisolated enum AmbientEffect: String, CaseIterable, Codable, Sendable {
     case halo     // one static bloom (Low Power Mode fallback)
 }
 
+/// Settings ▸ Appearance ▸ Light ▸ Quality: how the ambient light (and the light's moments) are drawn (DESIGN.md §5.1).
+public nonisolated enum AmbientDetail: String, CaseIterable, Codable, Sendable {
+    /// The default: the Metal light (CrannyEffects' dedicated Metal layer and shaders, DESIGN.md §5.6).
+    case detailed
+    /// A simpler light of Core Animation layers that the window server animates: no Metal in Cranny, so no GPU
+    /// memory charged to the app and no wake-up per frame (DESIGN.md §5.7). Moments play their still variants.
+    case efficient
+}
+
 public nonisolated struct CrannyTheme: Equatable, Sendable {
     // User settings
     public var accent: RGB = RGB(hex: 0x409CFF)        // already resolved by AccentResolver
@@ -29,6 +38,8 @@ public nonisolated struct CrannyTheme: Equatable, Sendable {
     public var motion: MotionPersonality = .standard
     public var ambience: AmbienceLevel = .subtle
     public var effect: AmbientEffect = .aurora
+    /// How the light is drawn: the Metal light (default) or the Core Animation light (Settings ▸ Appearance ▸ Quality).
+    public var ambientDetail: AmbientDetail = .detailed
     public var translucentBackground = false
     public var glassIsland = false                       // Liquid Glass island (26+); set by the panel only on floating-style displays
     public var hapticsEnabled = true

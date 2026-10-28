@@ -90,8 +90,9 @@ These hold in every language. `validate.py` checks the mechanical ones; the rest
   in `pluralExactValues` stands for one number and may leave the number out (Arabic two: “عنصران”); then every other
   placeholder in that form must be positional.
 - **Quotation marks and typography** as macOS writes them in your language (`quoteStyle`: „…“ in German, « … » with
-  no-break spaces in French, 「…」 in Traditional Chinese, straight quotes in Arabic). The apostrophe is ’, the
-  ellipsis one character …; French puts a no-break space before : ; ! ?. No ASCII quotes unless your macOS uses them.
+  no-break spaces in French, 「…」 in Traditional Chinese, straight quotes in Arabic). The apostrophe is ’ (in
+  Ukrainian ʼ U+02BC between letters, as macOS: памʼять), the ellipsis one character …; French puts a no-break space
+  before : ; ! ?. No ASCII quotes unless your macOS uses them.
 - **Case.** Sentence case, except where your language capitalizes otherwise (German nouns) and where English uses
   title case for standard macOS menus and buttons — follow your macOS there.
 - **Constrained strings.** Items with `"constrained": true` sit in a fixed-width place; `maxWidth.hint` says how
@@ -155,7 +156,7 @@ that fall back on their own, such as es-419 → es, are left out). When macOS ad
 
 | Command | Checks |
 |---|---|
-| `python3 -I scripts/lib/l10n/validate.py <lang> <file>` | a translator file: completeness, placeholders, plural categories, quotes, “Cranny”, no competitor names |
+| `python3 -I scripts/lib/l10n/validate.py <lang> <file>` | a translator file: completeness, placeholders, plural categories, quotes, “Cranny”, no competitor names, French spacing, the Ukrainian apostrophe ʼ (U+02BC) |
 | `python3 -I scripts/lib/l10n/validate.py <lang> --catalogs` | the same for what the catalogs hold now |
 | `make l10n-check` (`validate.py --shipped`) | every shipped language complete and valid; pending keys are warnings |
 | `validate.py --shipped --release` | the same, and no key pending (`scripts/build-release.sh`, the release workflow) |

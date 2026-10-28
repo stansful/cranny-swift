@@ -85,6 +85,7 @@ Register and style, as macOS writes Greek:
 | Shuffle · Repeat | Τυχαία σειρά · Επανάληψη | Apple Music |
 | battery level · Fully charged · until full · Not charging | στάθμη μπαταρίας · Πλήρως φορτισμένη · μέχρι την πλήρη φόρτιση · Δεν φορτίζεται | Apple's battery menu (feminine: η μπαταρία) |
 | Ambient light · Light | Φως περιβάλλοντος · Φως | Off / Subtle / Vivid = Ανενεργό / Διακριτικό / Έντονο |
+| Quality (the light: Detailed · Efficient) | Ποιότητα (Λεπτομερής · Αποδοτική) | Settings ▸ Appearance ▸ Light; search keywords μνήμη · επίδοση |
 | Motion | Κίνηση | Calm / Standard / Lively / Instant = Ήρεμη / Τυπική / Ζωηρή / Άμεση |
 | visualizer | οπτικοποίηση | Live / Ambient / Static = Ζωντανή / Ατμοσφαιρική / Στατική |
 | player · media helper | πρόγραμμα αναπαραγωγής · βοηθός πολυμέσων | |

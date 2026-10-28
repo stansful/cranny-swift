@@ -1,7 +1,8 @@
 // CrannyEffects/LiquidNeck.swift — Satellite split (DESIGN.md §4.3, §5.5, §5.6 `liquidNeck`): while a second activity
 // buds off the trailing edge, the two black bodies join with a concave liquid neck that thins and snaps within
 // 0.38 s. Shader: LiquidNeck.metal (a chord union in a `.layerEffect`). Fallback: Canvas blur + alphaThreshold.
-// Calm, Instant and Reduce Motion: no neck (the satellite simply fades in; the caller animates that).
+// Calm, Instant, Reduce Motion and Appearance ▸ Quality ▸ Efficient: no neck (the satellite simply fades in; the
+// caller animates that).
 import CrannyCore
 import SwiftUI
 
@@ -32,7 +33,7 @@ public struct LiquidNeck<Content: View>: View, Animatable {
     }
 
     public var body: some View {
-        let path = MomentPath.resolve(budget: budget, shadersAvailable: ShaderEffects.isAvailable)
+        let path = MomentPath.resolve(budget: budget, detail: theme.ambientDetail, shadersAvailable: ShaderEffects.isAvailable)
         if path == .reduced || theme.reduceMotion || theme.motion == .calm || theme.motion == .instant {
             content
         } else if path == .shader {

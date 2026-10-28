@@ -38,8 +38,9 @@ public extension View {
 }
 
 /// Debug-only measurement switch: launching a Debug-flagged build with `-CrannyQAEffectsAlwaysOn YES` keeps the
-/// ambient light running at full quality while the screen is locked, the panel is occluded or Low Power Mode is on,
-/// so the light's CPU cost can be measured on a locked test machine (ARCHITECTURE.md §10.1, issue 1); add
+/// ambient light running at full quality while the screen is locked, the panel is occluded, a full-screen app is in
+/// front or Low Power Mode is on, so the light's cost can be measured on a locked test machine or one in use
+/// (ARCHITECTURE.md §10.1, issue 1); add
 /// `-CrannyQAEffectsOnBattery YES` to measure the battery rate (20 fps). Compiled out of Release builds; never changes
 /// a system setting.
 nonisolated enum EffectsQA {
@@ -51,11 +52,13 @@ nonisolated enum EffectsQA {
     static let simulatesBattery = false
     #endif
 
-    /// `budget` as if on screen and without Low Power (and on battery if asked) while the QA switch is set.
+    /// `budget` as if on screen, with no full-screen app in front and without Low Power (and on battery if asked)
+    /// while the QA switch is set.
     static func adjusted(_ budget: EffectBudget) -> EffectBudget {
         guard keepsRunning else { return budget }
         var adjusted = budget
         adjusted.onScreen = true
+        adjusted.fullScreenFront = false
         adjusted.lowPower = false
         adjusted.onBattery = adjusted.onBattery || simulatesBattery
         return adjusted

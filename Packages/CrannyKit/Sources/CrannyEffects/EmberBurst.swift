@@ -1,6 +1,7 @@
 // CrannyEffects/EmberBurst.swift — Timer done (DESIGN.md §5.5, §5.6 `emberBurst`): 18 stateless embers fan out of
 // the notch for 0.9 s. Shader: Ember.metal. Fallback: the same embers in a Canvas (`EmberMath` is the Swift twin of
-// `cranny::emberPosition`). Reduce Motion: a static ember glow that fades in and out.
+// `cranny::emberPosition`). Reduce Motion and Appearance ▸ Quality ▸ Efficient: a static ember glow that fades in
+// and out.
 import CrannyCore
 import Foundation
 import SwiftUI
@@ -22,6 +23,9 @@ public struct EmberBurst: View {
     /// Called once when the burst is over.
     public var onFinished: (() -> Void)?
 
+    /// Appearance ▸ Quality: Efficient plays the still variant (no Metal, no Canvas, DESIGN.md §5.7).
+    @Environment(\.cranny.ambientDetail) private var detail
+
     /// An ember burst in `palette` (default `.timer`).
     public init(palette: AmbientPalette = .timer, level: AmbienceLevel, budget: EffectBudget,
                 onFinished: (() -> Void)? = nil) {
@@ -32,7 +36,7 @@ public struct EmberBurst: View {
         let cap = Glow.ambientAlphaCap(max(level, .subtle))
         let origin = CGPoint(x: Self.size.width / 2, y: 0)
         Group {
-            switch MomentPath.resolve(budget: budget, shadersAvailable: ShaderEffects.isAvailable) {
+            switch MomentPath.resolve(budget: budget, detail: detail, shadersAvailable: ShaderEffects.isAvailable) {
             case .reduced:
                 ReducedMoment(duration: Self.duration, onFinished: onFinished) {
                     HaloFallback(glow: palette.glow1, level: max(level, .subtle),

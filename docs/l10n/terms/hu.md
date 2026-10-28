@@ -107,6 +107,7 @@ Nouns after a number stay singular ("3 elem", "5 cella"), so the one/other plura
 | Preview | Előnézet | |
 | Accent | Kiemelőszín | Apple |
 | Ambient light | Környezeti fény | Ki / Visszafogott / Élénk |
+| Quality (the light: Detailed · Efficient) | Minőség (Részletes · Takarékos) | Settings ▸ Appearance ▸ Light; search keywords memória · teljesítmény |
 | Motion | Mozgás | Nyugodt / Normál / Lendületes / Azonnali |
 | Density | Sűrűség | Tömör / Normál / Tágas |
 | Floating island / Attached / Glass island | Lebegő sziget / Csatolt / Üvegsziget | |

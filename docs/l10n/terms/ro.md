@@ -127,6 +127,7 @@ U+2011 ("fixați‑l", "într‑un"), never in search keywords. Numbers, dates a
 | Now · %@ left | Acum · încă %@ | |
 | Camera states (Mirror, 2 cells) | Fără acces la cameră · Cameră restricționată · Cameră deconectată · Cameră indisponibilă | each wraps to at most 2 lines at 90 pt |
 | Meeting sample data | Analiză design, Prânz cu Ana, Sala 4, Ședință zilnică, Sincronizare plan, Zi de lansare | |
+| Quality (the light: Detailed · Efficient) | Calitate (Detaliată · Eficientă) | Settings ▸ Appearance ▸ Light; search keywords memorie · performanță |
 
 ## Review additions (independent review)
 

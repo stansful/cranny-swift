@@ -109,6 +109,7 @@ notch (מגרעת) = feminine; Tray (מדף) = masculine; widget (וידג׳ט) 
 | floating island · attached | אי צף · צמוד | |
 | handle | ידית | |
 | Ambient light | אור סביבה | values כבוי · עדין · עז |
+| Quality (the light: Detailed · Efficient) | איכות (מפורטת · חסכונית) | Settings ▸ Appearance ▸ Light; search keywords זיכרון · ביצועים |
 | Accent | צבע הדגשה | Apple's "Accent color" |
 | Motion · Density | תנועה · צפיפות | values agree (fem.): רגועה · רגילה · תוססת · מיידית; צפופה · רגילה · מרווחת |
 | Text size | גודל המלל | Apple; values קטן · בינוני · גדול · גדול מאוד |

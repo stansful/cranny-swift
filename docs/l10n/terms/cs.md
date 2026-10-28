@@ -92,5 +92,6 @@ Register and typography (as macOS 27 in Czech):
 | Type to capture | Rychlý zápis | |
 | Motion / Density options | Klidně · Standardně · Živě · Okamžitě / Kompaktně · Standardně · Prostorně | adverbs, because "Standard" and "Instant" are shared keys |
 | hover-delay presets (Welcome) | Žádná · Krátká, %@ · Standardní, %@ · Dlouhá, %@ | agree with „Prodleva" |
+| Quality (the light: Detailed · Efficient) | Kvalita (Podrobná · Úsporná) | Settings ▸ Appearance ▸ Light; search keywords paměť · výkon |
 
 Verified after the independent review: `validate.py cs` exits 0 (13 warnings, all Czech words identical to English or Apple's own Czech names: Panel, Symbol, Trackpad, video, min, +1 min, Funky, Mezzo, Pong, Sonar, Sonumi). With cs imported, the catalogs pass `lint-copy.py` and FlashLabelFitTests, BandCopyTests, FeaturedRowTests, SceneAndHeaderTests (header tabs), RenderedSurfacesTests (tutorial bubble) and WingTextMetricsTests for cs.

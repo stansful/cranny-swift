@@ -123,6 +123,7 @@ ajustes, app).
 | Type to capture | Captura ao escrever | |
 | Rename… | Alterar nome… | Apple pt-PT |
 | Back (Welcome) | Anterior | Apple pt-PT |
+| Quality (the light: Detailed · Efficient) | Qualidade (Detalhada · Eficiente) | Settings ▸ Appearance ▸ Light; search keywords memória · desempenho |
 
 ## Apple names used (from `apple-terms.py pt-PT` and the system loctables)
 

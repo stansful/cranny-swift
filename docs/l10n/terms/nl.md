@@ -119,6 +119,7 @@ as Apple writes it.
 | Type to capture | Typ om vast te leggen | |
 | Ambient light · Subtle · Vivid | Sfeerlicht · Subtiel · Fel | |
 | Effect: Aurora · Motes · Tide | Poollicht · Stofjes · Getij | |
+| Quality (the light: Detailed · Efficient) | Kwaliteit (Gedetailleerd · Zuinig) | Settings ▸ Appearance ▸ Light; search keywords geheugen · prestaties |
 | floating island · attached · handle | zwevend eiland · verankerd · greep | |
 | Notch fit · notch width | Afstemming op notch · Notchbreedte | |
 | Copied · Done · Failed · Hi (flash words) | Klaar · Klaar · Mislukt · Hallo | measured against the wings (all < 48 pt); the copy glyph says "copied"; VoiceOver hears ‘Pad gekopieerd’ / ‘Paden gekopieerd’ |
