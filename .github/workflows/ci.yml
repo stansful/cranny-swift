@@ -1,13 +1,12 @@
 # Tests every pull request, and any branch by hand (workflow_dispatch). A push to main does not start this workflow:
 # release.yml calls it (workflow_call) before it builds and publishes anything, so the checks run once per push and
 # no skipped CI run is left behind. Pushes to other branches start nothing: with a pull request open they would run
-# the macOS jobs a second time for the same commit.
+# the macOS job a second time for the same commit.
 #   scripts         actionlint (the workflows), shellcheck (scripts/, .github/scripts/) and the tests of the release
 #                   scripts (scripts/tests/run.sh)
 #   build           the GitHub xcode-27 image: copy rules, languages, every module alone + unit tests, the name probe,
 #                   the String Catalogs, then scripts/build-release.sh --allow-pending: the release build, its smoke
 #                   test and the packages, as release.yml builds the release (ad-hoc signed here)
-#   build-macos-26  the fallback and minimum-toolchain job: the same steps on Xcode 26 except the String Catalogs
 name: CI
 
 on:
@@ -59,9 +58,8 @@ jobs:
         run: scripts/tests/run.sh
 
   build:
-    # Xcode-27 image (arm64, macOS 27, Xcode 27.0 default; public preview since 2026-07-16).
-    # The `build-macos-26` job below is the fallback while it is in preview and covers the
-    # project's minimum toolchain (Xcode 26 / Swift 6.2), ARCHITECTURE.md §8.9.
+    # Xcode-27 image (arm64, macOS 27, Xcode 27.0 default; public preview since 2026-07-16), the toolchain releases are
+    # built with. Xcode 26, the declared minimum toolchain, has no CI job (ARCHITECTURE.md §8.9).
     runs-on: xcode-27
     timeout-minutes: 30
     steps:
@@ -117,64 +115,4 @@ jobs:
         if: failure()
         with:
           name: logs-${{ github.sha }}
-          path: build/logs/
-
-  build-macos-26:
-    # Fallback and minimum-toolchain job (ARCHITECTURE.md §8.9): the `macos-26` image with its default
-    # Xcode 26.x (Swift 6.2). Same steps as `build` except strings-check, which reads the layout of Xcode 27's
-    # swift-build backend (§8.5; the scripts pass `--build-system swiftbuild` on both images). Until its first
-    # green run is recorded in §8.9 it reports without failing the workflow; then remove `continue-on-error`.
-    runs-on: macos-26
-    timeout-minutes: 30
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Toolchain
-        run: |
-          xcode-select -p
-          xcodebuild -version
-          swift --version
-
-      - name: Metal Toolchain (CrannyEffects compiles Metal shaders)
-        run: |
-          if ! grep -q 'Status: installed' <<<"$(xcodebuild -showComponent MetalToolchain)"; then
-            xcodebuild -downloadComponent MetalToolchain
-          fi
-          xcodebuild -showComponent MetalToolchain
-          xcrun metal -v
-
-      - name: Copy rules per language (American spelling, typographic punctuation, competitor denylist)
-        run: /usr/bin/python3 -I scripts/lib/lint-copy.py
-
-      - name: Shipped languages are complete and valid (placeholders, plural forms, quotes; new keys may be pending)
-        run: /usr/bin/python3 -I scripts/lib/l10n/validate.py --shipped
-
-      - name: Every CrannyKit module builds on its own (zero warnings) + unit tests
-        run: JOBS=3 TEST=1 scripts/lib/check-modules.sh
-
-      - name: SDK name-collision probe is up to date
-        run: CHECK=1 scripts/lib/name-probe.sh
-
-      - name: Release build, smoke test and packages (scripts/build-release.sh, ad-hoc signed)
-        env:
-          BUILD_NUMBER: ${{ github.run_number }}
-        run: scripts/build-release.sh --allow-pending
-
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: Cranny-macos-26-${{ github.sha }}
-          path: |
-            dist/*.zip
-            dist/*.dmg
-            dist/*.sha256
-          if-no-files-found: error
-          retention-days: 14
-
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: failure()
-        with:
-          name: logs-macos-26-${{ github.sha }}
           path: build/logs/
