@@ -50,9 +50,9 @@ nonisolated enum Fixtures {
         return url
     }
 
-    /// An image of black text on white (OCR).
-    static func textImage(_ text: String, in folder: URL) -> URL {
-        let url = folder.appending(path: "text.png")
+    /// An image of black text on white (OCR); with no text, a plain white image.
+    static func textImage(_ text: String, named name: String = "text.png", in folder: URL) -> URL {
+        let url = folder.appending(path: name)
         let width = 900, height = 240
         let space = CGColorSpace(name: CGColorSpace.sRGB) ?? CGColorSpaceCreateDeviceRGB()
         guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0, space: space,

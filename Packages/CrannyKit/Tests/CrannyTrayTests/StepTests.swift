@@ -8,6 +8,7 @@ import ImageIO
 import PDFKit
 import Testing
 import UniformTypeIdentifiers
+import Vision
 @testable import CrannyTray
 
 @Suite struct ImageStepTests {
@@ -164,15 +165,6 @@ import UniformTypeIdentifiers
         }
     }
 
-    @Test func copyTextRecognizesText() throws {
-        let folder = Fixtures.folder("ocr")
-        let image = Fixtures.textImage("CRANNY 2026", in: folder)
-        let text = try VisionSteps.recognizeText(in: [image])
-        #expect(text.uppercased().contains("CRANNY"))
-        let blank = Fixtures.image("blank.png", in: folder, noise: false)
-        #expect(throws: TrayError.noText) { try VisionSteps.recognizeText(in: [blank]) }
-    }
-
     @Test func removeBackgroundNeedsASubject() {
         let folder = Fixtures.folder("subject")
         let flat = Fixtures.image("flat.png", in: folder, width: 200, height: 200, noise: false)
@@ -205,6 +197,52 @@ import UniformTypeIdentifiers
         let folder = Fixtures.folder("video-bad")
         let text = Fixtures.text("notes.txt", in: folder)
         await #expect(throws: TrayError.self) { try await VideoSteps.compressVideo(text, into: folder, naming: .english) }
+    }
+}
+
+/// Copy text (`VisionSteps.recognizeText`). Serialized like the app's reads, which take turns: reads at the same time
+/// have hung GitHub's 3-core virtual Macs.
+@Suite(.serialized) struct CopyTextTests {
+    /// Reads `.accurate` where its model loads, `.fast` where it cannot (CI's virtual Macs have no Neural Engine), so
+    /// the test reads text on every Mac. The blank image is plain white: `.fast` reads a letter into a coloured box.
+    @Test func copyTextRecognizesText() throws {
+        let folder = Fixtures.folder("ocr")
+        let image = Fixtures.textImage("CRANNY 2026", in: folder)
+        let text = try VisionSteps.recognizeText(in: [image])
+        #expect(text.uppercased().contains("CRANNY"))
+        let blank = Fixtures.textImage("", named: "blank.png", in: folder)
+        #expect(throws: TrayError.noText) { try VisionSteps.recognizeText(in: [blank]) }
+    }
+
+    /// Where a bare `.accurate` request loads its model, Copy text reads with `.accurate`: only it reads Cyrillic
+    /// (`.fast` reads Latin look-alikes), so an option that broke `.accurate` on every Mac cannot hide behind the
+    /// fallback. On a Mac without the model (CI) the fallback is the right reading, and there is nothing to check.
+    @Test func copyTextReadsRussianWithTheAccurateModel() throws {
+        let folder = Fixtures.folder("ocr-ru")
+        let image = Fixtures.textImage("ПРИВЕТ МИР", in: folder)
+        let text = try VisionSteps.recognizeText(in: [image])
+        guard Self.accurateModelLoads(image) else { return }
+        #expect(text.uppercased().contains("ПРИВЕТ"), "read “\(text)”")
+    }
+
+    /// The reading Copy text falls back to, on every Mac (where `.accurate` loads, the tests above never reach it).
+    @Test func copyTextAlsoReadsWithTheFastLevel() throws {
+        let folder = Fixtures.folder("ocr-fast")
+        let image = Fixtures.textImage("CRANNY 2026", in: folder)
+        let text = try VisionSteps.recognizeText(in: [image], level: .fast)
+        #expect(text.uppercased().contains("CRANNY"))
+        let blank = Fixtures.textImage("", named: "blank.png", in: folder)
+        #expect(throws: TrayError.noText) { try VisionSteps.recognizeText(in: [blank], level: .fast) }
+    }
+
+    /// A bare `.accurate` request, with none of Copy text's options, performs on `image` on this Mac.
+    static func accurateModelLoads(_ image: URL) -> Bool {
+        guard let source = CGImageSourceCreateWithURL(image as CFURL, nil),
+              let pixels = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return false }
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = .accurate
+        do { try VNImageRequestHandler(cgImage: pixels, options: [:]).perform([request]) } catch { return false }
+        return true
     }
 }
 

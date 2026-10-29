@@ -4,10 +4,14 @@
 // caches); it is made on the first Remove background, never at launch.
 import CoreImage
 import CoreGraphics
+import CrannyCore
 import Foundation
 import ImageIO
+import os
 import UniformTypeIdentifiers
 import Vision
+
+private nonisolated let log = Log.logger(.pipelines)
 
 nonisolated enum VisionSteps {
     /// Shared by every Remove background (`CIContext` is thread-safe); intermediates are not kept between images.
@@ -45,8 +49,13 @@ nonisolated enum VisionSteps {
         return output
     }
 
-    /// Text recognized in each image, in reading order; images are separated by a blank line.
-    static func recognizeText(in inputs: [URL]) throws -> String {
+    /// Text recognized in each image, in reading order; images are separated by a blank line. Reads with `.accurate`
+    /// (`level: .fast` starts with the fallback, for tests); when that request fails (its neural model cannot be
+    /// loaded: a Mac without a Neural Engine, such as GitHub's macOS 27 virtual machines, or a failed model compile on
+    /// macOS 27), this image and the rest are read with `.fast`, which needs no such model but knows fewer languages.
+    /// Finding nothing is no failure: no text is there.
+    static func recognizeText(in inputs: [URL], level: VNRequestTextRecognitionLevel = .accurate) throws -> String {
+        var level = level
         var blocks: [String] = []
         for input in inputs {
             try Task.checkCancellation()
@@ -54,15 +63,31 @@ nonisolated enum VisionSteps {
             guard let pixels = image.oriented(maxPixelSize: max(image.orientedWidth, image.orientedHeight)) else {
                 throw TrayError.cannotRead(image.name)
             }
-            let request = VNRecognizeTextRequest()
-            request.recognitionLevel = .accurate
-            request.usesLanguageCorrection = true
-            request.automaticallyDetectsLanguage = true
-            do { try VNImageRequestHandler(cgImage: pixels, options: [:]).perform([request]) } catch { throw TrayError.noText }
-            let lines = (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }
+            let lines: [String]
+            do { lines = try recognizeLines(in: pixels, level: level) } catch where level == .accurate {
+                log.info("accurate text recognition failed (\(TrayLogCode.of(error), privacy: .public)); reading with .fast")
+                level = .fast
+                try Task.checkCancellation()
+                do { lines = try recognizeLines(in: pixels, level: .fast) } catch { throw TrayError.noText }
+            } catch {
+                throw TrayError.noText
+            }
             if !lines.isEmpty { blocks.append(lines.joined(separator: "\n")) }
         }
         guard !blocks.isEmpty else { throw TrayError.noText }
         return blocks.joined(separator: "\n\n")
+    }
+
+    /// Text reads take turns. Reads at the same time have hung GitHub's 3-core virtual Macs (Vision's text detector
+    /// waiting on work of its own while every caller's thread waited on its queue); a read takes ≈ 0.1 s on a Mac.
+    private static let reading = NSLock()
+
+    private static func recognizeLines(in pixels: CGImage, level: VNRequestTextRecognitionLevel) throws -> [String] {
+        let request = VNRecognizeTextRequest()
+        request.recognitionLevel = level
+        request.usesLanguageCorrection = true
+        request.automaticallyDetectsLanguage = true
+        try reading.withLock { try VNImageRequestHandler(cgImage: pixels, options: [:]).perform([request]) }
+        return (request.results ?? []).compactMap { $0.topCandidates(1).first?.string }
     }
 }

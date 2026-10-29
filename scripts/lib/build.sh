@@ -44,10 +44,23 @@ run_xcodebuild() {
     "${overrides[@]}" 2>&1 | tee "$LOG" | xcpretty_filter
   local status=${PIPESTATUS[0]}
   set -e
-  (( status == 0 )) || die "xcodebuild failed ($status); full log: $LOG"
+  if (( status != 0 )); then
+    # xcbeautify --quieter drops lines it does not parse (xcodebuild's own errors, a failed script phase), so a
+    # failed build could print no reason at all: repeat the log's error lines, or its last lines when it has none.
+    # awk keeps the first 20 and reads to the end: CI ignores SIGPIPE, so a `head` would make grep and awk print
+    # write errors.
+    local errors
+    errors="$(sed -e $'s/\x1b\\[[0-9;]*m//g' "$LOG" | grep -E '^(/.*:[0-9]+(:[0-9]+)?: |xcodebuild: )?error:' |
+              awk '!seen[$0]++ && ++n <= 20' || true)"
+    [[ -n "$errors" ]] || errors="$(tail -20 "$LOG")"
+    printf '%s\n' "$errors" | sed 's/^/    /' >&2
+    die "xcodebuild failed ($status); full log: $LOG"
+  fi
 }
 
-log "Building $SCHEME ($CONFIGURATION, $ARCHS) with $(xcodebuild -version | head -1)"
+# awk, not head: it reads to the end, and Xcode 26's xcodebuild throws (NSFileHandleOperationException) when the
+# pipe closes before it has written its second line.
+log "Building $SCHEME ($CONFIGURATION, $ARCHS) with $(xcodebuild -version | awk 'NR==1')"
 run_xcodebuild
 # An incremental build that only changed package resources (String Catalogs) can copy new
 # .lproj files into the app without re-signing it ("a sealed resource is missing or invalid").
