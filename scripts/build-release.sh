@@ -10,7 +10,7 @@
 #
 #   scripts/build-release.sh [--test] [--allow-pending] [--out DIR]
 #
-#   --test           first the CI checks: copy rules, every module alone + unit tests, name probe, String Catalogs
+#   --test           first the checks: copy rules, every module alone + unit tests, name probe, String Catalogs
 #   --allow-pending  keys pending translation are warnings, not errors (CI builds; a release never allows them)
 #   --out DIR        also copy the release files to DIR (they are always in dist/)
 #
@@ -37,7 +37,7 @@ universal Release app, smoke-tested, as Cranny-X.Y.Z.dmg, Cranny-X.Y.Z.zip and t
 
   scripts/build-release.sh [--test] [--allow-pending] [--out DIR]
 
-  --test           first the CI checks: copy rules, every module alone + unit tests, name probe, String Catalogs
+  --test           first the checks: copy rules, every module alone + unit tests, name probe, String Catalogs
   --allow-pending  keys pending translation are warnings, not errors (CI builds; a release never allows them)
   --out DIR        also copy the release files to DIR (they are always in dist/)
   -h, --help       this help

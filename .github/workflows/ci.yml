@@ -4,9 +4,10 @@
 # the macOS job a second time for the same commit.
 #   scripts         actionlint (the workflows), shellcheck (scripts/, .github/scripts/) and the tests of the release
 #                   scripts (scripts/tests/run.sh)
-#   build           the GitHub xcode-27 image: copy rules, languages, every module alone + unit tests, the name probe,
-#                   the String Catalogs, then scripts/build-release.sh --allow-pending: the release build, its smoke
-#                   test and the packages, as release.yml builds the release (ad-hoc signed here)
+#   build           the GitHub xcode-27 image: copy rules, languages, the name probe, the String Catalogs, then
+#                   scripts/build-release.sh --allow-pending: the release build, its smoke test and the packages, as
+#                   release.yml builds the release (ad-hoc signed here). No unit tests: make check and make test run
+#                   locally (ARCHITECTURE.md §8.9)
 name: CI
 
 on:
@@ -86,9 +87,6 @@ jobs:
 
       - name: Shipped languages are complete and valid (placeholders, plural forms, quotes; new keys may be pending)
         run: /usr/bin/python3 -I scripts/lib/l10n/validate.py --shipped
-
-      - name: Every CrannyKit module builds on its own (zero warnings) + unit tests
-        run: JOBS=3 TEST=1 scripts/lib/check-modules.sh
 
       - name: SDK name-collision probe is up to date
         run: CHECK=1 scripts/lib/name-probe.sh

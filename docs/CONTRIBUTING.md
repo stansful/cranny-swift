@@ -20,8 +20,8 @@ are normative.
   requirement with a default implementation, a new well-known ID. No renames, removals or signature
   changes. Adding a public CrannyCore type? Run `make probe` (see below) and commit the result.
 - **Branches:** one per work package or review fix (`wp/07-timer`, `fix/crannytray`), PRs into `main`, rebase
-  daily. `main` is always green: CI runs the copy rules + `check-modules` + tests + `strings-check` + the name
-  probe + a universal build + the smoke test + packaging.
+  daily. `main` is always green: CI runs the copy rules + `strings-check` + the name probe + a universal build +
+  the smoke test + packaging. CI runs no unit tests: run `make check` and `make test` before you push.
 
 ## Toolchain
 
@@ -261,7 +261,7 @@ A release is a commit on main that changes `VERSION`; GitHub Actions does the re
 scripts/make-release.sh                      # shows VERSION and the last release tag, asks for the new version, commits it
 scripts/make-release.sh patch --yes          # no questions (also minor, major or X.Y.Z; --no-commit only writes VERSION)
 git push origin main                         # the CI checks, the release build and GitHub release vX.Y.Z
-scripts/build-release.sh                     # optional: the same release files locally, in dist/ (--test: CI checks first)
+scripts/build-release.sh                     # optional: the same release files locally, in dist/ (--test: module check, unit tests and CI checks first)
 ```
 
 The new version is X.Y.Z without leading zeros or "v", higher than `VERSION` and every release tag (the script reads
