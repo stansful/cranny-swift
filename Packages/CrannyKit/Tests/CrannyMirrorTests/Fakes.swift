@@ -133,11 +133,11 @@ enum Cameras {
     static let none = CameraSnapshot(devices: [], systemPreferredID: nil)
 }
 
-/// Polls `condition` on the main actor until it holds or `timeout` passes (observation callbacks are async).
+/// Polls `condition` on the main actor every 5 ms until it holds, for at least `timeout` (observation callbacks are
+/// async). Counted in polls, not real time: a main actor kept busy by other tests delays the polls and the callbacks
+/// alike, so a stall never uses up the bound (§9.6).
 @MainActor func eventually(within timeout: Duration = .seconds(1), _ condition: () -> Bool) async -> Bool {
-    let clock = ContinuousClock()
-    let deadline = clock.now.advanced(by: timeout)
-    while clock.now < deadline {
+    for _ in 0..<Int(timeout / .milliseconds(5)) {
         if condition() { return true }
         try? await Task.sleep(for: .milliseconds(5))
     }

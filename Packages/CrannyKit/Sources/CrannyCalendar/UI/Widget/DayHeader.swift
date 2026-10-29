@@ -93,6 +93,12 @@ enum DayHeaderLine: CaseIterable {
             dayMonthShort = CalendarFormat.dayMonthShort(date, locale: locale)
             dayNumber = CalendarFormat.dayNumber(date, locale: locale)
         }
+
+        /// Texts as given: `DayHeaderFitTests` pins a language whose forms differ between macOS releases' locale data.
+        init(weekday: String, weekdayShort: String, dayMonth: String, dayMonthShort: String, dayNumber: String) {
+            self.weekday = weekday; self.weekdayShort = weekdayShort; self.dayMonth = dayMonth
+            self.dayMonthShort = dayMonthShort; self.dayNumber = dayNumber
+        }
     }
 }
 

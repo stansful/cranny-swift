@@ -29,9 +29,8 @@ fi
 for catalog in "${catalogs[@]}"; do
   target="$(basename "$(dirname "$(dirname "$catalog")")")"
   log "$target"
-  # The .stringsdata paths below are the swift-build backend's layout: request it explicitly
-  # (default on SwiftPM 6.4; Xcode 26's SwiftPM 6.2 defaults to the native backend).
-  swift build --build-system swiftbuild --target "$target" --scratch-path "$scratch" >/dev/null 2>&1 \
+  # The .stringsdata paths below are the swift-build backend's layout (SWIFTPM_BUILD_SYSTEM, common.sh).
+  swift build "${SWIFTPM_BUILD_SYSTEM[@]}" --target "$target" --scratch-path "$scratch" >/dev/null 2>&1 \
     || die "build of $target failed (run scripts/lib/check-modules.sh $target)"
   stringsdata=()
   while IFS= read -r f; do stringsdata+=("$f"); done < <(

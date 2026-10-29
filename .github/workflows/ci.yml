@@ -121,9 +121,9 @@ jobs:
 
   build-macos-26:
     # Fallback and minimum-toolchain job (ARCHITECTURE.md §8.9): the `macos-26` image with its default
-    # Xcode 26.x (Swift 6.2). Same steps as `build` except strings-check, whose tooling needs Xcode 27's
-    # SwiftPM (`--build-system swiftbuild`, §8.5). It has not run on GitHub yet: until its first green run
-    # is recorded in §8.9 it reports without failing the workflow; then remove `continue-on-error`.
+    # Xcode 26.x (Swift 6.2). Same steps as `build` except strings-check, which reads the layout of Xcode 27's
+    # swift-build backend (§8.5; the scripts pass `--build-system swiftbuild` on both images). Until its first
+    # green run is recorded in §8.9 it reports without failing the workflow; then remove `continue-on-error`.
     runs-on: macos-26
     timeout-minutes: 30
     continue-on-error: true

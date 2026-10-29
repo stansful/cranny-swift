@@ -61,8 +61,10 @@ nonisolated final class FakeCLI: @unchecked Sendable {   // `calls` is guarded b
 
 /// A wait that ignores cancellation until `open()`: a CLI that hangs and does not react to its signals. Tests open
 /// it when they finish, and it opens by itself after `failSafe`, so a regression fails a test instead of hanging it.
+/// A minute: tests check `!isOpen` once the answer reached them on the main actor, which other tests can keep busy
+/// for longer than the 15 s this used to be (§9.6); a passing test opens it at once.
 nonisolated final class Gate: @unchecked Sendable {   // `waiters`, `opened` and `cancelled` are guarded by `lock`
-    static let failSafe: Duration = .seconds(15)
+    static let failSafe: Duration = .seconds(60)
     private let lock = NSLock()
     private var waiters: [CheckedContinuation<Void, Never>] = []
     private var opened = false
@@ -173,15 +175,14 @@ nonisolated struct IconResolver: AppResolving {
     }
 }
 
-/// Polls `condition` on the main actor until it holds (or fails after `timeout`).
+/// Polls `condition` on the main actor every 5 ms until it holds (or fails after at least `timeout`). Counted in
+/// polls, not real time: a main actor kept busy by other tests delays the polls and what they wait for alike (§9.6).
 @MainActor func waitUntil(timeout: Duration = .seconds(5), _ condition: @MainActor () -> Bool) async -> Bool {
-    let clock = ContinuousClock()
-    let deadline = clock.now.advanced(by: timeout)
-    while !condition() {
-        if clock.now > deadline { return false }
+    for _ in 0..<Int(timeout / .milliseconds(5)) {
+        if condition() { return true }
         try? await Task.sleep(for: .milliseconds(5))
     }
-    return true
+    return condition()
 }
 
 /// A temporary executable shell script (removed with its directory by the caller's `defer`).

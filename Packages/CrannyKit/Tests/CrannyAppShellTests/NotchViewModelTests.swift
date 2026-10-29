@@ -45,11 +45,11 @@ private struct Fixture {
     }
 }
 
-/// Waits (real time) until `condition` holds or `seconds` pass. Generous: the first AppKit use in the test process
-/// can block the main actor for a couple of seconds while other tests start.
+/// Waits until `condition` holds, polling every 10 ms for at least `seconds`. The bound counts polls, not real time:
+/// while other tests keep the main actor busy (a Settings window builds for seconds on a slow Mac) one poll can take
+/// longer than the whole bound, and the effect timer the test waits for is queued right behind it (§9.6).
 @MainActor private func waitUntil(_ seconds: Double, _ condition: () -> Bool) async throws {
-    let deadline = ProcessInfo.processInfo.systemUptime + seconds
-    while !condition(), ProcessInfo.processInfo.systemUptime < deadline { try await Task.sleep(for: .milliseconds(10)) }
+    for _ in 0..<Int(seconds * 100) where !condition() { try await Task.sleep(for: .milliseconds(10)) }
 }
 
 @Test func theLineupBecomesTheScenesCompactAndPeekRows() {

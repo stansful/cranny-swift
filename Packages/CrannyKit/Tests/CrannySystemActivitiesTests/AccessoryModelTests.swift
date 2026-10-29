@@ -35,6 +35,11 @@ import Testing
     private func settle(until condition: () -> Bool) async {
         for _ in 0..<200 where !condition() { await Task.yield() }
     }
+    /// Waits for the 1-s refresh wake-up, in polls rather than real time: other suites share the main actor, and a
+    /// stretch they hold it delays the polls and the wake-up alike.
+    private func settleRefresh(_ model: AccessoryModel) async {
+        for _ in 0..<200 where model.isRefreshScheduled { try? await Task.sleep(for: .milliseconds(50)) }
+    }
     private func airPodsReports() throws -> [AccessoryBatteryReport] {
         AccessoryPowerSources.group(AccessoryPowerSources.parse(try [Fixtures.airPodsCase, Fixtures.airPodsBuds].map(Fixtures.dictionary)))
     }
@@ -102,8 +107,7 @@ import Testing
         hardware.audio?([])
         hardware.audio?([AudioOutputDevice(id: "1", name: "AirPods")])
         await settle { activity.isActive }
-        let start = Date()
-        while model.isRefreshScheduled && Date().timeIntervalSince(start) < 10 { try? await Task.sleep(for: .milliseconds(50)) }
+        await settleRefresh(model)
         #expect(!model.isRefreshScheduled)
         #expect(hardware.batteryReads == 2)                 // on connect, then once a second later
         #expect(activity.isActive)                          // still on screen, yet nothing else is scheduled
@@ -133,8 +137,7 @@ import Testing
         await settle { activity.isActive }
         #expect(model.isRefreshScheduled)
         activity.end()
-        let start = Date()
-        while model.isRefreshScheduled && Date().timeIntervalSince(start) < 10 { try? await Task.sleep(for: .milliseconds(50)) }
+        await settleRefresh(model)
         #expect(!model.isRefreshScheduled)                  // the 1-s wake-up saw it gone; no 60-s wake-up follows
     }
 

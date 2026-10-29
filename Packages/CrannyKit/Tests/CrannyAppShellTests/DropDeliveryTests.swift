@@ -45,15 +45,16 @@ nonisolated private final class FakePromise: NSFilePromiseReceiver, @unchecked S
     }
 }
 
-private func temporaryDirectory() throws -> URL {
+nonisolated private func temporaryDirectory() throws -> URL {
     let url = FileManager.default.temporaryDirectory.appending(path: "cranny-drop-\(UUID().uuidString)", directoryHint: .isDirectory)
     try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
     return url
 }
 
+/// Polls every 10 ms for at least `seconds`, counted in polls: a main actor kept busy by other tests (§9.6) delays the
+/// polls and the delivery they wait for alike, so a stall never uses up the bound.
 private func waitUntil(_ seconds: Double, _ condition: () -> Bool) async throws {
-    let deadline = ProcessInfo.processInfo.systemUptime + seconds
-    while !condition(), ProcessInfo.processInfo.systemUptime < deadline { try await Task.sleep(for: .milliseconds(10)) }
+    for _ in 0..<Int(seconds * 100) where !condition() { try await Task.sleep(for: .milliseconds(10)) }
 }
 
 /// The reader runs on AppKit's background queue: it must survive that (the review's crash) and collect every file.
@@ -65,7 +66,9 @@ private func waitUntil(_ seconds: Double, _ condition: () -> Bool) async throws 
     #expect(Set(urls.map(\.lastPathComponent)) == ["a.jpg", "b.jpg", "c.jpg"])
 }
 
-@Test func aPromiseThatNeverArrivesIsGivenUp() async throws {
+/// Off the main actor (`@concurrent`: the resolver needs none), so the bound measures the timeout, not other tests'
+/// main-actor work.
+@Test @concurrent func aPromiseThatNeverArrivesIsGivenUp() async throws {
     let directory = try temporaryDirectory()
     defer { try? FileManager.default.removeItem(at: directory) }
     let start = ProcessInfo.processInfo.systemUptime

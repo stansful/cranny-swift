@@ -364,7 +364,11 @@ import Testing
 
     @Test func aFailedSaveIsReportedAndKeptForRetry() async throws {
         let model = await loadedModel()
+        // Only the saves below: on a busy main actor the 0.5-s autosave or the 5-s automatic retry took the edits
+        // before the test's retry did.
+        model.retrySleep = { _ in throw CancellationError() }
         let id = model.newNote(text: "precious")
+        model.autosave.cancel()
         let notesPath = services.paths.root.appending(path: "notes")
         try FileManager.default.removeItem(at: notesPath)
         try Data("blocker".utf8).write(to: notesPath)

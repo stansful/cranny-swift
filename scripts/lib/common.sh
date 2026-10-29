@@ -10,6 +10,11 @@ PACKAGE_DIR="$ROOT/Packages/CrannyKit"
 BUILD_DIR="$ROOT/build"
 DERIVED_DIR="$BUILD_DIR/DerivedData"
 MIN_XCODE_MAJOR=26   # swift-tools-version 6.2, .icon app icons, objectVersion 77
+# Every `swift build`/`swift test` of CrannyKit uses the swift-build backend: it compiles the Metal shaders and the
+# String Catalogs and gives each test target a bundle and a process of its own. SwiftPM 6.4 (Xcode 27) defaults to
+# it; SwiftPM 6.2 (Xcode 26) defaults to the native backend, which copies .metal and .xcstrings unprocessed and
+# runs all test targets in one process (§8.5).
+SWIFTPM_BUILD_SYSTEM=(--build-system swiftbuild)
 
 log()  { printf '\033[1;34m==>\033[0m %s\n' "$*" >&2; }
 warn() { printf '\033[1;33mwarning:\033[0m %s\n' "$*" >&2; }

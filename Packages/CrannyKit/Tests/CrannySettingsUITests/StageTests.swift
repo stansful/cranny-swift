@@ -101,6 +101,8 @@ private let cast = StageCast(ongoing: [.nowPlaying, .timerRunning], available: [
     let focus = NookPage(id: "page.focus", title: "Focus", symbol: "note.text", items: [NookItem(.notes, cells: 4), NookItem(.timer, cells: 2)])
     registry.services.settings[CoreSettings.pages] = [NookPreset.listener.page, focus]
     let stage = StageController(registry: registry, state: .open)
+    stage.currentScreen = nil                                                   // `.reference` (12 cells), not this Mac's display:
+    stage.applyAppearance(animated: false)                                      // a 1024-pt one caps the Nook at 8
     #expect(stage.model.open?.page == .nook && stage.model.openColumns == 10)
     stage.show(page: "page.focus")
     #expect(stage.model.open?.page == "page.focus" && stage.model.openColumns == 6)

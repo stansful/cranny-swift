@@ -115,8 +115,16 @@ private func date(_ calendar: Calendar, _ day: Int, _ hour: Int, _ minute: Int =
 }
 
 @Test func theDemoBadgeIsADotCutOutOfTheCorner() throws {
-    let plain = try #require(MenuBarIcon.plain.cgImage(forProposedRect: nil, context: nil, hints: nil))
-    let badged = try #require(MenuBarIcon.badged.cgImage(forProposedRect: nil, context: nil, hints: nil))
+    // Rendered at 2x on every Mac: with no context `cgImage` follows the screen's backing scale, and at 1x (a CI VM,
+    // a non-Retina display) the inner corner and the 1-pt gap are each about one antialiased pixel, too coarse for
+    // the samples below.
+    func render(_ image: NSImage) throws -> CGImage {
+        var rect = CGRect(origin: .zero, size: MenuBarIcon.size)
+        let retina = NSAffineTransform(transform: AffineTransform(scale: 2))
+        return try #require(image.cgImage(forProposedRect: &rect, context: nil, hints: [.ctm: retina]))
+    }
+    let plain = try render(MenuBarIcon.plain)
+    let badged = try render(MenuBarIcon.badged)
     #expect(MenuBarIcon.badged.isTemplate && MenuBarIcon.badged.size == MenuBarIcon.size)
     func alpha(_ image: CGImage, _ x: CGFloat, _ y: CGFloat) -> UInt8 {
         // Sample one point (top-left origin, in points) of the rendered template.

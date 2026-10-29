@@ -42,7 +42,7 @@ import Testing
 @MainActor func makeRegistry(trackpad: Bool = true) -> ModuleRegistry {
     let environment = PreviewSystemEnvironment()
     environment.hasTrackpad = trackpad
-    let services = CrannyServices(settings: SettingsStore(defaults: InMemoryDefaults()), permissions: PermissionsCenter(),
+    let services = CrannyServices(settings: SettingsStore(defaults: InMemoryDefaults()), permissions: .preview(),
                                   haptics: Haptics(isEnabled: { false }), paths: .temporary(), notch: TestNotch(),
                                   environment: environment, app: PreviewAppControl())
     let registry = ModuleRegistry(services: services)

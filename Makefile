@@ -35,7 +35,7 @@ check:           ## Build every CrannyKit target separately (swift build --targe
 	@scripts/lib/check-modules.sh
 
 test:            ## swift test for CrannyKit
-	@. scripts/lib/common.sh && ensure_xcode && ensure_metal_toolchain && cd Packages/CrannyKit && swift test --scratch-path .build-test
+	@. scripts/lib/common.sh && ensure_xcode && ensure_metal_toolchain && cd Packages/CrannyKit && swift test "$${SWIFTPM_BUILD_SYSTEM[@]}" --scratch-path .build-test
 
 strings:         ## Sync String Catalogs with keys used in code
 	@scripts/lib/sync-strings.sh

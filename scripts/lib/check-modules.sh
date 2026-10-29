@@ -44,7 +44,8 @@ build_one() {
     flags=(-Xswiftc -warnings-as-errors)
     [[ -n "$(find "$PACKAGE_DIR/Sources/$t" -name '*.swift' -print -quit)" ]] || flags+=(-Xcc -Werror)
   fi
-  if swift build --target "$t" --scratch-path "$scratch" ${flags[@]+"${flags[@]}"} >"$log_file" 2>&1; then
+  if swift build "${SWIFTPM_BUILD_SYSTEM[@]}" --target "$t" --scratch-path "$scratch" ${flags[@]+"${flags[@]}"} \
+       >"$log_file" 2>&1; then
     warnings="$(grep -E 'warning:' "$log_file" | grep -vE "$BENIGN_WARNINGS" | sort -u || true)"
     if [[ -n "$warnings" ]]; then
       printf '  \033[33mWARN\033[0m  %s  (log: build/logs/module-%s.log)\n' "$t" "$t"
@@ -77,7 +78,7 @@ fi
 
 if [[ "${TEST:-0}" == 1 ]]; then
   log "swift test"
-  swift test --scratch-path "$PACKAGE_DIR/.build-test" || failed=1
+  swift test "${SWIFTPM_BUILD_SYSTEM[@]}" --scratch-path "$PACKAGE_DIR/.build-test" || failed=1
 fi
 (( failed == 0 )) || die "module check failed"
 log "All modules build independently, with no warnings"

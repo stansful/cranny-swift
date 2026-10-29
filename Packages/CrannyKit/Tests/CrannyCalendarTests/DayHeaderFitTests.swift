@@ -68,16 +68,21 @@ import Testing
     }
 
     /// The model above, checked against `ViewThatFits` itself (`DayHeaderChoice`), beside a stand-in for ‹ ›.
+    /// pt-PT's Wednesday is pinned as macOS 27 writes it (the abbreviation is the whole word "quarta", the short form
+    /// "qua."): macOS 26 and earlier have no pt-PT abbreviations and write "qua." for both, which fits as `.noMore`.
     @Test func viewThatFitsPicksAsMeasured() async throws {
-        let cases: [(code: String, width: CGFloat, expected: DayHeaderLine)] = [
-            ("en", 160, .countOnly), ("en", 188, .dayOnly), ("en", 135.5, .noMore), ("pt-PT", 123.5, .shortWeekday),
+        let english = DayHeaderLine.Dates(week[6], locale: Locale(identifier: "en"))
+        let quarta = DayHeaderLine.Dates(weekday: "quarta", weekdayShort: "qua.", dayMonth: "28 de outubro",
+                                         dayMonthShort: "28/10", dayNumber: "28")
+        let cases: [(code: String, dates: DayHeaderLine.Dates, width: CGFloat, expected: DayHeaderLine)] = [
+            ("en", english, 160, .countOnly), ("en", english, 188, .dayOnly), ("en", english, 135.5, .noMore),
+            ("pt-PT", quarta, 123.5, .shortWeekday),
         ]
         for c in cases {
             let box = HeaderPickBox()
             let header = HStack(spacing: Space.xs) {
                 DayHeaderChoice { line in
-                    DayHeaderLineBody(line: line, date: week[6], dates: DayHeaderLine.Dates(week[6], locale: Locale(identifier: c.code)),
-                                      isToday: true, more: 9)
+                    DayHeaderLineBody(line: line, date: week[6], dates: c.dates, isToday: true, more: 9)
                         .onAppear { box.shown.append(line) }
                 }
                 Color.clear.frame(width: 2 * HitTarget.preferred, height: 16)

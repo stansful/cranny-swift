@@ -43,9 +43,9 @@ private let size = CGSize(width: 880, height: 260)
 func everyAmbientFunctionDraws(_ effect: AmbientEffect) throws {
     let stitchable = try rasterize(AmbientShader(effect: effect, glows: AmbientPalette.afterglow.glows, level: .vivid,
                                                  energy: 0.5, time: 12, displayScale: 1), size: size)
-    #expect(stitchable.peakAlpha > 0.2, "\(effect): stitchable function drew nothing")
+    #expect(stitchable.peakAlpha > 0.2, "\(effect): stitchable function drew nothing on \(testGPU)")
     let layer = try rasterizeLayer(layerState(effect, level: .vivid, energy: 0.5), size: size, time: 12)
-    #expect(layer.peakAlpha > 0.2, "\(effect): \(AmbientRenderer.fragmentName(effect)) drew nothing")
+    #expect(layer.peakAlpha > 0.2, "\(effect): \(AmbientRenderer.fragmentName(effect)) drew nothing on \(testGPU)")
 }
 
 /// The alpha cap holds on the Metal layer, the stitchable shader and the fallback, at both levels, at rest, at full
@@ -140,8 +140,9 @@ func ambientLightNeverPassesTheCap(_ effect: AmbientEffect) throws {
 }
 
 /// GPU ≤ 1.5 ms per frame at the largest open size (DESIGN.md §5.6 rule 6): a 16″ open panel is ≈ 1000 × 300 pt on a
-/// 2× display, drawn at the layer's render scale for each effect. The limit depends on the GPU, so it is asserted only
-/// in integration runs (`CRANNY_INTEGRATION=1`, ARCHITECTURE.md §9.6); the frame is measured on every run.
+/// 2× display, drawn at the layer's render scale for each effect. The time depends on the GPU, and the GPU times of a
+/// command buffer are the driver's to report (a virtual GPU need not), so they are asserted only in integration runs
+/// (`CRANNY_INTEGRATION=1`, ARCHITECTURE.md §9.6); every run renders and completes the frames.
 @Test(.enabled(if: shadersRun), arguments: AmbientEffect.allCases)
 func ambientFrameFitsTheGPUBudget(_ effect: AmbientEffect) throws {
     let renderer = try #require(AmbientRenderer.renderer(forDisplay: nil))
@@ -152,9 +153,10 @@ func ambientFrameFitsTheGPUBudget(_ effect: AmbientEffect) throws {
                                    date: Date())
     _ = renderer.gpuTime(effect, uniforms: uniforms, width: w, height: h)                       // warm-up
     let times = (0..<8).compactMap { _ in renderer.gpuTime(effect, uniforms: uniforms, width: w, height: h) }
-    let median = try #require(times.sorted().dropFirst(times.count / 2).first)
-    #expect(median > 0, "\(effect): no GPU time measured")
+    #expect(times.count == 8 && times.allSatisfy { $0 >= 0 }, "\(effect): frames \(times)")
     if integrationTests {
+        let median = try #require(times.sorted().dropFirst(times.count / 2).first)
+        #expect(median > 0, "\(effect): no GPU time measured")
         #expect(median <= 0.0015, "\(effect): \(median * 1000) ms per frame")
     }
 }

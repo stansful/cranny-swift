@@ -8,6 +8,6 @@ import Testing
 }
 
 @Test(.enabled(if: AmbientGPU.device() != nil)) func everyRequiredShaderLoads() {
-    #expect(ShaderEffects.unavailabilityReason() == nil)
+    #expect(ShaderEffects.unavailabilityReason() == nil, "on \(testGPU)")
     #expect(ShaderEffects.isAvailable)
 }

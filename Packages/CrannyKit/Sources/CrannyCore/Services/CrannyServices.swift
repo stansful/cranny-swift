@@ -35,11 +35,12 @@ import Observation
         self.notch = notch; self.environment = environment; self.app = app
     }
 
-    /// In-memory settings (`InMemoryDefaults`: nothing is written to ~/Library/Preferences), temporary paths and
-    /// recording doubles: for `#Preview` and unit tests. Every call returns independent settings.
+    /// In-memory settings (`InMemoryDefaults`: nothing is written to ~/Library/Preferences), permissions that never
+    /// ask macOS (`PermissionsCenter.preview()`), temporary paths and recording doubles: for `#Preview` and unit
+    /// tests. Every call returns independent settings.
     public static func preview(environment: PreviewSystemEnvironment = PreviewSystemEnvironment()) -> CrannyServices {
         let settings = SettingsStore(defaults: InMemoryDefaults())
-        return CrannyServices(settings: settings, permissions: PermissionsCenter(),
+        return CrannyServices(settings: settings, permissions: .preview(),
                               haptics: Haptics(isEnabled: { false }), paths: .temporary(),
                               notch: PreviewNotchControl(), environment: environment, app: PreviewAppControl())
     }

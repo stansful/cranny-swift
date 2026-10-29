@@ -57,7 +57,9 @@ import Testing
     await #expect(throws: QuickAppsError.shortcutFailed) { try await ShortcutsCLI(executable: script.path).run("X") }
 }
 
-@Test func cancellingARunTerminatesTheProcess() async throws {
+/// The two stop tests run off the main actor (`@concurrent`; the runner needs none): their bounds measure how fast
+/// the process stops, not how long other tests keep the main actor busy.
+@Test @concurrent func cancellingARunTerminatesTheProcess() async throws {
     let (script, directory) = try makeScript("exec /bin/sleep 30")
     defer { try? FileManager.default.removeItem(at: directory) }
     let cli = ShortcutsCLI(executable: script.path)
@@ -69,7 +71,7 @@ import Testing
     #expect(ContinuousClock.now - started < .seconds(5))      // not the script's 30 s
 }
 
-@Test func stoppingARunInterruptsTheCLIFirst() async throws {
+@Test @concurrent func stoppingARunInterruptsTheCLIFirst() async throws {
     // `shortcuts run` stops the shortcut on SIGINT (its Ctrl-C handler); SIGTERM would kill only the CLI.
     let (script, directory) = try makeScript("""
         dir="$(dirname "$0")"

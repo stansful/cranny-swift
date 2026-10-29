@@ -54,12 +54,17 @@ import SwiftUI
     }
 }
 
-/// A notch canvas with a lifecycle probe, for identity tests.
+/// A notch canvas with a lifecycle probe, for identity tests. The Mac's Reduce Motion and Reduce Transparency are
+/// pinned off (GitHub's macOS runners turn both on): under Reduce Motion open and close swap the surface by design
+/// (`ShapeMotion.crossFadeKey`), so a test that wants them sets them on the theme (`theme.reduceMotion`,
+/// `theme.reduceTransparency`).
 @MainActor func hostedCanvas(_ model: NotchSceneModel, _ registry: ModuleRegistry, actions: NotchUIActions = NotchUIActions(),
                              backdrop: Color = .clear) -> (Hosted<some View>, NotchLifecycleProbe) {
     let probe = NotchLifecycleProbe()
     let size = model.layout.canvasSize
     let root = NotchCanvasView(model: model, registry: registry, actions: actions)
+        .environment(\._accessibilityReduceMotion, false)
+        .environment(\._accessibilityReduceTransparency, false)
         .environment(\.notchLifecycleProbe, probe)
         .frame(width: size.width, height: size.height)
         .background(backdrop)

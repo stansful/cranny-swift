@@ -112,22 +112,21 @@ import Testing
     #expect(view.framesDrawn == before)
 }
 
-/// The render thread draws at the budget's rate: 20 fps on battery, at most 30 on AC, never a burst.
+/// The render thread draws at the budget's rate: 20 fps on battery, at most 30 on AC, never a burst. The rate is
+/// counted over the time the main thread was really blocked, which a loaded Mac stretches past the 0.6 s asked for.
 @Test(.enabled(if: shadersRun)) func renderThreadKeepsTheBudgetsRate() async throws {
     var state = layerState(.tide)
     state.interval = 1.0 / 20
     let (view, window) = try await runningView(state)
     defer { view.stop(); window.close() }
-    var before = view.framesDrawnOffMain
-    blockMainThread(for: 0.6)
-    let battery = view.framesDrawnOffMain - before
-    #expect(battery >= 4 && battery <= 13, "\(battery) frames in 0.6 s at 20 fps")
+    let battery = framesOffMain(view, blocking: 0.6)
+    #expect(battery.count >= 4 && Double(battery.count) <= battery.seconds * 20 + 1,
+            "\(battery.count) frames in \(battery.seconds) s at 20 fps")
     state.interval = 1.0 / 30                                           // plugged in: the same thread, a new rate
     view.state = state
-    before = view.framesDrawnOffMain
-    blockMainThread(for: 0.6)
-    let mains = view.framesDrawnOffMain - before
-    #expect(mains >= 6 && mains <= 19, "\(mains) frames in 0.6 s at 30 fps")
+    let mains = framesOffMain(view, blocking: 0.6)
+    #expect(mains.count >= 6 && Double(mains.count) <= mains.seconds * 30 + 1,
+            "\(mains.count) frames in \(mains.seconds) s at 30 fps")
 }
 
 /// Time continues across a pause (Reduce Motion, occlusion, a paused budget): the first frame after it shows the last
@@ -145,13 +144,15 @@ import Testing
     #expect(view.framesDrawnOffMain == offMain)
     #expect(view.lastFrameTime == paused, "a paused layer keeps its time")
     state.interval = 1.0 / 30                                           // resumed
+    let resumedAt = ContinuousClock.now
     view.state = state
     let resumed = shaderSeconds(from: paused, to: try #require(view.lastFrameTime))
     #expect(resumed < 0.05, "resumed \(resumed) s after the pause's time")
     blockMainThread(for: 0.3)
     #expect(view.framesDrawnOffMain > offMain)
     let later = shaderSeconds(from: paused, to: try #require(view.lastFrameTime))
-    #expect(later > 0.15 && later < 0.4, "\(later) s after 0.3 s of frames")
+    let running = (ContinuousClock.now - resumedAt) / .seconds(1)      // 0.3 s, or more on a loaded Mac
+    #expect(later > 0.15 && later < running + 0.1, "\(later) s after \(running) s of frames")
 }
 
 /// Shader seconds from `start` to `end` (the shader clock wraps every hour).
@@ -253,6 +254,17 @@ private func shaderSeconds(from start: Double, to end: Double) -> Double {
 
 /// Keeps the main thread from running anything else for `seconds`.
 @MainActor private func blockMainThread(for seconds: Double) { Thread.sleep(forTimeInterval: seconds) }
+
+/// The frames `view` draws off the main thread while it is blocked for `seconds`, and how long it really was blocked: a
+/// loaded Mac (CI's three-core virtual machine) wakes the sleep late, and the render thread draws on meanwhile.
+@MainActor private func framesOffMain(_ view: AmbientMetalNSView, blocking seconds: Double)
+    -> (count: Int, seconds: Double) {
+    let start = ContinuousClock.now
+    let before = view.framesDrawnOffMain
+    blockMainThread(for: seconds)
+    let count = view.framesDrawnOffMain - before
+    return (count, (ContinuousClock.now - start) / .seconds(1))
+}
 
 @Test(.enabled(if: shadersRun)) func dismantledLayerStops() throws {
     var state = layerState(.motes)

@@ -154,8 +154,13 @@ struct Raster {
     return Raster(width: w, height: h, rgba: rgba)
 }
 
-/// Shaders can run here (a Metal device and the complete library).
+/// Shaders can run here (a Metal device and the complete library). A Mac without a Metal device skips the shader tests;
+/// a virtual GPU (GitHub's macOS runners: "Apple Paravirtual device") is a Metal device and runs them, so anything else
+/// a GPU must support belongs in `ShaderEffects.isAvailable`, which the app's choice of path relies on too.
 nonisolated let shadersRun = ShaderEffects.isAvailable
+
+/// The GPU the shader tests draw with, named in their failure messages.
+nonisolated let testGPU = AmbientGPU.device()?.name ?? "no Metal device"
 
 /// Hardware-dependent checks (GPU time) run only with `CRANNY_INTEGRATION=1` (ARCHITECTURE.md §9.6), never in CI.
 nonisolated let integrationTests = ProcessInfo.processInfo.environment["CRANNY_INTEGRATION"] == "1"

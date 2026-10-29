@@ -60,6 +60,9 @@ public nonisolated enum PermissionStatus: String, Codable, Sendable {
     /// macOS's answer for a kind with a query API (Accessibility, Calendar, Camera, Bluetooth), off the main actor;
     /// never prompts. The app uses `systemStatus`; tests inject a probe that records its calls.
     public typealias StatusProbe = @concurrent @Sendable (_ kind: PermissionKind) async -> PermissionStatus
+    /// The same answer on the main actor, for the synchronous queries (`init`, `refresh()`, after a request,
+    /// `currentStatus`); never prompts. The app uses `systemStatus`; `preview()` answers without asking macOS.
+    public typealias StatusQuery = @Sendable (_ kind: PermissionKind) -> PermissionStatus
 
     /// The kinds with a query API (System Audio Recording has none; Automation is asked per app).
     private static let queriedKinds: [PermissionKind] = [.accessibility, .calendar, .camera, .bluetooth]
@@ -70,6 +73,7 @@ public nonisolated enum PermissionStatus: String, Codable, Sendable {
     @ObservationIgnored private var recorded: [PermissionKind: PermissionStatus] = [:]
     @ObservationIgnored private let automationProbe: AutomationProbe
     @ObservationIgnored private let statusProbe: StatusProbe
+    @ObservationIgnored private let statusQuery: StatusQuery
     /// Per kind (Automation: per app), the number of the latest query or answer; an older query that lands later is
     /// dropped.
     @ObservationIgnored private var generation: [PermissionKind: Int] = [:]
@@ -81,16 +85,19 @@ public nonisolated enum PermissionStatus: String, Codable, Sendable {
     @ObservationIgnored private var queryAgain: Set<PermissionKind> = []
     @ObservationIgnored private var activationObserver: (any NSObjectProtocol)?
 
-    /// Queries every permission except Automation once (cheap, never prompts). `automationProbe` answers Automation
-    /// questions and `statusProbe` the background queries, both off the main actor. With `refreshesOnActivation`
+    /// Queries every permission except Automation once (never prompts; Camera and Bluetooth ask tccd every time,
+    /// ≈ 20 ms each on an idle Mac). `automationProbe` answers Automation questions and `statusProbe` the background
+    /// queries, both off the main actor; `statusQuery` the synchronous ones. With `refreshesOnActivation`
     /// (the app's one center), every activation of Cranny refreshes the statuses in the background: the user may have
     /// changed them in System Settings meanwhile. Nothing reads them in that turn: rows and the HUD's config follow
     /// them by observation, and the HUD's own check refreshes synchronously when it finds Accessibility stale.
     public init(automationProbe: @escaping AutomationProbe = { await PermissionsCenter.systemAutomationStatus($0, ask: $1) },
                 statusProbe: @escaping StatusProbe = { PermissionsCenter.systemStatus($0) },
+                statusQuery: @escaping StatusQuery = { PermissionsCenter.systemStatus($0) },
                 refreshesOnActivation: Bool = false) {
         self.automationProbe = automationProbe
         self.statusProbe = statusProbe
+        self.statusQuery = statusQuery
         for kind in Self.queriedKinds + [.systemAudioRecording] { update(kind, to: query(kind)) }
         if refreshesOnActivation {
             activationObserver = NotificationCenter.default.addObserver(
@@ -98,6 +105,15 @@ public nonisolated enum PermissionStatus: String, Codable, Sendable {
                 MainActor.assumeIsolated { self?.refreshInBackground() }         // queue: .main
             }
         }
+    }
+
+    /// A center that never asks macOS (`CrannyServices.preview()`: unit tests and `#Preview`): every kind reads what
+    /// a Mac that was never asked answers (`.notDetermined`; Automation `.unknown`, as for a player that is not
+    /// running), so a test behaves the same on every Mac, and no tccd or Calendar round trip runs on the main actor
+    /// once per test (on a loaded CI machine they add up to seconds, and every real-time bound waits behind them).
+    public static func preview() -> PermissionsCenter {
+        PermissionsCenter(automationProbe: { _, _ in .unknown }, statusProbe: { _ in .notDetermined },
+                          statusQuery: { _ in .notDetermined })
     }
 
     /// The last known status. Automation: the cached answer, `.unknown` until the first one lands (asking for it
@@ -270,7 +286,7 @@ public nonisolated enum PermissionStatus: String, Codable, Sendable {
     private func query(_ kind: PermissionKind) -> PermissionStatus {
         switch kind {
         case .accessibility, .calendar, .camera, .bluetooth:
-            return Self.systemStatus(kind)
+            return statusQuery(kind)
         case .systemAudioRecording:
             return recorded[kind] ?? .unknown
         case .automation:

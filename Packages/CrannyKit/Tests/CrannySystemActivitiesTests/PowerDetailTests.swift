@@ -64,9 +64,9 @@ nonisolated final class FakeBattery: Sendable {
     }
 
     /// Polls until `condition` holds (generous: other suites share the main actor; it returns as soon as it holds).
+    /// Counted in polls, not real time: a stretch other tests hold the main actor delays the polls and the reads alike.
     private func settle(_ condition: () -> Bool) async -> Bool {
-        let start = Date()
-        while !condition() && Date().timeIntervalSince(start) < 10 { try? await Task.sleep(for: .milliseconds(10)) }
+        for _ in 0..<1000 where !condition() { try? await Task.sleep(for: .milliseconds(10)) }
         return condition()
     }
 

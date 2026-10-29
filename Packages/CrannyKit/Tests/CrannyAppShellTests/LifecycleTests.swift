@@ -33,7 +33,9 @@ import Testing
         journal.entries.append("launched")
     }
     #expect(gate.phase == .launching && gate.runsTerminateHooks)
-    #expect(gate.defersQuit { journal.entries.append("quit") })
+    // A limit no busy main actor reaches (the 3-s `quitWait` passed while other tests held it): this test is about
+    // waiting for the launch; the limit is `aHungLaunchDelaysTheQuitOnlySoLong`'s.
+    #expect(gate.defersQuit(atMost: .seconds(60)) { journal.entries.append("quit") })
     #expect(gate.defersQuit { journal.entries.append("second quit") })        // shares the first reply
     for _ in 0..<100 where journal.release == nil { try await Task.sleep(for: .milliseconds(10)) }
     #expect(journal.entries.isEmpty)

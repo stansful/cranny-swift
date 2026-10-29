@@ -52,7 +52,7 @@ private typealias GPU = AmbientGPU.Candidate
 /// views on the same GPU share one renderer.
 @Test(.enabled(if: shadersRun)) func rendererBuildsEveryPipelineAndIsShared() throws {
     let device = try #require(AmbientGPU.device())
-    let renderer = try #require(AmbientRenderer(device: device))
+    let renderer = try #require(AmbientRenderer(device: device), "the pipelines do not build on \(device.name)")
     for effect in AmbientEffect.allCases {
         let uniforms = AmbientUniforms(state: layerState(effect), size: CGSize(width: 8, height: 8), scale: 1, time: 1,
                                        date: Date())

@@ -70,10 +70,9 @@ import Testing
         let start = Date()
         model.apply(onPower(40))
         #expect(charging.isActive)
-        // One sleep to the deadline ends it. Poll generously: other tests share the main actor.
-        while charging.isActive && Date().timeIntervalSince(start) < 10 {
-            try await Task.sleep(for: .milliseconds(50))
-        }
+        // One sleep to the deadline ends it. Poll generously, in polls rather than real time: other tests share the
+        // main actor, and a stretch they hold it delays the polls and that sleep alike.
+        for _ in 0..<200 where charging.isActive { try await Task.sleep(for: .milliseconds(50)) }
         #expect(!charging.isActive)
         #expect(charging.expiresAt == nil)
         #expect(Date().timeIntervalSince(start) >= 0.95)
